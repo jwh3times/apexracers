@@ -1,0 +1,46 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+.nuget/
+*.nupkg
+*.snupkg
+project.lock.json
+artifacts/
+_ReSharper*/
+*.resharper
+.idea/
+*.DotSettings.user
+
+# EF Core tools output (keep Migrations/ committed)
+*.ef.json
+
+# Node / Vite
+src/web/node_modules/
+src/web/dist/
+src/web/.env
+src/web/.env.local
+src/web/.env.*.local
+src/web/npm-debug.log*
+src/web/yarn-debug.log*
+src/web/yarn-error.log*
+src/web/pnpm-debug.log*
+
+# Environment secrets (never commit)
+.env
+.env.local
+*.secrets.json
+
+# Docker overrides (local only)
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Azure
+.azure/
