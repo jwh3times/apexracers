@@ -5,6 +5,7 @@ namespace ApexRacers.Api.Services;
 
 public class AuthService(AppDbContext db)
 {
+    private readonly AppDbContext _db = db;
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; upsert UserProfile; issue an
