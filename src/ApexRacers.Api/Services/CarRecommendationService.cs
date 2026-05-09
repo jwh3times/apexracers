@@ -17,7 +17,7 @@ public class CarRecommendationService(AppDbContext db, PercentileCalculationServ
 
         if (week is null) return [];
 
-        var user = await db.UserProfiles
+        var user = await db.Users
             .FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
 
         // All distinct cars with official TT times in this week.

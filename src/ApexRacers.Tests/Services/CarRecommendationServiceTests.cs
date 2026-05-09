@@ -75,7 +75,7 @@ public class CarRecommendationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car1, _) = SeedWeekWithTwoCars(db);
         var userId = Guid.NewGuid();
-        db.UserProfiles.Add(new UserProfile { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
+        db.Users.Add(new ApexRacers.Data.ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
         // Cached result with a known percentile
         db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, WeekId = 10, PercentileRank = 88.5, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow });
         // Need at least one LapTimeEntry so the car appears in the week

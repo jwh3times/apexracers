@@ -7,25 +7,9 @@ namespace ApexRacers.Api.Services;
 
 public class TelemetryUploadService(AppDbContext db)
 {
-    public async Task<TelemetryUploadResult> ProcessAsync(Stream ibtStream, CancellationToken ct)
+    public async Task<TelemetryUploadResult> ProcessAsync(Stream ibtStream, Guid userId, CancellationToken ct)
     {
         var session = IbtParser.Parse(ibtStream);
-
-        // Resolve or create the UserProfile based on the iRacing customer ID in the file.
-        // TODO: Replace with the authenticated user once AuthController is wired up.
-        var user = await db.UserProfiles
-            .FirstOrDefaultAsync(u => u.IRacingCustomerId == session.DriverCustomerId, ct);
-
-        if (user is null)
-        {
-            user = new UserProfile
-            {
-                Id = Guid.NewGuid(),
-                IRacingCustomerId = session.DriverCustomerId,
-                DisplayName = session.DriverName.Length > 0 ? session.DriverName : $"Driver {session.DriverCustomerId}",
-            };
-            db.UserProfiles.Add(user);
-        }
 
         // Upsert the car — the ingestion worker is the authoritative source but
         // telemetry files can arrive before ingestion has run.
@@ -47,17 +31,17 @@ public class TelemetryUploadService(AppDbContext db)
         {
             db.PersonalLaps.Add(new PersonalLap
             {
-                UserId          = user.Id,
-                CarId           = session.IracingCarId,
-                IracingTrackId  = session.IracingTrackId,
-                TrackName       = session.TrackName,
-                ConfigName      = session.ConfigName,
-                LapTimeSeconds  = lap.LapTimeSeconds,
-                IsValidLap      = true,
-                AirTempCelsius  = session.AirTempCelsius,
+                UserId           = userId,
+                CarId            = session.IracingCarId,
+                IracingTrackId   = session.IracingTrackId,
+                TrackName        = session.TrackName,
+                ConfigName       = session.ConfigName,
+                LapTimeSeconds   = lap.LapTimeSeconds,
+                IsValidLap       = true,
+                AirTempCelsius   = session.AirTempCelsius,
                 TrackTempCelsius = session.TrackTempCelsius,
-                TrackWetness    = session.TrackWetness,
-                RecordedAt      = session.SessionDate,
+                TrackWetness     = session.TrackWetness,
+                RecordedAt       = session.SessionDate,
             });
         }
 
@@ -69,11 +53,11 @@ public class TelemetryUploadService(AppDbContext db)
             BestLapSeconds: validLaps.Count > 0
                 ? validLaps.Min(l => l.LapTimeSeconds)
                 : null,
-            TrackName:   session.TrackName,
-            ConfigName:  session.ConfigName,
-            CarName:     session.CarName,
-            CustomerId:  session.DriverCustomerId,
-            DriverName:  session.DriverName
+            TrackName:  session.TrackName,
+            ConfigName: session.ConfigName,
+            CarName:    session.CarName,
+            CustomerId: session.DriverCustomerId,
+            DriverName: session.DriverName
         );
     }
 

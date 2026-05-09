@@ -15,6 +15,5 @@ public class PersonalLap
     public byte TrackWetness { get; set; }
     public DateTimeOffset RecordedAt { get; set; }
 
-    public UserProfile User { get; set; } = null!;
     public Car Car { get; set; } = null!;
 }

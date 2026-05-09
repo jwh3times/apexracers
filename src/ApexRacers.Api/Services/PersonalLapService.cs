@@ -6,12 +6,11 @@ namespace ApexRacers.Api.Services;
 
 public class PersonalLapService(AppDbContext db)
 {
-    public async Task<List<PersonalLapDto>> GetPersonalBestsAsync(long customerId, CancellationToken ct = default)
+    public async Task<List<PersonalLapDto>> GetPersonalBestsAsync(Guid userId, CancellationToken ct = default)
     {
         var laps = await db.PersonalLaps
             .Include(l => l.Car)
-            .Include(l => l.User)
-            .Where(l => l.User.IRacingCustomerId == customerId && l.IsValidLap)
+            .Where(l => l.UserId == userId && l.IsValidLap)
             .ToListAsync(ct);
 
         return laps

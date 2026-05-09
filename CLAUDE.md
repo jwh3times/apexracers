@@ -37,10 +37,30 @@ npm run lint     # ESLint
 ### Infrastructure
 
 ```bash
-docker compose up -d    # PostgreSQL 16 on :5432, pgAdmin 4 on :5050
+# Local Docker Desktop (postgres + pgadmin + api)
+docker compose up -d
+
+# Include ingestion worker
+docker compose --profile ingestion up -d
 ```
 
-Copy `.env.example` to `.env` and fill in credentials before running any .NET project.
+Copy `.env.example` to `.env` and fill in `JWT_SIGNING_KEY` before running. `DATABASE_CONNECTION_STRING` is pre-filled for the Docker network.
+
+### Azure (resource group: apexracers-rg)
+
+| Resource | Type | Location |
+|---|---|---|
+| `apexracersacr` | Container Registry | eastus |
+| `apexracers-kv` | Key Vault | eastus |
+| `apexracers-pg` | PostgreSQL Flexible Server | westus3 |
+| `apexracers-plan` | App Service Plan | westus3 |
+| `apexracers-api` | App Service (API) | westus3 |
+| `apexracers-env` | Container Apps Environment | westus3 |
+| `apexracers-ingestion` | Container App (ingestion worker) | westus3 |
+| `workspace-apexracersrg0n6Q` | Log Analytics Workspace | westus3 |
+| `apexracers.gg` | SSL Certificate | westus3 |
+
+The API is deployed as an App Service; the ingestion worker runs as a Container App. Key Vault secret names use hyphens (e.g. `JWT-SIGNING-KEY`) and are mapped to underscore env var names by `HyphenToUnderscoreSecretManager` in both `Program.cs` files.
 
 ---
 

@@ -1,9 +1,13 @@
+using System.Text;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using ApexRacers.Api.Services;
 using ApexRacers.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,8 +31,34 @@ var connectionString =
     builder.Configuration["DATABASE_CONNECTION_STRING"]
     ?? throw new InvalidOperationException("DATABASE_CONNECTION_STRING is not set.");
 
+var jwtKey =
+    builder.Configuration["JWT_SIGNING_KEY"]
+    ?? throw new InvalidOperationException("JWT_SIGNING_KEY is not set.");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = false;
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<AppDbContext>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero,
+        };
+    });
 
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
@@ -69,6 +99,7 @@ if (app.Environment.IsDevelopment())
 // Serve the React SPA from wwwroot (populated by the Docker build).
 app.UseStaticFiles();
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

@@ -10,8 +10,8 @@ public class CarPercentileResultConfiguration : IEntityTypeConfiguration<CarPerc
     {
         builder.HasKey(r => r.Id);
 
-        builder.HasOne(r => r.User)
-            .WithMany(u => u.CarPercentileResults)
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

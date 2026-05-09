@@ -1,11 +1,14 @@
+using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
 [Route("api/telemetry")]
+[Authorize]
 public class TelemetryController(
     TelemetryUploadService uploadService,
     PersonalLapService lapService) : ControllerBase
@@ -21,10 +24,12 @@ public class TelemetryController(
         if (!file.FileName.EndsWith(".ibt", StringComparison.OrdinalIgnoreCase))
             return BadRequest("File must be an iRacing .ibt telemetry file.");
 
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
         try
         {
             using var stream = file.OpenReadStream();
-            var result = await uploadService.ProcessAsync(stream, ct);
+            var result = await uploadService.ProcessAsync(stream, userId, ct);
 
             return Ok(new TelemetryUploadResultDto(
                 result.TotalLaps,
@@ -43,10 +48,10 @@ public class TelemetryController(
     }
 
     [HttpGet("laps")]
-    public async Task<IActionResult> GetLapsAsync([FromQuery] long customerId, CancellationToken ct)
+    public async Task<IActionResult> GetLapsAsync(CancellationToken ct)
     {
-        if (customerId <= 0) return BadRequest("customerId is required.");
-        var laps = await lapService.GetPersonalBestsAsync(customerId, ct);
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var laps = await lapService.GetPersonalBestsAsync(userId, ct);
         return Ok(laps);
     }
 }

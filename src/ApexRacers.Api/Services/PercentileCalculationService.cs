@@ -31,8 +31,8 @@ public class PercentileCalculationService(AppDbContext db)
         var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
         var computedAt = DateTimeOffset.UtcNow;
 
-        // Cache if a UserProfile exists for this customer ID.
-        var user = await db.UserProfiles
+        // Cache if a user account is linked to this iRacing customer ID.
+        var user = await db.Users
             .FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
 
         if (user is not null)

@@ -76,7 +76,7 @@ public class PercentileCalculationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
-        db.UserProfiles.Add(new UserProfile { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
+        db.Users.Add(new ApexRacers.Data.ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
         db.LapTimeEntries.Add(new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 70, Car = car, Week = week, RecordedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
@@ -91,7 +91,7 @@ public class PercentileCalculationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
-        db.UserProfiles.Add(new UserProfile { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
+        db.Users.Add(new ApexRacers.Data.ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
         db.LapTimeEntries.Add(new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 70, Car = car, Week = week, RecordedAt = DateTimeOffset.UtcNow });
         db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, WeekId = 10, PercentileRank = 50, SampleSize = 2, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) });
         await db.SaveChangesAsync();

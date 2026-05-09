@@ -25,7 +25,7 @@ public record CarRecommendationDto(
     double PercentileRank,
     int SampleSize);
 
-public record AuthResultDto(string Token, long CustomerId, string DisplayName);
+public record AuthResultDto(string Token, Guid UserId, string DisplayName);
 
 public record TelemetryUploadResultDto(
     int TotalLaps,

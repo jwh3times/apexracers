@@ -15,8 +15,8 @@ public class PersonalLapConfiguration : IEntityTypeConfiguration<PersonalLap>
         builder.Property(p => p.TrackName).IsRequired().HasMaxLength(200);
         builder.Property(p => p.ConfigName).IsRequired().HasMaxLength(200);
 
-        builder.HasOne(p => p.User)
-            .WithMany(u => u.PersonalLaps)
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
             .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

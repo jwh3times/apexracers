@@ -10,7 +10,6 @@ public class CarPercentileResult
     public int SampleSize { get; set; }
     public DateTimeOffset ComputedAt { get; set; }
 
-    public UserProfile User { get; set; } = null!;
     public Car Car { get; set; } = null!;
     public Week Week { get; set; } = null!;
 }

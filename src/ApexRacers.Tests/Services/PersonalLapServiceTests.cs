@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
+using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Xunit;
 
@@ -7,16 +8,16 @@ namespace ApexRacers.Tests.Services;
 
 public class PersonalLapServiceTests
 {
-    private static (UserProfile user, Car car) SeedUserAndCar(ApexRacers.Data.AppDbContext db)
+    private static (ApplicationUser user, Car car) SeedUserAndCar(AppDbContext db)
     {
-        var user = new UserProfile { Id = Guid.NewGuid(), IRacingCustomerId = 1, DisplayName = "Jerry" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), IRacingCustomerId = 1, DisplayName = "Jerry" };
         var car = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
-        db.UserProfiles.Add(user);
+        db.Users.Add(user);
         db.Cars.Add(car);
         return (user, car);
     }
 
-    private static PersonalLap MakeLap(UserProfile user, Car car, double lapTime, bool isValid = true, int daysAgo = 0) =>
+    private static PersonalLap MakeLap(ApplicationUser user, Car car, double lapTime, bool isValid = true, int daysAgo = 0) =>
         new()
         {
             UserId = user.Id,
@@ -27,7 +28,6 @@ public class PersonalLapServiceTests
             IsValidLap = isValid,
             RecordedAt = DateTimeOffset.UtcNow.AddDays(-daysAgo),
             IracingTrackId = 1,
-            User = user,
             Car = car,
         };
 
@@ -35,10 +35,10 @@ public class PersonalLapServiceTests
     public async Task GetPersonalBestsAsync_NoLaps_ReturnsEmpty()
     {
         await using var db = DbContextFactory.Create();
-        SeedUserAndCar(db);
+        var (user, _) = SeedUserAndCar(db);
         await db.SaveChangesAsync();
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(customerId: 1);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
 
         Assert.Empty(result);
     }
@@ -51,7 +51,7 @@ public class PersonalLapServiceTests
         db.PersonalLaps.Add(MakeLap(user, car, lapTime: 70, isValid: false));
         await db.SaveChangesAsync();
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(customerId: 1);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
 
         Assert.Empty(result);
     }
@@ -67,7 +67,7 @@ public class PersonalLapServiceTests
             MakeLap(user, car, lapTime: 80));
         await db.SaveChangesAsync();
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(customerId: 1);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
 
         var dto = Assert.Single(result);
         Assert.Equal(60, dto.BestLapSeconds);
@@ -85,7 +85,7 @@ public class PersonalLapServiceTests
             MakeLap(user, car, lapTime: 80, isValid: true));
         await db.SaveChangesAsync();
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(customerId: 1);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
 
         var dto = Assert.Single(result);
         Assert.Equal(2, dto.LapCount);
@@ -106,11 +106,11 @@ public class PersonalLapServiceTests
                 UserId = user.Id, CarId = 2, TrackName = "Monza", ConfigName = "Full",
                 LapTimeSeconds = 55, IsValidLap = true,
                 RecordedAt = DateTimeOffset.UtcNow.AddDays(-1),
-                IracingTrackId = 2, User = user, Car = car2,
+                IracingTrackId = 2, Car = car2,
             });
         await db.SaveChangesAsync();
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(customerId: 1);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].CarId); // Ferrari lap recorded 1 day ago
