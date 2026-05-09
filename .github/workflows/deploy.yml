@@ -80,7 +80,4 @@ jobs:
           az containerapp update \
             --name ${{ secrets.INGESTION_APP_NAME }} \
             --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }} \
-            --registry-server ${{ env.REGISTRY }} \
-            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
-            --registry-password ${{ secrets.REGISTRY_PASSWORD }}
+            --image ${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
