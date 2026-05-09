@@ -19,9 +19,40 @@ env:
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
+  # ── Test gate — both deploy jobs depend on this passing ──────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Run backend tests
+        run: dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj --configuration Release --logger "console;verbosity=normal"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: src/web
+
+      - name: Run frontend tests
+        run: npm test
+        working-directory: src/web
+
   # ── API (React SPA + .NET API served from one App Service) ───────────────────
   deploy-api:
     name: Deploy API
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +84,7 @@ jobs:
   # ── Ingestion worker (Azure Container Apps, min-replicas=1) ──────────────────
   deploy-ingestion:
     name: Deploy Ingestion Worker
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
