@@ -7,6 +7,9 @@ public class LapTimeEntry
     public int CarId { get; set; }
     public int WeekId { get; set; }
     public double LapTimeSeconds { get; set; }
+    public float? AirTempCelsius { get; set; }
+    public float? TrackTempCelsius { get; set; }
+    public byte? TrackWetness { get; set; }
     public DateTimeOffset RecordedAt { get; set; }
 
     public Car Car { get; set; } = null!;

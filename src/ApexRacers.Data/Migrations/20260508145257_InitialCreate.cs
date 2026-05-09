@@ -17,7 +17,8 @@ namespace ApexRacers.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false),
-                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    NameAbbreviated = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -28,10 +29,8 @@ namespace ApexRacers.Data.Migrations
                 name: "Series",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    CurrentSeason = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -52,23 +51,105 @@ namespace ApexRacers.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Seasons",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false),
+                    SeriesId = table.Column<int>(type: "integer", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    Quarter = table.Column<int>(type: "integer", nullable: false),
+                    Active = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Seasons", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Seasons_Series_SeriesId",
+                        column: x => x.SeriesId,
+                        principalTable: "Series",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PersonalLaps",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CarId = table.Column<int>(type: "integer", nullable: false),
+                    IracingTrackId = table.Column<int>(type: "integer", nullable: false),
+                    TrackName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    ConfigName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    LapTimeSeconds = table.Column<double>(type: "double precision", nullable: false),
+                    IsValidLap = table.Column<bool>(type: "boolean", nullable: false),
+                    AirTempCelsius = table.Column<float>(type: "real", nullable: false),
+                    TrackTempCelsius = table.Column<float>(type: "real", nullable: false),
+                    TrackWetness = table.Column<byte>(type: "smallint", nullable: false),
+                    RecordedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PersonalLaps", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PersonalLaps_Cars_CarId",
+                        column: x => x.CarId,
+                        principalTable: "Cars",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_PersonalLaps_UserProfiles_UserId",
+                        column: x => x.UserId,
+                        principalTable: "UserProfiles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SeasonCars",
+                columns: table => new
+                {
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    CarId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SeasonCars", x => new { x.SeasonId, x.CarId });
+                    table.ForeignKey(
+                        name: "FK_SeasonCars_Cars_CarId",
+                        column: x => x.CarId,
+                        principalTable: "Cars",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_SeasonCars_Seasons_SeasonId",
+                        column: x => x.SeasonId,
+                        principalTable: "Seasons",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Weeks",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    SeriesId = table.Column<int>(type: "integer", nullable: false),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
                     WeekNumber = table.Column<int>(type: "integer", nullable: false),
+                    IracingTrackId = table.Column<int>(type: "integer", nullable: false),
                     TrackName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    CarClass = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    ConfigName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Weeks", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Weeks_Series_SeriesId",
-                        column: x => x.SeriesId,
-                        principalTable: "Series",
+                        name: "FK_Weeks_Seasons_SeasonId",
+                        column: x => x.SeasonId,
+                        principalTable: "Seasons",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -119,6 +200,9 @@ namespace ApexRacers.Data.Migrations
                     CarId = table.Column<int>(type: "integer", nullable: false),
                     WeekId = table.Column<int>(type: "integer", nullable: false),
                     LapTimeSeconds = table.Column<double>(type: "double precision", nullable: false),
+                    AirTempCelsius = table.Column<float>(type: "real", nullable: true),
+                    TrackTempCelsius = table.Column<float>(type: "real", nullable: true),
+                    TrackWetness = table.Column<byte>(type: "smallint", nullable: true),
                     RecordedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -169,15 +253,37 @@ namespace ApexRacers.Data.Migrations
                 column: "WeekId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PersonalLaps_CarId",
+                table: "PersonalLaps",
+                column: "CarId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PersonalLaps_UserId_CarId_IracingTrackId",
+                table: "PersonalLaps",
+                columns: new[] { "UserId", "CarId", "IracingTrackId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SeasonCars_CarId",
+                table: "SeasonCars",
+                column: "CarId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Seasons_SeriesId_Year_Quarter",
+                table: "Seasons",
+                columns: new[] { "SeriesId", "Year", "Quarter" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserProfiles_IRacingCustomerId",
                 table: "UserProfiles",
                 column: "IRacingCustomerId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Weeks_SeriesId",
+                name: "IX_Weeks_SeasonId_WeekNumber",
                 table: "Weeks",
-                column: "SeriesId");
+                columns: new[] { "SeasonId", "WeekNumber" },
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -190,13 +296,22 @@ namespace ApexRacers.Data.Migrations
                 name: "LapTimeEntries");
 
             migrationBuilder.DropTable(
+                name: "PersonalLaps");
+
+            migrationBuilder.DropTable(
+                name: "SeasonCars");
+
+            migrationBuilder.DropTable(
+                name: "Weeks");
+
+            migrationBuilder.DropTable(
                 name: "UserProfiles");
 
             migrationBuilder.DropTable(
                 name: "Cars");
 
             migrationBuilder.DropTable(
-                name: "Weeks");
+                name: "Seasons");
 
             migrationBuilder.DropTable(
                 name: "Series");

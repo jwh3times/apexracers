@@ -10,12 +10,14 @@ public class WeekConfiguration : IEntityTypeConfiguration<Week>
     {
         builder.HasKey(w => w.Id);
 
+        builder.HasIndex(w => new { w.SeasonId, w.WeekNumber }).IsUnique();
+
         builder.Property(w => w.TrackName)
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(w => w.CarClass)
+        builder.Property(w => w.ConfigName)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(200);
     }
 }

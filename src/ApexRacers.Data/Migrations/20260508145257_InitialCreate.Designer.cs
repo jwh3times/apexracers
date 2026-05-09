@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ApexRacers.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260507161956_InitialCreate")]
+    [Migration("20260508145257_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -34,6 +34,11 @@ namespace ApexRacers.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameAbbreviated")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
 
@@ -85,6 +90,9 @@ namespace ApexRacers.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<float?>("AirTempCelsius")
+                        .HasColumnType("real");
+
                     b.Property<int>("CarId")
                         .HasColumnType("integer");
 
@@ -96,6 +104,12 @@ namespace ApexRacers.Data.Migrations
 
                     b.Property<DateTimeOffset>("RecordedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<float?>("TrackTempCelsius")
+                        .HasColumnType("real");
+
+                    b.Property<byte?>("TrackWetness")
+                        .HasColumnType("smallint");
 
                     b.Property<int>("WeekId")
                         .HasColumnType("integer");
@@ -111,15 +125,103 @@ namespace ApexRacers.Data.Migrations
                     b.ToTable("LapTimeEntries");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.PersonalLap", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<float>("AirTempCelsius")
+                        .HasColumnType("real");
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConfigName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("IracingTrackId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsValidLap")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("LapTimeSeconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TrackName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<float>("TrackTempCelsius")
+                        .HasColumnType("real");
+
+                    b.Property<byte>("TrackWetness")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarId");
+
+                    b.HasIndex("UserId", "CarId", "IracingTrackId");
+
+                    b.ToTable("PersonalLaps");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SeriesId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeriesId", "Year", "Quarter")
+                        .IsUnique();
+
+                    b.ToTable("Seasons");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.SeasonCar", b =>
+                {
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("SeasonId", "CarId");
+
+                    b.HasIndex("CarId");
+
+                    b.ToTable("SeasonCars");
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.Series", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CurrentSeason")
                         .HasColumnType("integer");
 
                     b.Property<string>("Name")
@@ -162,13 +264,19 @@ namespace ApexRacers.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CarClass")
+                    b.Property<string>("ConfigName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
-                    b.Property<int>("SeriesId")
+                    b.Property<int>("IracingTrackId")
                         .HasColumnType("integer");
+
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("TrackName")
                         .IsRequired()
@@ -180,7 +288,8 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SeriesId");
+                    b.HasIndex("SeasonId", "WeekNumber")
+                        .IsUnique();
 
                     b.ToTable("Weeks");
                 });
@@ -231,10 +340,29 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Week");
                 });
 
-            modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>
+            modelBuilder.Entity("ApexRacers.Core.Models.PersonalLap", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.Car", "Car")
+                        .WithMany("PersonalLaps")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ApexRacers.Core.Models.UserProfile", "User")
+                        .WithMany("PersonalLaps")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
                 {
                     b.HasOne("ApexRacers.Core.Models.Series", "Series")
-                        .WithMany("Weeks")
+                        .WithMany("Seasons")
                         .HasForeignKey("SeriesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -242,21 +370,64 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Series");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.SeasonCar", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.Car", "Car")
+                        .WithMany("SeasonCars")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ApexRacers.Core.Models.Season", "Season")
+                        .WithMany("SeasonCars")
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+
+                    b.Navigation("Season");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.Season", "Season")
+                        .WithMany("Weeks")
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Season");
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.Car", b =>
                 {
                     b.Navigation("CarPercentileResults");
 
                     b.Navigation("LapTimeEntries");
+
+                    b.Navigation("PersonalLaps");
+
+                    b.Navigation("SeasonCars");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
+                {
+                    b.Navigation("SeasonCars");
+
+                    b.Navigation("Weeks");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Series", b =>
                 {
-                    b.Navigation("Weeks");
+                    b.Navigation("Seasons");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.UserProfile", b =>
                 {
                     b.Navigation("CarPercentileResults");
+
+                    b.Navigation("PersonalLaps");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>

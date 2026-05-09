@@ -14,5 +14,8 @@ public class PercentileController(PercentileCalculationService percentile) : Con
         int carId,
         [FromQuery] long customerId,
         CancellationToken ct)
-        => Ok(await percentile.ComputeAndCacheAsync(seriesId, weekId, carId, customerId, ct));
+    {
+        var result = await percentile.ComputeAndCacheAsync(seriesId, weekId, carId, customerId, ct);
+        return result is null ? NotFound() : Ok(result);
+    }
 }

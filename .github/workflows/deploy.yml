@@ -1,0 +1,86 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+env:
+  REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+
+# ── Required GitHub Secrets ───────────────────────────────────────────────────
+# AZURE_CREDENTIALS       — JSON output of: az ad sp create-for-rbac --sdk-auth
+# REGISTRY_LOGIN_SERVER   — e.g. apexracers.azurecr.io
+# REGISTRY_USERNAME       — ACR admin username (or service principal appId)
+# REGISTRY_PASSWORD       — ACR admin password (or service principal password)
+# API_APP_NAME            — Azure App Service name for the API
+# INGESTION_APP_NAME      — Azure Container App name for the ingestion worker
+# RESOURCE_GROUP          — Azure resource group containing both resources
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  # ── API (React SPA + .NET API served from one App Service) ───────────────────
+  deploy-api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push API image
+        run: |
+          IMAGE=${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.API_APP_NAME }}
+          images: ${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
+
+  # ── Ingestion worker (Azure Container Apps, min-replicas=1) ──────────────────
+  deploy-ingestion:
+    name: Deploy Ingestion Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push ingestion image
+        run: |
+          IMAGE=${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
+          docker build -f Dockerfile.ingestion -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Update Container App image
+        run: |
+          az containerapp update \
+            --name ${{ secrets.INGESTION_APP_NAME }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }} \
+            --registry-server ${{ env.REGISTRY }} \
+            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+            --registry-password ${{ secrets.REGISTRY_PASSWORD }}

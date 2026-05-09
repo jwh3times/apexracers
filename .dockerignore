@@ -1,0 +1,9 @@
+src/web/node_modules/
+src/web/dist/
+src/**/bin/
+src/**/obj/
+tools/
+.git/
+.vs/
+.idea/
+*.md

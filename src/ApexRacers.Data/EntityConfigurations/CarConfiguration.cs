@@ -11,11 +11,14 @@ public class CarConfiguration : IEntityTypeConfiguration<Car>
         builder.HasKey(c => c.Id);
 
         // iRacing assigns car IDs; the ingestion worker supplies them explicitly.
-        builder.Property(c => c.Id)
-            .ValueGeneratedNever();
+        builder.Property(c => c.Id).ValueGeneratedNever();
 
         builder.Property(c => c.Name)
             .IsRequired()
             .HasMaxLength(200);
+
+        builder.Property(c => c.NameAbbreviated)
+            .IsRequired()
+            .HasMaxLength(50);
     }
 }

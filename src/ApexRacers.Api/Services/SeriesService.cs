@@ -1,11 +1,26 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
 public class SeriesService(AppDbContext db)
 {
-    // TODO: Query db.Series, filter to active series, map to SeriesDto list
     public Task<List<SeriesDto>> GetActiveSeriesAsync(CancellationToken ct = default)
-        => throw new NotImplementedException();
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        return db.Seasons
+            .Where(s => s.Active)
+            .Select(s => new SeriesDto(
+                s.SeriesId,
+                s.Series.Name,
+                s.Id,
+                s.Weeks
+                    .Where(w => w.StartDate <= today)
+                    .OrderByDescending(w => w.StartDate)
+                    .Select(w => (int?)w.Id)
+                    .FirstOrDefault()))
+            .ToListAsync(ct);
+    }
 }

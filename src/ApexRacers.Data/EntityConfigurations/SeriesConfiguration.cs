@@ -9,14 +9,15 @@ public class SeriesConfiguration : IEntityTypeConfiguration<Series>
     public void Configure(EntityTypeBuilder<Series> builder)
     {
         builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).ValueGeneratedNever();
 
         builder.Property(s => s.Name)
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.HasMany(s => s.Weeks)
-            .WithOne(w => w.Series)
-            .HasForeignKey(w => w.SeriesId)
+        builder.HasMany(s => s.Seasons)
+            .WithOne(s => s.Series)
+            .HasForeignKey(s => s.SeriesId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

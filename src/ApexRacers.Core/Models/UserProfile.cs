@@ -7,4 +7,5 @@ public class UserProfile
     public required string DisplayName { get; set; }
 
     public ICollection<CarPercentileResult> CarPercentileResults { get; set; } = [];
+    public ICollection<PersonalLap> PersonalLaps { get; set; } = [];
 }

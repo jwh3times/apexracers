@@ -17,6 +17,8 @@
       10.0.7 — without a common floor that produces MSB3277 warnings).
     -->
     <PackageVersion Include="Aydsko.iRacingData" Version="2601.3.0" />
+    <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />

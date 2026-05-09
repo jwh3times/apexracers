@@ -2,9 +2,8 @@ namespace ApexRacers.Core.Models;
 
 public class Series
 {
-    public int Id { get; set; }
+    public int Id { get; set; } // iRacing SeriesId
     public required string Name { get; set; }
-    public int CurrentSeason { get; set; }
 
-    public ICollection<Week> Weeks { get; set; } = [];
+    public ICollection<Season> Seasons { get; set; } = [];
 }

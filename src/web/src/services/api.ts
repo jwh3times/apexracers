@@ -3,7 +3,29 @@
 export interface Series {
   id: number;
   name: string;
-  currentSeason: number;
+  seasonId: number;
+  currentWeekId: number | null;
+}
+
+export interface TelemetryUploadResult {
+  totalLaps: number;
+  validLaps: number;
+  bestLapSeconds: number | null;
+  trackName: string;
+  configName: string;
+  carName: string;
+  customerId: number;
+  driverName: string;
+}
+
+export interface PersonalLap {
+  carId: number;
+  carName: string;
+  trackName: string;
+  configName: string;
+  bestLapSeconds: number;
+  lapCount: number;
+  lastRecordedAt: string; // ISO 8601
 }
 
 export interface WeekCar {
@@ -46,6 +68,15 @@ async function post<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postForm<T>(path: string, body: FormData): Promise<T> {
+  const res = await fetch(path, { method: 'POST', body });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(text || `POST ${path} → ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 // ── Public API surface ────────────────────────────────────────────────────────
 
 export const api = {
@@ -80,5 +111,18 @@ export const api = {
   postAuthCallback(code: string, state: string): Promise<unknown> {
     const qs = new URLSearchParams({ code, state });
     return post(`/api/auth/callback?${qs}`);
+  },
+
+  /** POST /api/telemetry/upload — upload an iRacing .ibt file, returns extracted lap summary */
+  uploadTelemetry(file: File): Promise<TelemetryUploadResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return postForm('/api/telemetry/upload', form);
+  },
+
+  /** GET /api/telemetry/laps?customerId= — personal best per track+car */
+  getMyLaps(customerId: number): Promise<PersonalLap[]> {
+    const qs = new URLSearchParams({ customerId: String(customerId) });
+    return get(`/api/telemetry/laps?${qs}`);
   },
 };
