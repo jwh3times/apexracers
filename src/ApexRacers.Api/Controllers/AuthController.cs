@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexRacers.Api.Controllers;
@@ -26,6 +28,24 @@ public class AuthController(AuthService auth) : ControllerBase
     {
         var result = await auth.LoginAsync(request, ct);
         return result is null ? Unauthorized() : Ok(result);
+    }
+
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateProfileRequest request, CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            return Ok(await auth.UpdateProfileAsync(userId, request, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("callback")]

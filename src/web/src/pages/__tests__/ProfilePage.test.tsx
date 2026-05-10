@@ -1,7 +1,32 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProfilePage from '../ProfilePage';
+import { api } from '../../services/api';
+import type { User } from '../../context/AuthContext';
+
+const mockUpdateSession = vi.fn().mockResolvedValue(undefined);
+const mockSetAlertsEnabled = vi.fn().mockResolvedValue(undefined);
+const mockLogout = vi.fn().mockResolvedValue(undefined);
+
+let mockUser: User | null = null;
+let mockAlertsEnabled = true;
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: mockUser,
+    loading: false,
+    login: vi.fn(),
+    logout: mockLogout,
+    updateSession: mockUpdateSession,
+    alertsEnabled: mockAlertsEnabled,
+    setAlertsEnabled: mockSetAlertsEnabled,
+  }),
+}));
+
+vi.mock('../../services/api', () => ({
+  api: { updateProfile: vi.fn() },
+}));
 
 function renderPage() {
   return render(<ProfilePage />);
@@ -9,7 +34,12 @@ function renderPage() {
 
 describe('ProfilePage', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.resetAllMocks();
+    mockUser = null;
+    mockAlertsEnabled = true;
+    mockUpdateSession.mockResolvedValue(undefined);
+    mockSetAlertsEnabled.mockResolvedValue(undefined);
+    mockLogout.mockResolvedValue(undefined);
   });
 
   it('renders the Account Settings heading', () => {
@@ -17,25 +47,30 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('heading', { name: /account settings/i })).toBeInTheDocument();
   });
 
-  it('shows empty display name field when localStorage has no stored name', () => {
+  it('shows empty display name field when no user is logged in', () => {
     renderPage();
     expect(screen.getByLabelText(/display name/i)).toHaveValue('');
   });
 
-  it('pre-fills display name from localStorage', () => {
-    localStorage.setItem('ar_display_name', 'Jerry Holland');
+  it('pre-fills display name from auth context', () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry Holland', email: 'j@j.com' };
     renderPage();
     expect(screen.getByLabelText(/display name/i)).toHaveValue('Jerry Holland');
   });
 
-  it('saves display name to localStorage when Save Changes is clicked', async () => {
+  it('calls api.updateProfile and updateSession when Save Changes is clicked', async () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
     const user = userEvent.setup();
     renderPage();
     const input = screen.getByLabelText(/display name/i);
     await user.clear(input);
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
-    expect(localStorage.getItem('ar_display_name')).toBe('Speed Demon');
+    await waitFor(() => {
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon');
+      expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
+    });
   });
 
   it('renders the Connections section with iRacing label', () => {
@@ -44,14 +79,14 @@ describe('ProfilePage', () => {
     expect(screen.getByText(/iracing account/i)).toBeInTheDocument();
   });
 
-  it('shows Not connected when no ar_token in localStorage', () => {
+  it('shows Not connected when no user is in auth context', () => {
     renderPage();
     expect(screen.getByText(/not connected/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /disconnect/i })).not.toBeInTheDocument();
   });
 
-  it('shows Connected and Disconnect button when ar_token is present', () => {
-    localStorage.setItem('ar_token', 'some.jwt.token');
+  it('shows Connected and Disconnect button when user is logged in', () => {
+    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com' };
     renderPage();
     expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /disconnect/i })).toBeInTheDocument();
@@ -70,14 +105,13 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('checkbox')).toBeInTheDocument();
   });
 
-  it('toggles the alerts preference', async () => {
+  it('calls setAlertsEnabled when the alerts toggle is clicked', async () => {
     const user = userEvent.setup();
+    mockAlertsEnabled = true;
     renderPage();
     const toggle = screen.getByRole('checkbox');
-    // default is on (ar_alerts not set → !== 'false' → true)
     expect(toggle).toBeChecked();
     await user.click(toggle);
-    expect(toggle).not.toBeChecked();
-    expect(localStorage.getItem('ar_alerts')).toBe('false');
+    expect(mockSetAlertsEnabled).toHaveBeenCalledWith(false);
   });
 });

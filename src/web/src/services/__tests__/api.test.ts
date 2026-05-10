@@ -176,10 +176,10 @@ describe('api', () => {
   // ── getMyLaps ───────────────────────────────────────────────────────────────
 
   describe('getMyLaps', () => {
-    it('calls GET with customerId query param', async () => {
+    it('calls GET /api/telemetry/laps', async () => {
       mockFetchOk([]);
-      await api.getMyLaps(54321);
-      expect(fetch).toHaveBeenCalledWith('/api/telemetry/laps?customerId=54321', expect.objectContaining({}));
+      await api.getMyLaps();
+      expect(fetch).toHaveBeenCalledWith('/api/telemetry/laps', expect.objectContaining({}));
     });
   });
 });

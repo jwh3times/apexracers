@@ -62,9 +62,13 @@ export interface CarRecommendation {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+let _token: string | null = null;
+
+export function setToken(token: string): void { _token = token; }
+export function clearToken(): void { _token = null; }
+
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('ar_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return _token ? { Authorization: `Bearer ${_token}` } : {};
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -88,6 +92,19 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `POST ${path} → ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function putJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(text || `PUT ${path} → ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
@@ -141,6 +158,11 @@ export const api = {
     return postJson('/api/auth/register', { email, password });
   },
 
+  /** PUT /api/auth/profile — update display name, returns fresh JWT */
+  updateProfile(displayName: string): Promise<AuthResult> {
+    return putJson('/api/auth/profile', { displayName });
+  },
+
   /** POST /api/auth/callback?code=&state= — OAuth 2.0 Authorization Code exchange */
   postAuthCallback(code: string, state: string): Promise<unknown> {
     const qs = new URLSearchParams({ code, state });
@@ -154,9 +176,8 @@ export const api = {
     return postForm('/api/telemetry/upload', form);
   },
 
-  /** GET /api/telemetry/laps?customerId= — personal best per track+car */
-  getMyLaps(customerId: number): Promise<PersonalLap[]> {
-    const qs = new URLSearchParams({ customerId: String(customerId) });
-    return get(`/api/telemetry/laps?${qs}`);
+  /** GET /api/telemetry/laps — personal best per track+car for the authenticated user */
+  getMyLaps(): Promise<PersonalLap[]> {
+    return get('/api/telemetry/laps');
   },
 };

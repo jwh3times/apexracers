@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -6,27 +6,33 @@ import TelemetryPage from '../TelemetryPage';
 import { api } from '../../services/api';
 
 vi.mock('../../services/api', () => ({
-  api: { uploadTelemetry: vi.fn() },
+  api: { uploadTelemetry: vi.fn(), getMyLaps: vi.fn().mockResolvedValue([]) },
 }));
 
 const mockUpload = vi.mocked(api.uploadTelemetry);
+const mockGetMyLaps = vi.mocked(api.getMyLaps);
 
-function renderPage() {
-  return render(<MemoryRouter><TelemetryPage /></MemoryRouter>);
+async function renderPage() {
+  await act(async () => {
+    render(<MemoryRouter><TelemetryPage /></MemoryRouter>);
+  });
 }
 
 describe('TelemetryPage', () => {
-  beforeEach(() => { vi.resetAllMocks(); });
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockGetMyLaps.mockResolvedValue([]);
+  });
 
-  it('renders file input and heading', () => {
-    renderPage();
+  it('renders file input and heading', async () => {
+    await renderPage();
     expect(screen.getByRole('heading', { name: /upload telemetry/i })).toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).toBeInTheDocument();
   });
 
   it('shows uploading state while processing', async () => {
     mockUpload.mockReturnValue(new Promise(() => {}));
-    renderPage();
+    await renderPage();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], 'session.ibt', { type: 'application/octet-stream' });
     await userEvent.upload(input, file);
@@ -44,7 +50,7 @@ describe('TelemetryPage', () => {
       customerId: 99999,
       driverName: 'Jerry Holland',
     });
-    renderPage();
+    await renderPage();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], 'session.ibt', { type: 'application/octet-stream' });
     await userEvent.upload(input, file);
@@ -57,7 +63,7 @@ describe('TelemetryPage', () => {
 
   it('shows error message when upload fails', async () => {
     mockUpload.mockRejectedValue(new Error('Invalid file format'));
-    renderPage();
+    await renderPage();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], 'session.ibt', { type: 'application/octet-stream' });
     await userEvent.upload(input, file);

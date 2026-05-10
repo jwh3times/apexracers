@@ -1,34 +1,39 @@
 import { useState } from 'react';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfilePage() {
-  const [displayName, setDisplayName] = useState(
-    () => localStorage.getItem('ar_display_name') ?? '',
-  );
-  const [email, setEmail] = useState(
-    () => localStorage.getItem('ar_email') ?? '',
-  );
-  const [alertsEnabled, setAlertsEnabled] = useState(
-    () => localStorage.getItem('ar_alerts') !== 'false',
-  );
+  const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
+
+  const [displayName, setDisplayName] = useState(user?.displayName ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
 
-  const connected = !!localStorage.getItem('ar_token');
+  const connected = !!user;
 
-  function saveProfile(e: React.FormEvent) {
+  async function saveProfile(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    localStorage.setItem('ar_display_name', displayName);
-    if (email) localStorage.setItem('ar_email', email);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2500);
+    setProfileError(null);
+    setProfileSaving(true);
+    try {
+      const result = await api.updateProfile(displayName);
+      await updateSession(result);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to save profile.');
+    } finally {
+      setProfileSaving(false);
+    }
   }
 
   function toggleAlerts() {
-    const next = !alertsEnabled;
-    setAlertsEnabled(next);
-    localStorage.setItem('ar_alerts', String(next));
+    setAlertsEnabled(!alertsEnabled);
   }
 
   return (
@@ -112,12 +117,16 @@ export default function ProfilePage() {
                 />
               </div>
 
+              {profileError && (
+                <p className="font-body-sm text-body-sm text-error">{profileError}</p>
+              )}
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors"
+                  disabled={profileSaving}
+                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {profileSaved ? 'Saved ✓' : 'Save Changes'}
+                  {profileSaving ? 'Saving…' : profileSaved ? 'Saved ✓' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -147,7 +156,7 @@ export default function ProfilePage() {
               </div>
               {connected && (
                 <button
-                  onClick={() => localStorage.removeItem('ar_token')}
+                  onClick={logout}
                   className="font-body-sm text-body-sm text-on-surface-variant hover:text-error transition-colors underline"
                 >
                   Disconnect
@@ -242,9 +251,11 @@ export default function ProfilePage() {
               <div className="md:col-span-3 pt-2">
                 <button
                   type="submit"
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors"
+                  disabled
+                  title="Password change coming soon"
+                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
                 >
-                  Update Password
+                  Update Password (Coming Soon)
                 </button>
               </div>
             </form>

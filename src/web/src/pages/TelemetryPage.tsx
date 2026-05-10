@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type TelemetryUploadResult } from '../services/api';
+import { api, type PersonalLap, type TelemetryUploadResult } from '../services/api';
 
 type Status = 'idle' | 'uploading' | 'done' | 'error';
 
@@ -10,35 +10,17 @@ function formatLapTime(seconds: number): string {
   return `${mins}:${secs}`;
 }
 
-const recentSessions = [
-  {
-    car: 'Ferrari 296 GT3',
-    age: '2 hours ago',
-    track: 'Monza',
-    conditions: 'Dry / 24°C',
-    bestLap: '1:47.432',
-    status: 'Processed',
-    statusColor: 'bg-primary-container text-on-primary',
-  },
-  {
-    car: 'Porsche 911 GT3 R',
-    age: 'Yesterday',
-    track: 'Spa-Francorchamps',
-    conditions: 'Wet / 16°C',
-    bestLap: '2:18.901',
-    status: 'Pro Tier',
-    statusColor: 'bg-[#FFD700] text-black',
-  },
-  {
-    car: 'BMW M4 GT3',
-    age: 'Oct 12, 2024',
-    track: 'Nürburgring',
-    conditions: 'Dry / 20°C',
-    bestLap: '8:12.550',
-    status: 'Corrupt File',
-    statusColor: 'bg-error text-on-error',
-  },
-];
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function trackLabel(lap: PersonalLap): string {
+  return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
+}
 
 export default function TelemetryPage() {
   const [status, setStatus] = useState<Status>('idle');
@@ -46,6 +28,19 @@ export default function TelemetryPage() {
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [recentLaps, setRecentLaps] = useState<PersonalLap[]>([]);
+  const [lapsLoading, setLapsLoading] = useState(false);
+
+  function fetchLaps() {
+    setLapsLoading(true);
+    api.getMyLaps()
+      .then(laps => setRecentLaps(laps.slice(0, 5)))
+      .catch(() => {/* silently ignore — user may not be authenticated */})
+      .finally(() => setLapsLoading(false));
+  }
+
+  useEffect(() => { fetchLaps(); }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -60,6 +55,7 @@ export default function TelemetryPage() {
       const data = await api.uploadTelemetry(file);
       setResult(data);
       setStatus('done');
+      fetchLaps();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
       setStatus('error');
@@ -247,7 +243,7 @@ export default function TelemetryPage() {
               </p>
 
               <Link
-                to={`/my-laps?customerId=${result.customerId}`}
+                to="/my-laps"
                 className="inline-flex items-center gap-1 font-label-caps text-label-caps text-primary-fixed-dim hover:text-primary transition-colors"
               >
                 View all my laps
@@ -297,50 +293,61 @@ export default function TelemetryPage() {
         </div>
 
         <div className="bg-surface border border-white/5 rounded-xl overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-surface-container-high font-label-caps text-label-caps text-on-surface-variant">
-            <div className="col-span-4 md:col-span-3">Session</div>
-            <div className="col-span-4 md:col-span-3">Track</div>
-            <div className="hidden md:block col-span-3 text-right">Best Lap</div>
-            <div className="col-span-4 md:col-span-3 text-right">Status</div>
-          </div>
+          {lapsLoading && (
+            <p className="px-6 py-8 font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+              Loading&hellip;
+            </p>
+          )}
 
-          {/* Rows */}
-          <div className="flex flex-col">
-            {recentSessions.map((row, i) => (
-              <div
-                key={i}
-                className={`grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-white/5 transition-colors cursor-pointer ${
-                  i < recentSessions.length - 1 ? 'border-b border-surface-container-high' : ''
-                }`}
-              >
-                <div className="col-span-4 md:col-span-3">
-                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">
-                    {row.car}
-                  </p>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant mt-1 uppercase">
-                    {row.age}
-                  </p>
-                </div>
-                <div className="col-span-4 md:col-span-3">
-                  <p className="font-body-sm text-body-sm text-on-surface">{row.track}</p>
-                  <p className="font-body-sm text-[12px] text-on-surface-variant mt-1">
-                    {row.conditions}
-                  </p>
-                </div>
-                <div className="hidden md:block col-span-3 text-right font-data-md text-data-md text-on-surface">
-                  {row.bestLap}
-                </div>
-                <div className="col-span-4 md:col-span-3 flex justify-end">
-                  <span
-                    className={`inline-flex items-center justify-center ${row.statusColor} font-data-md text-[11px] px-2 py-1 uppercase tracking-wider rounded-sm`}
-                  >
-                    {row.status}
-                  </span>
-                </div>
+          {!lapsLoading && recentLaps.length === 0 && (
+            <div className="px-6 py-8 flex flex-col items-center gap-3 text-center">
+              <span className="material-symbols-outlined text-3xl text-on-surface-variant" aria-hidden="true">
+                timer_off
+              </span>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                No sessions yet — upload an .ibt file to get started.
+              </p>
+            </div>
+          )}
+
+          {!lapsLoading && recentLaps.length > 0 && (
+            <>
+              {/* Table header */}
+              <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-surface-container-high font-label-caps text-label-caps text-on-surface-variant">
+                <div className="col-span-6 md:col-span-4">Car</div>
+                <div className="col-span-6 md:col-span-4">Track</div>
+                <div className="hidden md:block md:col-span-2 text-right">Best Lap</div>
+                <div className="hidden md:block md:col-span-2 text-right">Date</div>
               </div>
-            ))}
-          </div>
+
+              {/* Rows */}
+              <div className="flex flex-col">
+                {recentLaps.map((lap, i) => (
+                  <div
+                    key={i}
+                    className={`grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-white/5 transition-colors ${
+                      i < recentLaps.length - 1 ? 'border-b border-surface-container-high' : ''
+                    }`}
+                  >
+                    <div className="col-span-6 md:col-span-4">
+                      <p className="font-body-sm text-body-sm text-on-surface font-semibold">
+                        {lap.carName}
+                      </p>
+                    </div>
+                    <div className="col-span-6 md:col-span-4">
+                      <p className="font-body-sm text-body-sm text-on-surface">{trackLabel(lap)}</p>
+                    </div>
+                    <div className="hidden md:block md:col-span-2 text-right font-data-md text-data-md text-primary-fixed-dim">
+                      {formatLapTime(lap.bestLapSeconds)}
+                    </div>
+                    <div className="hidden md:block md:col-span-2 text-right font-body-sm text-body-sm text-on-surface-variant">
+                      {formatDate(lap.lastRecordedAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
     </main>

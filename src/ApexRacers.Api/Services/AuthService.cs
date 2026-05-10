@@ -36,6 +36,22 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         return new AuthResultDto(GenerateJwt(user), user.Id, user.DisplayName);
     }
 
+    public async Task<AuthResultDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+            throw new InvalidOperationException("Display name cannot be empty.");
+
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+
+        user.DisplayName = request.DisplayName.Trim();
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+        return new AuthResultDto(GenerateJwt(user), user.Id, user.DisplayName);
+    }
+
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; update ApplicationUser.IRacingCustomerId;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 type Tab = 'signin' | 'register';
 
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   function switchTab(next: Tab) {
     setTab(next);
@@ -28,7 +30,7 @@ export default function LoginPage() {
     setConfirmPassword('');
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     setError(null);
     if (tab === 'register' && password !== confirmPassword) {
@@ -41,8 +43,8 @@ export default function LoginPage() {
         tab === 'signin'
           ? await api.login(email, password)
           : await api.register(email, password);
-      localStorage.setItem('ar_token', result.token);
-      navigate('/');
+      await login(result, email);
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');
     } finally {

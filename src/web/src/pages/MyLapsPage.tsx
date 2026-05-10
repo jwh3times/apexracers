@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, type PersonalLap } from '../services/api';
 
 function formatLapTime(seconds: number): string {
@@ -67,43 +67,19 @@ function StatCard({
 }
 
 export default function MyLapsPage() {
-  const [searchParams] = useSearchParams();
-  const customerIdParam = searchParams.get('customerId');
-  const customerId = customerIdParam != null ? Number(customerIdParam) : null;
-
   const [laps, setLaps] = useState<PersonalLap[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (customerId == null || customerId <= 0) return;
     setLoading(true);
-    api.getMyLaps(customerId)
+    api.getMyLaps()
       .then(setLaps)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : 'Failed to load laps.'))
       .finally(() => setLoading(false));
-  }, [customerId]);
-
-  if (customerId == null || customerId <= 0) {
-    return (
-      <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
-        <header>
-          <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight mb-2">
-            My Laps
-          </h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-prose">
-            Upload an{' '}
-            <Link to="/telemetry" className="text-primary-fixed-dim hover:text-primary transition-colors">
-              .ibt telemetry file
-            </Link>{' '}
-            to record your personal lap times. Your customer ID will appear in the upload result.
-          </p>
-        </header>
-      </main>
-    );
-  }
+  }, []);
 
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
   const uniqueTracks = new Set(laps.map(l => l.trackName)).size;

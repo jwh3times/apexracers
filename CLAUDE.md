@@ -29,10 +29,23 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 
 ```bash
 npm install
-npm run dev      # Vite dev server on localhost:5173
-npm run build    # tsc + Vite production build
-npm run lint     # ESLint
+
+# Dev servers — Vite runs on localhost:5173, proxying /api to the target below
+npm run dev          # → http://localhost:5000  (dotnet API running locally)
+npm run dev:all      # → http://localhost:5000  (starts dotnet API + Vite together via concurrently)
+npm run dev:docker   # → http://localhost:8080  (API running in Docker Desktop)
+npm run dev:cloud    # → https://apexracers-api.azurewebsites.net  (Azure deployed API)
+
+npm run build        # tsc + Vite production build
+npm run lint         # ESLint
+npm run preview      # Serve the production build locally
+
+# Tests
+npm run test         # Vitest one-shot run
+npm run test:watch   # Vitest in watch mode
 ```
+
+The API proxy target is controlled by `API_TARGET` in the relevant `.env.*` file (`src/web/.env.docker`, `src/web/.env.cloud`). The default (`npm run dev` / `dev:all`) falls back to `http://localhost:5000` with no env file needed.
 
 ### Infrastructure
 
@@ -49,7 +62,7 @@ Copy `.env.example` to `.env` and fill in `JWT_SIGNING_KEY` before running. `DAT
 ### Azure (resource group: apexracers-rg)
 
 | Resource | Type | Location |
-|---|---|---|
+| --- | --- | --- |
 | `apexracersacr` | Container Registry | eastus |
 | `apexracers-kv` | Key Vault | eastus |
 | `apexracers-pg` | PostgreSQL Flexible Server | westus3 |
@@ -68,7 +81,7 @@ The API is deployed as an App Service; the ingestion worker runs as a Container 
 
 ### Project dependency graph
 
-```
+```text
 ApexRacers.Core   ← no dependencies
       ↑
 ApexRacers.Data   ← EF Core, Npgsql
@@ -87,7 +100,7 @@ All package versions are centrally managed in `Directory.Packages.props` at the 
 
 ### API request flow
 
-```
+```text
 HTTP request → Controller (parameter binding only)
                     ↓
               Service class (all business logic, EF Core queries)
@@ -105,7 +118,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationsController` — ranked car recommendations for the authenticated user
-- `AuthController` — iRacing OAuth 2.0 Authorization Code callback
+- `AuthController` — account management: register, login, profile update (`PUT /api/auth/profile`), and iRacing OAuth 2.0 callback (pending)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -134,6 +147,7 @@ Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API)
 Coverage thresholds are enforced in `vite.config.ts` at **80%** across statements, branches, functions, and lines. `npx vitest run --coverage` must exit cleanly (no threshold errors) before any frontend change is considered done. When adding new source files, add corresponding tests to keep all four metrics above 80%.
 
 Run coverage:
+
 ```bash
 cd src/web && npx vitest run --coverage
 ```

@@ -5,6 +5,7 @@ import LoginPage from '../LoginPage';
 import { api } from '../../services/api';
 
 const mockNavigate = vi.fn();
+const mockLogin = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
@@ -15,6 +16,10 @@ vi.mock('../../services/api', () => ({
   api: { login: vi.fn(), register: vi.fn() },
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ login: mockLogin }),
+}));
+
 function renderPage() {
   render(<LoginPage />);
 }
@@ -22,7 +27,7 @@ function renderPage() {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    localStorage.clear();
+    mockLogin.mockResolvedValue(undefined);
   });
 
   it('renders Sign In tab active by default with submit button', () => {
@@ -72,7 +77,6 @@ describe('LoginPage', () => {
     renderPage();
     const passwordInput = screen.getByLabelText(/^password$/i);
     expect(passwordInput).toHaveAttribute('type', 'password');
-    // The visibility toggle button contains a material symbol span — find it by its container position
     const visibilityBtn = passwordInput.parentElement!.querySelector('button') as HTMLButtonElement;
     await user.click(visibilityBtn);
     expect(passwordInput).toHaveAttribute('type', 'text');
@@ -80,7 +84,7 @@ describe('LoginPage', () => {
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
 
-  it('calls api.login, stores token in localStorage, and navigates on successful sign in', async () => {
+  it('calls auth.login and navigates to dashboard on successful sign in', async () => {
     const user = userEvent.setup();
     vi.mocked(api.login).mockResolvedValue({ token: 'jwt-abc', userId: 'u1', displayName: 'Jerry' });
     renderPage();
@@ -89,8 +93,11 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /access telemetry/i }));
     await waitFor(() => {
       expect(vi.mocked(api.login)).toHaveBeenCalledWith('jerry@example.com', 'mypassword');
-      expect(localStorage.getItem('ar_token')).toBe('jwt-abc');
-      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(mockLogin).toHaveBeenCalledWith(
+        { token: 'jwt-abc', userId: 'u1', displayName: 'Jerry' },
+        'jerry@example.com',
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });
   });
 
@@ -103,7 +110,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /access telemetry/i }));
     await waitFor(() => expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument());
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(localStorage.getItem('ar_token')).toBeNull();
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it('shows loading state while sign in is in progress', async () => {
@@ -116,7 +123,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /please wait/i })).toBeInTheDocument();
   });
 
-  it('calls api.register, stores token, and navigates on successful registration', async () => {
+  it('calls auth.login and navigates to dashboard on successful registration', async () => {
     const user = userEvent.setup();
     vi.mocked(api.register).mockResolvedValue({ token: 'jwt-xyz', userId: 'u2', displayName: 'New User' });
     renderPage();
@@ -127,8 +134,11 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /^create account$/i }));
     await waitFor(() => {
       expect(vi.mocked(api.register)).toHaveBeenCalledWith('new@example.com', 'secret123');
-      expect(localStorage.getItem('ar_token')).toBe('jwt-xyz');
-      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(mockLogin).toHaveBeenCalledWith(
+        { token: 'jwt-xyz', userId: 'u2', displayName: 'New User' },
+        'new@example.com',
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });
   });
 
