@@ -32,8 +32,24 @@ jobs:
         with:
           dotnet-version: '10.x'
 
-      - name: Run backend tests
-        run: dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj --configuration Release --logger "console;verbosity=normal"
+      - name: Run backend tests with coverage
+        run: |
+          dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage \
+            --settings coverage.runsettings \
+            --logger "console;verbosity=normal"
+
+      - name: Check backend coverage threshold (>80%)
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: 'coverage/**/coverage.cobertura.xml'
+          fail_below_min: true
+          format: text
+          indicators: true
+          output: console
+          thresholds: '80 80'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,8 +62,8 @@ jobs:
         run: npm ci
         working-directory: src/web
 
-      - name: Run frontend tests
-        run: npm test
+      - name: Run frontend tests with coverage (>80%)
+        run: npx vitest run --coverage
         working-directory: src/web
 
   # ── API (React SPA + .NET API served from one App Service) ───────────────────

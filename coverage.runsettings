@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!--
+            Exclude generated/infrastructure code that has no business logic:
+              - Controllers      : parameter binding + Ok() only, per CLAUDE.md
+              - EF Migrations    : auto-generated schema code
+              - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
+              - DesignTimeFactory: dotnet-ef dev tooling only
+          -->
+          <Exclude>
+            [ApexRacers.Api]ApexRacers.Api.Controllers.*,
+            [ApexRacers.Data]ApexRacers.Data.Migrations.*,
+            [ApexRacers.Api]Program,
+            [ApexRacers.Api]HyphenToUnderscoreSecretManager,
+            [ApexRacers.Data]ApexRacers.Data.DesignTimeDbContextFactory
+          </Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -51,3 +51,7 @@ deployTODO.md
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Test coverage output (ephemeral — never commit)
+coverage*/
+coverage-report/
