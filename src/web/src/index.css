@@ -5,6 +5,7 @@
 @layer base {
   body {
     margin: 0;
+    @apply bg-background text-on-background antialiased;
   }
 
   #root {
@@ -27,5 +28,26 @@
 
   .glow-secondary {
     box-shadow: 0 0 20px rgba(20, 209, 255, 0.3);
+  }
+
+  .glass-panel {
+    background: rgba(15, 15, 18, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  }
+
+  .tier-badge-gold {
+    background-color: #FFD700;
+    color: #000;
+  }
+
+  .tier-badge-green {
+    background-color: #00FF88;
+    color: #000;
   }
 }

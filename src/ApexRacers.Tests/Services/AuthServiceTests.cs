@@ -83,8 +83,9 @@ public class AuthServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
 
-        Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Email && c.Value == "driver@example.com");
-        Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Name  && c.Value == "driver");
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Sub   && Guid.TryParse(c.Value, out _));
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "driver@example.com");
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name  && c.Value == "driver");
     }
 
     // ── LoginAsync ────────────────────────────────────────────────────────────

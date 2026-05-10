@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
@@ -13,6 +14,16 @@ public class TelemetryController(
     TelemetryUploadService uploadService,
     PersonalLapService lapService) : ControllerBase
 {
+    // Reads the user ID from whichever claim the JWT handler has stored it under.
+    // JsonWebTokenHandler (the .NET 8+ default) does not remap "sub" → ClaimTypes.NameIdentifier,
+    // so we check both to stay compatible regardless of MapInboundClaims configuration.
+    private Guid? GetUserId()
+    {
+        var raw = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+               ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
     [HttpPost("upload")]
     [RequestSizeLimit(524_288_000)] // 500 MB
     [RequestFormLimits(MultipartBodyLengthLimit = 524_288_000)]
@@ -24,12 +35,14 @@ public class TelemetryController(
         if (!file.FileName.EndsWith(".ibt", StringComparison.OrdinalIgnoreCase))
             return BadRequest("File must be an iRacing .ibt telemetry file.");
 
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
 
         try
         {
             using var stream = file.OpenReadStream();
-            var result = await uploadService.ProcessAsync(stream, userId, ct);
+            var result = await uploadService.ProcessAsync(stream, userId.Value, ct);
 
             return Ok(new TelemetryUploadResultDto(
                 result.TotalLaps,
@@ -50,8 +63,11 @@ public class TelemetryController(
     [HttpGet("laps")]
     public async Task<IActionResult> GetLapsAsync(CancellationToken ct)
     {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var laps = await lapService.GetPersonalBestsAsync(userId, ct);
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var laps = await lapService.GetPersonalBestsAsync(userId.Value, ct);
         return Ok(laps);
     }
 }

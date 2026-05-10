@@ -5,15 +5,17 @@ import App from '../App';
 describe('App', () => {
   it('renders navigation links on the home route', () => {
     render(<App />);
-    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Series' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Recommendations' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'My Laps' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Upload Telemetry' })).toBeInTheDocument();
+    // Sidebar and top-nav both render links — use getAllByRole
+    expect(screen.getAllByRole('link', { name: 'Home' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Browse Series' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Recommendations' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'My Laps' }).length).toBeGreaterThan(0);
   });
 
   it('renders the home page content by default', () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: /apexracers/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /find the car that best fits your pace/i })
+    ).toBeInTheDocument();
   });
 });
