@@ -30,7 +30,7 @@ export default function LoginPage() {
     setConfirmPassword('');
   }
 
-  async function handleSubmit(e: SubmitEvent) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     if (tab === 'register' && password !== confirmPassword) {
