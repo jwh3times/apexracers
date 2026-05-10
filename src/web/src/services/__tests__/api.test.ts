@@ -182,4 +182,55 @@ describe('api', () => {
       expect(fetch).toHaveBeenCalledWith('/api/telemetry/laps', expect.objectContaining({}));
     });
   });
+
+  // ── updateProfile ───────────────────────────────────────────────────────────
+
+  describe('updateProfile', () => {
+    it('calls PUT /api/auth/profile with JSON body', async () => {
+      mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
+      const result = await api.updateProfile('Updated Name');
+      expect(fetch).toHaveBeenCalledWith('/api/auth/profile', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ displayName: 'Updated Name' }),
+      }));
+      expect(result.displayName).toBe('Updated Name');
+    });
+
+    it('throws with server error body on failure', async () => {
+      mockFetchError({ body: 'Display name too long.' });
+      await expect(api.updateProfile('A'.repeat(100))).rejects.toThrow('Display name too long.');
+    });
+
+    it('falls back to status line when body is empty', async () => {
+      mockFetchError({ status: 400, statusText: 'Bad Request', body: '' });
+      await expect(api.updateProfile('name')).rejects.toThrow('PUT /api/auth/profile → 400');
+    });
+  });
+
+  // ── setToken / clearToken ───────────────────────────────────────────────────
+
+  describe('setToken and clearToken', () => {
+    it('setToken causes subsequent requests to include an Authorization header', async () => {
+      const { setToken } = await import('../api');
+      setToken('my-jwt');
+      mockFetchOk([]);
+      await api.getSeries();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series',
+        expect.objectContaining({ headers: { Authorization: 'Bearer my-jwt' } }),
+      );
+    });
+
+    it('clearToken removes the Authorization header from subsequent requests', async () => {
+      const { setToken, clearToken } = await import('../api');
+      setToken('my-jwt');
+      clearToken();
+      mockFetchOk([]);
+      await api.getSeries();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series',
+        expect.objectContaining({ headers: {} }),
+      );
+    });
+  });
 });

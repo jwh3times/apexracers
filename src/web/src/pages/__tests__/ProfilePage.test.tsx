@@ -114,4 +114,22 @@ describe('ProfilePage', () => {
     await user.click(toggle);
     expect(mockSetAlertsEnabled).toHaveBeenCalledWith(false);
   });
+
+  it('shows an Error message when saveProfile fails with an Error instance', async () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    vi.mocked(api.updateProfile).mockRejectedValue(new Error('Server error'));
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
+  });
+
+  it('shows fallback message when saveProfile rejects with a non-Error value', async () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    vi.mocked(api.updateProfile).mockRejectedValue('oops');
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(screen.getByText('Failed to save profile.')).toBeInTheDocument());
+  });
 });
