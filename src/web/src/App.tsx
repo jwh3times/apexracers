@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Link, Outlet } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SeriesPage from './pages/SeriesPage';
 import WeekDetailPage from './pages/WeekDetailPage';
@@ -6,6 +6,7 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 
 const navItems = [
   { to: '/', label: 'Home', icon: 'home', exact: true },
@@ -71,15 +72,16 @@ function TopNav() {
         ))}
       </div>
       <div className="flex items-center gap-4 ml-auto">
-        <button
+        <Link
+          to="/profile"
           className="relative flex items-center justify-center h-10 w-10 rounded-full border-2 border-primary-container p-0.5 hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all active:scale-95"
           aria-label="User profile"
         >
           <div className="h-full w-full rounded-full bg-surface-container flex items-center justify-center overflow-hidden">
-            <span className="material-symbols-outlined text-primary-container">person</span>
+            <span className="material-symbols-outlined text-primary-container" aria-hidden="true">person</span>
           </div>
           <div className="absolute bottom-0 right-0 h-3 w-3 bg-primary-container border-2 border-surface rounded-full"></div>
-        </button>
+        </Link>
       </div>
     </nav>
   );
@@ -124,6 +126,7 @@ export default function App() {
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

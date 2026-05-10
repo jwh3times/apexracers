@@ -41,6 +41,17 @@
     box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
   }
 
+  .glow-gold {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+  }
+
+  /* Gradient border that fades from dark to gold — apply alongside glass-panel */
+  .gradient-border-gold {
+    background: linear-gradient(#0F0F12, #0F0F12) padding-box,
+                linear-gradient(to bottom, rgba(15, 15, 18, 1), #FFD700) border-box;
+    border: 1px solid transparent;
+  }
+
   .tier-badge-gold {
     background-color: #FFD700;
     color: #000;

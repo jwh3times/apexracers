@@ -48,7 +48,10 @@ describe('WeekDetailPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument();
-      expect(screen.getByText('150')).toBeInTheDocument();
+      // entryCount appears in both the stat card and the table cell
+      expect(screen.getAllByText('150').length).toBeGreaterThan(0);
+      // lap times are table-only
+      expect(screen.getByText('2:11.456')).toBeInTheDocument();
     });
   });
 
