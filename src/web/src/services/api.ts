@@ -1,5 +1,11 @@
 // Types matching the backend controller response shapes
 
+export interface AuthResult {
+  token: string;
+  userId: string;
+  displayName: string;
+}
+
 export interface Series {
   id: number;
   name: string;
@@ -56,20 +62,38 @@ export interface CarRecommendation {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem('ar_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await fetch(path, { headers: authHeaders() });
   if (!res.ok) throw new Error(`GET ${path} → ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
 async function post<T>(path: string): Promise<T> {
-  const res = await fetch(path, { method: 'POST' });
+  const res = await fetch(path, { method: 'POST', headers: authHeaders() });
   if (!res.ok) throw new Error(`POST ${path} → ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(text || `POST ${path} → ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 async function postForm<T>(path: string, body: FormData): Promise<T> {
-  const res = await fetch(path, { method: 'POST', body });
+  const res = await fetch(path, { method: 'POST', headers: authHeaders(), body });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `POST ${path} → ${res.status}`);
@@ -105,6 +129,16 @@ export const api = {
   getRecommendations(weekId: number): Promise<CarRecommendation[]> {
     const qs = new URLSearchParams({ weekId: String(weekId) });
     return get(`/api/users/me/recommendations?${qs}`);
+  },
+
+  /** POST /api/auth/login — email + password sign-in, returns JWT */
+  login(email: string, password: string): Promise<AuthResult> {
+    return postJson('/api/auth/login', { email, password });
+  },
+
+  /** POST /api/auth/register — create account, returns JWT */
+  register(email: string, password: string): Promise<AuthResult> {
+    return postJson('/api/auth/register', { email, password });
   },
 
   /** POST /api/auth/callback?code=&state= — OAuth 2.0 Authorization Code exchange */
