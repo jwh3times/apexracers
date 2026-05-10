@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently -n api,web -c blue,green \"dotnet run --project ../ApexRacers.Api\" \"vite\"",
+    "dev:docker": "vite --mode docker",
+    "dev:cloud": "vite --mode cloud",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsc -b && vite build",
