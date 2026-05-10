@@ -214,6 +214,20 @@ namespace ApexRacers.Data.Migrations
                 column: "NormalizedUserName",
                 unique: true);
 
+            // AspNetUsers is empty at this point in the migration (just created), so any
+            // existing rows in these tables are orphaned dev/test data written before
+            // authentication was wired up. Delete them now so the FK constraints below
+            // can be applied without a 23503 violation.
+            migrationBuilder.Sql("""
+                DELETE FROM "CarPercentileResults"
+                WHERE "UserId" NOT IN (SELECT "Id" FROM "AspNetUsers");
+                """);
+
+            migrationBuilder.Sql("""
+                DELETE FROM "PersonalLaps"
+                WHERE "UserId" NOT IN (SELECT "Id" FROM "AspNetUsers");
+                """);
+
             migrationBuilder.AddForeignKey(
                 name: "FK_CarPercentileResults_AspNetUsers_UserId",
                 table: "CarPercentileResults",
