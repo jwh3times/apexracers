@@ -5,7 +5,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 ## Repo structure
 
 | Path | Description |
-|------|-------------|
+| ------ | ------------- |
 | `src/ApexRacers.Core/` | Domain models shared across all projects |
 | `src/ApexRacers.Data/` | EF Core DbContext, entity configurations, and migrations |
 | `src/ApexRacers.Api/` | ASP.NET Core Web API (controllers, auth callback) |
