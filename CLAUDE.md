@@ -127,6 +127,30 @@ Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API)
 
 ---
 
+## Testing & coverage requirements
+
+### Frontend (Vitest)
+
+Coverage thresholds are enforced in `vite.config.ts` at **80%** across statements, branches, functions, and lines. `npx vitest run --coverage` must exit cleanly (no threshold errors) before any frontend change is considered done. When adding new source files, add corresponding tests to keep all four metrics above 80%.
+
+Run coverage:
+```bash
+cd src/web && npx vitest run --coverage
+```
+
+### Backend (.NET)
+
+Unit test coverage must also remain above **80%** (line coverage). Use `dotnet-coverage` + `reportgenerator` to measure:
+
+```bash
+dotnet-coverage collect "dotnet test" -f xml -o coverage.xml
+reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:TextSummary
+```
+
+When adding new service logic, add corresponding xUnit tests in `src/ApexRacers.Tests/`. Controllers are excluded from coverage targets (they contain no logic). Services and domain helpers in `Core` are the primary targets.
+
+---
+
 ## General principles
 
 - Prefer clarity over cleverness
