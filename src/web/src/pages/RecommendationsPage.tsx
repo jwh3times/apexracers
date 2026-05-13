@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type CarRecommendation } from '../services/api';
 
+function formatLap(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds - m * 60;
+  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
+}
+
 function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
 }
@@ -18,12 +24,20 @@ function percentileBarColor(p: number): string {
   return 'bg-error';
 }
 
+function ProjectedBadge() {
+  return (
+    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-label-caps tracking-wide bg-surface-container text-on-surface-variant border border-white/10">
+      <span className="material-symbols-outlined text-[10px]" aria-hidden="true">calculate</span>
+      Projected
+    </span>
+  );
+}
+
 function HeroCard({ rec }: { rec: CarRecommendation }) {
   const pColor = percentileTextColor(rec.percentileRank);
   const barColor = percentileBarColor(rec.percentileRank);
   return (
     <div className="glass-panel glow-gold gradient-border-gold rounded-2xl p-6 flex flex-col gap-6 relative overflow-hidden">
-      {/* Background gradient placeholder */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="flex items-start justify-between gap-4 relative">
@@ -41,13 +55,23 @@ function HeroCard({ rec }: { rec: CarRecommendation }) {
           </h2>
         </div>
 
-        {/* Car thumbnail placeholder */}
         <div className="w-28 h-16 bg-surface-container-highest rounded-lg border border-white/10 overflow-hidden shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-[#FFD700]/20 to-black" />
         </div>
       </div>
 
-      <div className="flex gap-6 relative">
+      <div className="flex gap-6 relative flex-wrap">
+        <div className="flex flex-col gap-1">
+          <span className="font-label-caps text-label-caps text-on-surface-variant">
+            {rec.isProjected ? 'Projected Lap' : 'Best Lap'}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-data-lg text-data-lg text-on-surface">
+              {formatLap(rec.estimatedLapSeconds)}
+            </span>
+            {rec.isProjected && <ProjectedBadge />}
+          </div>
+        </div>
         <div className="flex flex-col gap-1">
           <span className="font-label-caps text-label-caps text-on-surface-variant">
             Your Percentile
@@ -66,7 +90,6 @@ function HeroCard({ rec }: { rec: CarRecommendation }) {
         </div>
       </div>
 
-      {/* Percentile bar */}
       <div className="relative h-1.5 bg-surface-variant/40 rounded-full overflow-hidden">
         <div
           className={`absolute inset-y-0 left-0 ${barColor} rounded-full`}
@@ -97,13 +120,19 @@ function RecommendationRow({ rec }: { rec: CarRecommendation }) {
       </span>
 
       <div className="flex-1 min-w-0 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="font-body-sm text-body-sm text-on-surface font-medium truncate group-hover:text-primary-fixed-dim transition-colors">
             {rec.carName}
           </span>
-          <span className={`font-data-md text-data-md ${pColor} shrink-0`}>
-            {ordinal(rec.percentileRank)}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-data-md text-data-md text-on-surface">
+              {formatLap(rec.estimatedLapSeconds)}
+            </span>
+            {rec.isProjected && <ProjectedBadge />}
+            <span className={`font-data-md text-data-md ${pColor}`}>
+              {ordinal(rec.percentileRank)}
+            </span>
+          </div>
         </div>
         <div className="relative h-1 bg-surface-variant/40 rounded-full overflow-hidden">
           <div
@@ -176,7 +205,7 @@ export default function RecommendationsPage() {
     <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
       <header className="flex flex-col gap-2">
         <Link
-          to={`/series`}
+          to="/series"
           className="inline-flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors group w-fit"
         >
           <span
@@ -191,7 +220,8 @@ export default function RecommendationsPage() {
           My Car Recommendations
         </h1>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Week {weekId} &mdash; ranked by how your pace matches each car&apos;s field.
+          Week {weekId} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve driven use your
+          actual best time; others are projected from your historical percentile.
         </p>
       </header>
 
@@ -209,11 +239,11 @@ export default function RecommendationsPage() {
             person_off
           </span>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            No recommendations available for this week.{' '}
-            <Link to="/login" className="text-primary-fixed-dim hover:text-primary transition-colors">
-              Sign in with iRacing
+            No recommendations available. Set your iRacing Customer ID in your{' '}
+            <Link to="/profile" className="text-primary-fixed-dim hover:text-primary transition-colors">
+              profile
             </Link>{' '}
-            so your official time trial results can be matched against the field.
+            and upload a lap for at least one car in this series.
           </p>
         </div>
       )}

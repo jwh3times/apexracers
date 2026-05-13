@@ -128,6 +128,64 @@ public class AuthServiceTests
         Assert.Null(result);
     }
 
+    // ── UpdateProfileAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateProfileAsync_UpdatesDisplayName()
+    {
+        await using var provider = BuildProvider();
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("New Name"));
+
+        Assert.Equal("New Name", result.DisplayName);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_SavesIRacingCustomerId_WhenProvided()
+    {
+        await using var provider = BuildProvider();
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L));
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "iracing_id" && c.Value == "123456789");
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_DoesNotClearIRacingCustomerId_WhenNotProvided()
+    {
+        await using var provider = BuildProvider();
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L));
+
+        // Second update without IRacingCustomerId — should not clear the first one
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name Two"));
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "iracing_id" && c.Value == "100042");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_Token_DoesNotContainIRacingIdClaim_ForNewUser()
+    {
+        await using var provider = BuildProvider();
+        var svc = BuildService(provider);
+
+        var result = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        Assert.DoesNotContain(jwt.Claims, c => c.Type == "iracing_id");
+    }
+
     // ── HandleCallbackAsync ───────────────────────────────────────────────────
 
     [Fact]

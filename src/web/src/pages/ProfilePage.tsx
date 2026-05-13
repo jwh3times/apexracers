@@ -7,6 +7,9 @@ export default function ProfilePage() {
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [iRacingCustomerId, setIRacingCustomerId] = useState(
+    user?.iRacingCustomerId?.toString() ?? '',
+  );
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,7 +24,10 @@ export default function ProfilePage() {
     setProfileError(null);
     setProfileSaving(true);
     try {
-      const result = await api.updateProfile(displayName);
+      const result = await api.updateProfile(
+        displayName,
+        iRacingCustomerId ? Number(iRacingCustomerId) : null,
+      );
       await updateSession(result);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);
@@ -115,6 +121,27 @@ export default function ProfilePage() {
                   onChange={e => setEmail(e.target.value)}
                   className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="iracing-customer-id"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  iRacing Customer ID
+                </label>
+                <input
+                  id="iracing-customer-id"
+                  type="number"
+                  min="1"
+                  value={iRacingCustomerId}
+                  onChange={e => setIRacingCustomerId(e.target.value)}
+                  placeholder="e.g. 100042"
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
+                  Used to look up your lap time percentile. Will be set automatically once iRacing OAuth is available.
+                </p>
               </div>
 
               {profileError && (

@@ -58,6 +58,8 @@ export interface CarRecommendation {
   carName: string;
   percentileRank: number;
   sampleSize: number;
+  estimatedLapSeconds: number;
+  isProjected: boolean;
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -158,9 +160,9 @@ export const api = {
     return postJson('/api/auth/register', { email, password });
   },
 
-  /** PUT /api/auth/profile — update display name, returns fresh JWT */
-  updateProfile(displayName: string): Promise<AuthResult> {
-    return putJson('/api/auth/profile', { displayName });
+  /** PUT /api/auth/profile — update display name and optional iRacing customer ID, returns fresh JWT */
+  updateProfile(displayName: string, iRacingCustomerId: number | null): Promise<AuthResult> {
+    return putJson('/api/auth/profile', { displayName, iRacingCustomerId });
   },
 
   /** POST /api/auth/callback?code=&state= — OAuth 2.0 Authorization Code exchange */

@@ -186,24 +186,32 @@ describe('api', () => {
   // ── updateProfile ───────────────────────────────────────────────────────────
 
   describe('updateProfile', () => {
-    it('calls PUT /api/auth/profile with JSON body', async () => {
+    it('calls PUT /api/auth/profile with display name and customer ID', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      const result = await api.updateProfile('Updated Name');
+      const result = await api.updateProfile('Updated Name', 100042);
       expect(fetch).toHaveBeenCalledWith('/api/auth/profile', expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ displayName: 'Updated Name' }),
+        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: 100042 }),
       }));
       expect(result.displayName).toBe('Updated Name');
     });
 
+    it('sends null iRacingCustomerId when not provided', async () => {
+      mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
+      await api.updateProfile('Updated Name', null);
+      expect(fetch).toHaveBeenCalledWith('/api/auth/profile', expect.objectContaining({
+        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: null }),
+      }));
+    });
+
     it('throws with server error body on failure', async () => {
       mockFetchError({ body: 'Display name too long.' });
-      await expect(api.updateProfile('A'.repeat(100))).rejects.toThrow('Display name too long.');
+      await expect(api.updateProfile('A'.repeat(100), null)).rejects.toThrow('Display name too long.');
     });
 
     it('falls back to status line when body is empty', async () => {
       mockFetchError({ status: 400, statusText: 'Bad Request', body: '' });
-      await expect(api.updateProfile('name')).rejects.toThrow('PUT /api/auth/profile → 400');
+      await expect(api.updateProfile('name', null)).rejects.toThrow('PUT /api/auth/profile → 400');
     });
   });
 

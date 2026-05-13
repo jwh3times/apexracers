@@ -10,8 +10,10 @@ public class RecommendationsController(CarRecommendationService recommendations)
     [HttpGet]
     public async Task<IActionResult> GetRecommendationsAsync([FromQuery] int weekId, CancellationToken ct)
     {
-        // TODO: Replace hardcoded 0 with IRacingCustomerId extracted from authenticated user's claims
-        const long customerId = 0;
+        var customerIdClaim = User.FindFirst("iracing_id")?.Value;
+        if (!long.TryParse(customerIdClaim, out var customerId))
+            return Ok(Array.Empty<object>());
+
         return Ok(await recommendations.GetRecommendationsAsync(weekId, customerId, ct));
     }
 }

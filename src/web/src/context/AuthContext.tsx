@@ -9,6 +9,7 @@ export interface User {
   userId: string;
   displayName: string;
   email: string;
+  iRacingCustomerId: number | null;
 }
 
 interface AuthContextValue {
@@ -21,7 +22,7 @@ interface AuthContextValue {
   setAlertsEnabled: (v: boolean) => Promise<void>;
 }
 
-function decodeJwt(token: string): { sub: string; email: string; name: string } | null {
+function decodeJwt(token: string): { sub: string; email: string; name: string; iracing_id?: string } | null {
   try {
     const payload = token.split('.')[1];
     return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
@@ -46,7 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (token) {
           const claims = decodeJwt(token);
           if (claims) {
-            setUser({ token, userId: claims.sub, displayName: claims.name, email: claims.email });
+            setUser({
+              token,
+              userId: claims.sub,
+              displayName: claims.name,
+              email: claims.email,
+              iRacingCustomerId: claims.iracing_id ? Number(claims.iracing_id) : null,
+            });
             setToken(token);
           }
         }
@@ -57,7 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(result: AuthResult, email: string) {
-    const u: User = { token: result.token, userId: result.userId, displayName: result.displayName, email };
+    const claims = decodeJwt(result.token);
+    const u: User = {
+      token: result.token,
+      userId: result.userId,
+      displayName: result.displayName,
+      email,
+      iRacingCustomerId: claims?.iracing_id ? Number(claims.iracing_id) : null,
+    };
     setUser(u);
     setToken(result.token);
     await dbSet('ar_token', result.token);
@@ -70,7 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function updateSession(result: AuthResult) {
-    setUser(prev => prev ? { ...prev, token: result.token, displayName: result.displayName } : prev);
+    const claims = decodeJwt(result.token);
+    const iRacingCustomerId = claims?.iracing_id ? Number(claims.iracing_id) : null;
+    setUser(prev => prev ? { ...prev, token: result.token, displayName: result.displayName, iRacingCustomerId } : prev);
     setToken(result.token);
     await dbSet('ar_token', result.token);
   }

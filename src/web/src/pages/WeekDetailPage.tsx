@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, type WeekCar } from '../services/api';
 
 function formatLapTime(seconds: number): string {
@@ -40,6 +40,7 @@ function RankBadge({ rank }: { rank: number }) {
 
 export default function WeekDetailPage() {
   const { seriesId, weekId } = useParams<{ seriesId: string; weekId: string }>();
+  const navigate = useNavigate();
   const [cars, setCars] = useState<WeekCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +179,12 @@ export default function WeekDetailPage() {
                   <tr
                     key={car.carId}
                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                    onClick={() =>
+                      navigate(
+                        `/series/${seriesId}/weeks/${weekId}/cars/${car.carId}/percentile`,
+                        { state: { carName: car.carName } },
+                      )
+                    }
                   >
                     <td className="px-4 py-3 text-center">
                       <RankBadge rank={rank} />

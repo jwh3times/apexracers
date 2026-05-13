@@ -45,6 +45,9 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
             ?? throw new InvalidOperationException("User not found.");
 
         user.DisplayName = request.DisplayName.Trim();
+        if (request.IRacingCustomerId.HasValue)
+            user.IRacingCustomerId = request.IRacingCustomerId.Value;
+
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
             throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
@@ -64,12 +67,14 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT_SIGNING_KEY"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email!),
             new Claim(JwtRegisteredClaimNames.Name, user.DisplayName),
         };
+        if (user.IRacingCustomerId.HasValue)
+            claims.Add(new Claim("iracing_id", user.IRacingCustomerId.Value.ToString()));
 
         var token = new JwtSecurityToken(
             claims: claims,

@@ -53,8 +53,14 @@ The API proxy target is controlled by `API_TARGET` in the relevant `.env.*` file
 # Local Docker Desktop (postgres + pgadmin + api)
 docker compose up -d
 
+# Local Docker Desktop (postgres + pgadmin + api) with rebuild
+docker compose up -d --build
+
 # Include ingestion worker
 docker compose --profile ingestion up -d
+
+# Seed the database with initial data
+Get-Content src\ApexRacers.Data\Seeds\seed_gt3_series.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
 ```
 
 Copy `.env.example` to `.env` and fill in `JWT_SIGNING_KEY` before running. `DATABASE_CONNECTION_STRING` is pre-filled for the Docker network.

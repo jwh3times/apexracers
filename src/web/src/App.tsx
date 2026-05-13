@@ -5,11 +5,14 @@ import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
 import SeriesPage from './pages/SeriesPage';
 import WeekDetailPage from './pages/WeekDetailPage';
+import PercentileCarPage from './pages/PercentileCarPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 const GUEST_NAV = [
   { to: '/', label: 'Home', icon: 'home', exact: true },
@@ -165,9 +168,9 @@ function Footer() {
     <footer className="bg-surface-dim text-on-surface-variant font-body-sm text-body-sm w-full py-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-center px-6 mt-auto">
       <div className="font-body-lg text-on-surface mb-4 md:mb-0">ApexRacers</div>
       <div className="flex gap-6 mb-4 md:mb-0">
-        <a className="hover:text-primary-fixed-dim transition-colors" href="#">Terms of Service</a>
-        <a className="hover:text-primary-fixed-dim transition-colors" href="#">Privacy Policy</a>
-        <a className="hover:text-primary-fixed-dim transition-colors" href="#">API Status</a>
+        <Link className="hover:text-primary-fixed-dim transition-colors" to="/terms">Terms of Service</Link>
+        <Link className="hover:text-primary-fixed-dim transition-colors" to="/privacy">Privacy Policy</Link>
+        <a className="hover:text-primary-fixed-dim transition-colors" href="https://apex-racers.betteruptime.com/" target="_blank" rel="noopener noreferrer">API Status</a>
       </div>
       <div>© {new Date().getFullYear()} ApexRacers. Not affiliated with iRacing.com</div>
     </footer>
@@ -197,10 +200,13 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/series" element={<SeriesPage />} />
         <Route path="/series/:seriesId/weeks/:weekId" element={<WeekDetailPage />} />
+        <Route path="/series/:seriesId/weeks/:weekId/cars/:carId/percentile" element={<PercentileCarPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/my-laps" element={<MyLapsPage />} />
         <Route path="/telemetry" element={<TelemetryPage />} />
         <Route path="/profile" element={<ProfilePage key={user?.userId} />} />
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
       </Route>
     </Routes>
   );

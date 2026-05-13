@@ -23,7 +23,9 @@ public record CarRecommendationDto(
     int CarId,
     string CarName,
     double PercentileRank,
-    int SampleSize);
+    int SampleSize,
+    double EstimatedLapSeconds,
+    bool IsProjected);
 
 public record AuthResultDto(string Token, Guid UserId, string DisplayName);
 

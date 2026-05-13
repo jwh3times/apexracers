@@ -53,13 +53,19 @@ describe('ProfilePage', () => {
   });
 
   it('pre-fills display name from auth context', () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry Holland', email: 'j@j.com' };
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry Holland', email: 'j@j.com', iRacingCustomerId: null };
     renderPage();
     expect(screen.getByLabelText(/display name/i)).toHaveValue('Jerry Holland');
   });
 
+  it('pre-fills iRacing Customer ID from auth context', () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: 100042 };
+    renderPage();
+    expect(screen.getByLabelText(/iRacing Customer ID/i)).toHaveValue(100042);
+  });
+
   it('calls api.updateProfile and updateSession when Save Changes is clicked', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
     vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
     const user = userEvent.setup();
     renderPage();
@@ -68,7 +74,7 @@ describe('ProfilePage', () => {
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon');
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
       expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
     });
   });
@@ -86,7 +92,7 @@ describe('ProfilePage', () => {
   });
 
   it('shows Connected and Disconnect button when user is logged in', () => {
-    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com' };
+    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null };
     renderPage();
     expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /disconnect/i })).toBeInTheDocument();
@@ -116,7 +122,7 @@ describe('ProfilePage', () => {
   });
 
   it('shows an Error message when saveProfile fails with an Error instance', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
     vi.mocked(api.updateProfile).mockRejectedValue(new Error('Server error'));
     const user = userEvent.setup();
     renderPage();
@@ -125,7 +131,7 @@ describe('ProfilePage', () => {
   });
 
   it('shows fallback message when saveProfile rejects with a non-Error value', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com' };
+    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
     vi.mocked(api.updateProfile).mockRejectedValue('oops');
     const user = userEvent.setup();
     renderPage();
