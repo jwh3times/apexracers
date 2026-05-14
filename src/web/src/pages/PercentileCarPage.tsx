@@ -1,7 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api, type PercentileResult } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+type FetchState = {
+  loading: boolean;
+  result: PercentileResult | null;
+  error: string | null;
+  notFound: boolean;
+};
+
+type FetchAction =
+  | { type: 'start' }
+  | { type: 'success'; result: PercentileResult }
+  | { type: 'not_found' }
+  | { type: 'error'; message: string };
+
+function fetchReducer(_: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'start':
+      return { loading: true, result: null, error: null, notFound: false };
+    case 'success':
+      return { loading: false, result: action.result, error: null, notFound: false };
+    case 'not_found':
+      return { loading: false, result: null, error: null, notFound: true };
+    case 'error':
+      return { loading: false, result: null, error: action.message, notFound: false };
+  }
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -66,27 +92,25 @@ export default function PercentileCarPage() {
     (location.state as { carName?: string } | null)?.carName ?? `Car ${carId}`;
 
   const [customerId, setCustomerId] = useState('');
-  const [result, setResult] = useState<PercentileResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [{ loading, result, error, notFound }, dispatch] = useReducer(fetchReducer, {
+    loading: false,
+    result: null,
+    error: null,
+    notFound: false,
+  });
 
   const profileId = user?.iRacingCustomerId ?? null;
 
   function runFetch(id: number) {
-    setLoading(true);
-    setError(null);
-    setNotFound(false);
-    setResult(null);
+    dispatch({ type: 'start' });
     api
       .getPercentile(Number(seriesId), Number(weekId), Number(carId), id)
-      .then(setResult)
+      .then(data => dispatch({ type: 'success', result: data }))
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : '';
-        if (msg.includes('404')) setNotFound(true);
-        else setError(msg || 'Failed to load percentile.');
-      })
-      .finally(() => setLoading(false));
+        if (msg.includes('404')) dispatch({ type: 'not_found' });
+        else dispatch({ type: 'error', message: msg || 'Failed to load percentile.' });
+      });
   }
 
   // Auto-fetch when the profile has an iRacing customer ID
