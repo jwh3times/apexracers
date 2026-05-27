@@ -10,11 +10,11 @@ vi.mock('../../services/api', () => ({
 
 const mockGetCars = vi.mocked(api.getCarsForWeek);
 
-function renderPage(seriesId = '1', weekId = '10') {
+function renderPage(seriesId = '1', weekNumber = '10') {
   return render(
-    <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekId}`]}>
+    <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekNumber}`]}>
       <Routes>
-        <Route path="/series/:seriesId/weeks/:weekId" element={<WeekDetailPage />} />
+        <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
       </Routes>
     </MemoryRouter>
   );
@@ -60,7 +60,7 @@ describe('WeekDetailPage', () => {
     renderPage('1', '10');
     await waitFor(() => {
       const link = screen.getByRole('link', { name: /see my car recommendations/i });
-      expect(link).toHaveAttribute('href', '/recommendations?weekId=10');
+      expect(link).toHaveAttribute('href', '/recommendations?seriesId=1&weekNumber=10');
     });
   });
 });

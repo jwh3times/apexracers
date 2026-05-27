@@ -163,26 +163,28 @@ function RecommendationRow({ rec }: { rec: CarRecommendation }) {
 
 export default function RecommendationsPage() {
   const [searchParams] = useSearchParams();
-  const weekIdParam = searchParams.get('weekId');
-  const weekId = weekIdParam != null ? Number(weekIdParam) : null;
+  const weekNumberParam = searchParams.get('weekNumber');
+  const seriesIdParam = searchParams.get('seriesId');
+  const weekNumber = weekNumberParam != null ? Number(weekNumberParam) : null;
+  const seriesId = seriesIdParam != null ? Number(seriesIdParam) : null;
 
   const [recs, setRecs] = useState<CarRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (weekId == null) return;
+    if (weekNumber == null || seriesId == null) return;
     setLoading(true);
     setRecs([]);
     setError(null);
-    api.getRecommendations(weekId)
+    api.getRecommendations(seriesId, weekNumber)
       .then(setRecs)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : 'Failed to load recommendations.'))
       .finally(() => setLoading(false));
-  }, [weekId]);
+  }, [weekNumber, seriesId]);
 
-  if (weekId == null) {
+  if (weekNumber == null || seriesId == null) {
     return (
       <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
         <header>
@@ -220,7 +222,7 @@ export default function RecommendationsPage() {
           My Car Recommendations
         </h1>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Week {weekId} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve driven use your
+          Week {weekNumber} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve driven use your
           actual best time; others are projected from your historical percentile.
         </p>
       </header>

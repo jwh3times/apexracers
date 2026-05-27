@@ -19,7 +19,7 @@ public class SeriesService(AppDbContext db)
                 s.Weeks
                     .Where(w => w.StartDate <= today)
                     .OrderByDescending(w => w.StartDate)
-                    .Select(w => (int?)w.Id)
+                    .Select(w => (int?)w.WeekNumber)
                     .FirstOrDefault()))
             .ToListAsync(ct);
     }

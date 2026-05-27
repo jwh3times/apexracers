@@ -6,15 +6,17 @@ namespace ApexRacers.Api.Services;
 
 public class WeekCarStatsService(AppDbContext db)
 {
-    public async Task<List<WeekCarDto>> GetCarsForWeekAsync(int seriesId, int weekId, CancellationToken ct = default)
+    public async Task<List<WeekCarDto>> GetCarsForWeekAsync(int seriesId, int weekNumber, CancellationToken ct = default)
     {
-        var weekExists = await db.Weeks
-            .AnyAsync(w => w.Id == weekId && w.Season.SeriesId == seriesId, ct);
+        var weekDbId = await db.Weeks
+            .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
+            .Select(w => (Guid?)w.Id)
+            .FirstOrDefaultAsync(ct);
 
-        if (!weekExists) return [];
+        if (weekDbId is null) return [];
 
         var laps = await db.LapTimeEntries
-            .Where(l => l.WeekId == weekId)
+            .Where(l => l.WeekId == weekDbId)
             .Select(l => new { l.CarId, l.Car.Name, l.LapTimeSeconds })
             .ToListAsync(ct);
 

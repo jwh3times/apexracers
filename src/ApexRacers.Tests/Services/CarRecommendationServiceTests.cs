@@ -11,7 +11,7 @@ public class CarRecommendationServiceTests
     {
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = 10, SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
         var car1 = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
         var car2 = new Car { Id = 2, Name = "Ferrari 296 GT3", NameAbbreviated = "F296" };
         db.Series.Add(series);
@@ -29,7 +29,7 @@ public class CarRecommendationServiceTests
     {
         await using var db = DbContextFactory.Create();
 
-        var result = await CreateService(db).GetRecommendationsAsync(weekId: 99, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1);
 
         Assert.Empty(result);
     }
@@ -40,10 +40,10 @@ public class CarRecommendationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car1, _) = SeedWeekWithTwoCars(db);
         // Only driver 999 has a lap; customer 1 has no lap and no cached percentile
-        db.LapTimeEntries.Add(new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 999, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+        db.LapTimeEntries.Add(new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 999, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetRecommendationsAsync(weekId: 10, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
 
         Assert.Empty(result);
     }
@@ -53,15 +53,14 @@ public class CarRecommendationServiceTests
     {
         await using var db = DbContextFactory.Create();
         var (week, car1, car2) = SeedWeekWithTwoCars(db);
-        // Car1: driver 1 runs 90 s (slowest); Car2: driver 1 runs 60 s (fastest)
         db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 2, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 2, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 2, DriverCustomerId = 3, LapTimeSeconds = 70, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 2, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 2, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 2, DriverCustomerId = 3, LapTimeSeconds = 70, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetRecommendationsAsync(weekId: 10, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Rank);
@@ -80,31 +79,31 @@ public class CarRecommendationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car1, _) = SeedWeekWithTwoCars(db);
 
-        // Week 10 = current week (no lap for driver 1)
+        // Week 1 = current week (no lap for driver 1)
         db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
 
-        // Week 5 = previous week — driver 1 ran 60 s and beat all 3 others (100%)
+        // Previous week — driver 1 ran 60 s and beat all 3 others (100%)
         var series2 = new Series { Id = 2, Name = "Other Series" };
         var season2 = new Season { Id = 2, SeriesId = 2, Year = 2026, Quarter = 2, Active = true, Series = series2 };
-        var week5 = new Week { Id = 5, SeasonId = 2, WeekNumber = 5, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Mugello", ConfigName = "GP", IracingTrackId = 88, Season = season2 };
+        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 2, WeekNumber = 5, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Mugello", ConfigName = "GP", IracingTrackId = 88, Season = season2 };
         db.Series.Add(series2);
         db.Seasons.Add(season2);
-        db.Weeks.Add(week5);
+        db.Weeks.Add(prevWeek);
         db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = 5, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car1, Week = week5, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 5, CarId = 1, DriverCustomerId = 101, LapTimeSeconds = 65, Car = car1, Week = week5, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 5, CarId = 1, DriverCustomerId = 102, LapTimeSeconds = 70, Car = car1, Week = week5, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 5, CarId = 1, DriverCustomerId = 103, LapTimeSeconds = 75, Car = car1, Week = week5, RecordedAt = DateTimeOffset.UtcNow });
+            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 101, LapTimeSeconds = 65, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 102, LapTimeSeconds = 70, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 103, LapTimeSeconds = 75, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetRecommendationsAsync(weekId: 10, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
 
         var dto = Assert.Single(result);
         Assert.True(dto.IsProjected);
-        Assert.Equal(100.0, dto.PercentileRank); // beat all 3 others in week 5
+        Assert.Equal(100.0, dto.PercentileRank); // beat all 3 others in prev week
         // 100th percentile in [70, 80, 90]: pos = 0 → fastest = 70 s
         Assert.Equal(70.0, dto.EstimatedLapSeconds, precision: 6);
     }
@@ -115,23 +114,23 @@ public class CarRecommendationServiceTests
         await using var db = DbContextFactory.Create();
         var (week, car1, _) = SeedWeekWithTwoCars(db);
 
-        // Three other drivers in week 10 / car1 with sorted laps: 70, 80, 90
+        // Three other drivers in week 1 / car1 with sorted laps: 70, 80, 90
         db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = 10, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
+            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
 
         // Customer 1 is linked to a user account with a cached 50th-percentile result for car1
         var userId = Guid.NewGuid();
         db.Users.Add(new ApexRacers.Data.ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
         db.CarPercentileResults.Add(new ApexRacers.Core.Models.CarPercentileResult
         {
-            UserId = userId, CarId = 1, WeekId = 99, // previous week
+            UserId = userId, CarId = 1, WeekId = Guid.NewGuid(), // some previous week's guid
             PercentileRank = 50.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetRecommendationsAsync(weekId: 10, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);

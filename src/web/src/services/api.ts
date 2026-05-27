@@ -10,7 +10,7 @@ export interface Series {
   id: number;
   name: string;
   seasonId: number;
-  currentWeekId: number | null;
+  currentWeekNumber: number | null;
 }
 
 export interface TelemetryUploadResult {
@@ -22,6 +22,28 @@ export interface TelemetryUploadResult {
   carName: string;
   customerId: number;
   driverName: string;
+}
+
+export interface WeeklyPercentile {
+  weekNumber: number;
+  trackName: string;
+  configName: string;
+  percentileRank: number;
+  sampleSize: number;
+  computedAt: string; // ISO 8601
+}
+
+export interface CarAnalytics {
+  carId: number;
+  carName: string;
+  seriesId: number;
+  seriesName: string;
+  latestPercentileRank: number;
+  bestPercentileRank: number;
+  personalBestLapSeconds: number | null;
+  medianLapSeconds: number | null;
+  totalLaps: number;
+  percentileHistory: WeeklyPercentile[];
 }
 
 export interface PersonalLap {
@@ -44,7 +66,7 @@ export interface WeekCar {
 
 export interface PercentileResult {
   seriesId: number;
-  weekId: number;
+  weekNumber: number;
   carId: number;
   customerId: number;
   percentileRank: number;
@@ -128,25 +150,25 @@ export const api = {
     return get('/api/series');
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekId/cars — cars with aggregate lap stats */
-  getCarsForWeek(seriesId: number, weekId: number): Promise<WeekCar[]> {
-    return get(`/api/series/${seriesId}/weeks/${weekId}/cars`);
+  /** GET /api/series/:seriesId/weeks/:weekNumber/cars — cars with aggregate lap stats */
+  getCarsForWeek(seriesId: number, weekNumber: number): Promise<WeekCar[]> {
+    return get(`/api/series/${seriesId}/weeks/${weekNumber}/cars`);
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekId/cars/:carId/percentile?customerId= */
+  /** GET /api/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile?customerId= */
   getPercentile(
     seriesId: number,
-    weekId: number,
+    weekNumber: number,
     carId: number,
     customerId: number,
   ): Promise<PercentileResult> {
     const qs = new URLSearchParams({ customerId: String(customerId) });
-    return get(`/api/series/${seriesId}/weeks/${weekId}/cars/${carId}/percentile?${qs}`);
+    return get(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`);
   },
 
-  /** GET /api/users/me/recommendations?weekId= */
-  getRecommendations(weekId: number): Promise<CarRecommendation[]> {
-    const qs = new URLSearchParams({ weekId: String(weekId) });
+  /** GET /api/users/me/recommendations?seriesId=&weekNumber= */
+  getRecommendations(seriesId: number, weekNumber: number): Promise<CarRecommendation[]> {
+    const qs = new URLSearchParams({ seriesId: String(seriesId), weekNumber: String(weekNumber) });
     return get(`/api/users/me/recommendations?${qs}`);
   },
 
@@ -181,5 +203,14 @@ export const api = {
   /** GET /api/telemetry/laps — personal best per track+car for the authenticated user */
   getMyLaps(): Promise<PersonalLap[]> {
     return get('/api/telemetry/laps');
+  },
+
+  /** GET /api/users/me/analytics?seriesId= — per-car percentile history and trend for the authenticated user */
+  getMyAnalytics(seriesId?: number): Promise<CarAnalytics[]> {
+    const path =
+      seriesId != null
+        ? `/api/users/me/analytics?seriesId=${seriesId}`
+        : '/api/users/me/analytics';
+    return get(path);
   },
 };

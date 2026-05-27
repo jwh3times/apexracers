@@ -39,20 +39,20 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export default function WeekDetailPage() {
-  const { seriesId, weekId } = useParams<{ seriesId: string; weekId: string }>();
+  const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const navigate = useNavigate();
   const [cars, setCars] = useState<WeekCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!seriesId || !weekId) return;
-    api.getCarsForWeek(Number(seriesId), Number(weekId))
+    if (!seriesId || !weekNumber) return;
+    api.getCarsForWeek(Number(seriesId), Number(weekNumber))
       .then(setCars)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : 'Failed to load week data.'))
       .finally(() => setLoading(false));
-  }, [seriesId, weekId]);
+  }, [seriesId, weekNumber]);
 
   const ranked = [...cars].sort((a, b) => {
     if (a.fastestLapSeconds == null) return 1;
@@ -98,7 +98,7 @@ export default function WeekDetailPage() {
 
           <div className="flex items-center gap-3 mb-2">
             <div className="px-2 py-0.5 bg-tertiary-container text-on-tertiary-container font-label-caps text-[10px] rounded uppercase tracking-widest font-bold">
-              Week {weekId}
+              Week {weekNumber}
             </div>
             <span className="font-body-sm text-body-sm text-on-surface-variant">
               Series {seriesId}
@@ -109,9 +109,9 @@ export default function WeekDetailPage() {
             Car Performance Breakdown
           </h1>
 
-          {weekId && (
+          {weekNumber && (
             <Link
-              to={`/recommendations?weekId=${weekId}`}
+              to={`/recommendations?seriesId=${seriesId}&weekNumber=${weekNumber}`}
               className="inline-flex items-center gap-1 font-body-sm text-body-sm text-primary-fixed-dim hover:text-primary transition-colors"
             >
               See my car recommendations
@@ -181,7 +181,7 @@ export default function WeekDetailPage() {
                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     onClick={() =>
                       navigate(
-                        `/series/${seriesId}/weeks/${weekId}/cars/${car.carId}/percentile`,
+                        `/series/${seriesId}/weeks/${weekNumber}/cars/${car.carId}/percentile`,
                         { state: { carName: car.carName } },
                       )
                     }

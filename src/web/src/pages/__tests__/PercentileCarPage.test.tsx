@@ -21,7 +21,7 @@ const mockGetPercentile = vi.mocked(api.getPercentile);
 
 const MOCK_RESULT = {
   seriesId: 9001,
-  weekId: 1,
+  weekNumber: 1,
   carId: 9001,
   customerId: 100001,
   percentileRank: 73.4,
@@ -45,7 +45,7 @@ function renderPage(options: {
     >
       <Routes>
         <Route
-          path="/series/:seriesId/weeks/:weekId/cars/:carId/percentile"
+          path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
           element={<PercentileCarPage />}
         />
       </Routes>

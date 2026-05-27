@@ -2,10 +2,10 @@ namespace ApexRacers.Core.Models;
 
 public class LapTimeEntry
 {
-    public long Id { get; set; }
+    public Guid Id { get; set; }
     public long DriverCustomerId { get; set; }
     public int CarId { get; set; }
-    public int WeekId { get; set; }
+    public Guid WeekId { get; set; }
     public double LapTimeSeconds { get; set; }
     public float? AirTempCelsius { get; set; }
     public float? TrackTempCelsius { get; set; }

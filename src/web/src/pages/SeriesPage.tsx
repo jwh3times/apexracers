@@ -39,7 +39,7 @@ const tierConfig = [
 
 function SeriesCard({ s, index }: { s: Series; index: number }) {
   const tier = tierConfig[index % tierConfig.length];
-  const active = s.currentWeekId != null;
+  const active = s.currentWeekNumber != null;
 
   const inner = (
     <div
@@ -73,7 +73,7 @@ function SeriesCard({ s, index }: { s: Series; index: number }) {
           <h3 className="font-headline-sm text-headline-sm text-on-surface leading-tight">{s.name}</h3>
           <p className="font-body-sm text-[12px] text-on-surface-variant mt-1">
             Season {s.seasonId}
-            {active ? ` · Week ${s.currentWeekId}` : ''}
+            {active ? ` · Week ${s.currentWeekNumber}` : ''}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ function SeriesCard({ s, index }: { s: Series; index: number }) {
               {active ? tier.icon : 'pause_circle'}
             </span>
             <span className="font-label-caps text-[10px]">
-              {active ? `Week ${s.currentWeekId}` : 'No active week'}
+              {active ? `Week ${s.currentWeekNumber}` : 'No active week'}
             </span>
           </div>
           {active && (
@@ -101,7 +101,7 @@ function SeriesCard({ s, index }: { s: Series; index: number }) {
 
   if (active) {
     return (
-      <Link to={`/series/${s.id}/weeks/${s.currentWeekId}`} aria-label={s.name} className="col-span-4">
+      <Link to={`/series/${s.id}/weeks/${s.currentWeekNumber}`} aria-label={s.name} className="col-span-4">
         {inner}
       </Link>
     );
@@ -158,9 +158,9 @@ export default function SeriesPage() {
     ? series.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
     : series;
 
-  const firstActive = series.find(s => s.currentWeekId != null);
+  const firstActive = series.find(s => s.currentWeekNumber != null);
   const subtitle = firstActive
-    ? `Season ${firstActive.seasonId} · Week ${firstActive.currentWeekId} Data`
+    ? `Season ${firstActive.seasonId} · Week ${firstActive.currentWeekNumber} Data`
     : `${series.length} series available`;
 
   return (

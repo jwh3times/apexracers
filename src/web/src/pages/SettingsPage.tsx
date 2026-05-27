@@ -1,0 +1,294 @@
+import { useState } from 'react';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+export default function SettingsPage() {
+  const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
+
+  const [displayName, setDisplayName] = useState(user?.displayName ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [iRacingCustomerId, setIRacingCustomerId] = useState(
+    user?.iRacingCustomerId?.toString() ?? '',
+  );
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  const connected = !!user;
+
+  async function saveProfile(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSaving(true);
+    try {
+      const result = await api.updateProfile(
+        displayName,
+        iRacingCustomerId ? Number(iRacingCustomerId) : null,
+      );
+      await updateSession(result);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to save profile.');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  function toggleAlerts() {
+    setAlertsEnabled(!alertsEnabled);
+  }
+
+  return (
+    <main className="px-6 pt-8 pb-20 max-w-3xl mx-auto w-full">
+      <div className="space-y-8 py-4">
+        {/* Page header */}
+        <div>
+          <h1 className="font-headline-md text-[48px] leading-none font-extrabold tracking-tighter text-on-surface mb-2">
+            Account Settings
+          </h1>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            Manage your profile, security preferences, and connected services.
+          </p>
+        </div>
+
+        {/* Profile header card */}
+        <div className="bg-surface rounded-xl border border-white/10 p-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary-fixed-dim/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Avatar placeholder */}
+          <div className="relative shrink-0">
+            <div className="w-24 h-24 rounded-full bg-surface-container-highest border-2 border-primary-fixed-dim shadow-[0_0_15px_rgba(0,228,121,0.3)] flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-primary-fixed-dim fill" aria-hidden="true">
+                person
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center md:text-left flex-1">
+            <h2 className="font-headline-md text-headline-md text-on-surface">
+              {displayName || 'ApexRacers Driver'}
+            </h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Account Settings
+            </p>
+            <div className="mt-3 inline-flex items-center gap-2 bg-[#FFD700] text-black px-3 py-1 rounded-sm font-label-caps text-label-caps">
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">stars</span>
+              Pro Tier Driver
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Personal Information */}
+          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">person</span>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">Personal Information</h3>
+            </div>
+
+            <form onSubmit={saveProfile} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="display-name"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  Display Name
+                </label>
+                <input
+                  id="display-name"
+                  type="text"
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="profile-email"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  Email Address
+                </label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="iracing-customer-id"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  iRacing Customer ID
+                </label>
+                <input
+                  id="iracing-customer-id"
+                  type="number"
+                  min="1"
+                  value={iRacingCustomerId}
+                  onChange={e => setIRacingCustomerId(e.target.value)}
+                  placeholder="e.g. 100042"
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
+                  Used to look up your lap time percentile. Will be set automatically once iRacing OAuth is available.
+                </p>
+              </div>
+
+              {profileError && (
+                <p className="font-body-sm text-body-sm text-error">{profileError}</p>
+              )}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={profileSaving}
+                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {profileSaving ? 'Saving…' : profileSaved ? 'Saved ✓' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Connections + Preferences */}
+          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 flex flex-col">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">link</span>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">Connections</h3>
+            </div>
+
+            <div className="bg-surface-container-high rounded-lg p-4 border border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#00D1FF]/10 rounded flex items-center justify-center border border-[#00D1FF]/20 shrink-0">
+                  <span className="font-data-md text-data-md text-[#00D1FF]">iR</span>
+                </div>
+                <div>
+                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">iRacing Account</p>
+                  <p className={`font-label-caps text-label-caps flex items-center gap-1 mt-1 ${connected ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}>
+                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+                      {connected ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    {connected ? 'Connected' : 'Not connected'}
+                  </p>
+                </div>
+              </div>
+              {connected && (
+                <button
+                  onClick={logout}
+                  className="font-body-sm text-body-sm text-on-surface-variant hover:text-error transition-colors underline"
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
+
+            {/* Preferences */}
+            <div className="mt-auto pt-6 border-t border-white/5">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">notifications</span>
+                <h3 className="font-headline-sm text-headline-sm text-on-surface">Preferences</h3>
+              </div>
+              <label className="flex items-center justify-between cursor-pointer group">
+                <span className="font-body-sm text-body-sm text-on-surface-variant group-hover:text-on-surface transition-colors">
+                  New series data alerts
+                </span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={alertsEnabled}
+                    onChange={toggleAlerts}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-fixed-dim" />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Security */}
+          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">lock</span>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">Security</h3>
+            </div>
+
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              <div>
+                <label
+                  htmlFor="current-password"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  Current Password
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="new-password"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  New Password
+                </label>
+                <input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="confirm-password"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  Confirm Password
+                </label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+              </div>
+              <div className="md:col-span-3 pt-2">
+                <button
+                  type="submit"
+                  disabled
+                  title="Password change coming soon"
+                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
+                >
+                  Update Password (Coming Soon)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

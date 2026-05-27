@@ -8,6 +8,6 @@ namespace ApexRacers.Api.Controllers;
 public class WeekController(WeekCarStatsService weekCarStats) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetCarsForWeekAsync(int seriesId, int weekId, CancellationToken ct)
-        => Ok(await weekCarStats.GetCarsForWeekAsync(seriesId, weekId, ct));
+    public async Task<IActionResult> GetCarsForWeekAsync(int seriesId, int weekNumber, CancellationToken ct)
+        => Ok(await weekCarStats.GetCarsForWeekAsync(seriesId, weekNumber, ct));
 }

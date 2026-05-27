@@ -1,294 +1,240 @@
-import { useState } from 'react';
-import { api } from '../services/api';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api, type PersonalLap, type Series } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { formatLapTime } from '../utils/lapTime';
+
+function trackLabel(lap: PersonalLap): string {
+  return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
+}
+
+function SeriesCard({ s }: { s: Series }) {
+  const active = s.currentWeekNumber != null;
+  return (
+    <div className="glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden hover:bg-white/5 transition-all hover:border-primary-fixed-dim/30 group">
+      <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
+        <span className="material-symbols-outlined text-[64px]" aria-hidden="true">sports_score</span>
+      </div>
+      <div className="flex justify-between items-start mb-4">
+        <h4 className="font-body-lg font-bold text-on-surface pr-2 truncate">{s.name}</h4>
+        {active && (
+          <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2 py-1 rounded shrink-0">
+            WK {s.currentWeekNumber}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <span className="block font-label-caps text-label-caps text-on-surface-variant mb-1">SEASON</span>
+          <span className="font-data-md text-data-md text-on-surface">{s.seasonId}</span>
+        </div>
+        <div>
+          <span className="block font-label-caps text-label-caps text-on-surface-variant mb-1">STATUS</span>
+          <span className={`font-data-md text-data-md ${active ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}>
+            {active ? 'Active' : 'Off Season'}
+          </span>
+        </div>
+      </div>
+      {active ? (
+        <Link
+          to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
+          className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded font-body-sm text-body-sm text-on-surface transition-colors flex items-center justify-center gap-2"
+        >
+          View Week Details
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+        </Link>
+      ) : (
+        <div className="w-full py-2 border border-white/5 rounded font-body-sm text-body-sm text-on-surface-variant/40 flex items-center justify-center">
+          No Active Week
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
-  const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
+  const { user } = useAuth();
+  const displayName = user?.displayName ?? 'Driver';
 
-  const [displayName, setDisplayName] = useState(user?.displayName ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [iRacingCustomerId, setIRacingCustomerId] = useState(
-    user?.iRacingCustomerId?.toString() ?? '',
-  );
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [profileSaved, setProfileSaved] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [profileSaving, setProfileSaving] = useState(false);
+  const [laps, setLaps] = useState<PersonalLap[]>([]);
+  const [series, setSeries] = useState<Series[]>([]);
+  const [lapsLoading, setLapsLoading] = useState(true);
+  const [seriesLoading, setSeriesLoading] = useState(true);
 
-  const connected = !!user;
+  useEffect(() => {
+    api.getMyLaps()
+      .then(setLaps)
+      .catch(() => {})
+      .finally(() => setLapsLoading(false));
 
-  async function saveProfile(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setProfileError(null);
-    setProfileSaving(true);
-    try {
-      const result = await api.updateProfile(
-        displayName,
-        iRacingCustomerId ? Number(iRacingCustomerId) : null,
-      );
-      await updateSession(result);
-      setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 2500);
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Failed to save profile.');
-    } finally {
-      setProfileSaving(false);
-    }
-  }
+    api.getSeries()
+      .then(setSeries)
+      .catch(() => {})
+      .finally(() => setSeriesLoading(false));
+  }, []);
 
-  function toggleAlerts() {
-    setAlertsEnabled(!alertsEnabled);
-  }
+  const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
+  const uniqueCars = new Set(laps.map(l => l.carId)).size;
+  const bestLap = laps.length > 0
+    ? laps.reduce((best, l) => l.bestLapSeconds < best.bestLapSeconds ? l : best)
+    : null;
+
+  // Best lap per car, sorted fastest first
+  const carBests = Object.values(
+    laps.reduce<Record<number, PersonalLap>>((acc, lap) => {
+      if (!acc[lap.carId] || lap.bestLapSeconds < acc[lap.carId].bestLapSeconds) {
+        acc[lap.carId] = lap;
+      }
+      return acc;
+    }, {}),
+  ).sort((a, b) => a.bestLapSeconds - b.bestLapSeconds);
 
   return (
-    <main className="px-6 pt-8 pb-20 max-w-3xl mx-auto w-full">
-      <div className="space-y-8 py-4">
-        {/* Page header */}
-        <div>
-          <h1 className="font-headline-md text-[48px] leading-none font-extrabold tracking-tighter text-on-surface mb-2">
-            Account Settings
-          </h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Manage your profile, security preferences, and connected services.
-          </p>
-        </div>
-
-        {/* Profile header card */}
-        <div className="bg-surface rounded-xl border border-white/10 p-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary-fixed-dim/10 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Avatar placeholder */}
-          <div className="relative shrink-0">
-            <div className="w-24 h-24 rounded-full bg-surface-container-highest border-2 border-primary-fixed-dim shadow-[0_0_15px_rgba(0,228,121,0.3)] flex items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-primary-fixed-dim fill" aria-hidden="true">
-                person
+    <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
+      {/* Driver overview */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl border-2 border-primary-fixed-dim p-1 bg-surface-container-highest flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-primary-fixed-dim" aria-hidden="true">person</span>
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-[#FFD700] text-black font-label-caps text-label-caps px-2 py-1 rounded shadow-[0_0_10px_rgba(255,215,0,0.5)]">
+              PRO TIER
+            </div>
+          </div>
+          <div>
+            <h2 className="font-headline-md text-headline-md text-on-surface mb-1">{displayName}</h2>
+            <div className="flex items-center gap-3 text-on-surface-variant font-body-sm flex-wrap">
+              {user?.iRacingCustomerId && (
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]" aria-hidden="true">badge</span>
+                  ID {user.iRacingCustomerId}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">timer</span>
+                {lapsLoading ? '—' : `${totalLaps} laps recorded`}
               </span>
             </div>
           </div>
-
-          <div className="text-center md:text-left flex-1">
-            <h2 className="font-headline-md text-headline-md text-on-surface">
-              {displayName || 'ApexRacers Driver'}
-            </h2>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-              Account Settings
-            </p>
-            <div className="mt-3 inline-flex items-center gap-2 bg-[#FFD700] text-black px-3 py-1 rounded-sm font-label-caps text-label-caps">
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">stars</span>
-              Pro Tier Driver
-            </div>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Personal Information */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">person</span>
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">Personal Information</h3>
-            </div>
-
-            <form onSubmit={saveProfile} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="display-name"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  Display Name
-                </label>
-                <input
-                  id="display-name"
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="profile-email"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  Email Address
-                </label>
-                <input
-                  id="profile-email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="iracing-customer-id"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  iRacing Customer ID
-                </label>
-                <input
-                  id="iracing-customer-id"
-                  type="number"
-                  min="1"
-                  value={iRacingCustomerId}
-                  onChange={e => setIRacingCustomerId(e.target.value)}
-                  placeholder="e.g. 100042"
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
-                  Used to look up your lap time percentile. Will be set automatically once iRacing OAuth is available.
-                </p>
-              </div>
-
-              {profileError && (
-                <p className="font-body-sm text-body-sm text-error">{profileError}</p>
-              )}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={profileSaving}
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {profileSaving ? 'Saving…' : profileSaved ? 'Saved ✓' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+        {/* Quick stat chips */}
+        <div className="flex gap-4 w-full md:w-auto">
+          <div className="glass-panel p-4 rounded-xl flex-1 md:w-36 flex flex-col items-center justify-center">
+            <span className="font-label-caps text-label-caps text-on-surface-variant mb-1">CARS DRIVEN</span>
+            <span className="font-data-lg text-data-lg text-primary-fixed-dim">
+              {lapsLoading ? '—' : uniqueCars}
+            </span>
           </div>
-
-          {/* Connections + Preferences */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 flex flex-col">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">link</span>
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">Connections</h3>
-            </div>
-
-            <div className="bg-surface-container-high rounded-lg p-4 border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#00D1FF]/10 rounded flex items-center justify-center border border-[#00D1FF]/20 shrink-0">
-                  <span className="font-data-md text-data-md text-[#00D1FF]">iR</span>
-                </div>
-                <div>
-                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">iRacing Account</p>
-                  <p className={`font-label-caps text-label-caps flex items-center gap-1 mt-1 ${connected ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}>
-                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
-                      {connected ? 'check_circle' : 'radio_button_unchecked'}
-                    </span>
-                    {connected ? 'Connected' : 'Not connected'}
-                  </p>
-                </div>
-              </div>
-              {connected && (
-                <button
-                  onClick={logout}
-                  className="font-body-sm text-body-sm text-on-surface-variant hover:text-error transition-colors underline"
-                >
-                  Disconnect
-                </button>
-              )}
-            </div>
-
-            {/* Preferences */}
-            <div className="mt-auto pt-6 border-t border-white/5">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">notifications</span>
-                <h3 className="font-headline-sm text-headline-sm text-on-surface">Preferences</h3>
-              </div>
-              <label className="flex items-center justify-between cursor-pointer group">
-                <span className="font-body-sm text-body-sm text-on-surface-variant group-hover:text-on-surface transition-colors">
-                  New series data alerts
-                </span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={alertsEnabled}
-                    onChange={toggleAlerts}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-fixed-dim" />
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Security */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 md:col-span-2">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">lock</span>
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">Security</h3>
-            </div>
-
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-              }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
-            >
-              <div>
-                <label
-                  htmlFor="current-password"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  Current Password
-                </label>
-                <input
-                  id="current-password"
-                  type="password"
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="new-password"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  New Password
-                </label>
-                <input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  Confirm Password
-                </label>
-                <input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-              <div className="md:col-span-3 pt-2">
-                <button
-                  type="submit"
-                  disabled
-                  title="Password change coming soon"
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
-                >
-                  Update Password (Coming Soon)
-                </button>
-              </div>
-            </form>
+          <div className="glass-panel p-4 rounded-xl flex-1 md:w-36 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/5 to-transparent pointer-events-none" />
+            <span className="font-label-caps text-label-caps text-on-surface-variant mb-1">PERSONAL BEST</span>
+            <span className="font-data-lg text-data-lg text-[#FFD700]">
+              {lapsLoading ? '—' : bestLap ? formatLapTime(bestLap.bestLapSeconds) : '—'}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Active series */}
+      <section>
+        <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Active Series</h3>
+        {seriesLoading && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">Loading&hellip;</p>
+        )}
+        {!seriesLoading && series.length === 0 && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant">No active series.</p>
+        )}
+        {!seriesLoading && series.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {series.slice(0, 6).map(s => (
+              <SeriesCard key={s.id} s={s} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Car performance table */}
+      <section>
+        <div className="glass-panel rounded-xl overflow-hidden border border-primary-fixed-dim/20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+          <div className="bg-surface-container-high px-6 py-4 border-b border-white/10 flex justify-between items-center">
+            <h3 className="font-headline-sm text-headline-sm text-primary-fixed-dim flex items-center gap-2">
+              <span className="material-symbols-outlined" aria-hidden="true">data_table</span>
+              Personal Best by Car
+            </h3>
+            <Link
+              to="/my-laps"
+              className="font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors flex items-center gap-1"
+            >
+              Full History
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">arrow_forward</span>
+            </Link>
+          </div>
+
+          {lapsLoading && (
+            <p className="px-6 py-8 font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+              Loading&hellip;
+            </p>
+          )}
+
+          {!lapsLoading && carBests.length === 0 && (
+            <div className="px-6 py-8 flex flex-col items-center gap-3 text-center">
+              <span className="material-symbols-outlined text-3xl text-on-surface-variant" aria-hidden="true">
+                timer_off
+              </span>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                No lap data yet.{' '}
+                <Link to="/telemetry" className="text-primary-fixed-dim hover:text-primary transition-colors">
+                  Upload a telemetry file
+                </Link>{' '}
+                to populate your profile.
+              </p>
+            </div>
+          )}
+
+          {!lapsLoading && carBests.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-container/50 border-b border-white/10">
+                    <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">CAR MODEL</th>
+                    <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">BEST TRACK</th>
+                    <th className="p-4 font-label-caps text-label-caps text-on-surface-variant text-right">PERSONAL BEST</th>
+                    <th className="p-4 font-label-caps text-label-caps text-on-surface-variant text-right">LAPS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {carBests.map(lap => (
+                    <tr
+                      key={lap.carId}
+                      className="border-b border-surface-container-high hover:bg-white/5 transition-colors last:border-b-0"
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-6 bg-white/10 rounded flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[12px] text-on-surface-variant" aria-hidden="true">
+                              directions_car
+                            </span>
+                          </div>
+                          <span className="font-body-sm text-body-sm text-on-surface">{lap.carName}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">{trackLabel(lap)}</td>
+                      <td className="p-4 font-data-md text-data-md text-primary-fixed-dim text-right">
+                        {formatLapTime(lap.bestLapSeconds)}
+                      </td>
+                      <td className="p-4 font-data-md text-data-md text-on-surface-variant text-right">
+                        {lap.lapCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   );
 }

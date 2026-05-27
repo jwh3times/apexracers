@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ApexRacers.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260508145257_InitialCreate")]
+    [Migration("20260527213437_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,6 +20,7 @@ namespace ApexRacers.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("iracing")
                 .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -42,16 +43,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cars");
+                    b.ToTable("Cars", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.CarPercentileResult", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<int>("CarId")
                         .HasColumnType("integer");
@@ -68,8 +67,8 @@ namespace ApexRacers.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("WeekId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("WeekId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -79,16 +78,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("WeekId");
 
-                    b.ToTable("CarPercentileResults");
+                    b.ToTable("CarPercentileResults", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.LapTimeEntry", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<float?>("AirTempCelsius")
                         .HasColumnType("real");
@@ -111,8 +108,8 @@ namespace ApexRacers.Data.Migrations
                     b.Property<byte?>("TrackWetness")
                         .HasColumnType("smallint");
 
-                    b.Property<int>("WeekId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("WeekId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -122,16 +119,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("DriverCustomerId", "WeekId");
 
-                    b.ToTable("LapTimeEntries");
+                    b.ToTable("LapTimeEntries", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.PersonalLap", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<float>("AirTempCelsius")
                         .HasColumnType("real");
@@ -176,7 +171,7 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("UserId", "CarId", "IracingTrackId");
 
-                    b.ToTable("PersonalLaps");
+                    b.ToTable("PersonalLaps", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
@@ -201,7 +196,7 @@ namespace ApexRacers.Data.Migrations
                     b.HasIndex("SeriesId", "Year", "Quarter")
                         .IsUnique();
 
-                    b.ToTable("Seasons");
+                    b.ToTable("Seasons", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.SeasonCar", b =>
@@ -216,7 +211,7 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("CarId");
 
-                    b.ToTable("SeasonCars");
+                    b.ToTable("SeasonCars", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Series", b =>
@@ -231,38 +226,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Series");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.UserProfile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<long>("IRacingCustomerId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IRacingCustomerId")
-                        .IsUnique();
-
-                    b.ToTable("UserProfiles");
+                    b.ToTable("Series", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ConfigName")
                         .IsRequired()
@@ -291,7 +262,214 @@ namespace ApexRacers.Data.Migrations
                     b.HasIndex("SeasonId", "WeekNumber")
                         .IsUnique();
 
-                    b.ToTable("Weeks");
+                    b.ToTable("Weeks", "iracing");
+                });
+
+            modelBuilder.Entity("ApexRacers.Data.ApplicationUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("IRacingCustomerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IRacingCustomerId")
+                        .IsUnique()
+                        .HasFilter("\"IRacingCustomerId\" IS NOT NULL");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.ToTable("Users", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
+
+                    b.ToTable("Roles", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("RoleClaims", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserClaims", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("LoginProvider", "ProviderKey");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLogins", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles", "identity");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("text");
+
+                    b.HasKey("UserId", "LoginProvider", "Name");
+
+                    b.ToTable("UserTokens", "identity");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.CarPercentileResult", b =>
@@ -302,8 +480,8 @@ namespace ApexRacers.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ApexRacers.Core.Models.UserProfile", "User")
-                        .WithMany("CarPercentileResults")
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -315,8 +493,6 @@ namespace ApexRacers.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Car");
-
-                    b.Navigation("User");
 
                     b.Navigation("Week");
                 });
@@ -348,15 +524,13 @@ namespace ApexRacers.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ApexRacers.Core.Models.UserProfile", "User")
-                        .WithMany("PersonalLaps")
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Car");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
@@ -400,6 +574,57 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Season");
                 });
 
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.Car", b =>
                 {
                     b.Navigation("CarPercentileResults");
@@ -421,13 +646,6 @@ namespace ApexRacers.Data.Migrations
             modelBuilder.Entity("ApexRacers.Core.Models.Series", b =>
                 {
                     b.Navigation("Seasons");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.UserProfile", b =>
-                {
-                    b.Navigation("CarPercentileResults");
-
-                    b.Navigation("PersonalLaps");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>

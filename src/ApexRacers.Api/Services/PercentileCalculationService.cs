@@ -9,29 +9,33 @@ public class PercentileCalculationService(AppDbContext db)
 {
     public async Task<PercentileResultDto?> ComputeAndCacheAsync(
         int seriesId,
-        int weekId,
+        int weekNumber,
         int carId,
         long customerId,
         CancellationToken ct = default)
     {
-        // Find the driver's best official TT time for this car/week.
+        var weekDbId = await db.Weeks
+            .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
+            .Select(w => (Guid?)w.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (weekDbId is null) return null;
+
         var driverBest = await db.LapTimeEntries
-            .Where(l => l.WeekId == weekId && l.CarId == carId && l.DriverCustomerId == customerId)
+            .Where(l => l.WeekId == weekDbId && l.CarId == carId && l.DriverCustomerId == customerId)
             .MinAsync(l => (double?)l.LapTimeSeconds, ct);
 
         if (driverBest is null) return null;
 
         var total = await db.LapTimeEntries
-            .CountAsync(l => l.WeekId == weekId && l.CarId == carId, ct);
+            .CountAsync(l => l.WeekId == weekDbId && l.CarId == carId, ct);
 
         var slowerCount = await db.LapTimeEntries
-            .CountAsync(l => l.WeekId == weekId && l.CarId == carId && l.LapTimeSeconds > driverBest, ct);
+            .CountAsync(l => l.WeekId == weekDbId && l.CarId == carId && l.LapTimeSeconds > driverBest, ct);
 
-        // Percentile: fraction of the field the driver beats, excluding their own row.
         var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
         var computedAt = DateTimeOffset.UtcNow;
 
-        // Cache if a user account is linked to this iRacing customer ID.
         var user = await db.Users
             .FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
 
@@ -39,18 +43,18 @@ public class PercentileCalculationService(AppDbContext db)
         {
             var cached = await db.CarPercentileResults
                 .FirstOrDefaultAsync(
-                    r => r.UserId == user.Id && r.CarId == carId && r.WeekId == weekId, ct);
+                    r => r.UserId == user.Id && r.CarId == carId && r.WeekId == weekDbId, ct);
 
             if (cached is null)
             {
                 db.CarPercentileResults.Add(new CarPercentileResult
                 {
-                    UserId        = user.Id,
-                    CarId         = carId,
-                    WeekId        = weekId,
+                    UserId         = user.Id,
+                    CarId          = carId,
+                    WeekId         = weekDbId.Value,
                     PercentileRank = percentileRank,
-                    SampleSize    = total,
-                    ComputedAt    = computedAt,
+                    SampleSize     = total,
+                    ComputedAt     = computedAt,
                 });
             }
             else
@@ -63,6 +67,6 @@ public class PercentileCalculationService(AppDbContext db)
             await db.SaveChangesAsync(ct);
         }
 
-        return new PercentileResultDto(seriesId, weekId, carId, customerId, percentileRank, total, computedAt);
+        return new PercentileResultDto(seriesId, weekNumber, carId, customerId, percentileRank, total, computedAt);
     }
 }

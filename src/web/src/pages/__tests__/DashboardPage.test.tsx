@@ -17,7 +17,7 @@ function renderPage() {
   return render(<MemoryRouter><DashboardPage /></MemoryRouter>);
 }
 
-const baseSeries: Series = { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekId: 5 };
+const baseSeries: Series = { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 };
 
 const baseLap: PersonalLap = {
   carId: 1,
@@ -75,13 +75,13 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getAllByText('GT3 Cup').length).toBeGreaterThan(0));
   });
 
-  it('shows "Season upcoming" when currentWeekId is null', async () => {
-    vi.mocked(api.getSeries).mockResolvedValue([{ ...baseSeries, currentWeekId: null }]);
+  it('shows "Season upcoming" when currentWeekNumber is null', async () => {
+    vi.mocked(api.getSeries).mockResolvedValue([{ ...baseSeries, currentWeekNumber: null }]);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('Season upcoming').length).toBeGreaterThan(0));
   });
 
-  it('shows View Week link when currentWeekId is set', async () => {
+  it('shows View Week link when currentWeekNumber is set', async () => {
     vi.mocked(api.getSeries).mockResolvedValue([baseSeries]);
     renderPage();
     await waitFor(() =>

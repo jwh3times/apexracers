@@ -34,7 +34,7 @@ function renderPage(search = '') {
 describe('RecommendationsPage', () => {
   beforeEach(() => { vi.resetAllMocks(); });
 
-  it('shows navigation prompt when no weekId in query string', () => {
+  it('shows navigation prompt when no seriesId/weekNumber in query string', () => {
     renderPage();
     expect(screen.getByText(/navigate to a week/i)).toBeInTheDocument();
     expect(mockGetRecs).not.toHaveBeenCalled();
@@ -42,7 +42,7 @@ describe('RecommendationsPage', () => {
 
   it('shows empty-state prompt with profile link when no recommendations', async () => {
     mockGetRecs.mockResolvedValue([]);
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() =>
       expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument(),
     );
@@ -50,7 +50,7 @@ describe('RecommendationsPage', () => {
 
   it('renders top recommendation with car name and formatted lap time', async () => {
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
       expect(screen.getByText('#1')).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe('RecommendationsPage', () => {
 
   it('shows projected badge for cars without an actual lap this week', async () => {
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       // Porsche is projected (isProjected: true) — badge should appear
       const badges = screen.getAllByText('Projected');
@@ -74,7 +74,7 @@ describe('RecommendationsPage', () => {
     mockGetRecs.mockResolvedValue([
       { ...MOCK_RECS[0], isProjected: false },
     ]);
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
       expect(screen.queryByText('Projected')).not.toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('RecommendationsPage', () => {
 
   it('renders other-options list for second and subsequent recommendations', async () => {
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument();
       expect(screen.getByText('#2')).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe('RecommendationsPage', () => {
 
   it('shows error message when API fails', async () => {
     mockGetRecs.mockRejectedValue(new Error('Unauthorized'));
-    renderPage('?weekId=10');
+    renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => expect(screen.getByText(/unauthorized/i)).toBeInTheDocument());
   });
 });

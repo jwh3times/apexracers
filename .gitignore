@@ -55,3 +55,6 @@ deployTODO.md
 # Test coverage output (ephemeral — never commit)
 coverage*/
 coverage-report/
+
+# Seed Screenshots
+src/ApexRacers.Data/Seeds/Screenshots/

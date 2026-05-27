@@ -22,12 +22,12 @@ public class SeriesServiceTests
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_ActiveSeasonWithStartedWeek_ReturnsCurrentWeekId()
+    public async Task GetActiveSeriesAsync_ActiveSeasonWithStartedWeek_ReturnsCurrentWeekNumber()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = 10, SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Weeks.Add(week);
@@ -39,16 +39,16 @@ public class SeriesServiceTests
         Assert.Equal(1, dto.Id);
         Assert.Equal("GT3 Cup", dto.Name);
         Assert.Equal(1, dto.SeasonId);
-        Assert.Equal(10, dto.CurrentWeekId);
+        Assert.Equal(1, dto.CurrentWeekNumber);
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_ActiveSeasonWithFutureWeekOnly_ReturnsNullCurrentWeekId()
+    public async Task GetActiveSeriesAsync_ActiveSeasonWithFutureWeekOnly_ReturnsNullCurrentWeekNumber()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = 10, SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Weeks.Add(week);
@@ -57,17 +57,17 @@ public class SeriesServiceTests
         var result = await new SeriesService(db).GetActiveSeriesAsync();
 
         var dto = Assert.Single(result);
-        Assert.Null(dto.CurrentWeekId);
+        Assert.Null(dto.CurrentWeekNumber);
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_MultipleStartedWeeks_ReturnsMostRecentWeekId()
+    public async Task GetActiveSeriesAsync_MultipleStartedWeeks_ReturnsMostRecentWeekNumber()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week1 = new Week { Id = 10, SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Monza", ConfigName = "Full", IracingTrackId = 1, Season = season };
-        var week2 = new Week { Id = 11, SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 2, Season = season };
+        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Monza", ConfigName = "Full", IracingTrackId = 1, Season = season };
+        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 2, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Weeks.AddRange(week1, week2);
@@ -75,6 +75,6 @@ public class SeriesServiceTests
 
         var result = await new SeriesService(db).GetActiveSeriesAsync();
 
-        Assert.Equal(11, result[0].CurrentWeekId);
+        Assert.Equal(2, result[0].CurrentWeekNumber);
     }
 }

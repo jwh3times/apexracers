@@ -2,7 +2,7 @@ namespace ApexRacers.Core.Models;
 
 public class Week
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public int SeasonId { get; set; }
     public int WeekNumber { get; set; }
     public int IracingTrackId { get; set; }

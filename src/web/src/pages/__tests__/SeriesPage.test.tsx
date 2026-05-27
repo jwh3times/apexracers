@@ -35,9 +35,9 @@ describe('SeriesPage', () => {
     await waitFor(() => expect(screen.getByText(/no active series/i)).toBeInTheDocument());
   });
 
-  it('renders series as links when currentWeekId is set', async () => {
+  it('renders series as links when currentWeekNumber is set', async () => {
     mockGetSeries.mockResolvedValue([
-      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekId: 5 },
+      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 },
     ]);
     renderPage();
     await waitFor(() => {
@@ -46,9 +46,9 @@ describe('SeriesPage', () => {
     });
   });
 
-  it('renders series as plain text when currentWeekId is null', async () => {
+  it('renders series as plain text when currentWeekNumber is null', async () => {
     mockGetSeries.mockResolvedValue([
-      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekId: null },
+      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: null },
     ]);
     renderPage();
     await waitFor(() => {

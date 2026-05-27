@@ -37,7 +37,7 @@ describe('api', () => {
 
   describe('getSeries', () => {
     it('calls GET /api/series and returns parsed data', async () => {
-      const data = [{ id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekId: 5 }];
+      const data = [{ id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 }];
       mockFetchOk(data);
       const result = await api.getSeries();
       expect(fetch).toHaveBeenCalledWith('/api/series', expect.objectContaining({}));
@@ -68,8 +68,8 @@ describe('api', () => {
   // ── getPercentile ───────────────────────────────────────────────────────────
 
   describe('getPercentile', () => {
-    it('calls GET with seriesId, weekId, carId, and customerId query param', async () => {
-      const data = { seriesId: 1, weekId: 5, carId: 3, customerId: 99, percentileRank: 75.0, sampleSize: 100, computedAt: '' };
+    it('calls GET with seriesId, weekNumber, carId, and customerId query param', async () => {
+      const data = { seriesId: 1, weekNumber: 5, carId: 3, customerId: 99, percentileRank: 75.0, sampleSize: 100, computedAt: '' };
       mockFetchOk(data);
       const result = await api.getPercentile(1, 5, 3, 99);
       expect(fetch).toHaveBeenCalledWith('/api/series/1/weeks/5/cars/3/percentile?customerId=99', expect.objectContaining({}));
@@ -80,10 +80,10 @@ describe('api', () => {
   // ── getRecommendations ──────────────────────────────────────────────────────
 
   describe('getRecommendations', () => {
-    it('calls GET with weekId query param', async () => {
+    it('calls GET with seriesId and weekNumber query params', async () => {
       mockFetchOk([]);
-      await api.getRecommendations(10);
-      expect(fetch).toHaveBeenCalledWith('/api/users/me/recommendations?weekId=10', expect.objectContaining({}));
+      await api.getRecommendations(1, 4);
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/recommendations?seriesId=1&weekNumber=4', expect.objectContaining({}));
     });
   });
 
@@ -212,6 +212,27 @@ describe('api', () => {
     it('falls back to status line when body is empty', async () => {
       mockFetchError({ status: 400, statusText: 'Bad Request', body: '' });
       await expect(api.updateProfile('name', null)).rejects.toThrow('PUT /api/auth/profile → 400');
+    });
+  });
+
+  // ── getMyAnalytics ──────────────────────────────────────────────────────────
+
+  describe('getMyAnalytics', () => {
+    it('calls GET /api/users/me/analytics with seriesId query param when provided', async () => {
+      mockFetchOk([]);
+      await api.getMyAnalytics(3);
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/analytics?seriesId=3', expect.objectContaining({}));
+    });
+
+    it('calls GET /api/users/me/analytics without query param when seriesId is omitted', async () => {
+      mockFetchOk([]);
+      await api.getMyAnalytics();
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/analytics', expect.objectContaining({}));
+    });
+
+    it('throws on non-ok response', async () => {
+      mockFetchError({ status: 401, statusText: 'Unauthorized' });
+      await expect(api.getMyAnalytics(1)).rejects.toThrow('401');
     });
   });
 

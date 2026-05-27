@@ -1,141 +1,144 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProfilePage from '../ProfilePage';
 import { api } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
-const mockUpdateSession = vi.fn().mockResolvedValue(undefined);
-const mockSetAlertsEnabled = vi.fn().mockResolvedValue(undefined);
-const mockLogout = vi.fn().mockResolvedValue(undefined);
-
-let mockUser: User | null = null;
-let mockAlertsEnabled = true;
+let mockUser: User | null = {
+  token: 'tok',
+  userId: 'u1',
+  displayName: 'Test Driver',
+  email: 't@t.com',
+  iRacingCustomerId: 100042,
+};
 
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({
-    user: mockUser,
-    loading: false,
-    login: vi.fn(),
-    logout: mockLogout,
-    updateSession: mockUpdateSession,
-    alertsEnabled: mockAlertsEnabled,
-    setAlertsEnabled: mockSetAlertsEnabled,
-  }),
+  useAuth: () => ({ user: mockUser }),
 }));
 
 vi.mock('../../services/api', () => ({
-  api: { updateProfile: vi.fn() },
+  api: {
+    getMyLaps: vi.fn(),
+    getSeries: vi.fn(),
+  },
 }));
 
+const mockGetMyLaps = vi.mocked(api.getMyLaps);
+const mockGetSeries = vi.mocked(api.getSeries);
+
+const sampleLaps = [
+  { carId: 1, carName: 'Porsche 911 GT3 R', trackName: 'Spa-Francorchamps', configName: '', bestLapSeconds: 137.482, lapCount: 10, lastRecordedAt: '2024-01-01T00:00:00Z' },
+  { carId: 2, carName: 'Ferrari 296 GT3', trackName: 'Nürburgring', configName: 'GP', bestLapSeconds: 120.015, lapCount: 5, lastRecordedAt: '2024-02-01T00:00:00Z' },
+];
+
+const sampleSeries = [
+  { id: 1, name: 'VRS GT3 Sprint', seasonId: 2024, currentWeekNumber: 5 },
+  { id: 2, name: 'Porsche Cup', seasonId: 2024, currentWeekNumber: null },
+];
+
 function renderPage() {
-  return render(<ProfilePage />);
+  return render(
+    <MemoryRouter>
+      <ProfilePage />
+    </MemoryRouter>,
+  );
 }
 
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockUser = null;
-    mockAlertsEnabled = true;
-    mockUpdateSession.mockResolvedValue(undefined);
-    mockSetAlertsEnabled.mockResolvedValue(undefined);
-    mockLogout.mockResolvedValue(undefined);
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Test Driver', email: 't@t.com', iRacingCustomerId: 100042 };
+    mockGetMyLaps.mockResolvedValue([]);
+    mockGetSeries.mockResolvedValue([]);
   });
 
-  it('renders the Account Settings heading', () => {
+  it('renders the driver display name', async () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /account settings/i })).toBeInTheDocument();
+    expect(screen.getByText('Test Driver')).toBeInTheDocument();
   });
 
-  it('shows empty display name field when no user is logged in', () => {
+  it('shows iRacing customer ID when set', async () => {
     renderPage();
-    expect(screen.getByLabelText(/display name/i)).toHaveValue('');
+    expect(screen.getByText(/ID 100042/)).toBeInTheDocument();
   });
 
-  it('pre-fills display name from auth context', () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry Holland', email: 'j@j.com', iRacingCustomerId: null };
+  it('shows loading placeholders initially', () => {
+    mockGetMyLaps.mockReturnValue(new Promise(() => {}));
+    mockGetSeries.mockReturnValue(new Promise(() => {}));
     renderPage();
-    expect(screen.getByLabelText(/display name/i)).toHaveValue('Jerry Holland');
+    expect(screen.getAllByText(/loading/i).length).toBeGreaterThan(0);
   });
 
-  it('pre-fills iRacing Customer ID from auth context', () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: 100042 };
+  it('shows empty lap state when no telemetry has been uploaded', async () => {
     renderPage();
-    expect(screen.getByLabelText(/iRacing Customer ID/i)).toHaveValue(100042);
+    await waitFor(() =>
+      expect(screen.getByText(/no lap data yet/i)).toBeInTheDocument(),
+    );
   });
 
-  it('calls api.updateProfile and updateSession when Save Changes is clicked', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
-    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
-    const user = userEvent.setup();
+  it('shows no active series message when series list is empty', async () => {
     renderPage();
-    const input = screen.getByLabelText(/display name/i);
-    await user.clear(input);
-    await user.type(input, 'Speed Demon');
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/no active series/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('renders car rows in the performance table when laps are present', async () => {
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument());
+    expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
+  });
+
+  it('renders only the best lap per car when a car appears multiple times', async () => {
+    const duplicateLaps = [
+      ...sampleLaps,
+      { carId: 1, carName: 'Porsche 911 GT3 R', trackName: 'Monza', configName: '', bestLapSeconds: 140.0, lapCount: 3, lastRecordedAt: '2024-03-01T00:00:00Z' },
+    ];
+    mockGetMyLaps.mockResolvedValue(duplicateLaps);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument());
+    // Only one row for the Porsche — the faster lap (137.482)
+    expect(screen.getAllByText('Porsche 911 GT3 R')).toHaveLength(1);
+  });
+
+  it('formats lap times correctly in the table', async () => {
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    renderPage();
+    // 137.482s → 2:17.482 (table only)
+    await waitFor(() => expect(screen.getByText('2:17.482')).toBeInTheDocument());
+    // 120.015s → 2:00.015 appears in both the stat chip and the table row
+    expect(screen.getAllByText('2:00.015').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows series cards when series data is available', async () => {
+    mockGetSeries.mockResolvedValue(sampleSeries);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('VRS GT3 Sprint')).toBeInTheDocument());
+    expect(screen.getByText('Porsche Cup')).toBeInTheDocument();
+  });
+
+  it('shows WK badge for active series and Off Season for inactive', async () => {
+    mockGetSeries.mockResolvedValue(sampleSeries);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('WK 5')).toBeInTheDocument());
+    expect(screen.getByText('Off Season')).toBeInTheDocument();
+  });
+
+  it('shows cars driven stat after laps load', async () => {
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument());
+  });
+
+  it('shows Personal Best stat as the fastest lap across all cars', async () => {
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    renderPage();
+    // Ferrari's 120.015s → 2:00.015 is faster; displayed in the gold stat chip
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
-      expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
+      const cells = screen.getAllByText('2:00.015');
+      expect(cells.length).toBeGreaterThan(0);
     });
-  });
-
-  it('renders the Connections section with iRacing label', () => {
-    renderPage();
-    expect(screen.getByText(/connections/i)).toBeInTheDocument();
-    expect(screen.getByText(/iracing account/i)).toBeInTheDocument();
-  });
-
-  it('shows Not connected when no user is in auth context', () => {
-    renderPage();
-    expect(screen.getByText(/not connected/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /disconnect/i })).not.toBeInTheDocument();
-  });
-
-  it('shows Connected and Disconnect button when user is logged in', () => {
-    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null };
-    renderPage();
-    expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /disconnect/i })).toBeInTheDocument();
-  });
-
-  it('renders current password, new password, and confirm password fields', () => {
-    renderPage();
-    expect(screen.getByLabelText(/current password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/new password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-  });
-
-  it('renders the notifications preference toggle', () => {
-    renderPage();
-    expect(screen.getByText(/new series data alerts/i)).toBeInTheDocument();
-    expect(screen.getByRole('checkbox')).toBeInTheDocument();
-  });
-
-  it('calls setAlertsEnabled when the alerts toggle is clicked', async () => {
-    const user = userEvent.setup();
-    mockAlertsEnabled = true;
-    renderPage();
-    const toggle = screen.getByRole('checkbox');
-    expect(toggle).toBeChecked();
-    await user.click(toggle);
-    expect(mockSetAlertsEnabled).toHaveBeenCalledWith(false);
-  });
-
-  it('shows an Error message when saveProfile fails with an Error instance', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
-    vi.mocked(api.updateProfile).mockRejectedValue(new Error('Server error'));
-    const user = userEvent.setup();
-    renderPage();
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
-    await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
-  });
-
-  it('shows fallback message when saveProfile rejects with a non-Error value', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null };
-    vi.mocked(api.updateProfile).mockRejectedValue('oops');
-    const user = userEvent.setup();
-    renderPage();
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
-    await waitFor(() => expect(screen.getByText('Failed to save profile.')).toBeInTheDocument());
   });
 });

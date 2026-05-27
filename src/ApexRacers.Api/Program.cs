@@ -64,6 +64,7 @@ builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
 builder.Services.AddScoped<PercentileCalculationService>();
 builder.Services.AddScoped<CarRecommendationService>();
+builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TelemetryUploadService>();
 builder.Services.AddScoped<PersonalLapService>();

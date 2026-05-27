@@ -18,6 +18,16 @@ dotnet run --project src/ApexRacers.Api
 # Run the ingestion worker (requires all iRacing + database env vars)
 dotnet run --project src/ApexRacers.Ingestion
 
+# Seed the database with synthetic lap time data for all 7 series (idempotent)
+# Requires DATABASE_CONNECTION_STRING or falls back to the local Docker default.
+dotnet run --project src/ApexRacers.Seeder
+
+# Remove ONLY the legacy seed_gt3_series.sql data (preserves new seeder data)
+Get-Content src\ApexRacers.Data\Seeds\remove_gt3_seed.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
+
+# Remove ALL synthetic seed data so the database can be re-seeded from scratch
+Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
+
 # EF Core migrations — always target Data project, startup project Api
 dotnet ef migrations add <MigrationName> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 dotnet ef database update --project src/ApexRacers.Data --startup-project src/ApexRacers.Api

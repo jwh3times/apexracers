@@ -81,9 +81,9 @@ function rankLabel(p: number): string {
 }
 
 export default function PercentileCarPage() {
-  const { seriesId, weekId, carId } = useParams<{
+  const { seriesId, weekNumber, carId } = useParams<{
     seriesId: string;
-    weekId: string;
+    weekNumber: string;
     carId: string;
   }>();
   const location = useLocation();
@@ -104,7 +104,7 @@ export default function PercentileCarPage() {
   function runFetch(id: number) {
     dispatch({ type: 'start' });
     api
-      .getPercentile(Number(seriesId), Number(weekId), Number(carId), id)
+      .getPercentile(Number(seriesId), Number(weekNumber), Number(carId), id)
       .then(data => dispatch({ type: 'success', result: data }))
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : '';
@@ -115,11 +115,11 @@ export default function PercentileCarPage() {
 
   // Auto-fetch when the profile has an iRacing customer ID
   useEffect(() => {
-    if (profileId && seriesId && weekId && carId) {
+    if (profileId && seriesId && weekNumber && carId) {
       runFetch(profileId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, seriesId, weekId, carId]);
+  }, [profileId, seriesId, weekNumber, carId]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,7 +132,7 @@ export default function PercentileCarPage() {
     <main className="px-6 pt-8 pb-20 max-w-[800px] mx-auto w-full flex flex-col gap-8">
       {/* Breadcrumb */}
       <Link
-        to={`/series/${seriesId}/weeks/${weekId}`}
+        to={`/series/${seriesId}/weeks/${weekNumber}`}
         className="inline-flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors group w-fit"
       >
         <span
@@ -150,7 +150,7 @@ export default function PercentileCarPage() {
           {carName}
         </h1>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Week {weekId} &mdash; lap time percentile
+          Week {weekNumber} &mdash; lap time percentile
         </p>
       </header>
 

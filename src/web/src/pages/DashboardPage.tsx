@@ -132,13 +132,13 @@ export default function DashboardPage() {
                       <div>
                         <h4 className="font-headline-sm text-[16px] text-on-surface">{s.name}</h4>
                         <p className="font-body-sm text-body-sm text-on-surface-variant">
-                          {s.currentWeekId != null ? `Week ${s.currentWeekId}` : 'Season upcoming'}
+                          {s.currentWeekNumber != null ? `Week ${s.currentWeekNumber}` : 'Season upcoming'}
                         </p>
                       </div>
                     </div>
-                    {s.currentWeekId != null && (
+                    {s.currentWeekNumber != null && (
                       <Link
-                        to={`/series/${s.id}/weeks/${s.currentWeekId}`}
+                        to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
                         className="self-start md:self-auto bg-surface-container-lowest border border-white/10 px-4 py-2 rounded-lg font-label-caps text-label-caps text-primary-fixed-dim hover:border-primary-fixed-dim/50 transition-colors"
                       >
                         View Week
@@ -270,17 +270,17 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {series.map(s => {
-                  const weekNum = s.currentWeekId ?? 0;
+                  const weekNum = s.currentWeekNumber ?? 0;
                   const progressPct = Math.min(100, (weekNum / 12) * 100);
                   return (
                     <Link
                       key={s.id}
-                      to={s.currentWeekId != null ? `/series/${s.id}/weeks/${s.currentWeekId}` : '/series'}
+                      to={s.currentWeekNumber != null ? `/series/${s.id}/weeks/${s.currentWeekNumber}` : '/series'}
                       className="block bg-surface-container-low border border-white/5 p-4 rounded-lg hover:border-primary-fixed-dim/30 transition-colors group"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="bg-primary-fixed-dim/10 text-primary-fixed-dim font-label-caps text-[10px] px-2 py-1 rounded border border-primary-fixed-dim/20">
-                          {s.currentWeekId != null ? `Week ${s.currentWeekId}` : 'Upcoming'}
+                          {s.currentWeekNumber != null ? `Week ${s.currentWeekNumber}` : 'Upcoming'}
                         </div>
                         <span
                           className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed-dim text-[18px] transition-colors"
