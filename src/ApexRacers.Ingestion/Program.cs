@@ -23,7 +23,7 @@ var connectionString =
     ?? throw new InvalidOperationException("DATABASE_CONNECTION_STRING is not set.");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
 
 // ── iRacing Data API — Password Limited OAuth flow ──────────────────────────
 var irUsername = builder.Configuration["IRACING_USERNAME"]

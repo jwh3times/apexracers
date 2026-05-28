@@ -39,7 +39,7 @@ var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? "ApexRacers.Api";
 var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
