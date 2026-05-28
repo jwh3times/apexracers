@@ -205,9 +205,9 @@ export const api = {
     return postJson('/api/auth/register', { email, password });
   },
 
-  /** PUT /api/auth/profile — update display name and optional iRacing customer ID, returns fresh JWT */
-  updateProfile(displayName: string, iRacingCustomerId: number | null): Promise<AuthResult> {
-    return putJson('/api/auth/profile', { displayName, iRacingCustomerId });
+  /** PUT /api/auth/profile — update display name, email, and optional iRacing customer ID, returns fresh JWT */
+  updateProfile(displayName: string, iRacingCustomerId: number | null, email: string): Promise<AuthResult> {
+    return putJson('/api/auth/profile', { displayName, iRacingCustomerId, email });
   },
 
   /** POST /api/auth/callback?code=&state= — OAuth 2.0 Authorization Code exchange */

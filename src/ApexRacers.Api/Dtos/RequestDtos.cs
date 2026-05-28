@@ -2,7 +2,7 @@ namespace ApexRacers.Api.Dtos;
 
 public record RegisterRequest(string Email, string Password);
 public record LoginRequest(string Email, string Password);
-public record UpdateProfileRequest(string DisplayName, long? IRacingCustomerId = null);
+public record UpdateProfileRequest(string DisplayName, long? IRacingCustomerId = null, string? Email = null);
 public record UpdateRoleRequest(string Role);
 public record AdminUpdateUserRoleRequest(string Role);
 public record CreateFeatureFlagRequest(string Key, string Name, string? Description, bool IsEnabled, string MinimumRole);

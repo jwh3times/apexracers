@@ -74,8 +74,22 @@ describe('SettingsPage', () => {
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null, 'j@j.com');
       expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
+    });
+  });
+
+  it('passes updated email to api.updateProfile when email is changed', async () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'old@example.com', iRacingCustomerId: null, role: 'Standard' };
+    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+    const user = userEvent.setup();
+    renderPage();
+    const emailInput = screen.getByLabelText(/email address/i);
+    await user.clear(emailInput);
+    await user.type(emailInput, 'new@example.com');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => {
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null, 'new@example.com');
     });
   });
 

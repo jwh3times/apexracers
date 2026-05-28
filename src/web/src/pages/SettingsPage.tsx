@@ -38,6 +38,7 @@ export default function SettingsPage() {
       const result = await api.updateProfile(
         displayName,
         iRacingCustomerId ? Number(iRacingCustomerId) : null,
+        email,
       );
       await updateSession(result);
       setProfileSaved(true);
@@ -145,8 +146,8 @@ export default function SettingsPage() {
                   id="profile-email"
                   type="email"
                   value={email}
-                  readOnly
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface/50 font-body-sm text-body-sm px-3 py-2 cursor-not-allowed"
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
 

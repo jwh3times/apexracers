@@ -90,7 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const claims = decodeJwt(result.token);
     const iRacingCustomerId = claims?.iracing_id ? Number(claims.iracing_id) : null;
     const role = claims?.role ?? 'Standard';
-    setUser(prev => prev ? { ...prev, token: result.token, displayName: result.displayName, iRacingCustomerId, role } : prev);
+    const email = claims?.email;
+    setUser(prev => prev ? {
+      ...prev,
+      token: result.token,
+      displayName: result.displayName,
+      iRacingCustomerId,
+      role,
+      ...(email ? { email } : {}),
+    } : prev);
     setToken(result.token);
     await dbSet('ar_token', result.token);
   }

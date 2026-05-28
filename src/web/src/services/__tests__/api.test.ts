@@ -188,30 +188,30 @@ describe('api', () => {
   describe('updateProfile', () => {
     it('calls PUT /api/auth/profile with display name and customer ID', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      const result = await api.updateProfile('Updated Name', 100042);
+      const result = await api.updateProfile('Updated Name', 100042, 'driver@example.com');
       expect(fetch).toHaveBeenCalledWith('/api/auth/profile', expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: 100042 }),
+        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: 100042, email: 'driver@example.com' }),
       }));
       expect(result.displayName).toBe('Updated Name');
     });
 
     it('sends null iRacingCustomerId when not provided', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      await api.updateProfile('Updated Name', null);
+      await api.updateProfile('Updated Name', null, 'driver@example.com');
       expect(fetch).toHaveBeenCalledWith('/api/auth/profile', expect.objectContaining({
-        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: null }),
+        body: JSON.stringify({ displayName: 'Updated Name', iRacingCustomerId: null, email: 'driver@example.com' }),
       }));
     });
 
     it('throws with server error body on failure', async () => {
       mockFetchError({ body: 'Display name too long.' });
-      await expect(api.updateProfile('A'.repeat(100), null)).rejects.toThrow('Display name too long.');
+      await expect(api.updateProfile('A'.repeat(100), null, 'driver@example.com')).rejects.toThrow('Display name too long.');
     });
 
     it('falls back to status line when body is empty', async () => {
       mockFetchError({ status: 400, statusText: 'Bad Request', body: '' });
-      await expect(api.updateProfile('name', null)).rejects.toThrow('PUT /api/auth/profile → 400');
+      await expect(api.updateProfile('name', null, 'driver@example.com')).rejects.toThrow('PUT /api/auth/profile → 400');
     });
   });
 

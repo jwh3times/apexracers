@@ -149,6 +149,34 @@ describe('AuthContext', () => {
     expect(mockDbSet).toHaveBeenCalledWith('ar_token', 'tok2');
   });
 
+  it('updateSession updates email when new JWT contains a different email', async () => {
+    const oldToken = makeJwt({ sub: 'u1', email: 'old@example.com', name: 'Jerry' });
+    mockDbGet.mockImplementation((key: string) =>
+      key === 'ar_token' ? Promise.resolve(oldToken) : Promise.resolve(undefined),
+    );
+    const newToken = makeJwt({ sub: 'u1', email: 'new@example.com', name: 'Jerry' });
+
+    function UpdateEmailConsumer() {
+      const auth = useAuth();
+      return (
+        <div>
+          <span data-testid="email">{auth.user?.email ?? 'null'}</span>
+          <button onClick={() => auth.updateSession({ token: newToken, userId: 'u1', displayName: 'Jerry' } as AuthResult)}>
+            updateEmail
+          </button>
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<AuthProvider><UpdateEmailConsumer /></AuthProvider>);
+    });
+    expect(screen.getByTestId('email')).toHaveTextContent('old@example.com');
+    await user.click(screen.getByText('updateEmail'));
+    await waitFor(() => expect(screen.getByTestId('email')).toHaveTextContent('new@example.com'));
+  });
+
   it('setAlertsEnabled updates state and persists to db', async () => {
     const user = userEvent.setup();
     await act(async () => {

@@ -186,6 +186,64 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task UpdateProfileAsync_UpdatesEmail_WhenNewEmailProvided()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"));
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"));
+
+        var canLoginWithNew = await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"));
+        Assert.NotNull(canLoginWithNew);
+
+        var canLoginWithOld = await svc.LoginAsync(new LoginRequest("old@example.com", "Pass1234"));
+        Assert.Null(canLoginWithOld);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_Token_ContainsUpdatedEmailClaim()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"));
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"));
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "new@example.com");
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_DuplicateEmail_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg1 = await svc.RegisterAsync(new RegisterRequest("user1@example.com", "Pass1234"));
+        await svc.RegisterAsync(new RegisterRequest("user2@example.com", "Pass1234"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateProfileAsync(reg1.UserId, new UpdateProfileRequest("Name", Email: "user2@example.com")));
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_SameEmail_DoesNotThrow()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "user@example.com"));
+
+        Assert.NotEmpty(result.Token);
+    }
+
+    [Fact]
     public async Task UpdateProfileAsync_DoesNotClearIRacingCustomerId_WhenNotProvided()
     {
         await using var provider = BuildProvider();

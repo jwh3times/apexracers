@@ -51,6 +51,22 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         if (request.IRacingCustomerId.HasValue)
             user.IRacingCustomerId = request.IRacingCustomerId.Value;
 
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var newEmail = request.Email.Trim();
+            if (!string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var existing = await userManager.FindByEmailAsync(newEmail);
+                if (existing is not null && existing.Id != userId)
+                    throw new InvalidOperationException("Email address is already in use.");
+
+                user.Email = newEmail;
+                user.NormalizedEmail = userManager.NormalizeEmail(newEmail);
+                user.UserName = newEmail;
+                user.NormalizedUserName = userManager.NormalizeName(newEmail);
+            }
+        }
+
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
             throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
