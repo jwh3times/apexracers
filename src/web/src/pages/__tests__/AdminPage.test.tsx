@@ -72,21 +72,21 @@ describe('AdminPage', () => {
     await waitFor(() => screen.getByText('alice@example.com'));
 
     const selects = screen.getAllByRole('combobox');
-    await user.selectOptions(selects[0], 'Admin');
+    await user.selectOptions(selects[0], 'Alpha');
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
   });
 
   it('calls setAdminUserRole and removes Save button after successful save', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.setAdminUserRole).mockResolvedValue({ userId: 'u1', email: 'alice@example.com', displayName: 'Alice', role: 'Admin' });
+    vi.mocked(api.setAdminUserRole).mockResolvedValue({ userId: 'u1', email: 'alice@example.com', displayName: 'Alice', role: 'Alpha' });
     renderPage();
     await waitFor(() => screen.getByText('alice@example.com'));
 
     const selects = screen.getAllByRole('combobox');
-    await user.selectOptions(selects[0], 'Admin');
+    await user.selectOptions(selects[0], 'Alpha');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
-    await waitFor(() => expect(vi.mocked(api.setAdminUserRole)).toHaveBeenCalledWith('u1', 'Admin'));
+    await waitFor(() => expect(vi.mocked(api.setAdminUserRole)).toHaveBeenCalledWith('u1', 'Alpha'));
     await waitFor(() => expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument());
   });
 
@@ -97,7 +97,7 @@ describe('AdminPage', () => {
     await waitFor(() => screen.getByText('alice@example.com'));
 
     const selects = screen.getAllByRole('combobox');
-    await user.selectOptions(selects[0], 'Admin');
+    await user.selectOptions(selects[0], 'Alpha');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(screen.getByText(/failed to update role/i)).toBeInTheDocument());
