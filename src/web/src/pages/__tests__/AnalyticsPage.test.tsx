@@ -11,6 +11,7 @@ let mockUser: User | null = {
   displayName: 'Test Driver',
   email: 't@t.com',
   iRacingCustomerId: 100042,
+  role: 'Standard',
 };
 
 vi.mock('../../context/AuthContext', () => ({
@@ -82,6 +83,7 @@ describe('AnalyticsPage', () => {
       displayName: 'Test Driver',
       email: 't@t.com',
       iRacingCustomerId: 100042,
+  role: 'Standard',
     };
     mockGetSeries.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);

@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+const TIER_DESCRIPTIONS: Record<string, string> = {
+  Standard: 'Default access. New features go here once stable.',
+  Beta: 'Early access to features that are close to done. Some rough edges possible.',
+  Alpha: 'Cutting-edge features that may be incomplete or change without notice.',
+  Admin: 'Administrator. Manage users and feature flags via the Admin Panel.',
+};
+
 export default function SettingsPage() {
   const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
 
@@ -16,6 +23,10 @@ export default function SettingsPage() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
+
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [roleSaved, setRoleSaved] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   const connected = !!user;
 
@@ -40,6 +51,22 @@ export default function SettingsPage() {
 
   function toggleAlerts() {
     setAlertsEnabled(!alertsEnabled);
+  }
+
+  async function selectTier(tier: string) {
+    if (tier === user?.role) return;
+    setRoleError(null);
+    setRoleSaving(true);
+    try {
+      const result = await api.updateRole(tier);
+      await updateSession(result);
+      setRoleSaved(true);
+      setTimeout(() => setRoleSaved(false), 2500);
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : 'Failed to update tier.');
+    } finally {
+      setRoleSaving(false);
+    }
   }
 
   return (
@@ -118,8 +145,8 @@ export default function SettingsPage() {
                   id="profile-email"
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  readOnly
+                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface/50 font-body-sm text-body-sm px-3 py-2 cursor-not-allowed"
                 />
               </div>
 
@@ -287,6 +314,53 @@ export default function SettingsPage() {
               </div>
             </form>
           </div>
+          {/* Access Tier */}
+          {user?.role !== 'Admin' && (
+            <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 md:col-span-2">
+              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">experiment</span>
+                <div>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">Access Tier</h3>
+                  <p className="font-body-sm text-[12px] text-on-surface-variant mt-0.5">
+                    Opt into early access features. You can change back to Standard at any time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {(['Standard', 'Beta', 'Alpha'] as const).map(tier => {
+                  const isActive = (user?.role ?? 'Standard') === tier;
+                  return (
+                    <button
+                      key={tier}
+                      onClick={() => selectTier(tier)}
+                      disabled={roleSaving || isActive}
+                      className={`rounded-lg border p-4 text-left transition-all ${
+                        isActive
+                          ? 'border-primary-fixed-dim bg-primary-container/10 cursor-default'
+                          : 'border-white/10 hover:border-white/30 hover:bg-white/5 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-body-sm text-body-sm text-on-surface font-semibold">{tier}</span>
+                        {isActive && (
+                          <span className="material-symbols-outlined text-[16px] text-primary-fixed-dim" aria-hidden="true">
+                            check_circle
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-body-sm text-[12px] text-on-surface-variant leading-relaxed">
+                        {TIER_DESCRIPTIONS[tier]}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {roleError && <p className="font-body-sm text-body-sm text-error">{roleError}</p>}
+              {roleSaved && <p className="font-body-sm text-body-sm text-primary-fixed-dim">Access tier updated.</p>}
+            </div>
+          )}
         </div>
       </div>
     </main>

@@ -10,6 +10,8 @@ namespace ApexRacers.Api.Services;
 
 public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config)
 {
+    private static readonly string[] SelfAssignableRoles = ["Beta", "Alpha"];
+
     public async Task<AuthResultDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
         var user = new ApplicationUser
@@ -24,7 +26,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         if (!result.Succeeded)
             throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
 
-        return new AuthResultDto(GenerateJwt(user), user.Id, user.DisplayName);
+        await userManager.AddToRoleAsync(user, "Standard");
+        return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
     }
 
     public async Task<AuthResultDto?> LoginAsync(LoginRequest request, CancellationToken ct = default)
@@ -33,7 +36,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
             return null;
 
-        return new AuthResultDto(GenerateJwt(user), user.Id, user.DisplayName);
+        return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
     }
 
     public async Task<AuthResultDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
@@ -52,7 +55,28 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         if (!result.Succeeded)
             throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
 
-        return new AuthResultDto(GenerateJwt(user), user.Id, user.DisplayName);
+        return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
+    }
+
+    public async Task<AuthResultDto> UpdateRoleAsync(Guid userId, string newRole, CancellationToken ct = default)
+    {
+        if (!SelfAssignableRoles.Contains(newRole, StringComparer.OrdinalIgnoreCase) &&
+            !string.Equals(newRole, "Standard", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Role must be Standard, Beta, or Alpha.");
+
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+
+        var currentRoles = await userManager.GetRolesAsync(user);
+
+        // Admins cannot self-demote via this endpoint
+        if (currentRoles.Contains("Admin"))
+            throw new InvalidOperationException("Admin role cannot be changed via self-service.");
+
+        await userManager.RemoveFromRolesAsync(user, currentRoles);
+        await userManager.AddToRoleAsync(user, newRole);
+
+        return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
     }
 
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
@@ -62,21 +86,30 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     public Task<AuthResultDto> HandleCallbackAsync(string code, string state, CancellationToken ct = default)
         => throw new NotImplementedException();
 
-    private string GenerateJwt(ApplicationUser user)
+    internal async Task<string> GenerateJwtAsync(ApplicationUser user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT_SIGNING_KEY"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var roles = await userManager.GetRolesAsync(user);
+        var role = roles.FirstOrDefault() ?? "Standard";
 
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email!),
             new Claim(JwtRegisteredClaimNames.Name, user.DisplayName),
+            new Claim("role", role),
         };
         if (user.IRacingCustomerId.HasValue)
             claims.Add(new Claim("iracing_id", user.IRacingCustomerId.Value.ToString()));
 
+        var issuer = config["JWT_ISSUER"] ?? "ApexRacers.Api";
+        var audience = config["JWT_AUDIENCE"] ?? "ApexRacers.Web";
+
         var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.AddDays(30),
             signingCredentials: creds);

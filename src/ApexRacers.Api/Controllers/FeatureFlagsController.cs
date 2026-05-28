@@ -7,19 +7,17 @@ using Microsoft.AspNetCore.Mvc;
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
-[Route("api/users/me/analytics")]
+[Route("api/feature-flags")]
 [Authorize]
-public class UserAnalyticsController(UserAnalyticsService analytics) : ControllerBase
+public class FeatureFlagsController(AdminService admin) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAnalyticsAsync(
-        [FromQuery] int? seriesId,
-        CancellationToken ct)
+    public async Task<IActionResult> GetAsync(CancellationToken ct)
     {
         var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        return Ok(await analytics.GetAnalyticsAsync(userId, seriesId, ct));
+        return Ok(await admin.GetFlagsForUserAsync(userId, ct));
     }
 }

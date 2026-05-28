@@ -36,6 +36,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY}
+      ADMIN_SEED_EMAILS: ${ADMIN_SEED_EMAILS}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
@@ -34,13 +35,31 @@ public class AuthController(AuthService auth) : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
         try
         {
             return Ok(await auth.UpdateProfileAsync(userId, request, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPut("role")]
+    [Authorize]
+    public async Task<IActionResult> UpdateRoleAsync([FromBody] UpdateRoleRequest request, CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            return Ok(await auth.UpdateRoleAsync(userId, request.Role, ct));
         }
         catch (InvalidOperationException ex)
         {

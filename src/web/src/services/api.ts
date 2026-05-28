@@ -84,6 +84,24 @@ export interface CarRecommendation {
   isProjected: boolean;
 }
 
+export interface AdminUser {
+  userId: string;
+  email: string;
+  displayName: string;
+  role: string;
+}
+
+export interface FeatureFlag {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  isEnabled: boolean;
+  minimumRole: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -131,6 +149,11 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
     throw new Error(text || `PUT ${path} → ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function deleteReq(path: string): Promise<void> {
+  const res = await fetch(path, { method: 'DELETE', headers: authHeaders() });
+  if (!res.ok) throw new Error(`DELETE ${path} → ${res.status} ${res.statusText}`);
 }
 
 async function postForm<T>(path: string, body: FormData): Promise<T> {
@@ -212,5 +235,58 @@ export const api = {
         ? `/api/users/me/analytics?seriesId=${seriesId}`
         : '/api/users/me/analytics';
     return get(path);
+  },
+
+  /** PUT /api/auth/role — self-assign Standard, Beta, or Alpha role, returns fresh JWT */
+  updateRole(role: string): Promise<AuthResult> {
+    return putJson('/api/auth/role', { role });
+  },
+
+  /** GET /api/feature-flags — flags the authenticated user is entitled to see */
+  getFeatureFlags(): Promise<FeatureFlag[]> {
+    return get('/api/feature-flags');
+  },
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+
+  /** GET /api/admin/users */
+  getAdminUsers(): Promise<AdminUser[]> {
+    return get('/api/admin/users');
+  },
+
+  /** PUT /api/admin/users/:userId/role */
+  setAdminUserRole(userId: string, role: string): Promise<AdminUser> {
+    return putJson(`/api/admin/users/${userId}/role`, { role });
+  },
+
+  /** GET /api/admin/feature-flags — all flags regardless of enabled state */
+  getAdminFeatureFlags(): Promise<FeatureFlag[]> {
+    return get('/api/admin/feature-flags');
+  },
+
+  /** POST /api/admin/feature-flags */
+  createFeatureFlag(data: {
+    key: string;
+    name: string;
+    description: string | null;
+    isEnabled: boolean;
+    minimumRole: string;
+  }): Promise<FeatureFlag> {
+    return postJson('/api/admin/feature-flags', data);
+  },
+
+  /** PUT /api/admin/feature-flags/:id */
+  updateFeatureFlag(id: number, data: {
+    name: string;
+    description: string | null;
+    isEnabled: boolean;
+    minimumRole: string;
+  }): Promise<FeatureFlag> {
+    return putJson(`/api/admin/feature-flags/${id}`, data);
+  },
+
+  /** DELETE /api/admin/feature-flags/:id */
+  deleteFeatureFlag(id: number): Promise<void> {
+    return deleteReq(`/api/admin/feature-flags/${id}`);
   },
 };

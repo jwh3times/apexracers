@@ -10,6 +10,7 @@ export interface User {
   displayName: string;
   email: string;
   iRacingCustomerId: number | null;
+  role: string;
 }
 
 interface AuthContextValue {
@@ -22,7 +23,7 @@ interface AuthContextValue {
   setAlertsEnabled: (v: boolean) => Promise<void>;
 }
 
-function decodeJwt(token: string): { sub: string; email: string; name: string; iracing_id?: string } | null {
+function decodeJwt(token: string): { sub: string; email: string; name: string; iracing_id?: string; role?: string } | null {
   try {
     const payload = token.split('.')[1];
     return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               displayName: claims.name,
               email: claims.email,
               iRacingCustomerId: claims.iracing_id ? Number(claims.iracing_id) : null,
+              role: claims.role ?? 'Standard',
             });
             setToken(token);
           }
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName: result.displayName,
       email,
       iRacingCustomerId: claims?.iracing_id ? Number(claims.iracing_id) : null,
+      role: claims?.role ?? 'Standard',
     };
     setUser(u);
     setToken(result.token);
@@ -86,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function updateSession(result: AuthResult) {
     const claims = decodeJwt(result.token);
     const iRacingCustomerId = claims?.iracing_id ? Number(claims.iracing_id) : null;
-    setUser(prev => prev ? { ...prev, token: result.token, displayName: result.displayName, iRacingCustomerId } : prev);
+    const role = claims?.role ?? 'Standard';
+    setUser(prev => prev ? { ...prev, token: result.token, displayName: result.displayName, iRacingCustomerId, role } : prev);
     setToken(result.token);
     await dbSet('ar_token', result.token);
   }

@@ -29,6 +29,18 @@ public record CarRecommendationDto(
 
 public record AuthResultDto(string Token, Guid UserId, string DisplayName);
 
+public record AdminUserDto(Guid UserId, string Email, string DisplayName, string Role);
+
+public record FeatureFlagDto(
+    int Id,
+    string Key,
+    string Name,
+    string? Description,
+    bool IsEnabled,
+    string MinimumRole,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
 public record TelemetryUploadResultDto(
     int TotalLaps,
     int ValidLaps,

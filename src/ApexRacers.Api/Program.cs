@@ -35,6 +35,9 @@ var jwtKey =
     builder.Configuration["JWT_SIGNING_KEY"]
     ?? throw new InvalidOperationException("JWT_SIGNING_KEY is not set.");
 
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? "ApexRacers.Api";
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -45,21 +48,33 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = true;
 })
+.AddRoles<IdentityRole<Guid>>()
 .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
             ClockSkew = TimeSpan.Zero,
         };
     });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly",     policy => policy.RequireClaim("role", "Admin"));
+    options.AddPolicy("AlphaOrAbove",  policy => policy.RequireClaim("role", "Alpha", "Admin"));
+    options.AddPolicy("BetaOrAbove",   policy => policy.RequireClaim("role", "Beta", "Alpha", "Admin"));
+});
+
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
 builder.Services.AddScoped<PercentileCalculationService>();
@@ -88,6 +103,32 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    // Ensure all roles exist
+    foreach (var roleName in new[] { "Standard", "Beta", "Alpha", "Admin" })
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+    }
+
+    // Promote any users listed in ADMIN_SEED_EMAILS (Key Vault: ADMIN-SEED-EMAILS)
+    var adminEmails = (app.Configuration["ADMIN_SEED_EMAILS"] ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    foreach (var email in adminEmails)
+    {
+        var adminUser = await userManager.FindByEmailAsync(email);
+        if (adminUser is null) continue;
+
+        var currentRoles = await userManager.GetRolesAsync(adminUser);
+        if (currentRoles.Contains("Admin")) continue;
+
+        await userManager.RemoveFromRolesAsync(adminUser, currentRoles);
+        await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
 }
 
 if (app.Environment.IsDevelopment())

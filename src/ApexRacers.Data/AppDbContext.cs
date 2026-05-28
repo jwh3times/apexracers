@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<LapTimeEntry> LapTimeEntries => Set<LapTimeEntry>();
     public DbSet<PersonalLap> PersonalLaps => Set<PersonalLap>();
     public DbSet<CarPercentileResult> CarPercentileResults => Set<CarPercentileResult>();
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins", "identity");
         modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens", "identity");
         modelBuilder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims", "identity");
+
+        modelBuilder.Entity<FeatureFlag>()
+            .HasIndex(f => f.Key)
+            .IsUnique();
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }

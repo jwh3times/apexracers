@@ -30,6 +30,21 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+        {user?.role === 'Admin' && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg font-body-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary-container/10 text-primary-fixed-dim'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+              }`
+            }
+          >
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">admin_panel_settings</span>
+            Admin Panel
+          </NavLink>
+        )}
       </nav>
     </aside>
   );

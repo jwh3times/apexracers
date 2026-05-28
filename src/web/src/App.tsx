@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FeatureFlagProvider } from './context/FeatureFlagContext';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import Footer from './components/Footer';
@@ -15,6 +16,7 @@ import MyLapsPage from './pages/MyLapsPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
@@ -29,6 +31,13 @@ function AppShell() {
       </div>
     </div>
   );
+}
+
+function AdminGuard() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'Admin') return <Navigate to="/" replace />;
+  return <Outlet />;
 }
 
 function AppRoutes() {
@@ -50,6 +59,9 @@ function AppRoutes() {
         <Route path="/settings" element={<SettingsPage key={user?.userId} />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route element={<AdminGuard />}>
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
       </Route>
     </Routes>
   );
@@ -58,9 +70,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <FeatureFlagProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </FeatureFlagProvider>
     </AuthProvider>
   );
 }

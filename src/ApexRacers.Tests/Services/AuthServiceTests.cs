@@ -29,6 +29,7 @@ public class AuthServiceTests
             o.Password.RequireUppercase      = false;
             o.User.RequireUniqueEmail        = true;
         })
+        .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<AppDbContext>();
         return services.BuildServiceProvider();
     }
@@ -45,12 +46,20 @@ public class AuthServiceTests
         return new AuthService(userManager, config);
     }
 
+    private static async Task SeedRolesAsync(ServiceProvider provider)
+    {
+        var roleManager = provider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        foreach (var role in new[] { "Standard", "Beta", "Alpha", "Admin" })
+            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+    }
+
     // ── RegisterAsync ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task RegisterAsync_NewUser_ReturnsTokenAndSetsDisplayNameFromEmail()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var result = await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"));
@@ -64,6 +73,7 @@ public class AuthServiceTests
     public async Task RegisterAsync_DuplicateEmail_ThrowsInvalidOperationException()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"));
@@ -76,6 +86,7 @@ public class AuthServiceTests
     public async Task RegisterAsync_Token_ContainsEmailAndNameClaims()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
@@ -88,12 +99,27 @@ public class AuthServiceTests
         Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name  && c.Value == "driver");
     }
 
+    [Fact]
+    public async Task RegisterAsync_Token_ContainsStandardRoleClaim()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
+    }
+
     // ── LoginAsync ────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task LoginAsync_CorrectCredentials_ReturnsAuthResult()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
@@ -108,6 +134,7 @@ public class AuthServiceTests
     public async Task LoginAsync_WrongPassword_ReturnsNull()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
@@ -134,6 +161,7 @@ public class AuthServiceTests
     public async Task UpdateProfileAsync_UpdatesDisplayName()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
@@ -146,6 +174,7 @@ public class AuthServiceTests
     public async Task UpdateProfileAsync_SavesIRacingCustomerId_WhenProvided()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
@@ -160,6 +189,7 @@ public class AuthServiceTests
     public async Task UpdateProfileAsync_DoesNotClearIRacingCustomerId_WhenNotProvided()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
@@ -177,6 +207,7 @@ public class AuthServiceTests
     public async Task RegisterAsync_Token_DoesNotContainIRacingIdClaim_ForNewUser()
     {
         await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         var result = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
@@ -184,6 +215,70 @@ public class AuthServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
         Assert.DoesNotContain(jwt.Claims, c => c.Type == "iracing_id");
+    }
+
+    // ── UpdateRoleAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateRoleAsync_ToBeta_ReturnsTokenWithBetaRole()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        var result = await svc.UpdateRoleAsync(reg.UserId, "Beta");
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Beta");
+    }
+
+    [Fact]
+    public async Task UpdateRoleAsync_BackToStandard_ReturnsTokenWithStandardRole()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        await svc.UpdateRoleAsync(reg.UserId, "Alpha");
+        var result = await svc.UpdateRoleAsync(reg.UserId, "Standard");
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
+    }
+
+    [Fact]
+    public async Task UpdateRoleAsync_ToAdmin_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateRoleAsync(reg.UserId, "Admin"));
+    }
+
+    [Fact]
+    public async Task UpdateRoleAsync_AdminCannotSelfDemote()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("admin@example.com", "Pass1234"));
+
+        // Promote to Admin via UserManager directly (as the startup seed would)
+        var user = await userManager.FindByIdAsync(reg.UserId.ToString());
+        var roles = await userManager.GetRolesAsync(user!);
+        await userManager.RemoveFromRolesAsync(user!, roles);
+        await userManager.AddToRoleAsync(user!, "Admin");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateRoleAsync(reg.UserId, "Standard"));
     }
 
     // ── HandleCallbackAsync ───────────────────────────────────────────────────

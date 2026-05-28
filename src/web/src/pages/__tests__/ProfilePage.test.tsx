@@ -11,6 +11,7 @@ let mockUser: User | null = {
   displayName: 'Test Driver',
   email: 't@t.com',
   iRacingCustomerId: 100042,
+  role: 'Standard',
 };
 
 vi.mock('../../context/AuthContext', () => ({
@@ -48,7 +49,7 @@ function renderPage() {
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Test Driver', email: 't@t.com', iRacingCustomerId: 100042 };
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Test Driver', email: 't@t.com', iRacingCustomerId: 100042, role: 'Standard' };
     mockGetMyLaps.mockResolvedValue([]);
     mockGetSeries.mockResolvedValue([]);
   });
