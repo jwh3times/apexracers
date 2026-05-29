@@ -1,6 +1,117 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@plugin "@tailwindcss/forms";
+
+@theme {
+  /* Colors */
+  --color-on-tertiary-container: #746100;
+  --color-secondary: #a6e6ff;
+  --color-on-secondary-fixed-variant: #004e60;
+  --color-surface-bright: #3a393a;
+  --color-tertiary: #fffaf8;
+  --color-on-surface: #e5e2e3;
+  --color-secondary-fixed: #b7eaff;
+  --color-error-container: #93000a;
+  --color-on-tertiary: #3a3000;
+  --color-on-primary-fixed: #00210c;
+  --color-tertiary-fixed-dim: #e9c400;
+  --color-inverse-surface: #e5e2e3;
+  --color-surface-container-high: #2a2a2b;
+  --color-primary-fixed: #60ff99;
+  --color-on-secondary-fixed: #001f28;
+  --color-on-surface-variant: #b9cbb9;
+  --color-primary-fixed-dim: #00e479;
+  --color-outline-variant: #3b4b3d;
+  --color-on-secondary-container: #00566b;
+  --color-on-primary-fixed-variant: #005228;
+  --color-on-primary: #003919;
+  --color-surface-container-low: #1c1b1c;
+  --color-on-primary-container: #007139;
+  --color-on-secondary: #003543;
+  --color-on-error-container: #ffdad6;
+  --color-error: #ffb4ab;
+  --color-surface-dim: #131314;
+  --color-on-error: #690005;
+  --color-surface-tint: #00e479;
+  --color-outline: #849585;
+  --color-surface-container: #201f20;
+  --color-surface-container-highest: #353436;
+  --color-tertiary-container: #ffdd4f;
+  --color-primary-container: #00ff88;
+  --color-surface-variant: #353436;
+  --color-on-tertiary-fixed-variant: #544600;
+  --color-inverse-on-surface: #313031;
+  --color-surface: #131314;
+  --color-secondary-container: #14d1ff;
+  --color-inverse-primary: #006d37;
+  --color-background: #131314;
+  --color-surface-container-lowest: #0e0e0f;
+  --color-primary: #f1ffef;
+  --color-on-tertiary-fixed: #221b00;
+  --color-tertiary-fixed: #ffe16d;
+  --color-secondary-fixed-dim: #4cd6ff;
+  --color-on-background: #e5e2e3;
+
+  /* Border radius */
+  --radius: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-margin: 24px;
+  --spacing-unit: 4px;
+  --spacing-gutter: 16px;
+  --spacing-container-max: 1440px;
+
+  /* Font families */
+  --font-label-caps: Inter;
+  --font-headline-sm: Sora;
+  --font-headline-md: Sora;
+  --font-body-lg: Inter;
+  --font-display-lg: Sora;
+  --font-data-md: "JetBrains Mono";
+  --font-data-lg: "JetBrains Mono";
+  --font-body-sm: Inter;
+
+  /* Font sizes */
+  --text-label-caps: 11px;
+  --text-label-caps--line-height: 1;
+  --text-label-caps--letter-spacing: 0.1em;
+  --text-label-caps--font-weight: 700;
+
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 1.4;
+  --text-headline-sm--font-weight: 600;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 1.2;
+  --text-headline-md--letter-spacing: -0.02em;
+  --text-headline-md--font-weight: 700;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 400;
+
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.04em;
+  --text-display-lg--font-weight: 800;
+
+  --text-data-md: 14px;
+  --text-data-md--line-height: 1;
+  --text-data-md--font-weight: 500;
+
+  --text-data-lg: 20px;
+  --text-data-lg--line-height: 1;
+  --text-data-lg--font-weight: 700;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.5;
+  --text-body-sm--font-weight: 400;
+}
 
 @layer base {
   body {
