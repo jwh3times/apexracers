@@ -104,9 +104,11 @@ ApexRacers.Data   ← EF Core, Npgsql
       ↑
 ApexRacers.Api    ← Web API, Swagger, services, controllers
 ApexRacers.Ingestion ← Worker Service, Aydsko.iRacingData
+ApexRacers.Seeder ← CLI seeder (synthetic lap data, idempotent)
+ApexRacers.Tests  ← xUnit tests (references Api + Core + Data)
 ```
 
-`Core` is the only project with no external dependencies. Both `Api` and `Ingestion` reference `Core` and `Data` but never each other.
+`Core` is the only project with no external dependencies. Both `Api` and `Ingestion` reference `Core` and `Data` but never each other. `Seeder` references `Core` and `Data` directly and is never referenced by other projects.
 
 ### NuGet package management
 
@@ -133,8 +135,12 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `SeriesController` — active weekly series list
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
-- `RecommendationsController` — ranked car recommendations for the authenticated user
+- `RecommendationController` — ranked car recommendations for the authenticated user
 - `AuthController` — account management: register, login, profile update (`PUT /api/auth/profile`), and iRacing OAuth 2.0 callback (pending)
+- `TelemetryController` — iRacing `.ibt` file upload and personal lap history (`/api/telemetry`)
+- `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
+- `FeatureFlagsController` — returns the caller's active feature flags (`/api/feature-flags`)
+- `UserAnalyticsController` — per-user analytics summary, optionally filtered by series (`/api/users/me/analytics`)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 

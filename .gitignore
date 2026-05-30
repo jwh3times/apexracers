@@ -48,6 +48,7 @@ Thumbs.db
 # Local planning/deployment notes (may contain secrets or private work items)
 TODO.md
 deployTODO.md
+PRD.md
 
 # Claude Code local settings
 .claude/settings.local.json

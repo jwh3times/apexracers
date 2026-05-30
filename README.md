@@ -8,8 +8,10 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | ------ | ------------- |
 | `src/ApexRacers.Core/` | Domain models shared across all projects |
 | `src/ApexRacers.Data/` | EF Core DbContext, entity configurations, and migrations |
-| `src/ApexRacers.Api/` | ASP.NET Core Web API (controllers, auth callback) |
+| `src/ApexRacers.Api/` | ASP.NET Core Web API (controllers, services, auth) |
 | `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API |
+| `src/ApexRacers.Seeder/` | CLI tool that seeds synthetic lap time data (idempotent) |
+| `src/ApexRacers.Tests/` | xUnit unit tests for services and domain helpers |
 | `src/web/` | Vite + React + TypeScript frontend |
 | `infra/` | Azure Bicep infrastructure definitions |
 | `.github/workflows/` | GitHub Actions CI/CD pipelines |
@@ -26,11 +28,12 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 ### 1. Clone and configure environment
 
 ```bash
-git clone https://github.com/your-org/apexracers.git
+git clone <repo-url>
 cd apexracers
 cp .env.example .env
-# Edit .env and fill in your iRacing credentials
 ```
+
+For local development, credentials are read from Azure Key Vault via `az login` (run `az login` once and `DefaultAzureCredential` handles the rest). Alternatively, open `.env` and fill in values directly for offline debugging.
 
 ### 2. Start the database
 
@@ -41,6 +44,8 @@ docker compose up -d
 PostgreSQL will be available on `localhost:5432`. pgAdmin is available at `http://localhost:5050` (login: `admin@apexracers.local` / `admin`).
 
 ### 3. Apply database migrations
+
+Install the EF Core CLI tool if you haven't already (`dotnet tool install --global dotnet-ef`), then:
 
 ```bash
 dotnet ef database update --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
@@ -64,7 +69,15 @@ npm run dev
 
 The dev server starts on `http://localhost:5173`. All `/api` requests are proxied to the API automatically.
 
-### 6. Run the ingestion worker (optional)
+### 6. Seed the database (optional)
+
+Populate all series with synthetic lap time data so the UI is usable without live iRacing data:
+
+```bash
+dotnet run --project src/ApexRacers.Seeder
+```
+
+### 7. Run the ingestion worker (optional)
 
 ```bash
 dotnet run --project src/ApexRacers.Ingestion
