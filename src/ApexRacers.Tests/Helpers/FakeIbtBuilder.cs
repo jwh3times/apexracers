@@ -30,7 +30,7 @@ internal static class FakeIbtBuilder
         string carNameShort   = "P992",
         long   customerId     = 12345,
         string driverName     = "Jerry Holland",
-        double sessionDate    = 0.0)
+        long   sessionDate    = 0)
     {
         var yamlBytes = Encoding.UTF8.GetBytes(BuildYaml(
             trackId, trackName, configName, carId, carName, carNameShort, customerId, driverName));
@@ -58,7 +58,7 @@ internal static class FakeIbtBuilder
         WriteI32(buf, 28, varHeaderOffset);
         WriteI32(buf, 36, bufLen > 0 ? bufLen : 1);
         WriteI32(buf, 52, firstBufOffset);    // varBuf[0].bufOffset
-        WriteF64(buf, 112, sessionDate);      // sessionStartDate (double)
+        WriteI64(buf, 112, sessionDate);      // sessionStartDate (int64/time_t)
         WriteI32(buf, 140, sessionRecordCount);
 
         // ── YAML session info ─────────────────────────────────────────────────
@@ -113,8 +113,8 @@ internal static class FakeIbtBuilder
         """;
 
     private static void WriteI32(byte[] b, int o, int v)    => BitConverter.GetBytes(v).CopyTo(b, o);
+    private static void WriteI64(byte[] b, int o, long v)   => BitConverter.GetBytes(v).CopyTo(b, o);
     private static void WriteF32(byte[] b, int o, float v)  => BitConverter.GetBytes(v).CopyTo(b, o);
-    private static void WriteF64(byte[] b, int o, double v) => BitConverter.GetBytes(v).CopyTo(b, o);
 
     private static void WriteAscii(byte[] b, int o, string s, int maxLen)
     {

@@ -40,8 +40,9 @@ public static class IbtParser
         int firstBufOffset = RI32(hdr, 52);
 
         // Disk sub-header at offset 112
-        double sessionStartDate = RDouble(hdr, 112);
-        int sessionRecordCount  = RI32(hdr, 140);
+        // sessionStartDate is time_t — int64 on 64-bit Windows, not a double
+        long sessionStartDate  = RL64(hdr, 112);
+        int sessionRecordCount = RI32(hdr, 140);
 
         // Fall back to computing record count from file length if sub-header is missing
         if (sessionRecordCount <= 0 && bufLen > 0)
@@ -137,7 +138,7 @@ public static class IbtParser
             AirTempCelsius     = airTemp,
             TrackTempCelsius   = trackTemp,
             TrackWetness       = wetness,
-            SessionDate        = DateTimeOffset.FromUnixTimeSeconds((long)sessionStartDate),
+            SessionDate        = DateTimeOffset.FromUnixTimeSeconds(sessionStartDate),
             Laps               = laps,
         };
     }
@@ -230,8 +231,8 @@ public static class IbtParser
     // ── Binary helpers (little-endian) ────────────────────────────────────────
 
     private static int    RI32   (byte[] b, int o) => BitConverter.ToInt32  (b, o);
+    private static long   RL64   (byte[] b, int o) => BitConverter.ToInt64  (b, o);
     private static float  RFloat (byte[] b, int o) => BitConverter.ToSingle (b, o);
-    private static double RDouble(byte[] b, int o) => BitConverter.ToDouble (b, o);
 
     // Reads exactly buf.Length bytes, handling partial reads from buffered streams.
     // Returns the number of bytes actually read (< buf.Length only at end of stream).

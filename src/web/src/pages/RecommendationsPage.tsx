@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type CarRecommendation } from '../services/api';
-
-function formatLap(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds - m * 60;
-  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
-}
+import { formatLapTime } from '../utils/lapTime';
 
 function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
@@ -60,7 +55,7 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
             </p>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
-                {formatLap(rec.estimatedLapSeconds)}
+                {formatLapTime(rec.estimatedLapSeconds)}
               </span>
               {rec.isProjected && <ProjectedBadge />}
             </div>
@@ -105,43 +100,54 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
   );
 }
 
-function RecommendationRow({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
+function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommendation[]; seriesId: number; weekNumber: number }) {
   return (
-    <div className="flex items-center justify-between gap-4 td-p border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors">
-      {/* Rank + name */}
-      <div className="flex items-center gap-4 min-w-0">
-        <span className="font-mono text-body-fluid font-bold w-7 text-center shrink-0 text-on-surface-variant">
-          #{rec.rank}
-        </span>
-        <span className="text-body-fluid font-medium text-on-surface truncate">
-          {rec.carName}
-        </span>
-      </div>
-
-      {/* Lap + projected */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="font-mono text-mono-fluid text-on-surface">
-          {formatLap(rec.estimatedLapSeconds)}
-        </span>
-        {rec.isProjected && <ProjectedBadge />}
-      </div>
-
-      {/* Percentile + sample size */}
-      <div className="flex items-center gap-4 shrink-0">
-        <span className="font-mono text-mono-fluid text-primary-container font-semibold">
-          {ordinal(rec.percentileRank)}
-        </span>
-        <span className="text-small-fluid text-on-surface-variant">
-          {rec.sampleSize.toLocaleString()} entries
-        </span>
-        <Link
-          to={`/series/${seriesId}/weeks/${weekNumber}`}
-          className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
-        >
-          Race
-        </Link>
-      </div>
-    </div>
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="border-b border-line-2" style={scanTexture}>
+          <th className="th-p text-th text-on-surface-variant text-left w-10">#</th>
+          <th className="th-p text-th text-on-surface-variant text-left">Car</th>
+          <th className="th-p text-th text-on-surface-variant text-right">Best Lap</th>
+          <th className="th-p text-th text-on-surface-variant text-right w-28">Percentile</th>
+          <th className="th-p text-th text-on-surface-variant text-right w-24">Entries</th>
+          <th className="th-p w-20" />
+        </tr>
+      </thead>
+      <tbody>
+        {recs.map(r => (
+          <tr key={r.carId} className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors">
+            <td className="td-p font-mono text-body-fluid text-on-surface-variant text-center">
+              #{r.rank}
+            </td>
+            <td className="td-p text-body-fluid font-medium text-on-surface max-w-0">
+              <span className="block truncate">{r.carName}</span>
+            </td>
+            <td className="td-p text-right">
+              <div className="flex items-center justify-end gap-2">
+                <span className="font-mono text-mono-fluid text-on-surface">
+                  {formatLapTime(r.estimatedLapSeconds)}
+                </span>
+                {r.isProjected && <ProjectedBadge />}
+              </div>
+            </td>
+            <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
+              {ordinal(r.percentileRank)}
+            </td>
+            <td className="td-p text-small-fluid text-on-surface-variant text-right tabular-nums">
+              {r.sampleSize.toLocaleString()}
+            </td>
+            <td className="td-p text-right">
+              <Link
+                to={`/series/${seriesId}/weeks/${weekNumber}`}
+                className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+              >
+                Race
+              </Link>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -249,18 +255,13 @@ export default function RecommendationsPage() {
               className="card-r border border-line-2 bg-surface overflow-hidden"
               style={cardStyle}
             >
-              {/* Header */}
               <div
                 className="flex items-center justify-between card-hp border-b border-line-2"
                 style={scanTexture}
               >
                 <h2 className="text-section-head text-on-surface">Other Options</h2>
               </div>
-              <div>
-                {recs.slice(1).map(r => (
-                  <RecommendationRow key={r.carId} rec={r} seriesId={seriesId} weekNumber={weekNumber} />
-                ))}
-              </div>
+              <RecommendationTable recs={recs.slice(1)} seriesId={seriesId} weekNumber={weekNumber} />
             </div>
           )}
         </div>

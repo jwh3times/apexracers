@@ -108,7 +108,7 @@ public class IbtParserTests
     public void Parse_SessionDate_IsDecodedFromUnixTimestamp()
     {
         // Unix timestamp 1_000_000 = 2001-09-08 21:46:40 UTC
-        using var stream = FakeIbtBuilder.Build(sessionDate: 1_000_000.0);
+        using var stream = FakeIbtBuilder.Build(sessionDate: 1_000_000L);
 
         var session = IbtParser.Parse(stream);
 
