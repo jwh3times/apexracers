@@ -12,151 +12,135 @@ function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
 }
 
-function percentileTextColor(p: number): string {
-  if (p >= 70) return 'text-primary-container';
-  if (p >= 50) return 'text-[#FF9500]';
-  return 'text-error';
-}
-
-function percentileBarColor(p: number): string {
-  if (p >= 70) return 'bg-primary-container';
-  if (p >= 50) return 'bg-[#FF9500]';
-  return 'bg-error';
-}
-
 function ProjectedBadge() {
   return (
-    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-label-caps tracking-wide bg-surface-container text-on-surface-variant border border-white/10">
+    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold tracking-wide bg-surface-container text-on-surface-variant border border-white/10">
       <span className="material-symbols-outlined text-[10px]" aria-hidden="true">calculate</span>
       Projected
     </span>
   );
 }
 
-function HeroCard({ rec }: { rec: CarRecommendation }) {
-  const pColor = percentileTextColor(rec.percentileRank);
-  const barColor = percentileBarColor(rec.percentileRank);
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+
+const scanTexture: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
+
+function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
   return (
-    <div className="glass-panel glow-gold gradient-border-gold rounded-2xl p-6 flex flex-col gap-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/5 via-transparent to-transparent pointer-events-none" />
-
-      <div className="flex items-start justify-between gap-4 relative">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className="tier-badge-gold px-2 py-0.5 rounded font-label-caps text-[10px] uppercase tracking-widest font-bold">
-              Top Match
+    <div
+      className="card-r border border-white/10 bg-surface overflow-hidden"
+      style={{ ...cardStyle, ...scanTexture }}
+    >
+      <div className="card-p flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-eyebrow text-primary-container">
+              TOP MATCH
             </span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">
-              #{rec.rank}
-            </span>
+            <h2 className="text-[22px] font-bold tracking-[-0.025em] text-on-surface leading-tight">
+              {rec.carName}
+            </h2>
           </div>
-          <h2 className="font-headline-md text-headline-md text-on-surface tracking-tight">
-            {rec.carName}
-          </h2>
-        </div>
-
-        <div className="w-28 h-16 bg-surface-container-highest rounded-lg border border-white/10 overflow-hidden shrink-0">
-          <div className="w-full h-full bg-gradient-to-br from-[#FFD700]/20 to-black" />
-        </div>
-      </div>
-
-      <div className="flex gap-6 relative flex-wrap">
-        <div className="flex flex-col gap-1">
-          <span className="font-label-caps text-label-caps text-on-surface-variant">
-            {rec.isProjected ? 'Projected Lap' : 'Best Lap'}
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="font-data-lg text-data-lg text-on-surface">
-              {formatLap(rec.estimatedLapSeconds)}
-            </span>
-            {rec.isProjected && <ProjectedBadge />}
+          <div className="flex items-center justify-center w-9 h-9 rounded-[10px] border border-primary-container/30 bg-primary-container/10 text-primary-container font-mono font-bold text-[14px] shrink-0">
+            #{rec.rank}
           </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="font-label-caps text-label-caps text-on-surface-variant">
-            Your Percentile
-          </span>
-          <span className={`font-data-lg text-data-lg ${pColor}`}>
-            {ordinal(rec.percentileRank)}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="font-label-caps text-label-caps text-on-surface-variant">
-            Sample Size
-          </span>
-          <span className="font-data-lg text-data-lg text-on-surface">
-            {rec.sampleSize.toLocaleString()}
-          </span>
-        </div>
-      </div>
 
-      <div className="relative h-1.5 bg-surface-variant/40 rounded-full overflow-hidden">
-        <div
-          className={`absolute inset-y-0 left-0 ${barColor} rounded-full`}
-          style={{ width: `${rec.percentileRank}%` }}
-        />
-      </div>
+        {/* Stats row */}
+        <div className="flex gap-6 flex-wrap">
+          <div>
+            <p className="text-th text-on-surface-variant mb-1">
+              {rec.isProjected ? 'Projected Lap' : 'Best Lap'}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
+                {formatLap(rec.estimatedLapSeconds)}
+              </span>
+              {rec.isProjected && <ProjectedBadge />}
+            </div>
+          </div>
+          <div>
+            <p className="text-th text-on-surface-variant mb-1">
+              Your Percentile
+            </p>
+            <span className="font-mono text-[22px] font-bold text-primary-container leading-none">
+              {ordinal(rec.percentileRank)}
+            </span>
+          </div>
+          <div>
+            <p className="text-th text-on-surface-variant mb-1">
+              Sample Size
+            </p>
+            <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
+              {rec.sampleSize.toLocaleString()}
+            </span>
+          </div>
+        </div>
 
-      <Link
-        to="/series"
-        className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-lg bg-[#FFD700] text-black font-label-caps text-label-caps font-bold hover:bg-[#FFD700]/90 transition-colors"
-      >
-        Race this car
-        <span className="material-symbols-outlined text-sm" aria-hidden="true">
-          arrow_forward
-        </span>
-      </Link>
+        {/* Progress bar */}
+        <div className="h-[3px] bg-surface-container-highest rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary-container rounded-full"
+            style={{ width: `${rec.percentileRank}%` }}
+          />
+        </div>
+
+        {/* CTA */}
+        <Link
+          to={`/series/${seriesId}/weeks/${weekNumber}`}
+          className="self-start inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold transition-all"
+          style={{ boxShadow: '0 0 26px -8px var(--color-primary-container)' }}
+        >
+          Race this car
+          <span className="material-symbols-outlined text-[17px]" aria-hidden="true">arrow_forward</span>
+        </Link>
+      </div>
     </div>
   );
 }
 
-function RecommendationRow({ rec }: { rec: CarRecommendation }) {
-  const pColor = percentileTextColor(rec.percentileRank);
-  const barColor = percentileBarColor(rec.percentileRank);
+function RecommendationRow({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
   return (
-    <div className="glass-panel rounded-xl p-4 flex items-center gap-4 hover:bg-white/[0.03] transition-colors group">
-      <span className="font-data-md text-data-md text-on-surface-variant w-6 text-center shrink-0">
-        #{rec.rank}
-      </span>
-
-      <div className="flex-1 min-w-0 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="font-body-sm text-body-sm text-on-surface font-medium truncate group-hover:text-primary-fixed-dim transition-colors">
-            {rec.carName}
-          </span>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-data-md text-data-md text-on-surface">
-              {formatLap(rec.estimatedLapSeconds)}
-            </span>
-            {rec.isProjected && <ProjectedBadge />}
-            <span className={`font-data-md text-data-md ${pColor}`}>
-              {ordinal(rec.percentileRank)}
-            </span>
-          </div>
-        </div>
-        <div className="relative h-1 bg-surface-variant/40 rounded-full overflow-hidden">
-          <div
-            className={`absolute inset-y-0 left-0 ${barColor} rounded-full`}
-            style={{ width: `${rec.percentileRank}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <span className="font-label-caps text-label-caps text-on-surface-variant">
-          {rec.sampleSize.toLocaleString()}
+    <div className="flex items-center justify-between gap-4 td-p border-b border-white/10 last:border-b-0 hover:bg-surface-container transition-colors">
+      {/* Rank + name */}
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="font-mono text-body-fluid font-bold w-7 text-center shrink-0 text-on-surface-variant">
+          #{rec.rank}
         </span>
-        <span className="font-label-caps text-label-caps text-on-surface-variant/60">
-          entries
+        <span className="text-body-fluid font-medium text-on-surface truncate">
+          {rec.carName}
         </span>
       </div>
 
-      <Link
-        to="/series"
-        className="shrink-0 px-3 py-1.5 rounded-lg border border-white/10 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface hover:border-white/20 transition-colors"
-      >
-        Race
-      </Link>
+      {/* Lap + projected */}
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="font-mono text-mono-fluid text-on-surface">
+          {formatLap(rec.estimatedLapSeconds)}
+        </span>
+        {rec.isProjected && <ProjectedBadge />}
+      </div>
+
+      {/* Percentile + sample size */}
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="font-mono text-mono-fluid text-primary-container font-semibold">
+          {ordinal(rec.percentileRank)}
+        </span>
+        <span className="text-small-fluid text-on-surface-variant">
+          {rec.sampleSize.toLocaleString()} entries
+        </span>
+        <Link
+          to={`/series/${seriesId}/weeks/${weekNumber}`}
+          className="inline-flex items-center gap-2 btn-fluid-sm border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+        >
+          Race
+        </Link>
+      </div>
     </div>
   );
 }
@@ -186,63 +170,69 @@ export default function RecommendationsPage() {
 
   if (weekNumber == null || seriesId == null) {
     return (
-      <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
-        <header>
-          <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight mb-2">
+      <main className="page-wrap">
+        <div>
+          <p className="text-eyebrow text-primary-container">
+            RECOMMENDATIONS
+          </p>
+          <h1 className="text-page-title text-on-surface mt-2 mb-1">
             My Car Recommendations
           </h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-prose">
+          <p className="text-body-fluid text-on-surface-variant max-w-prose mt-2">
             Navigate to a week from the{' '}
-            <Link to="/series" className="text-primary-fixed-dim hover:text-primary transition-colors">
+            <Link to="/series" className="text-primary-container hover:opacity-80 transition-opacity">
               Series page
             </Link>{' '}
             and click &ldquo;See my car recommendations&rdquo; to view your personalized rankings.
           </p>
-        </header>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
+    <main className="page-wrap">
+      <div className="mb-6">
         <Link
           to="/series"
-          className="inline-flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors group w-fit"
+          className="inline-flex items-center gap-2 text-body-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
         >
-          <span
-            className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform"
-            aria-hidden="true"
-          >
-            arrow_back
-          </span>
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
           Back to Series
         </Link>
-        <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight">
+        <p className="text-eyebrow text-primary-container">
+          RECOMMENDATIONS
+        </p>
+        <h1 className="text-page-title text-on-surface mt-2 mb-1">
           My Car Recommendations
         </h1>
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
+        <p className="text-body-fluid text-on-surface-variant">
           Week {weekNumber} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve driven use your
           actual best time; others are projected from your historical percentile.
         </p>
-      </header>
+      </div>
 
       {loading && (
-        <p className="text-on-surface-variant font-body-sm animate-pulse">Loading&hellip;</p>
+        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
       )}
 
       {error && (
-        <div className="glass-panel rounded-lg p-6 font-body-sm text-error">{error}</div>
+        <div className="card-r border border-white/10 bg-surface p-6 text-body-fluid text-error" style={cardStyle}>
+          {error}
+        </div>
       )}
 
       {!loading && !error && recs.length === 0 && (
-        <div className="glass-panel rounded-xl p-8 flex flex-col items-center gap-4 text-center max-w-md">
+        <div
+          className="card-r border border-white/10 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
+          style={cardStyle}
+        >
           <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
             person_off
           </span>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
+          <p className="text-body-fluid text-on-surface-variant">
             No recommendations available. Set your iRacing Customer ID in your{' '}
-            <Link to="/profile" className="text-primary-fixed-dim hover:text-primary transition-colors">
+            <Link to="/profile" className="text-primary-container hover:opacity-80 transition-opacity">
               profile
             </Link>{' '}
             and upload a lap for at least one car in this series.
@@ -251,17 +241,26 @@ export default function RecommendationsPage() {
       )}
 
       {recs.length > 0 && (
-        <div className="flex flex-col gap-4">
-          <HeroCard rec={recs[0]} />
+        <div className="flex flex-col gap-fluid">
+          <HeroCard rec={recs[0]} seriesId={seriesId} weekNumber={weekNumber} />
 
           {recs.length > 1 && (
-            <div className="flex flex-col gap-3 mt-2">
-              <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">
-                Other Options
-              </h2>
-              {recs.slice(1).map(r => (
-                <RecommendationRow key={r.carId} rec={r} />
-              ))}
+            <div
+              className="card-r border border-white/10 bg-surface overflow-hidden"
+              style={cardStyle}
+            >
+              {/* Header */}
+              <div
+                className="flex items-center justify-between card-hp border-b border-white/10"
+                style={scanTexture}
+              >
+                <h2 className="text-section-head text-on-surface">Other Options</h2>
+              </div>
+              <div>
+                {recs.slice(1).map(r => (
+                  <RecommendationRow key={r.carId} rec={r} seriesId={seriesId} weekNumber={weekNumber} />
+                ))}
+              </div>
             </div>
           )}
         </div>

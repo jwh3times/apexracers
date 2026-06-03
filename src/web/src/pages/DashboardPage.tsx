@@ -13,6 +13,15 @@ function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
+const scanTexture: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
+
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
@@ -41,105 +50,133 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <main className="px-6 pt-8 pb-20 max-w-[1440px] mx-auto w-full">
-      {/* Welcome header */}
-      <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 flex flex-col justify-center">
-          <h2 className="font-display-lg text-[48px] leading-none font-extrabold tracking-tighter text-on-surface mb-2">
+    <main className="page-wrap">
+      {/* Page head */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <p className="text-eyebrow text-primary-container">
             Race Center
-          </h2>
-          <p className="font-body-lg text-body-lg text-on-surface-variant">
+          </p>
+          <h1 className="text-page-title text-on-surface mt-2 mb-1">
             Welcome back,{' '}
-            <span className="text-on-surface font-semibold">{displayName}</span>
-            . Telemetry systems online.
+            <span className="text-on-surface font-bold">{displayName}</span>
+          </h1>
+          <p className="text-body-fluid text-on-surface-variant">
+            Here&rsquo;s where your pace stands right now.
           </p>
         </div>
+        <div className="flex items-center gap-3 mt-1">
+          <Link
+            to="/telemetry"
+            className="inline-flex items-center gap-2 btn-fluid border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+          >
+            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">upload_file</span>
+            Upload telemetry
+          </Link>
+          <Link
+            to="/recommendations"
+            className="inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold transition-all"
+            style={{ boxShadow: '0 0 26px -8px var(--color-primary-container)' }}
+          >
+            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">auto_awesome</span>
+            Find my edge
+          </Link>
+        </div>
+      </div>
 
-        {/* Stat cards */}
-        <div className="flex gap-4">
-          <div className="glass-panel p-4 rounded-xl flex-1 flex flex-col justify-between relative overflow-hidden border border-[#FFD700]/30 shadow-[0_0_20px_rgba(255,215,0,0.1)]">
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-[#FFD700]/10 rounded-full blur-xl pointer-events-none" />
-            <span className="font-label-caps text-label-caps text-on-surface-variant relative z-10">
-              Active Series
-            </span>
-            <span className="font-data-lg text-[32px] font-bold text-on-surface relative z-10 mt-2 block">
-              {seriesLoading ? '—' : series.length}
-            </span>
+      {/* KPI row — 2 primary loading tiles + 1 derived tile (no — placeholder) */}
+      <div className="grid-kpi mb-4">
+        {/* Active series */}
+        <div
+          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">sports_motorsports</span>
+            Active series
           </div>
-          <div className="glass-panel p-4 rounded-xl flex-1 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary-fixed-dim/10 rounded-full blur-xl pointer-events-none" />
-            <span className="font-label-caps text-label-caps text-on-surface-variant relative z-10">
-              Laps Recorded
-            </span>
-            <span className="font-data-lg text-[32px] font-bold text-on-surface relative z-10 mt-2 block">
-              {lapsLoading ? '—' : totalLaps}
-            </span>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {seriesLoading ? '—' : series.length}
+          </div>
+        </div>
+
+        {/* Laps recorded */}
+        <div
+          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">timer</span>
+            Laps recorded
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {lapsLoading ? '—' : totalLaps}
+          </div>
+        </div>
+
+        {/* Cars tracked — distinct car count, not car+track combos */}
+        <div
+          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">directions_car</span>
+            Cars tracked
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {new Set(laps.map(l => l.carId)).size}
           </div>
         </div>
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+      {/* Main content — 2 col on lg+, single col on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-fluid">
         {/* Left column */}
-        <div className="xl:col-span-8 flex flex-col gap-4">
-          {/* This Week's Series */}
-          <section className="glass-panel rounded-xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
-                <span
-                  className="material-symbols-outlined text-primary-fixed-dim"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                  aria-hidden="true"
-                >
-                  timer
-                </span>
-                This Week
-              </h3>
+        <div className="flex flex-col gap-fluid">
+          {/* This week */}
+          <div
+            className="card-r border border-white/10 bg-surface overflow-hidden"
+            style={cardStyle}
+          >
+            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+              <h3 className="text-section-head text-on-surface">This week</h3>
               <Link
                 to="/series"
-                className="font-label-caps text-label-caps text-primary-fixed-dim hover:text-primary transition-colors"
+                className="text-small-fluid text-primary-container font-semibold hover:opacity-80 transition-opacity"
               >
-                Browse All
+                Browse all →
               </Link>
             </div>
 
             {seriesLoading && (
-              <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+              <p className="px-5 py-4 text-body-fluid text-on-surface-variant animate-pulse">
                 Loading&hellip;
               </p>
             )}
             {!seriesLoading && series.length === 0 && (
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="px-5 py-4 text-body-fluid text-on-surface-variant">
                 No active series available.
               </p>
             )}
             {!seriesLoading && series.length > 0 && (
-              <div className="flex flex-col divide-y divide-white/5">
-                {series.slice(0, 4).map(s => (
+              <div className="divide-y divide-white/[0.06]">
+                {series.slice(0, 5).map(s => (
                   <div
                     key={s.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between py-4 first:pt-0 last:pb-0 hover:bg-white/5 transition-colors rounded-lg group -mx-3 px-3"
+                    className="flex items-center justify-between px-5 py-[13px]"
                   >
-                    <div className="flex items-center gap-4 mb-3 md:mb-0">
-                      <div className="w-12 h-12 bg-surface-container-high rounded flex items-center justify-center border border-white/10 shrink-0">
-                        <span
-                          className="material-symbols-outlined text-primary-fixed-dim text-[20px]"
-                          aria-hidden="true"
-                        >
-                          sports_motorsports
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-headline-sm text-[16px] text-on-surface">{s.name}</h4>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant">
-                          {s.currentWeekNumber != null ? `Week ${s.currentWeekNumber}` : 'Season upcoming'}
-                        </p>
+                    <div>
+                      <div className="text-body-fluid font-medium text-on-surface">{s.name}</div>
+                      <div className="text-small-fluid text-on-surface-variant mt-0.5">
+                        {s.currentWeekNumber != null
+                          ? `Season ${s.seasonId} · Week ${s.currentWeekNumber}`
+                          : 'Season upcoming'}
                       </div>
                     </div>
                     {s.currentWeekNumber != null && (
                       <Link
                         to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
-                        className="self-start md:self-auto bg-surface-container-lowest border border-white/10 px-4 py-2 rounded-lg font-label-caps text-label-caps text-primary-fixed-dim hover:border-primary-fixed-dim/50 transition-colors"
+                        className="inline-flex items-center gap-2 btn-fluid-sm border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high whitespace-nowrap"
                       >
                         View Week
                       </Link>
@@ -148,45 +185,37 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </section>
+          </div>
 
-          {/* Personal Bests */}
-          <section className="glass-panel rounded-xl p-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-surface-container-highest/20 to-transparent pointer-events-none" />
-            <div className="flex justify-between items-start mb-6 relative z-10">
-              <div>
-                <h3 className="font-headline-md text-headline-md text-on-surface mb-1">
-                  Personal Bests
-                </h3>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Your fastest lap per car and track
-                </p>
-              </div>
+          {/* Personal bests */}
+          <div
+            className="card-r border border-white/10 bg-surface overflow-hidden"
+            style={cardStyle}
+          >
+            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+              <h3 className="text-section-head text-on-surface">Personal bests</h3>
               <Link
                 to="/my-laps"
-                className="font-label-caps text-label-caps text-primary-fixed-dim hover:text-primary transition-colors"
+                className="text-small-fluid text-primary-container font-semibold hover:opacity-80 transition-opacity"
               >
-                View All
+                View all →
               </Link>
             </div>
 
             {lapsLoading && (
-              <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse relative z-10">
+              <p className="px-5 py-4 text-body-fluid text-on-surface-variant animate-pulse">
                 Loading&hellip;
               </p>
             )}
 
             {!lapsLoading && recentLaps.length === 0 && (
-              <div className="relative z-10 flex flex-col items-center gap-3 py-8 text-center">
-                <span
-                  className="material-symbols-outlined text-3xl text-on-surface-variant"
-                  aria-hidden="true"
-                >
+              <div className="flex flex-col items-center gap-3 py-10 text-center px-5">
+                <span className="material-symbols-outlined text-3xl text-on-surface-variant" aria-hidden="true">
                   timer_off
                 </span>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                <p className="text-body-fluid text-on-surface-variant">
                   No laps yet.{' '}
-                  <Link to="/telemetry" className="text-primary-fixed-dim hover:text-primary">
+                  <Link to="/telemetry" className="text-primary-container hover:opacity-80">
                     Upload a telemetry file
                   </Link>{' '}
                   to get started.
@@ -195,27 +224,31 @@ export default function DashboardPage() {
             )}
 
             {!lapsLoading && recentLaps.length > 0 && (
-              <div className="relative z-10 overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="pb-3 font-label-caps text-label-caps text-on-surface-variant font-semibold">
+                    <tr>
+                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-left">
                         Car
                       </th>
-                      <th className="pb-3 font-label-caps text-label-caps text-on-surface-variant font-semibold">
+                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-left">
                         Track
                       </th>
-                      <th className="pb-3 font-label-caps text-label-caps text-on-surface-variant font-semibold text-right">
+                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-right">
                         Best Lap
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="font-body-sm text-body-sm divide-y divide-white/5">
+                  <tbody>
                     {recentLaps.map((lap, i) => (
-                      <tr key={i} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 text-on-surface font-medium pr-4">{lap.carName}</td>
-                        <td className="py-3 text-on-surface-variant pr-4">{trackLabel(lap)}</td>
-                        <td className="py-3 font-data-md text-data-md text-primary-fixed-dim text-right">
+                      <tr key={i}>
+                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-on-surface font-medium">
+                          {lap.carName}
+                        </td>
+                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-on-surface-variant">
+                          {trackLabel(lap)}
+                        </td>
+                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-primary-container font-mono text-right">
                           {formatLapTime(lap.bestLapSeconds)}
                         </td>
                       </tr>
@@ -224,48 +257,51 @@ export default function DashboardPage() {
                 </table>
 
                 {bestLap && (
-                  <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                  <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
                     <div>
-                      <p className="font-label-caps text-label-caps text-on-surface-variant">
+                      <p className="text-th text-on-surface-variant">
                         Overall Best
                       </p>
-                      <p className="font-label-caps text-label-caps text-on-surface-variant mt-0.5">
+                      <p className="text-small-fluid text-on-surface-variant mt-0.5">
                         {bestLap.carName} &middot; {trackLabel(bestLap)}
                       </p>
                     </div>
-                    <span className="font-data-lg text-[24px] text-primary-fixed-dim">
+                    <span className="font-mono text-[22px] font-bold text-primary-container">
                       {formatLapTime(bestLap.bestLapSeconds)}
                     </span>
                   </div>
                 )}
               </div>
             )}
-          </section>
+          </div>
         </div>
 
-        {/* Right column: Active Series cards */}
-        <div className="xl:col-span-4">
-          <section className="glass-panel rounded-xl p-6 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-headline-md text-headline-md text-on-surface">Active Series</h3>
+        {/* Right column: Active series list */}
+        <div>
+          <div
+            className="card-r border border-white/10 bg-surface overflow-hidden h-full"
+            style={cardStyle}
+          >
+            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+              <h3 className="text-section-head text-on-surface">Active series</h3>
               <Link
                 to="/series"
-                className="font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors"
+                className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
               >
                 All
               </Link>
             </div>
 
             {seriesLoading && (
-              <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+              <p className="px-5 py-4 text-body-fluid text-on-surface-variant animate-pulse">
                 Loading&hellip;
               </p>
             )}
 
             {!seriesLoading && (
-              <div className="flex flex-col gap-4 flex-1 overflow-y-auto">
+              <div className="flex flex-col divide-y divide-white/[0.06]">
                 {series.length === 0 && (
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  <p className="px-5 py-4 text-body-fluid text-on-surface-variant">
                     No active series.
                   </p>
                 )}
@@ -276,38 +312,35 @@ export default function DashboardPage() {
                     <Link
                       key={s.id}
                       to={s.currentWeekNumber != null ? `/series/${s.id}/weeks/${s.currentWeekNumber}` : '/series'}
-                      className="block bg-surface-container-low border border-white/5 p-4 rounded-lg hover:border-primary-fixed-dim/30 transition-colors group"
+                      className="block px-5 py-4 hover:bg-surface-container transition-colors"
                     >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="bg-primary-fixed-dim/10 text-primary-fixed-dim font-label-caps text-[10px] px-2 py-1 rounded border border-primary-fixed-dim/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-small-fluid font-mono text-primary-container font-semibold">
                           {s.currentWeekNumber != null ? `Week ${s.currentWeekNumber}` : 'Upcoming'}
-                        </div>
-                        <span
-                          className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed-dim text-[18px] transition-colors"
-                          aria-hidden="true"
-                        >
+                        </span>
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant" aria-hidden="true">
                           chevron_right
                         </span>
                       </div>
-                      <h4 className="font-headline-sm text-[16px] text-on-surface mb-1 truncate">
+                      <p className="text-body-fluid font-medium text-on-surface truncate mb-3">
                         {s.name}
-                      </h4>
-                      <div className="w-full bg-surface-container-highest h-1 rounded-full mt-4 mb-3 overflow-hidden">
+                      </p>
+                      <div className="w-full bg-surface-container-highest h-[3px] rounded-full overflow-hidden">
                         <div
-                          className="bg-primary-fixed-dim h-full transition-all"
+                          className="bg-primary-container h-full transition-all"
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
-                      <div className="flex justify-between font-data-md text-[11px] text-on-surface-variant">
+                      <div className="flex justify-between text-small-fluid text-on-surface-variant mt-1.5">
                         <span>Week {weekNum} / 12</span>
-                        <span>Season {s.seasonId}</span>
+                        <span>S{s.seasonId}</span>
                       </div>
                     </Link>
                   );
                 })}
               </div>
             )}
-          </section>
+          </div>
         </div>
       </div>
     </main>

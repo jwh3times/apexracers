@@ -7,26 +7,25 @@ describe('HomePage', () => {
   it('renders the hero heading', () => {
     render(<MemoryRouter><HomePage /></MemoryRouter>);
     expect(
-      screen.getByRole('heading', { name: /find the car that best fits your pace/i })
+      screen.getByRole('heading', { name: /win races/i })
     ).toBeInTheDocument();
   });
 
-  it('renders sign in and explore links', () => {
+  it('renders sign in and browse series CTAs', () => {
     render(<MemoryRouter><HomePage /></MemoryRouter>);
-    expect(screen.getByRole('link', { name: /sign in with iracing/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /explore features/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /start free/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /browse series/i })).toBeInTheDocument();
   });
 
-  it('renders the active series section with cards', () => {
+  it('renders the features section', () => {
     render(<MemoryRouter><HomePage /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: /active series/i })).toBeInTheDocument();
-    expect(screen.getByText('VRS GT3 Sprint')).toBeInTheDocument();
-    expect(screen.getByText('IMSA iRacing Series')).toBeInTheDocument();
-    expect(screen.getByText('Porsche Cup')).toBeInTheDocument();
+    expect(screen.getByText('Performance Percentiles')).toBeInTheDocument();
+    expect(screen.getByText('Edge Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('Telemetry, Decoded')).toBeInTheDocument();
   });
 
   it('renders percentile mention in hero body copy', () => {
     render(<MemoryRouter><HomePage /></MemoryRouter>);
-    expect(screen.getByText(/percentile/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/percentile/i).length).toBeGreaterThan(0);
   });
 });

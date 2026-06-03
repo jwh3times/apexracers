@@ -7,9 +7,15 @@ export default function Sidebar() {
   const navItems = user ? AUTH_NAV : GUEST_NAV;
   return (
     <aside className="w-64 bg-surface-container-lowest border-r border-white/10 h-screen sticky top-0 flex flex-col z-50 hidden lg:flex">
-      <div className="p-6 border-b border-white/10 flex items-center h-16">
-        <span className="font-display-lg text-headline-md font-extrabold tracking-tighter text-primary-fixed-dim">
-          ApexRacers
+      <div className="px-5 border-b border-white/10 flex items-center h-16 gap-[11px] overflow-hidden">
+        <div
+          className="w-7 h-7 shrink-0 rounded-[7px] bg-primary-container grid place-items-center text-on-primary-fixed font-extrabold text-[17px]"
+          style={{ boxShadow: '0 0 22px -4px var(--color-primary-container)' }}
+        >
+          A
+        </div>
+        <span className="font-bold tracking-[-0.02em] text-base whitespace-nowrap text-on-surface">
+          APEX<b className="text-primary-container font-bold">//</b>RACERS
         </span>
       </div>
       <nav className="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-2">

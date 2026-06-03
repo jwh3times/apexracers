@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api, type PercentileResult } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import PercentileBadge from '../components/PercentileBadge';
 
 type FetchState = {
   loading: boolean;
@@ -36,42 +37,6 @@ function formatDate(iso: string): string {
   });
 }
 
-// 270° arc gauge. Starts at ~7:30, ends at ~4:30 (gap at bottom).
-function PercentileGauge({ value }: { value: number }) {
-  const r = 80;
-  const cx = 100;
-  const cy = 100;
-  const C = 2 * Math.PI * r;
-  const arcLen = C * 0.75;
-
-  const clamped = Math.min(Math.max(value, 0), 100);
-  const filled = arcLen * (clamped / 100);
-
-  return (
-    <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
-      <circle
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        strokeWidth={10}
-        stroke="rgba(255,255,255,0.06)"
-        strokeDasharray={`${arcLen} ${C - arcLen}`}
-        transform={`rotate(135 ${cx} ${cy})`}
-        strokeLinecap="round"
-      />
-      <circle
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        strokeWidth={10}
-        stroke="#00e479"
-        strokeDasharray={`${filled} ${C - filled}`}
-        transform={`rotate(135 ${cx} ${cy})`}
-        strokeLinecap="round"
-        style={{ filter: 'drop-shadow(0 0 6px rgba(0,228,121,0.5))' }}
-      />
-    </svg>
-  );
-}
-
 function rankLabel(p: number): string {
   if (p >= 90) return 'Elite';
   if (p >= 75) return 'Fast';
@@ -79,6 +44,15 @@ function rankLabel(p: number): string {
   if (p >= 25) return 'Below average';
   return 'Still learning';
 }
+
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+
+const scanTexture: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
 
 export default function PercentileCarPage() {
   const { seriesId, weekNumber, carId } = useParams<{
@@ -129,41 +103,39 @@ export default function PercentileCarPage() {
   }
 
   return (
-    <main className="px-6 pt-8 pb-20 max-w-[800px] mx-auto w-full flex flex-col gap-8">
+    <main className="page-wrap">
       {/* Breadcrumb */}
       <Link
         to={`/series/${seriesId}/weeks/${weekNumber}`}
-        className="inline-flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors group w-fit"
+        className="inline-flex items-center gap-2 text-body-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
       >
-        <span
-          className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform"
-          aria-hidden="true"
-        >
-          arrow_back
-        </span>
+        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
         Car breakdown
       </Link>
 
       {/* Header */}
-      <header className="flex flex-col gap-2">
-        <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight">
+      <div className="mb-6">
+        <p className="text-eyebrow text-primary-container">
+          WEEK {weekNumber} · PERCENTILE
+        </p>
+        <h1 className="text-page-title text-on-surface mt-2 mb-1">
           {carName}
         </h1>
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
+        <p className="text-body-fluid text-on-surface-variant">
           Week {weekNumber} &mdash; lap time percentile
         </p>
-      </header>
+      </div>
 
       {/* Loading */}
       {loading && (
-        <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+        <p className="text-body-fluid text-on-surface-variant animate-pulse mb-4">
           Loading&hellip;
         </p>
       )}
 
       {/* Manual lookup form — only shown when no iRacing ID is saved in the profile */}
       {!profileId && !loading && (
-        <div className="glass-panel rounded-xl p-6 flex flex-col gap-4">
+        <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 mb-6">
           <div className="flex items-start gap-3 p-3 bg-surface-container rounded-lg border border-white/5">
             <span
               className="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5 shrink-0"
@@ -171,11 +143,11 @@ export default function PercentileCarPage() {
             >
               info
             </span>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="text-body-fluid text-on-surface-variant">
               Set your iRacing Customer ID in your{' '}
               <Link
                 to="/profile"
-                className="text-primary-fixed-dim hover:underline"
+                className="text-primary-container hover:opacity-80"
               >
                 profile
               </Link>{' '}
@@ -187,7 +159,7 @@ export default function PercentileCarPage() {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="customer-id"
-                className="font-body-sm text-body-sm text-on-surface"
+                className="text-body-fluid text-on-surface"
               >
                 iRacing Customer ID
               </label>
@@ -198,13 +170,14 @@ export default function PercentileCarPage() {
                 value={customerId}
                 onChange={e => setCustomerId(e.target.value)}
                 placeholder="e.g. 100042"
-                className="bg-surface-container border border-white/10 rounded-lg px-4 py-2.5 font-data-md text-data-md text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary-fixed-dim w-full max-w-xs"
+                className="bg-surface-container border border-white/10 rounded-[10px] px-4 py-2.5 font-mono text-body-fluid text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary-container/40 w-full max-w-xs"
               />
             </div>
             <button
               type="submit"
               disabled={!customerId}
-              className="self-start px-5 py-2.5 rounded-lg bg-primary-fixed-dim text-on-primary font-label-caps text-label-caps disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all active:scale-95"
+              className="self-start inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              style={{ boxShadow: customerId ? '0 0 26px -8px var(--color-primary-container)' : undefined }}
             >
               Look up my percentile
             </button>
@@ -213,61 +186,58 @@ export default function PercentileCarPage() {
       )}
 
       {/* Percentile result */}
-      {result && (
-        <div className="glass-panel rounded-xl p-8 flex flex-col items-center gap-6">
-          <div className="relative w-[200px] h-[200px]">
-            <PercentileGauge value={result.percentileRank} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pb-3">
-              <span
-                className="font-data-lg text-on-surface leading-none"
-                style={{ fontSize: '38px' }}
-              >
-                {result.percentileRank.toFixed(1)}
-              </span>
-              <span className="font-label-caps text-label-caps text-on-surface-variant mt-1">
-                PERCENTILE
-              </span>
-            </div>
-          </div>
+      {result && (() => {
+        const topPct = Math.max(1, Math.ceil(100 - result.percentileRank));
+        return (
+          <div
+            className="card-r border border-white/10 bg-surface overflow-hidden mb-4"
+            style={{ ...cardStyle, ...scanTexture }}
+          >
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* Left: badge + summary */}
+              <div className="flex flex-col items-center justify-center gap-[18px] p-8 border-b md:border-b-0 md:border-r border-white/10">
+                <PercentileBadge pct={topPct} size="lg" />
+                <div className="text-center">
+                  <p className="text-section-head text-on-surface">
+                    You beat{' '}
+                    <span className="text-primary-container">{result.percentileRank.toFixed(1)}%</span>
+                    {' '}of the field
+                  </p>
+                  <p className="text-body-fluid text-on-surface-variant mt-1">
+                    {rankLabel(result.percentileRank)}
+                  </p>
+                </div>
+              </div>
 
-          <div className="text-center flex flex-col gap-1">
-            <p className="font-headline-md text-headline-md text-on-surface">
-              You beat{' '}
-              <span className="text-primary-fixed-dim">
-                {result.percentileRank.toFixed(1)}%
-              </span>{' '}
-              of the field
-            </p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
-              {rankLabel(result.percentileRank)}
-            </p>
-          </div>
-
-          <div className="flex gap-8 border-t border-white/10 pt-5 w-full justify-center">
-            <div className="flex flex-col items-center gap-1">
-              <span className="font-data-lg text-data-lg text-on-surface">
-                {result.sampleSize.toLocaleString()}
-              </span>
-              <span className="font-label-caps text-label-caps text-on-surface-variant">
-                Drivers in field
-              </span>
-            </div>
-            <div className="w-px bg-white/10" />
-            <div className="flex flex-col items-center gap-1">
-              <span className="font-data-md text-data-md text-on-surface">
-                {formatDate(result.computedAt)}
-              </span>
-              <span className="font-label-caps text-label-caps text-on-surface-variant">
-                Computed
-              </span>
+              {/* Right: stats */}
+              <div className="flex flex-col justify-center gap-6 p-8">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                  <div>
+                    <p className="text-th text-on-surface-variant mb-1">
+                      Drivers in field
+                    </p>
+                    <p className="font-mono text-[24px] font-bold text-on-surface leading-none">
+                      {result.sampleSize.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-th text-on-surface-variant mb-1">
+                      Computed
+                    </p>
+                    <p className="text-body-fluid text-on-surface">
+                      {formatDate(result.computedAt)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Not found */}
       {notFound && (
-        <div className="glass-panel rounded-xl p-6 flex items-start gap-3">
+        <div className="card-r border border-white/10 bg-surface p-6 flex items-start gap-3 mb-4" style={cardStyle}>
           <span
             className="material-symbols-outlined text-on-surface-variant mt-0.5"
             aria-hidden="true"
@@ -275,11 +245,11 @@ export default function PercentileCarPage() {
             search_off
           </span>
           <div className="flex flex-col gap-1">
-            <p className="font-body-sm text-body-sm text-on-surface">
+            <p className="text-body-fluid text-on-surface">
               No race lap found for the{' '}
               <span className="font-medium">{carName}</span> this week.
             </p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant text-[12px]">
+            <p className="text-small-fluid text-on-surface-variant">
               Upload your telemetry to record a lap, then check back here.
             </p>
           </div>
@@ -288,8 +258,8 @@ export default function PercentileCarPage() {
 
       {/* Error */}
       {error && (
-        <div className="glass-panel rounded-xl p-6 border border-error/20">
-          <p className="font-body-sm text-body-sm text-error">{error}</p>
+        <div className="card-r border border-error/20 bg-surface p-6 mb-4" style={cardStyle}>
+          <p className="text-body-fluid text-error">{error}</p>
         </div>
       )}
     </main>

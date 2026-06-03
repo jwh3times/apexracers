@@ -98,7 +98,7 @@ jobs:
           app-name: ${{ secrets.API_APP_NAME }}
           images: ${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
 
-  # ── Ingestion worker (Azure Container Apps, min-replicas=1) ──────────────────
+  # ── Ingestion worker (Azure Container Apps) ──────────────────────────────────
   deploy-ingestion:
     name: Deploy Ingestion Worker
     needs: test

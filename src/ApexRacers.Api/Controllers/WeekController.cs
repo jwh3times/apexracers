@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
-[Route("api/series/{seriesId}/weeks/{weekId}/cars")]
+[Route("api/series/{seriesId}/weeks/{weekNumber}/cars")]
 public class WeekController(WeekCarStatsService weekCarStats) : ControllerBase
 {
     [HttpGet]

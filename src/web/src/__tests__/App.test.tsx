@@ -11,19 +11,19 @@ vi.mock('../services/db', () => ({
 }));
 
 describe('App', () => {
-  it('renders navigation links on the home route', async () => {
+  it('renders the public landing page on the home route', async () => {
     await act(async () => { render(<App />); });
-    // Unauthenticated state: only guest nav items are shown
-    expect(screen.getAllByRole('link', { name: 'Home' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Browse Series' }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('link', { name: 'Recommendations' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'My Laps' })).not.toBeInTheDocument();
+    // "/" renders the public landing page outside AppShell — the landing header
+    // shows Sign in and Start free CTAs; the sidebar nav (Home, Browse Series) is not visible
+    expect(screen.getAllByRole('link', { name: /sign in/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /start free/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
   });
 
   it('renders the home page content by default', async () => {
     await act(async () => { render(<App />); });
     expect(
-      screen.getByRole('heading', { name: /find the car that best fits your pace/i })
+      screen.getByRole('heading', { name: /win races/i })
     ).toBeInTheDocument();
   });
 });

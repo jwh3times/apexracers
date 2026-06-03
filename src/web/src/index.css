@@ -15,40 +15,40 @@
   --color-secondary-fixed: #b7eaff;
   --color-error-container: #93000a;
   --color-on-tertiary: #3a3000;
-  --color-on-primary-fixed: #00210c;
+  --color-on-primary-fixed: #001f26;
   --color-tertiary-fixed-dim: #e9c400;
   --color-inverse-surface: #e5e2e3;
   --color-surface-container-high: #2a2a2b;
-  --color-primary-fixed: #60ff99;
+  --color-primary-fixed: #b3f4ff;
   --color-on-secondary-fixed: #001f28;
   --color-on-surface-variant: #b9cbb9;
-  --color-primary-fixed-dim: #00e479;
-  --color-outline-variant: #3b4b3d;
+  --color-primary-fixed-dim: #00b8d4;
+  --color-outline-variant: #3b484b;
   --color-on-secondary-container: #00566b;
-  --color-on-primary-fixed-variant: #005228;
-  --color-on-primary: #003919;
+  --color-on-primary-fixed-variant: #004d60;
+  --color-on-primary: #001e2a;
   --color-surface-container-low: #1c1b1c;
-  --color-on-primary-container: #007139;
+  --color-on-primary-container: #006b7e;
   --color-on-secondary: #003543;
   --color-on-error-container: #ffdad6;
   --color-error: #ffb4ab;
   --color-surface-dim: #131314;
   --color-on-error: #690005;
-  --color-surface-tint: #00e479;
+  --color-surface-tint: #00b8d4;
   --color-outline: #849585;
   --color-surface-container: #201f20;
   --color-surface-container-highest: #353436;
   --color-tertiary-container: #ffdd4f;
-  --color-primary-container: #00ff88;
+  --color-primary-container: #00e0ff;
   --color-surface-variant: #353436;
   --color-on-tertiary-fixed-variant: #544600;
   --color-inverse-on-surface: #313031;
   --color-surface: #131314;
   --color-secondary-container: #14d1ff;
-  --color-inverse-primary: #006d37;
+  --color-inverse-primary: #006680;
   --color-background: #131314;
   --color-surface-container-lowest: #0e0e0f;
-  --color-primary: #f1ffef;
+  --color-primary: #e0f9ff;
   --color-on-tertiary-fixed: #221b00;
   --color-tertiary-fixed: #ffe16d;
   --color-secondary-fixed-dim: #4cd6ff;
@@ -132,9 +132,121 @@
   }
 }
 
+/* ── Fluid design-system utilities ───────────────────────────────────────────
+   All sizes scale with viewport width via clamp(min, vw, max).
+   This lets the UI grow naturally from 1080p through 4K and beyond
+   without any component needing to know the screen size.
+   ─────────────────────────────────────────────────────────────────────────── */
 @layer utilities {
+
+  /* Page wrapper — full width, fluid side padding, no hard max-width cap */
+  .page-wrap {
+    width: 100%;
+    padding-left:   clamp(20px, 3vw, 72px);
+    padding-right:  clamp(20px, 3vw, 72px);
+    padding-top:    clamp(20px, 2.5vw, 44px);
+    padding-bottom: clamp(40px, 5vw, 100px);
+  }
+
+  /* ── Typography ─────────────────────────────────── */
+  .text-page-title {
+    font-size:      clamp(22px, 2.2vw, 42px);
+    font-weight:    700;
+    letter-spacing: -0.025em;
+    line-height:    1.05;
+  }
+  .text-section-head {
+    font-size:   clamp(13px, 1.1vw, 18px);
+    font-weight: 600;
+  }
+  /* small mono ALL-CAPS label above a heading */
+  .text-eyebrow {
+    font-family:     "JetBrains Mono", monospace;
+    font-size:       clamp(9px, 0.65vw, 12px);
+    letter-spacing:  0.16em;
+    text-transform:  uppercase;
+    font-weight:     600;
+  }
+  .text-body-fluid  { font-size: clamp(12px, 0.85vw, 15px); }
+  .text-small-fluid { font-size: clamp(10px, 0.72vw, 13px); }
+  .text-th          { font-size: clamp(9px,  0.65vw, 11px); letter-spacing: 0.09em; text-transform: uppercase; font-weight: 600; }
+  .text-kpi-value   {
+    font-family:    "JetBrains Mono", monospace;
+    font-size:      clamp(22px, 2vw, 38px);
+    font-weight:    700;
+    letter-spacing: -0.02em;
+    line-height:    1;
+  }
+  /* mono lap times, rank numbers */
+  .text-mono-fluid  {
+    font-family: "JetBrains Mono", monospace;
+    font-size:   clamp(12px, 0.9vw, 15px);
+  }
+
+  /* ── Spacing ────────────────────────────────────── */
+  /* card outer border-radius */
+  .card-r  { border-radius: clamp(10px, 1vw, 18px); }
+  /* general card body padding */
+  .card-p  { padding: clamp(14px, 1.5vw, 26px); }
+  /* scan-texture card section header padding */
+  .card-hp {
+    padding-top:    clamp(10px, 1vw, 18px);
+    padding-bottom: clamp(10px, 1vw, 18px);
+    padding-left:   clamp(14px, 1.5vw, 24px);
+    padding-right:  clamp(14px, 1.5vw, 24px);
+  }
+  /* KPI tile padding */
+  .kpi-p  { padding: clamp(12px, 1.4vw, 22px); }
+  /* table cell padding */
+  .td-p   {
+    padding-top:    clamp(10px, 0.9vw, 16px);
+    padding-bottom: clamp(10px, 0.9vw, 16px);
+    padding-left:   clamp(10px, 1vw, 18px);
+    padding-right:  clamp(10px, 1vw, 18px);
+  }
+  .th-p   {
+    padding-bottom: clamp(8px, 0.7vw, 13px);
+    padding-left:   clamp(10px, 1vw, 18px);
+    padding-right:  clamp(10px, 1vw, 18px);
+    padding-top:    clamp(10px, 0.9vw, 16px);
+  }
+
+  /* ── Gaps ───────────────────────────────────────── */
+  .gap-fluid    { gap: clamp(10px, 1.2vw, 20px); }
+  .gap-fluid-lg { gap: clamp(14px, 1.5vw, 28px); }
+
+  /* ── Buttons ────────────────────────────────────── */
+  .btn-fluid {
+    height:      clamp(30px, 2.4vw, 44px);
+    padding-left:  clamp(10px, 1vw, 18px);
+    padding-right: clamp(10px, 1vw, 18px);
+    font-size:   clamp(12px, 0.85vw, 15px);
+    border-radius: clamp(7px, 0.8vw, 11px);
+  }
+  .btn-fluid-sm {
+    height:      clamp(26px, 2vw, 36px);
+    padding-left:  clamp(8px, 0.8vw, 14px);
+    padding-right: clamp(8px, 0.8vw, 14px);
+    font-size:   clamp(11px, 0.75vw, 13.5px);
+    border-radius: clamp(6px, 0.7vw, 9px);
+  }
+
+  /* ── Auto-fit grids ─────────────────────────────── */
+  /* KPI tiles: as wide as possible, but at least 180px each */
+  .grid-kpi {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(clamp(160px, 16vw, 300px), 1fr));
+    gap: clamp(10px, 1.2vw, 18px);
+  }
+  /* Series cards: 3+ columns that grow with the screen */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 22vw, 400px), 1fr));
+    gap: clamp(12px, 1.3vw, 22px);
+  }
+
   .glow-primary {
-    box-shadow: 0 0 20px rgba(0, 228, 121, 0.2);
+    box-shadow: 0 0 20px rgba(0, 224, 255, 0.2);
   }
 
   .glow-secondary {
@@ -146,10 +258,6 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .glow-accent {
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
   }
 
   .glow-gold {
@@ -169,7 +277,7 @@
   }
 
   .tier-badge-green {
-    background-color: #00FF88;
+    background-color: #00e0ff;
     color: #000;
   }
 }

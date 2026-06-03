@@ -36,7 +36,7 @@ function AppShell() {
 function AdminGuard() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'Admin') return <Navigate to="/" replace />;
+  if (user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }
 
@@ -44,9 +44,9 @@ function AppRoutes() {
   const { user } = useAuth();
   return (
     <Routes>
+      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<AppShell />}>
-        <Route path="/" element={<HomePage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/series" element={<SeriesPage />} />
         <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
