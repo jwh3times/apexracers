@@ -156,6 +156,91 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 
 Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API). The typed API client is in `src/web/src/services/api.ts` — all fetch calls go through it. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in the API.
 
+#### Routing architecture
+
+The app has two layout tiers defined in `src/web/src/App.tsx`:
+
+- **`path="/"`** — the public marketing landing page (`HomePage`). Rendered **outside** `AppShell`; it embeds its own header, nav, and footer. No Sidebar or TopNav is shown.
+- **All other routes** (`/dashboard`, `/series`, `/analytics`, `/recommendations`, etc.) — nested inside `AppShell` (Sidebar + TopNav + Footer). These are accessible without an explicit auth guard, but API calls will 401 for unauthenticated users.
+- **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
+
+#### Fluid design system
+
+All sizing in the frontend scales continuously with viewport width via `clamp()` rather than Tailwind responsive breakpoints. The utility classes are defined in `src/web/src/index.css` and must be used for any new UI work — do not reach for one-off Tailwind classes for the same purposes.
+
+**Typography**
+
+| Class | Purpose |
+|---|---|
+| `text-page-title` | Large page heading (`h1`) |
+| `text-section-head` | Card / panel section heading (`h2`, `h3`) |
+| `text-eyebrow` | Mono ALL-CAPS label above a heading |
+| `text-body-fluid` | Standard body and list text |
+| `text-small-fluid` | Secondary / supporting text |
+| `text-th` | Table column header |
+| `text-kpi-value` | Large mono KPI number |
+| `text-mono-fluid` | Mono data values — lap times, rank numbers |
+
+**Layout & spacing**
+
+| Class | Purpose |
+|---|---|
+| `page-wrap` | Outer page padding — apply to `<main>` |
+| `card-r` | Card border-radius |
+| `card-p` | Card body padding |
+| `card-hp` | Card section-header padding (scan-texture rows) |
+| `kpi-p` | KPI tile padding |
+| `td-p` / `th-p` | Table cell / header padding |
+| `gap-fluid` / `gap-fluid-lg` | Column/row gaps |
+| `btn-fluid` / `btn-fluid-sm` | Button height, padding, font-size, radius |
+| `grid-kpi` | Auto-fit KPI tile grid (wraps naturally) |
+| `grid-cards` | Auto-fill series card grid |
+
+**Standard card pattern**
+
+Every card uses a consistent combination of a CSS `cardStyle` constant for the box-shadow and optional `scanTexture` for header backgrounds:
+
+```tsx
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+const scanTexture: React.CSSProperties = {
+  backgroundImage: 'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
+
+// Usage:
+<div className="card-r border border-white/10 bg-surface overflow-hidden" style={cardStyle}>
+  <div className="card-hp border-b border-white/10 flex items-center justify-between" style={scanTexture}>
+    <h3 className="text-section-head text-on-surface">Section title</h3>
+  </div>
+  <div className="card-p">
+    {/* body content */}
+  </div>
+</div>
+```
+
+**Color tokens**
+
+The primary accent is cyan, not green. Use `text-primary-container` / `bg-primary-container` / `border-primary-container` for all accent text, icon, button, and border use cases. Do not hardcode old green values (`#00FF88`, `#00e479`, `text-primary-fixed-dim`).
+
+#### Shared components
+
+`src/web/src/components/Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
+
+```tsx
+{sparkData.length >= 2 && (
+  <div className="w-full">
+    <Sparkline data={sparkData} w={460} h={76} />
+  </div>
+)}
+```
+
+`src/web/src/components/PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
+
+#### Shared utilities
+
+`src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Several pages already import it correctly (`AnalyticsPage`, `ProfilePage`). Always import from the shared module.
+
 ### EF Core design-time factory
 
 `DesignTimeDbContextFactory` in `ApexRacers.Data` reads `DATABASE_CONNECTION_STRING` from the environment and falls back to a hardcoded local dev connection string. This is what allows `dotnet ef` commands to work without setting env vars manually.

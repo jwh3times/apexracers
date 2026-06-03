@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SettingsPage from '../SettingsPage';
@@ -197,5 +197,67 @@ describe('SettingsPage', () => {
     renderPage();
     await user.click(screen.getByRole('button', { name: /^beta/i }));
     await waitFor(() => expect(screen.getByText('Not allowed')).toBeInTheDocument());
+  });
+
+  it('submits the security form and clears all password fields', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const currentInput = screen.getByLabelText(/current password/i);
+    const newInput = screen.getByLabelText(/new password/i);
+    const confirmInput = screen.getByLabelText(/confirm password/i);
+    await user.type(currentInput, 'oldpass');
+    await user.type(newInput, 'newpass');
+    await user.type(confirmInput, 'newpass');
+    expect(currentInput).toHaveValue('oldpass');
+    // The submit button is permanently disabled, so use fireEvent.submit on the form element
+    const securityForm = currentInput.closest('form')!;
+    fireEvent.submit(securityForm);
+    expect(currentInput).toHaveValue('');
+    expect(newInput).toHaveValue('');
+    expect(confirmInput).toHaveValue('');
+  });
+
+  it('clicking Disconnect calls logout', async () => {
+    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    const user = userEvent.setup();
+    renderPage();
+    const disconnectBtn = screen.getByRole('button', { name: /disconnect/i });
+    await user.click(disconnectBtn);
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Saved ✓ on the save button after a successful profile save', async () => {
+    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('clicking the active tier button does not call api.updateRole', async () => {
+    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    const user = userEvent.setup();
+    renderPage();
+    const betaButton = screen.getByRole('button', { name: /^beta/i });
+    // The active tier button is disabled — clicking it must not invoke the API
+    await user.click(betaButton);
+    expect(vi.mocked(api.updateRole)).not.toHaveBeenCalled();
+  });
+
+  it('typing into password fields updates their values', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const currentInput = screen.getByLabelText(/current password/i);
+    const newInput = screen.getByLabelText(/new password/i);
+    const confirmInput = screen.getByLabelText(/confirm password/i);
+    await user.type(currentInput, 'secret1');
+    await user.type(newInput, 'secret2');
+    await user.type(confirmInput, 'secret2');
+    expect(currentInput).toHaveValue('secret1');
+    expect(newInput).toHaveValue('secret2');
+    expect(confirmInput).toHaveValue('secret2');
   });
 });

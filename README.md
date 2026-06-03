@@ -69,6 +69,8 @@ npm run dev
 
 The dev server starts on `http://localhost:5173`. All `/api` requests are proxied to the API automatically.
 
+`http://localhost:5173/` serves the public marketing landing page (no login required). The authenticated app starts at `/dashboard` — register or log in to access it.
+
 ### 6. Seed the database (optional)
 
 Populate all series with synthetic lap time data so the UI is usable without live iRacing data:

@@ -238,6 +238,161 @@ describe('api', () => {
 
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
+  // ── updateRole ──────────────────────────────────────────────────────────────
+
+  describe('updateRole', () => {
+    it('calls PUT /api/auth/role with role body and returns fresh JWT', async () => {
+      mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Jerry' });
+      const result = await api.updateRole('Beta');
+      expect(fetch).toHaveBeenCalledWith('/api/auth/role', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ role: 'Beta' }),
+      }));
+      expect(result.token).toBe('new-jwt');
+    });
+
+    it('throws with server error body on failure', async () => {
+      mockFetchError({ body: 'Invalid role.' });
+      await expect(api.updateRole('Unknown')).rejects.toThrow('Invalid role.');
+    });
+  });
+
+  // ── getFeatureFlags ─────────────────────────────────────────────────────────
+
+  describe('getFeatureFlags', () => {
+    it('calls GET /api/feature-flags and returns flag list', async () => {
+      const data = [{ id: 1, key: 'new-ui', name: 'New UI', description: null, isEnabled: true, minimumRole: 'Standard', createdAt: '', updatedAt: '' }];
+      mockFetchOk(data);
+      const result = await api.getFeatureFlags();
+      expect(fetch).toHaveBeenCalledWith('/api/feature-flags', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws on non-ok response', async () => {
+      mockFetchError({ status: 401, statusText: 'Unauthorized' });
+      await expect(api.getFeatureFlags()).rejects.toThrow('401');
+    });
+  });
+
+  // ── getAdminUsers ───────────────────────────────────────────────────────────
+
+  describe('getAdminUsers', () => {
+    it('calls GET /api/admin/users and returns user list', async () => {
+      const data = [{ userId: 'u1', email: 'admin@example.com', displayName: 'Admin', role: 'Admin' }];
+      mockFetchOk(data);
+      const result = await api.getAdminUsers();
+      expect(fetch).toHaveBeenCalledWith('/api/admin/users', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws on non-ok response', async () => {
+      mockFetchError({ status: 403, statusText: 'Forbidden' });
+      await expect(api.getAdminUsers()).rejects.toThrow('403');
+    });
+  });
+
+  // ── setAdminUserRole ────────────────────────────────────────────────────────
+
+  describe('setAdminUserRole', () => {
+    it('calls PUT /api/admin/users/:userId/role with role body', async () => {
+      const data = { userId: 'u2', email: 'user@example.com', displayName: 'User', role: 'Beta' };
+      mockFetchOk(data);
+      const result = await api.setAdminUserRole('u2', 'Beta');
+      expect(fetch).toHaveBeenCalledWith('/api/admin/users/u2/role', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ role: 'Beta' }),
+      }));
+      expect(result.role).toBe('Beta');
+    });
+
+    it('throws with server error body on failure', async () => {
+      mockFetchError({ body: 'User not found.' });
+      await expect(api.setAdminUserRole('missing', 'Beta')).rejects.toThrow('User not found.');
+    });
+  });
+
+  // ── getAdminFeatureFlags ────────────────────────────────────────────────────
+
+  describe('getAdminFeatureFlags', () => {
+    it('calls GET /api/admin/feature-flags and returns all flags', async () => {
+      const data = [{ id: 2, key: 'dark-mode', name: 'Dark Mode', description: null, isEnabled: false, minimumRole: 'Alpha', createdAt: '', updatedAt: '' }];
+      mockFetchOk(data);
+      const result = await api.getAdminFeatureFlags();
+      expect(fetch).toHaveBeenCalledWith('/api/admin/feature-flags', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws on non-ok response', async () => {
+      mockFetchError({ status: 403, statusText: 'Forbidden' });
+      await expect(api.getAdminFeatureFlags()).rejects.toThrow('403');
+    });
+  });
+
+  // ── createFeatureFlag ───────────────────────────────────────────────────────
+
+  describe('createFeatureFlag', () => {
+    it('calls POST /api/admin/feature-flags with full flag body and returns created flag', async () => {
+      const payload = { key: 'exp-lap', name: 'Experimental Lap', description: 'A test flag', isEnabled: true, minimumRole: 'Beta' };
+      const created = { id: 5, ...payload, createdAt: '', updatedAt: '' };
+      mockFetchOk(created);
+      const result = await api.createFeatureFlag(payload);
+      expect(fetch).toHaveBeenCalledWith('/api/admin/feature-flags', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }));
+      expect(result.id).toBe(5);
+    });
+
+    it('throws with server error body on failure', async () => {
+      mockFetchError({ body: 'Key already exists.' });
+      await expect(api.createFeatureFlag({ key: 'dup', name: 'Dup', description: null, isEnabled: false, minimumRole: 'Standard' }))
+        .rejects.toThrow('Key already exists.');
+    });
+  });
+
+  // ── updateFeatureFlag ───────────────────────────────────────────────────────
+
+  describe('updateFeatureFlag', () => {
+    it('calls PUT /api/admin/feature-flags/:id with update body', async () => {
+      const updateData = { name: 'Updated', description: null, isEnabled: false, minimumRole: 'Alpha' };
+      const updated = { id: 5, key: 'exp-lap', ...updateData, createdAt: '', updatedAt: '' };
+      mockFetchOk(updated);
+      const result = await api.updateFeatureFlag(5, updateData);
+      expect(fetch).toHaveBeenCalledWith('/api/admin/feature-flags/5', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      }));
+      expect(result.name).toBe('Updated');
+    });
+
+    it('throws with server error body on failure', async () => {
+      mockFetchError({ body: 'Flag not found.' });
+      await expect(api.updateFeatureFlag(999, { name: 'x', description: null, isEnabled: true, minimumRole: 'Standard' }))
+        .rejects.toThrow('Flag not found.');
+    });
+  });
+
+  // ── deleteFeatureFlag ───────────────────────────────────────────────────────
+
+  describe('deleteFeatureFlag', () => {
+    it('calls DELETE /api/admin/feature-flags/:id', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true, status: 204, statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await api.deleteFeatureFlag(5);
+      expect(fetch).toHaveBeenCalledWith('/api/admin/feature-flags/5', expect.objectContaining({ method: 'DELETE' }));
+    });
+
+    it('throws with status info on non-ok response', async () => {
+      mockFetchError({ status: 404, statusText: 'Not Found' });
+      await expect(api.deleteFeatureFlag(999)).rejects.toThrow('DELETE /api/admin/feature-flags/999 → 404 Not Found');
+    });
+  });
+
+  // ── setToken / clearToken ───────────────────────────────────────────────────
+
   describe('setToken and clearToken', () => {
     it('setToken causes subsequent requests to include an Authorization header', async () => {
       const { setToken } = await import('../api');
