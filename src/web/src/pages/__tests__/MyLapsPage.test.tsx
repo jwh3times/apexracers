@@ -54,13 +54,13 @@ describe('MyLapsPage', () => {
     await waitFor(() => expect(screen.getByText(/not found/i)).toBeInTheDocument());
   });
 
-  it('formats track name without config suffix when configName is null', async () => {
+  it('formats track name without config suffix when configName is empty', async () => {
     mockGetMyLaps.mockResolvedValue([
       {
         carId: 2,
         carName: 'Mazda MX-5',
         trackName: 'Lime Rock Park',
-        configName: null,
+        configName: '',
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',
@@ -79,7 +79,7 @@ describe('MyLapsPage', () => {
         carId: 1,
         carName: 'Slow Car',
         trackName: 'Track A',
-        configName: null,
+        configName: '',
         bestLapSeconds: 150.0,
         lapCount: 3,
         lastRecordedAt: '2026-05-01T10:00:00Z',
@@ -88,7 +88,7 @@ describe('MyLapsPage', () => {
         carId: 2,
         carName: 'Fast Car',
         trackName: 'Track B',
-        configName: null,
+        configName: '',
         bestLapSeconds: 88.5,
         lapCount: 7,
         lastRecordedAt: '2026-05-02T10:00:00Z',
@@ -97,7 +97,7 @@ describe('MyLapsPage', () => {
         carId: 3,
         carName: 'Medium Car',
         trackName: 'Track C',
-        configName: null,
+        configName: '',
         bestLapSeconds: 120.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-03T10:00:00Z',
@@ -129,7 +129,7 @@ describe('MyLapsPage', () => {
         carId: 2,
         carName: 'Mazda MX-5',
         trackName: 'Lime Rock Park',
-        configName: null,
+        configName: '',
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',
@@ -162,7 +162,7 @@ describe('MyLapsPage', () => {
         carId: 2,
         carName: 'Mazda MX-5',
         trackName: 'Lime Rock Park',
-        configName: null,
+        configName: '',
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',
