@@ -6,8 +6,8 @@ export default function Sidebar() {
   const { user } = useAuth();
   const navItems = user ? AUTH_NAV : GUEST_NAV;
   return (
-    <aside className="w-64 bg-surface-container-lowest border-r border-white/10 h-screen sticky top-0 flex flex-col z-50 hidden lg:flex">
-      <div className="px-5 border-b border-white/10 flex items-center h-16 gap-[11px] overflow-hidden">
+    <aside className="w-64 bg-surface-container-lowest border-r border-line-2 h-screen sticky top-0 flex flex-col z-50 hidden lg:flex">
+      <div className="px-5 border-b border-line-2 flex items-center h-16 gap-[11px] overflow-hidden">
         <div
           className="w-7 h-7 shrink-0 rounded-[7px] bg-primary-container grid place-items-center text-on-primary-fixed font-extrabold text-[17px]"
           style={{ boxShadow: '0 0 22px -4px var(--color-primary-container)' }}
@@ -28,7 +28,7 @@ export default function Sidebar() {
               `flex items-center gap-3 px-4 py-3 rounded-lg font-body-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary-container/10 text-primary-fixed-dim'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'
               }`
             }
           >
@@ -43,7 +43,7 @@ export default function Sidebar() {
               `flex items-center gap-3 px-4 py-3 rounded-lg font-body-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary-container/10 text-primary-fixed-dim'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'
               }`
             }
           >

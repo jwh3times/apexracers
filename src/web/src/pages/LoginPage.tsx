@@ -62,9 +62,9 @@ export default function LoginPage() {
       {/* Gradient overlay */}
       <div className="absolute inset-0 z-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
 
-      <main className="relative z-10 w-full max-w-5xl bg-surface/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
+      <main className="relative z-10 w-full max-w-5xl bg-surface/80 backdrop-blur-xl border border-line-2 rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
         {/* ── Left panel: branding ── */}
-        <div className="hidden md:flex md:w-5/12 bg-surface-container-highest relative flex-col justify-between p-12 overflow-hidden border-r border-white/5">
+        <div className="hidden md:flex md:w-5/12 bg-surface-container-highest relative flex-col justify-between p-12 overflow-hidden border-r border-line">
           <div
             className="absolute inset-0 opacity-20 pointer-events-none bg-cover bg-center"
             style={{ backgroundImage: `url('${BG_TELEMETRY}')` }}
@@ -98,7 +98,7 @@ export default function LoginPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-white/10 mb-8" role="tablist">
+          <div className="flex border-b border-line-2 mb-8" role="tablist">
             {(['signin', 'register'] as const).map((t) => (
               <button
                 key={t}
@@ -131,9 +131,9 @@ export default function LoginPage() {
 
             {/* Divider */}
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-px bg-white/10 flex-1" />
+              <div className="h-px bg-surface-container-high flex-1" />
               <span className="font-label-caps text-label-caps text-on-surface-variant">OR</span>
-              <div className="h-px bg-white/10 flex-1" />
+              <div className="h-px bg-surface-container-high flex-1" />
             </div>
 
             {/* Error banner */}
@@ -163,7 +163,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="driver@example.com"
-                    className="w-full bg-surface-container-low border border-white/10 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
+                    className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                   />
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-surface-container-low border border-white/10 rounded-lg pl-12 pr-12 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
+                    className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-12 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                   />
                   <button
                     type="button"
@@ -231,7 +231,7 @@ export default function LoginPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-surface-container-low border border-white/10 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
+                      className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                     />
                   </div>
                 </div>

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import type { ThemePreference } from '../context/ThemeContext';
 
 const TIER_DESCRIPTIONS: Record<string, string> = {
   Standard: 'Default access. New features go here once stable.',
@@ -11,6 +13,7 @@ const TIER_DESCRIPTIONS: Record<string, string> = {
 
 export default function SettingsPage() {
   const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -84,7 +87,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Profile header card */}
-        <div className="bg-surface rounded-xl border border-white/10 p-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+        <div className="bg-surface rounded-xl border border-line-2 p-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary-fixed-dim/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Avatar placeholder */}
@@ -112,8 +115,8 @@ export default function SettingsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Personal Information */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+          <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
               <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">person</span>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Personal Information</h3>
             </div>
@@ -131,7 +134,7 @@ export default function SettingsPage() {
                   type="text"
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
 
@@ -147,7 +150,7 @@ export default function SettingsPage() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
 
@@ -165,7 +168,7 @@ export default function SettingsPage() {
                   value={iRacingCustomerId}
                   onChange={e => setIRacingCustomerId(e.target.value)}
                   placeholder="e.g. 100042"
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
                 <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
                   Used to look up your lap time percentile. Will be set automatically once iRacing OAuth is available.
@@ -179,7 +182,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={profileSaving}
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-surface-container-highest border border-line-2 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {profileSaving ? 'Saving…' : profileSaved ? 'Saved ✓' : 'Save Changes'}
                 </button>
@@ -188,13 +191,13 @@ export default function SettingsPage() {
           </div>
 
           {/* Connections + Preferences */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 flex flex-col">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+          <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 flex flex-col">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
               <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">link</span>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Connections</h3>
             </div>
 
-            <div className="bg-surface-container-high rounded-lg p-4 border border-white/5 flex items-center justify-between">
+            <div className="bg-surface-container-high rounded-lg p-4 border border-line flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-[#00D1FF]/10 rounded flex items-center justify-center border border-[#00D1FF]/20 shrink-0">
                   <span className="font-data-md text-data-md text-[#00D1FF]">iR</span>
@@ -220,11 +223,38 @@ export default function SettingsPage() {
             </div>
 
             {/* Preferences */}
-            <div className="mt-auto pt-6 border-t border-white/5">
+            <div className="mt-auto pt-6 border-t border-line">
               <div className="flex items-center gap-3 mb-4">
-                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">notifications</span>
+                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">tune</span>
                 <h3 className="font-headline-sm text-headline-sm text-on-surface">Preferences</h3>
               </div>
+
+              {/* Theme */}
+              <div className="mb-5">
+                <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">Theme</p>
+                <div className="flex gap-2">
+                  {(['auto', 'light', 'dark'] as ThemePreference[]).map(opt => {
+                    const icons: Record<ThemePreference, string> = { auto: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
+                    const labels: Record<ThemePreference, string> = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+                    const active = theme === opt;
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => setTheme(opt)}
+                        className={`flex items-center gap-1.5 btn-fluid-sm border transition-all ${
+                          active
+                            ? 'border-primary-fixed-dim bg-primary-container/10 text-primary-fixed-dim'
+                            : 'border-line-2 text-on-surface-variant hover:border-line-2 hover:text-on-surface'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]" aria-hidden="true">{icons[opt]}</span>
+                        {labels[opt]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <label className="flex items-center justify-between cursor-pointer group">
                 <span className="font-body-sm text-body-sm text-on-surface-variant group-hover:text-on-surface transition-colors">
                   New series data alerts
@@ -243,8 +273,8 @@ export default function SettingsPage() {
           </div>
 
           {/* Security */}
-          <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 md:col-span-2">
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+          <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 md:col-span-2">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
               <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">lock</span>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Security</h3>
             </div>
@@ -270,7 +300,7 @@ export default function SettingsPage() {
                   type="password"
                   value={currentPassword}
                   onChange={e => setCurrentPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
               <div>
@@ -285,7 +315,7 @@ export default function SettingsPage() {
                   type="password"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
               <div>
@@ -300,7 +330,7 @@ export default function SettingsPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
               <div className="md:col-span-3 pt-2">
@@ -308,7 +338,7 @@ export default function SettingsPage() {
                   type="submit"
                   disabled
                   title="Password change coming soon"
-                  className="bg-surface-container-highest border border-white/10 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
+                  className="bg-surface-container-highest border border-line-2 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
                 >
                   Update Password (Coming Soon)
                 </button>
@@ -317,8 +347,8 @@ export default function SettingsPage() {
           </div>
           {/* Access Tier */}
           {user?.role !== 'Admin' && (
-            <div className="bg-surface rounded-xl border border-white/10 p-6 space-y-6 md:col-span-2">
-              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+            <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 md:col-span-2">
+              <div className="flex items-center gap-3 border-b border-line pb-4">
                 <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">experiment</span>
                 <div>
                   <h3 className="font-headline-sm text-headline-sm text-on-surface">Access Tier</h3>
@@ -339,7 +369,7 @@ export default function SettingsPage() {
                       className={`rounded-lg border p-4 text-left transition-all ${
                         isActive
                           ? 'border-primary-fixed-dim bg-primary-container/10 cursor-default'
-                          : 'border-white/10 hover:border-white/30 hover:bg-white/5 cursor-pointer'
+                          : 'border-line-2 hover:border-line-2 hover:bg-surface-container-highest cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">

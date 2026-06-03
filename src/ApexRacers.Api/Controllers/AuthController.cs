@@ -67,6 +67,24 @@ public class AuthController(AuthService auth) : ControllerBase
         }
     }
 
+    [HttpPut("theme")]
+    [Authorize]
+    public async Task<IActionResult> UpdateThemeAsync([FromBody] UpdateThemeRequest request, CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            return Ok(await auth.UpdateThemeAsync(userId, request.ThemePreference, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost("callback")]
     public async Task<IActionResult> CallbackAsync(
         [FromQuery] string? code,

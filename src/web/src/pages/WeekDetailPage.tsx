@@ -52,7 +52,7 @@ export default function WeekDetailPage() {
   if (error) {
     return (
       <main className="page-wrap">
-        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-white/10">
+        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-line-2">
           {error}
         </div>
       </main>
@@ -93,7 +93,7 @@ export default function WeekDetailPage() {
       {/* KPI strip */}
       <div className="grid-kpi mb-6">
         <div
-          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium">Total entries</div>
@@ -102,7 +102,7 @@ export default function WeekDetailPage() {
           </div>
         </div>
         <div
-          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
@@ -122,12 +122,12 @@ export default function WeekDetailPage() {
         </p>
       ) : (
         <div
-          className="card-r border border-white/10 bg-surface overflow-hidden"
+          className="card-r border border-line-2 bg-surface overflow-hidden"
           style={cardStyle}
         >
           {/* Card header */}
           <div
-            className="flex items-center justify-between card-hp border-b border-white/10"
+            className="flex items-center justify-between card-hp border-b border-line-2"
             style={scanTexture}
           >
             <div>
@@ -140,22 +140,22 @@ export default function WeekDetailPage() {
             <table className="w-full text-left whitespace-nowrap">
               <thead>
                 <tr>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap w-12 text-center">
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap w-12 text-center">
                     #
                   </th>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-left">
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-left">
                     Car
                   </th>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-right">
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-right">
                     Entries
                   </th>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-right">
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-right">
                     Fastest Lap
                   </th>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-right">
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-right">
                     Median Lap
                   </th>
-                  <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap w-8" />
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap w-8" />
                 </tr>
               </thead>
               <tbody>
@@ -173,7 +173,7 @@ export default function WeekDetailPage() {
                         )
                       }
                     >
-                      <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-center">
+                      <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-center">
                         <span
                           className={
                             isTop
@@ -184,7 +184,7 @@ export default function WeekDetailPage() {
                           {rank}
                         </span>
                       </td>
-                      <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid">
+                      <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid">
                         <div className="flex items-center gap-3">
                           <span
                             className="w-2 h-2 rounded-full shrink-0"
@@ -195,20 +195,20 @@ export default function WeekDetailPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-right text-on-surface-variant font-mono">
+                      <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-right text-on-surface-variant font-mono">
                         {car.entryCount.toLocaleString()}
                       </td>
-                      <td className={`td-p border-b border-white/10 last:border-b-0 text-body-fluid text-right font-mono ${isTop ? 'text-primary-container font-semibold' : 'text-on-surface'}`}>
+                      <td className={`td-p border-b border-line-2 last:border-b-0 text-body-fluid text-right font-mono ${isTop ? 'text-primary-container font-semibold' : 'text-on-surface'}`}>
                         {car.fastestLapSeconds != null
                           ? formatLapTime(car.fastestLapSeconds)
                           : '—'}
                       </td>
-                      <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-right font-mono text-on-surface">
+                      <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-right font-mono text-on-surface">
                         {car.medianLapSeconds != null
                           ? formatLapTime(car.medianLapSeconds)
                           : '—'}
                       </td>
-                      <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-on-surface-variant">
+                      <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-on-surface-variant">
                         <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_right</span>
                       </td>
                     </tr>

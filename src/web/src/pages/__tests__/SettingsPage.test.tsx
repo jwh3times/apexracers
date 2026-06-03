@@ -25,7 +25,11 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 vi.mock('../../services/api', () => ({
-  api: { updateProfile: vi.fn(), updateRole: vi.fn() },
+  api: { updateProfile: vi.fn(), updateRole: vi.fn(), updateTheme: vi.fn() },
+}));
+
+vi.mock('../../context/ThemeContext', () => ({
+  useTheme: () => ({ theme: 'auto', setTheme: vi.fn() }),
 }));
 
 function renderPage() {

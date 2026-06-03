@@ -21,6 +21,10 @@ vi.mock('../../services/api', () => ({
   clearToken: (...args: unknown[]) => mockClearToken(...args),
 }));
 
+vi.mock('../ThemeContext', () => ({
+  useTheme: () => ({ theme: 'auto', setTheme: vi.fn(), syncFromJwt: vi.fn() }),
+}));
+
 function makeJwt(claims: { sub: string; email: string; name: string }): string {
   return `header.${btoa(JSON.stringify(claims))}.signature`;
 }

@@ -6,4 +6,5 @@ public class ApplicationUser : IdentityUser<Guid>
 {
     public required string DisplayName { get; set; }
     public long? IRacingCustomerId { get; set; }
+    public string ThemePreference { get; set; } = "auto";
 }

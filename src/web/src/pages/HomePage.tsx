@@ -22,10 +22,10 @@ const SCAN_BG = 'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px,
 function TimingStrip() {
   return (
     <div
-      className="card-r border border-white/10 bg-surface overflow-hidden w-full max-w-[clamp(320px,38vw,580px)] shrink-0"
+      className="card-r border border-line-2 bg-surface overflow-hidden w-full max-w-[clamp(320px,38vw,580px)] shrink-0"
       style={{ backgroundImage: SCAN_BG }}
     >
-      <div className="flex items-center justify-between px-[18px] py-[15px] border-b border-white/10">
+      <div className="flex items-center justify-between px-[18px] py-[15px] border-b border-line-2">
         <div className="flex items-center gap-[9px]">
           <span
             className="w-2 h-2 rounded-full bg-primary-container"
@@ -41,7 +41,7 @@ function TimingStrip() {
       {TIMING_ROWS.map((r) => (
         <div
           key={r.p}
-          className={`flex items-center justify-between px-[18px] py-3 border-b border-white/10 last:border-b-0 ${
+          className={`flex items-center justify-between px-[18px] py-3 border-b border-line-2 last:border-b-0 ${
             r.drv === 'you' ? 'bg-primary-container/[0.16]' : ''
           }`}
         >
@@ -114,7 +114,7 @@ export default function HomePage() {
 
       {/* ── Header ────────────────────────────────────────────── */}
       <header
-        className="h-[70px] flex items-center px-[clamp(20px,5vw,64px)] border-b border-white/10 sticky top-0 z-20 backdrop-blur-[12px]"
+        className="h-[70px] flex items-center px-[clamp(20px,5vw,64px)] border-b border-line-2 sticky top-0 z-20 backdrop-blur-[12px]"
         style={{ background: 'color-mix(in oklab, var(--color-background) 84%, transparent)' }}
       >
         <div className="flex items-center gap-[11px]">
@@ -143,7 +143,7 @@ export default function HomePage() {
         <div className="ml-auto flex items-center gap-[10px]">
           <Link
             to="/login"
-            className="btn-fluid inline-flex items-center border border-white/10 font-semibold text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+            className="btn-fluid inline-flex items-center border border-line-2 font-semibold text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
           >
             Sign in
           </Link>
@@ -190,7 +190,7 @@ export default function HomePage() {
             </Link>
             <Link
               to="/series"
-              className="inline-flex items-center gap-2 h-[clamp(38px,3.2vw,56px)] px-[clamp(16px,1.8vw,28px)] text-[clamp(14px,1vw,17px)] rounded-[clamp(8px,0.8vw,12px)] font-semibold border border-white/10 bg-surface-container text-on-surface hover:bg-surface-container-high transition-all"
+              className="inline-flex items-center gap-2 h-[clamp(38px,3.2vw,56px)] px-[clamp(16px,1.8vw,28px)] text-[clamp(14px,1vw,17px)] rounded-[clamp(8px,0.8vw,12px)] font-semibold border border-line-2 bg-surface-container text-on-surface hover:bg-surface-container-high transition-all"
             >
               Browse series
             </Link>
@@ -219,7 +219,7 @@ export default function HomePage() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="card-r border border-white/10 bg-surface card-p flex flex-col gap-fluid"
+              className="card-r border border-line-2 bg-surface card-p flex flex-col gap-fluid"
               style={{ boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)' }}
             >
               <div className="w-11 h-11 rounded-[12px] grid place-items-center bg-primary-container/[0.16] text-primary-container border border-primary-container/40">
@@ -235,7 +235,7 @@ export default function HomePage() {
       {/* ── CTA band ──────────────────────────────────────────── */}
       <section className="max-w-[1240px] mx-auto w-full px-[clamp(20px,5vw,64px)] mt-5 pb-[70px]">
         <div
-          className="card-r border border-white/10 text-center px-[clamp(24px,4vw,64px)] py-[clamp(36px,4.5vw,72px)]"
+          className="card-r border border-line-2 text-center px-[clamp(24px,4vw,64px)] py-[clamp(36px,4.5vw,72px)]"
           style={{
             backgroundImage: [
               SCAN_BG,
@@ -264,7 +264,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="mt-auto border-t border-white/10 px-[clamp(20px,5vw,64px)] py-[26px] flex items-center gap-4 text-on-surface-variant/50 text-[12.5px] flex-wrap">
+      <footer className="mt-auto border-t border-line-2 px-[clamp(20px,5vw,64px)] py-[26px] flex items-center gap-4 text-on-surface-variant/50 text-[12.5px] flex-wrap">
         <span className="font-bold tracking-[-0.02em] text-[14px] whitespace-nowrap text-on-surface-variant">
           APEX<b className="text-primary-container font-bold">//</b>RACERS
         </span>

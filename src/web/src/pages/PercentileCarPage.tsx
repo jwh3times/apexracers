@@ -136,7 +136,7 @@ export default function PercentileCarPage() {
       {/* Manual lookup form — only shown when no iRacing ID is saved in the profile */}
       {!profileId && !loading && (
         <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 mb-6">
-          <div className="flex items-start gap-3 p-3 bg-surface-container rounded-lg border border-white/5">
+          <div className="flex items-start gap-3 p-3 bg-surface-container rounded-lg border border-line">
             <span
               className="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5 shrink-0"
               aria-hidden="true"
@@ -170,7 +170,7 @@ export default function PercentileCarPage() {
                 value={customerId}
                 onChange={e => setCustomerId(e.target.value)}
                 placeholder="e.g. 100042"
-                className="bg-surface-container border border-white/10 rounded-[10px] px-4 py-2.5 font-mono text-body-fluid text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary-container/40 w-full max-w-xs"
+                className="bg-surface-container border border-line-2 rounded-[10px] px-4 py-2.5 font-mono text-body-fluid text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary-container/40 w-full max-w-xs"
               />
             </div>
             <button
@@ -190,12 +190,12 @@ export default function PercentileCarPage() {
         const topPct = Math.max(1, Math.ceil(100 - result.percentileRank));
         return (
           <div
-            className="card-r border border-white/10 bg-surface overflow-hidden mb-4"
+            className="card-r border border-line-2 bg-surface overflow-hidden mb-4"
             style={{ ...cardStyle, ...scanTexture }}
           >
             <div className="grid md:grid-cols-2 gap-0">
               {/* Left: badge + summary */}
-              <div className="flex flex-col items-center justify-center gap-[18px] p-8 border-b md:border-b-0 md:border-r border-white/10">
+              <div className="flex flex-col items-center justify-center gap-[18px] p-8 border-b md:border-b-0 md:border-r border-line-2">
                 <PercentileBadge pct={topPct} size="lg" />
                 <div className="text-center">
                   <p className="text-section-head text-on-surface">
@@ -237,7 +237,7 @@ export default function PercentileCarPage() {
 
       {/* Not found */}
       {notFound && (
-        <div className="card-r border border-white/10 bg-surface p-6 flex items-start gap-3 mb-4" style={cardStyle}>
+        <div className="card-r border border-line-2 bg-surface p-6 flex items-start gap-3 mb-4" style={cardStyle}>
           <span
             className="material-symbols-outlined text-on-surface-variant mt-0.5"
             aria-hidden="true"

@@ -48,12 +48,12 @@ function UsersTab() {
   if (loading) return <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">Loading users…</p>;
 
   return (
-    <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
+    <div className="glass-panel rounded-xl overflow-hidden border border-line-2">
       {error && <p className="px-6 py-3 text-error font-body-sm text-body-sm">{error}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-surface-container/50 border-b border-white/10">
+            <tr className="bg-surface-container/50 border-b border-line-2">
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">EMAIL</th>
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">DISPLAY NAME</th>
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">ROLE</th>
@@ -68,7 +68,7 @@ function UsersTab() {
               const isDirty = !isAdmin && pending !== undefined && pending !== user.role;
               const isSaving = saving.has(user.userId);
               return (
-                <tr key={user.userId} className="border-b border-surface-container-high hover:bg-white/5 transition-colors last:border-b-0">
+                <tr key={user.userId} className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0">
                   <td className="p-4 font-body-sm text-body-sm text-on-surface">{user.email}</td>
                   <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">{user.displayName}</td>
                   <td className="p-4">
@@ -80,7 +80,7 @@ function UsersTab() {
                       <select
                         value={effectiveRole}
                         onChange={e => handleRoleChange(user.userId, e.target.value as Role)}
-                        className="min-w-28 bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+                        className="min-w-28 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                       >
                         {ROLES.filter(r => r !== 'Admin').map(r => (
                           <option key={r} value={r}>{r}</option>
@@ -194,7 +194,7 @@ function FlagsTab() {
       {error && <p className="text-error font-body-sm text-body-sm">{error}</p>}
 
       {/* Create form */}
-      <div className="glass-panel rounded-xl border border-white/10 p-6">
+      <div className="glass-panel rounded-xl border border-line-2 p-6">
         <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Create Flag</h3>
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <input
@@ -202,26 +202,26 @@ function FlagsTab() {
             placeholder="flag.key"
             value={createForm.key}
             onChange={e => setCreateForm(p => ({ ...p, key: e.target.value }))}
-            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+            className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
           />
           <input
             required
             placeholder="Display name"
             value={createForm.name}
             onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
-            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+            className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
           />
           <input
             placeholder="Description (optional)"
             value={createForm.description}
             onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
-            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+            className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
           />
           <div className="flex items-center gap-3">
             <select
               value={createForm.minimumRole}
               onChange={e => setCreateForm(p => ({ ...p, minimumRole: e.target.value as Role }))}
-              className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+              className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
             >
               {ROLES.map(r => <option key={r} value={r}>{r}+</option>)}
             </select>
@@ -251,11 +251,11 @@ function FlagsTab() {
       {flags.length === 0 ? (
         <p className="font-body-sm text-body-sm text-on-surface-variant">No feature flags yet.</p>
       ) : (
-        <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
+        <div className="glass-panel rounded-xl overflow-hidden border border-line-2">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-surface-container/50 border-b border-white/10">
+                <tr className="bg-surface-container/50 border-b border-line-2">
                   <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">KEY</th>
                   <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">NAME / DESCRIPTION</th>
                   <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">MIN ROLE</th>
@@ -274,18 +274,18 @@ function FlagsTab() {
                             required
                             value={editForm.name}
                             onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors w-40"
+                            className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors w-40"
                           />
                           <input
                             value={editForm.description}
                             onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
                             placeholder="Description"
-                            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors flex-1"
+                            className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors flex-1"
                           />
                           <select
                             value={editForm.minimumRole}
                             onChange={e => setEditForm(p => ({ ...p, minimumRole: e.target.value as Role }))}
-                            className="bg-surface-container-high border border-white/10 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
+                            className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                           >
                             {ROLES.map(r => <option key={r} value={r}>{r}+</option>)}
                           </select>
@@ -322,7 +322,7 @@ function FlagsTab() {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={flag.id} className="border-b border-surface-container-high hover:bg-white/5 transition-colors last:border-b-0">
+                    <tr key={flag.id} className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0">
                       <td className="p-4 font-body-sm text-body-sm text-primary-fixed-dim font-mono">{flag.key}</td>
                       <td className="p-4">
                         <p className="font-body-sm text-body-sm text-on-surface">{flag.name}</p>
@@ -384,7 +384,7 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-white/10 pb-0">
+      <div className="flex gap-1 border-b border-line-2 pb-0">
         {(['users', 'flags'] as Tab[]).map(t => (
           <button
             key={t}

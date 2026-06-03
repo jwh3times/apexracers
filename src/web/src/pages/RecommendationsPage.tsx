@@ -14,7 +14,7 @@ function ordinal(p: number): string {
 
 function ProjectedBadge() {
   return (
-    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold tracking-wide bg-surface-container text-on-surface-variant border border-white/10">
+    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold tracking-wide bg-surface-container text-on-surface-variant border border-line-2">
       <span className="material-symbols-outlined text-[10px]" aria-hidden="true">calculate</span>
       Projected
     </span>
@@ -33,7 +33,7 @@ const scanTexture: React.CSSProperties = {
 function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
   return (
     <div
-      className="card-r border border-white/10 bg-surface overflow-hidden"
+      className="card-r border border-line-2 bg-surface overflow-hidden"
       style={{ ...cardStyle, ...scanTexture }}
     >
       <div className="card-p flex flex-col gap-5">
@@ -107,7 +107,7 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
 
 function RecommendationRow({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
   return (
-    <div className="flex items-center justify-between gap-4 td-p border-b border-white/10 last:border-b-0 hover:bg-surface-container transition-colors">
+    <div className="flex items-center justify-between gap-4 td-p border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors">
       {/* Rank + name */}
       <div className="flex items-center gap-4 min-w-0">
         <span className="font-mono text-body-fluid font-bold w-7 text-center shrink-0 text-on-surface-variant">
@@ -136,7 +136,7 @@ function RecommendationRow({ rec, seriesId, weekNumber }: { rec: CarRecommendati
         </span>
         <Link
           to={`/series/${seriesId}/weeks/${weekNumber}`}
-          className="inline-flex items-center gap-2 btn-fluid-sm border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+          className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
         >
           Race
         </Link>
@@ -217,14 +217,14 @@ export default function RecommendationsPage() {
       )}
 
       {error && (
-        <div className="card-r border border-white/10 bg-surface p-6 text-body-fluid text-error" style={cardStyle}>
+        <div className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error" style={cardStyle}>
           {error}
         </div>
       )}
 
       {!loading && !error && recs.length === 0 && (
         <div
-          className="card-r border border-white/10 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
+          className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
           style={cardStyle}
         >
           <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
@@ -246,12 +246,12 @@ export default function RecommendationsPage() {
 
           {recs.length > 1 && (
             <div
-              className="card-r border border-white/10 bg-surface overflow-hidden"
+              className="card-r border border-line-2 bg-surface overflow-hidden"
               style={cardStyle}
             >
               {/* Header */}
               <div
-                className="flex items-center justify-between card-hp border-b border-white/10"
+                className="flex items-center justify-between card-hp border-b border-line-2"
                 style={scanTexture}
               >
                 <h2 className="text-section-head text-on-surface">Other Options</h2>

@@ -41,11 +41,11 @@ function ProfileDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-44 bg-surface-container border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
+        <div className="absolute right-0 mt-2 w-44 bg-surface-container border border-line-2 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden z-50">
           <Link
             to="/profile"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors font-body-sm"
+            className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-body-sm"
           >
             <span className="material-symbols-outlined text-[18px]" aria-hidden="true">person</span>
             Profile
@@ -53,12 +53,12 @@ function ProfileDropdown() {
           <Link
             to="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors font-body-sm"
+            className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-body-sm"
           >
             <span className="material-symbols-outlined text-[18px]" aria-hidden="true">settings</span>
             Settings
           </Link>
-          <div className="border-t border-white/10" />
+          <div className="border-t border-line-2" />
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-error hover:bg-error/10 transition-colors font-body-sm"
@@ -76,7 +76,7 @@ export default function TopNav() {
   const { user } = useAuth();
   const navItems = user ? AUTH_NAV : GUEST_NAV;
   return (
-    <nav className="bg-surface/80 backdrop-blur-xl text-primary-fixed-dim sticky top-0 w-full z-40 border-b border-white/10 shadow-[0_0_20px_rgba(0,228,121,0.15)] flex justify-between items-center px-6 h-16">
+    <nav className="bg-surface/80 backdrop-blur-xl text-primary-fixed-dim sticky top-0 w-full z-40 border-b border-line-2 shadow-[0_0_20px_rgba(0,228,121,0.15)] flex justify-between items-center px-6 h-16">
       <div className="flex items-center gap-4 lg:hidden">
         <span className="font-display-lg text-headline-md font-extrabold tracking-tighter text-primary-fixed-dim">
           ApexRacers
@@ -91,7 +91,7 @@ export default function TopNav() {
               `transition-all duration-200 px-3 py-2 rounded font-body-sm ${
                 isActive
                   ? 'text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'
               }`
             }
           >

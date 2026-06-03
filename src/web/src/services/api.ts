@@ -237,6 +237,11 @@ export const api = {
     return get(path);
   },
 
+  /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */
+  updateTheme(themePreference: string): Promise<AuthResult> {
+    return putJson('/api/auth/theme', { themePreference });
+  },
+
   /** PUT /api/auth/role — self-assign Standard, Beta, or Alpha role, returns fresh JWT */
   updateRole(role: string): Promise<AuthResult> {
     return putJson('/api/auth/role', { role });

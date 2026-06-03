@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { setToken, clearToken } from '../services/api';
 import { dbGet, dbSet, dbRemove } from '../services/db';
 import type { AuthResult } from '../services/api';
+import { useTheme } from './ThemeContext';
 
 export interface User {
   token: string;
@@ -23,7 +24,7 @@ interface AuthContextValue {
   setAlertsEnabled: (v: boolean) => Promise<void>;
 }
 
-function decodeJwt(token: string): { sub: string; email: string; name: string; iracing_id?: string; role?: string } | null {
+function decodeJwt(token: string): { sub: string; email: string; name: string; iracing_id?: string; role?: string; theme_preference?: string } | null {
   try {
     const payload = token.split('.')[1];
     return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabledState] = useState(true);
+  const { syncFromJwt } = useTheme();
+  const didSyncRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -57,6 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: claims.role ?? 'Standard',
             });
             setToken(token);
+            if (!didSyncRef.current && claims.theme_preference) {
+              didSyncRef.current = true;
+              syncFromJwt(claims.theme_preference);
+            }
           }
         }
         if (alerts !== undefined) setAlertsEnabledState(alerts);
@@ -78,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
     setToken(result.token);
     await dbSet('ar_token', result.token);
+    if (claims?.theme_preference) syncFromJwt(claims.theme_preference);
   }
 
   async function logout() {

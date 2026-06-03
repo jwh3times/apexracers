@@ -83,7 +83,7 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
   return (
     <div
       className={`card-r border bg-surface overflow-hidden ${
-        isGold ? 'border-[#FFD700]/40' : 'border-white/10'
+        isGold ? 'border-[#FFD700]/40' : 'border-line-2'
       }`}
       style={cardStyle}
     >
@@ -131,7 +131,7 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
         )}
 
         {/* Stats row */}
-        <div className="flex items-center gap-6 pt-2 border-t border-white/10 flex-wrap">
+        <div className="flex items-center gap-6 pt-2 border-t border-line-2 flex-wrap">
           <div>
             <p className="text-th text-on-surface-variant">Total Laps</p>
             <p className="font-mono text-mono-fluid font-semibold text-on-surface mt-0.5">{data.totalLaps}</p>
@@ -164,7 +164,7 @@ function SecondaryCarCard({ data }: { data: CarAnalytics }) {
 
   return (
     <div
-      className="card-r border border-white/10 bg-surface overflow-hidden"
+      className="card-r border border-line-2 bg-surface overflow-hidden"
       style={cardStyle}
     >
       <div className="card-p flex flex-col gap-3">
@@ -187,7 +187,7 @@ function SecondaryCarCard({ data }: { data: CarAnalytics }) {
         {sparkData.length >= 2 && <Sparkline data={sparkData} w={240} h={52} />}
 
         {/* Stats */}
-        <div className="flex items-center gap-5 pt-2 border-t border-white/10 text-small-fluid flex-wrap">
+        <div className="flex items-center gap-5 pt-2 border-t border-line-2 text-small-fluid flex-wrap">
           <div>
             <span className="text-on-surface-variant">Laps: </span>
             <span className="text-on-surface font-semibold">{data.totalLaps}</span>

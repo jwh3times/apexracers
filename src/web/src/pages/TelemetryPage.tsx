@@ -138,7 +138,7 @@ export default function TelemetryPage() {
                   Or click to browse your local files. Supported format: .ibt
                 </p>
                 <div className="mt-8">
-                  <span className="px-3 py-1 bg-surface-container-lowest border border-white/10 rounded font-data-md text-data-md text-on-surface-variant">
+                  <span className="px-3 py-1 bg-surface-container-lowest border border-line-2 rounded font-data-md text-data-md text-on-surface-variant">
                     MAX 250 MB
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export default function TelemetryPage() {
           )}
 
           {status === 'uploading' && fileName && (
-            <div className="bg-surface border border-white/5 rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+            <div className="bg-surface border border-line rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <span
@@ -205,7 +205,7 @@ export default function TelemetryPage() {
                 </h2>
               </div>
 
-              <div className="bg-surface-container-lowest p-4 rounded-lg border border-white/5 flex flex-col gap-2">
+              <div className="bg-surface-container-lowest p-4 rounded-lg border border-line flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="font-body-sm text-body-sm text-on-surface-variant">Driver</span>
                   <span className="font-body-sm text-body-sm text-on-surface font-semibold">
@@ -226,7 +226,7 @@ export default function TelemetryPage() {
                   </span>
                 </div>
                 {result.bestLapSeconds != null && (
-                  <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-1">
+                  <div className="flex justify-between items-center pt-2 border-t border-line mt-1">
                     <span className="font-body-sm text-body-sm text-on-surface-variant">
                       Best Lap
                     </span>
@@ -292,7 +292,7 @@ export default function TelemetryPage() {
           </Link>
         </div>
 
-        <div className="bg-surface border border-white/5 rounded-xl overflow-hidden">
+        <div className="bg-surface border border-line rounded-xl overflow-hidden">
           {lapsLoading && (
             <p className="px-6 py-8 font-body-sm text-body-sm text-on-surface-variant animate-pulse">
               Loading&hellip;
@@ -325,7 +325,7 @@ export default function TelemetryPage() {
                 {recentLaps.map((lap, i) => (
                   <div
                     key={i}
-                    className={`grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-white/5 transition-colors ${
+                    className={`grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-container-highest transition-colors ${
                       i < recentLaps.length - 1 ? 'border-b border-surface-container-high' : ''
                     }`}
                   >

@@ -16,12 +16,12 @@ function SeriesCard({ s }: { s: Series }) {
 
   const inner = (
     <div
-      className="card-r border border-white/10 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full"
+      className="card-r border border-line-2 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full"
       style={cardStyle}
     >
       {/* Header with scan texture */}
       <div
-        className="px-[18px] pt-[16px] pb-[16px] border-b border-white/10"
+        className="px-[18px] pt-[16px] pb-[16px] border-b border-line-2"
         style={{
           ...scanTexture,
           background: 'linear-gradient(135deg, rgba(0,224,255,0.04) 0%, transparent 60%)',
@@ -93,7 +93,7 @@ export default function SeriesPage() {
   if (error) {
     return (
       <main className="page-wrap">
-        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-white/10">
+        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-line-2">
           {error}
         </div>
       </main>
@@ -146,7 +146,7 @@ export default function SeriesPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search series..."
-            className="btn-fluid pl-10 pr-4 border border-white/10 bg-surface-container text-on-surface text-body-fluid placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary-container/40 w-64"
+            className="btn-fluid pl-10 pr-4 border border-line-2 bg-surface-container text-on-surface text-body-fluid placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-primary-container/40 w-64"
           />
         </div>
       </div>

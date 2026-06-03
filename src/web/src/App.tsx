@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FeatureFlagProvider } from './context/FeatureFlagContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import Footer from './components/Footer';
@@ -69,12 +70,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <FeatureFlagProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </FeatureFlagProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <FeatureFlagProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </FeatureFlagProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

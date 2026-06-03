@@ -50,6 +50,9 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         user.DisplayName = request.DisplayName.Trim();
         if (request.IRacingCustomerId.HasValue)
             user.IRacingCustomerId = request.IRacingCustomerId.Value;
+        if (!string.IsNullOrWhiteSpace(request.ThemePreference) &&
+            request.ThemePreference is "auto" or "light" or "dark")
+            user.ThemePreference = request.ThemePreference;
 
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
@@ -95,6 +98,22 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
     }
 
+    public async Task<AuthResultDto> UpdateThemeAsync(Guid userId, string themePreference, CancellationToken ct = default)
+    {
+        if (themePreference is not ("auto" or "light" or "dark"))
+            throw new InvalidOperationException("Theme must be auto, light, or dark.");
+
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+
+        user.ThemePreference = themePreference;
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+        return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
+    }
+
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; update ApplicationUser.IRacingCustomerId;
@@ -119,6 +138,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         };
         if (user.IRacingCustomerId.HasValue)
             claims.Add(new Claim("iracing_id", user.IRacingCustomerId.Value.ToString()));
+        claims.Add(new Claim("theme_preference", user.ThemePreference));
 
         var issuer = config["JWT_ISSUER"] ?? "ApexRacers.Api";
         var audience = config["JWT_AUDIENCE"] ?? "ApexRacers.Web";

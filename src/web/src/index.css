@@ -4,55 +4,136 @@
 
 @plugin "@tailwindcss/forms";
 
+/* ── Palette — dark (default) ─────────────────────────────── */
+html {
+  --accent: #00e0ff;
+  --bg: #0b0b0c;
+  --surface-dim: #131314;
+  --surface: #171719;
+  --surface-2: #1d1d21;
+  --surface-3: #242429;
+  --line: rgba(255,255,255,.07);
+  --line-2: rgba(255,255,255,.12);
+  --text: #f2f2f4;
+  --text-dim: #9a9aa3;
+  --text-faint: #646470;
+  --slow: #ff5267;
+  --warn: #ffc24b;
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in oklab, var(--accent) 38%, transparent);
+  --accent-text: var(--accent);
+  --grid: rgba(255,255,255,.04);
+  --card-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8);
+  --glass-bg: rgba(15,15,18,0.7);
+  --glass-border: rgba(255,255,255,0.1);
+}
+
+/* ── Palette — light override ─────────────────────────────── */
+html.theme-light {
+  --bg: #e9eaea;
+  --surface-dim: #f4f5f5;
+  --surface: #ffffff;
+  --surface-2: #f8f9f9;
+  --surface-3: #eef0f0;
+  --line: rgba(15,18,20,.09);
+  --line-2: rgba(15,18,20,.16);
+  --text: #13151a;
+  --text-dim: #5b5e68;
+  --text-faint: #9498a3;
+  --slow: #e23048;
+  --warn: #c98208;
+  --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
+  --accent-line: color-mix(in oklab, var(--accent) 55%, white);
+  --accent-text: color-mix(in oklab, var(--accent) 78%, black);
+  --grid: rgba(15,18,20,.05);
+  --card-shadow: 0 1px 2px rgba(15,18,20,.04), 0 16px 36px -26px rgba(15,18,20,.4);
+  --glass-bg: rgba(255,255,255,0.75);
+  --glass-border: rgba(15,18,20,0.12);
+}
+
+/* ── Palette — auto (follows OS preference) ───────────────── */
+@media (prefers-color-scheme: light) {
+  html.theme-auto {
+    --bg: #e9eaea;
+    --surface-dim: #f4f5f5;
+    --surface: #ffffff;
+    --surface-2: #f8f9f9;
+    --surface-3: #eef0f0;
+    --line: rgba(15,18,20,.09);
+    --line-2: rgba(15,18,20,.16);
+    --text: #13151a;
+    --text-dim: #5b5e68;
+    --text-faint: #9498a3;
+    --slow: #e23048;
+    --warn: #c98208;
+    --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
+    --accent-line: color-mix(in oklab, var(--accent) 55%, white);
+    --accent-text: color-mix(in oklab, var(--accent) 78%, black);
+    --grid: rgba(15,18,20,.05);
+    --card-shadow: 0 1px 2px rgba(15,18,20,.04), 0 16px 36px -26px rgba(15,18,20,.4);
+    --glass-bg: rgba(255,255,255,0.75);
+    --glass-border: rgba(15,18,20,0.12);
+  }
+}
+
 @theme {
-  /* Colors */
+  /* ── Semantic bridge — Tailwind utilities resolve through palette vars ── */
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-container-lowest: var(--bg);
+  --color-surface-container-low: var(--surface-dim);
+  --color-surface-container: var(--surface-2);
+  --color-surface-container-high: var(--surface-2);
+  --color-surface-container-highest: var(--surface-3);
+  --color-on-surface: var(--text);
+  --color-on-background: var(--text);
+  --color-on-surface-variant: var(--text-dim);
+  --color-on-surface-faint: var(--text-faint);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-slow: var(--slow);
+  --color-warn: var(--warn);
+  --color-error: var(--slow);
+
+  /* ── Accent (cyan) — unchanged across themes ─────────────── */
+  --color-primary-container: #00e0ff;
+  --color-primary-fixed-dim: #00b8d4;
+  --color-secondary-container: #14d1ff;
+  --color-primary: #e0f9ff;
+
+  /* ── Remaining MD3 tokens (not theme-switched) ──────────── */
   --color-on-tertiary-container: #746100;
   --color-secondary: #a6e6ff;
   --color-on-secondary-fixed-variant: #004e60;
   --color-surface-bright: #3a393a;
   --color-tertiary: #fffaf8;
-  --color-on-surface: #e5e2e3;
   --color-secondary-fixed: #b7eaff;
   --color-error-container: #93000a;
   --color-on-tertiary: #3a3000;
   --color-on-primary-fixed: #001f26;
   --color-tertiary-fixed-dim: #e9c400;
   --color-inverse-surface: #e5e2e3;
-  --color-surface-container-high: #2a2a2b;
   --color-primary-fixed: #b3f4ff;
   --color-on-secondary-fixed: #001f28;
-  --color-on-surface-variant: #b9cbb9;
-  --color-primary-fixed-dim: #00b8d4;
-  --color-outline-variant: #3b484b;
-  --color-on-secondary-container: #00566b;
   --color-on-primary-fixed-variant: #004d60;
   --color-on-primary: #001e2a;
-  --color-surface-container-low: #1c1b1c;
   --color-on-primary-container: #006b7e;
   --color-on-secondary: #003543;
   --color-on-error-container: #ffdad6;
-  --color-error: #ffb4ab;
-  --color-surface-dim: #131314;
   --color-on-error: #690005;
   --color-surface-tint: #00b8d4;
   --color-outline: #849585;
-  --color-surface-container: #201f20;
-  --color-surface-container-highest: #353436;
+  --color-outline-variant: #3b484b;
   --color-tertiary-container: #ffdd4f;
-  --color-primary-container: #00e0ff;
   --color-surface-variant: #353436;
   --color-on-tertiary-fixed-variant: #544600;
   --color-inverse-on-surface: #313031;
-  --color-surface: #131314;
-  --color-secondary-container: #14d1ff;
   --color-inverse-primary: #006680;
-  --color-background: #131314;
-  --color-surface-container-lowest: #0e0e0f;
-  --color-primary: #e0f9ff;
   --color-on-tertiary-fixed: #221b00;
   --color-tertiary-fixed: #ffe16d;
   --color-secondary-fixed-dim: #4cd6ff;
-  --color-on-background: #e5e2e3;
+  --color-on-secondary-container: #00566b;
 
   /* Border radius */
   --radius: 0.25rem;
@@ -117,6 +198,10 @@
   body {
     margin: 0;
     @apply bg-background text-on-background antialiased;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
   }
 
   #root {
@@ -254,10 +339,10 @@
   }
 
   .glass-panel {
-    background: rgba(15, 15, 18, 0.7);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
   }
 
   .glow-gold {

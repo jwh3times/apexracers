@@ -68,7 +68,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 mt-1">
           <Link
             to="/telemetry"
-            className="inline-flex items-center gap-2 btn-fluid border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+            className="inline-flex items-center gap-2 btn-fluid border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
           >
             <span className="material-symbols-outlined text-[17px]" aria-hidden="true">upload_file</span>
             Upload telemetry
@@ -88,7 +88,7 @@ export default function DashboardPage() {
       <div className="grid-kpi mb-4">
         {/* Active series */}
         <div
-          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
@@ -102,7 +102,7 @@ export default function DashboardPage() {
 
         {/* Laps recorded */}
         <div
-          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
         {/* Cars tracked — distinct car count, not car+track combos */}
         <div
-          className="bg-surface border border-white/10 card-r kpi-p relative overflow-hidden"
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
@@ -135,10 +135,10 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-fluid">
           {/* This week */}
           <div
-            className="card-r border border-white/10 bg-surface overflow-hidden"
+            className="card-r border border-line-2 bg-surface overflow-hidden"
             style={cardStyle}
           >
-            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
               <h3 className="text-section-head text-on-surface">This week</h3>
               <Link
                 to="/series"
@@ -176,7 +176,7 @@ export default function DashboardPage() {
                     {s.currentWeekNumber != null && (
                       <Link
                         to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
-                        className="inline-flex items-center gap-2 btn-fluid-sm border border-white/10 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high whitespace-nowrap"
+                        className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high whitespace-nowrap"
                       >
                         View Week
                       </Link>
@@ -189,10 +189,10 @@ export default function DashboardPage() {
 
           {/* Personal bests */}
           <div
-            className="card-r border border-white/10 bg-surface overflow-hidden"
+            className="card-r border border-line-2 bg-surface overflow-hidden"
             style={cardStyle}
           >
-            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
               <h3 className="text-section-head text-on-surface">Personal bests</h3>
               <Link
                 to="/my-laps"
@@ -228,13 +228,13 @@ export default function DashboardPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr>
-                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-left">
+                      <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-left">
                         Car
                       </th>
-                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-left">
+                      <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-left">
                         Track
                       </th>
-                      <th className="text-th text-on-surface-variant th-p border-b border-white/10 whitespace-nowrap text-right">
+                      <th className="text-th text-on-surface-variant th-p border-b border-line-2 whitespace-nowrap text-right">
                         Best Lap
                       </th>
                     </tr>
@@ -242,13 +242,13 @@ export default function DashboardPage() {
                   <tbody>
                     {recentLaps.map((lap, i) => (
                       <tr key={i}>
-                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-on-surface font-medium">
+                        <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-on-surface font-medium">
                           {lap.carName}
                         </td>
-                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-on-surface-variant">
+                        <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-on-surface-variant">
                           {trackLabel(lap)}
                         </td>
-                        <td className="td-p border-b border-white/10 last:border-b-0 text-body-fluid text-primary-container font-mono text-right">
+                        <td className="td-p border-b border-line-2 last:border-b-0 text-body-fluid text-primary-container font-mono text-right">
                           {formatLapTime(lap.bestLapSeconds)}
                         </td>
                       </tr>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
                 </table>
 
                 {bestLap && (
-                  <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+                  <div className="px-4 py-3 border-t border-line-2 flex items-center justify-between">
                     <div>
                       <p className="text-th text-on-surface-variant">
                         Overall Best
@@ -279,10 +279,10 @@ export default function DashboardPage() {
         {/* Right column: Active series list */}
         <div>
           <div
-            className="card-r border border-white/10 bg-surface overflow-hidden h-full"
+            className="card-r border border-line-2 bg-surface overflow-hidden h-full"
             style={cardStyle}
           >
-            <div className="flex items-center justify-between card-hp border-b border-white/10" style={scanTexture}>
+            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
               <h3 className="text-section-head text-on-surface">Active series</h3>
               <Link
                 to="/series"

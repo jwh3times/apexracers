@@ -208,7 +208,7 @@ export default function MyLapsPage() {
                   {filtered.map((lap, i) => (
                     <tr
                       key={i}
-                      className="hover:bg-white/5 transition-colors group cursor-pointer"
+                      className="hover:bg-surface-container-highest transition-colors group cursor-pointer"
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">

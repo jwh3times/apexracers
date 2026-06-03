@@ -11,7 +11,7 @@ function trackLabel(lap: PersonalLap): string {
 function SeriesCard({ s }: { s: Series }) {
   const active = s.currentWeekNumber != null;
   return (
-    <div className="glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden hover:bg-white/5 transition-all hover:border-primary-fixed-dim/30 group">
+    <div className="glass-panel p-5 rounded-xl border border-line-2 relative overflow-hidden hover:bg-surface-container-highest transition-all hover:border-primary-fixed-dim/30 group">
       <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
         <span className="material-symbols-outlined text-[64px]" aria-hidden="true">sports_score</span>
       </div>
@@ -38,13 +38,13 @@ function SeriesCard({ s }: { s: Series }) {
       {active ? (
         <Link
           to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
-          className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded font-body-sm text-body-sm text-on-surface transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2 bg-surface-container-highest hover:bg-surface-container-high border border-line-2 rounded font-body-sm text-body-sm text-on-surface transition-colors flex items-center justify-center gap-2"
         >
           View Week Details
           <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
         </Link>
       ) : (
-        <div className="w-full py-2 border border-white/5 rounded font-body-sm text-body-sm text-on-surface-variant/40 flex items-center justify-center">
+        <div className="w-full py-2 border border-line rounded font-body-sm text-body-sm text-on-surface-variant/40 flex items-center justify-center">
           No Active Week
         </div>
       )}
@@ -158,7 +158,7 @@ export default function ProfilePage() {
       {/* Car performance table */}
       <section>
         <div className="glass-panel rounded-xl overflow-hidden border border-primary-fixed-dim/20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
-          <div className="bg-surface-container-high px-6 py-4 border-b border-white/10 flex justify-between items-center">
+          <div className="bg-surface-container-high px-6 py-4 border-b border-line-2 flex justify-between items-center">
             <h3 className="font-headline-sm text-headline-sm text-primary-fixed-dim flex items-center gap-2">
               <span className="material-symbols-outlined" aria-hidden="true">data_table</span>
               Personal Best by Car
@@ -197,7 +197,7 @@ export default function ProfilePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-surface-container/50 border-b border-white/10">
+                  <tr className="bg-surface-container/50 border-b border-line-2">
                     <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">CAR MODEL</th>
                     <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">BEST TRACK</th>
                     <th className="p-4 font-label-caps text-label-caps text-on-surface-variant text-right">PERSONAL BEST</th>
@@ -208,11 +208,11 @@ export default function ProfilePage() {
                   {carBests.map(lap => (
                     <tr
                       key={lap.carId}
-                      className="border-b border-surface-container-high hover:bg-white/5 transition-colors last:border-b-0"
+                      className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0"
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-6 bg-white/10 rounded flex items-center justify-center shrink-0">
+                          <div className="w-10 h-6 bg-surface-container-high rounded flex items-center justify-center shrink-0">
                             <span className="material-symbols-outlined text-[12px] text-on-surface-variant" aria-hidden="true">
                               directions_car
                             </span>
