@@ -38,17 +38,21 @@ describe('Sparkline', () => {
     expect(container.querySelector('linearGradient')).not.toBeNull();
   });
 
-  it('uses the provided width and height', () => {
-    const { container } = render(<Sparkline data={[30, 70]} w={200} h={60} />);
+  it('fills 100% of its container width', () => {
+    const { container } = render(<Sparkline data={[30, 70]} />);
     const svg = container.querySelector('svg');
-    expect(svg?.getAttribute('width')).toBe('200');
+    expect(svg?.getAttribute('width')).toBe('100%');
+  });
+
+  it('uses the provided height', () => {
+    const { container } = render(<Sparkline data={[30, 70]} h={60} />);
+    const svg = container.querySelector('svg');
     expect(svg?.getAttribute('height')).toBe('60');
   });
 
-  it('defaults to w=132 h=38 when not specified', () => {
+  it('defaults to h=38 when not specified', () => {
     const { container } = render(<Sparkline data={[30, 70]} />);
     const svg = container.querySelector('svg');
-    expect(svg?.getAttribute('width')).toBe('132');
     expect(svg?.getAttribute('height')).toBe('38');
   });
 
