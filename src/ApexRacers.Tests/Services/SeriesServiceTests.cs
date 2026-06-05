@@ -27,9 +27,11 @@ public class SeriesServiceTests
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
+        db.Tracks.Add(track);
         db.Weeks.Add(week);
         await db.SaveChangesAsync();
 
@@ -48,9 +50,11 @@ public class SeriesServiceTests
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackId = 99, Track = track, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
+        db.Tracks.Add(track);
         db.Weeks.Add(week);
         await db.SaveChangesAsync();
 
@@ -66,10 +70,13 @@ public class SeriesServiceTests
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Monza", ConfigName = "Full", IracingTrackId = 1, Season = season };
-        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 2, Season = season };
+        var track1 = new Track { Id = 1, Name = "Monza", ConfigName = "Full" };
+        var track2 = new Track { Id = 2, Name = "Spa", ConfigName = "Full" };
+        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 1, Track = track1, Season = season };
+        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 2, Track = track2, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
+        db.Tracks.AddRange(track1, track2);
         db.Weeks.AddRange(week1, week2);
         await db.SaveChangesAsync();
 

@@ -12,38 +12,64 @@ public class PercentileCalculationService(AppDbContext db)
         int weekNumber,
         int carId,
         long customerId,
+        bool includePersonalLaps = false,
         CancellationToken ct = default)
     {
-        var weekDbId = await db.Weeks
+        var week = await db.Weeks
             .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
-            .Select(w => (Guid?)w.Id)
+            .Select(w => new { w.Id, w.TrackId })
             .FirstOrDefaultAsync(ct);
 
-        if (weekDbId is null) return null;
+        if (week is null) return null;
 
-        var driverBest = await db.LapTimeEntries
-            .Where(l => l.WeekId == weekDbId && l.CarId == carId && l.DriverCustomerId == customerId)
-            .MinAsync(l => (double?)l.LapTimeSeconds, ct);
+        // Best race lap per driver for this week+car (dedup multi-race entries)
+        var fieldByDriver = await db.SubsessionResults
+            .Where(r => r.Subsession.WeekId == week.Id && r.CarId == carId && r.BestLapSeconds > 0)
+            .GroupBy(r => r.CustId)
+            .Select(g => new { CustId = g.Key, BestLap = g.Min(r => r.BestLapSeconds) })
+            .ToListAsync(ct);
+
+        if (fieldByDriver.Count == 0) return null;
+
+        var driverRaceBest = fieldByDriver.FirstOrDefault(d => d.CustId == customerId)?.BestLap;
+        double? driverBest = driverRaceBest;
+
+        // Fetch the user once for both personal-lap lookup and cache upsert.
+        var user = await db.Users.FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
+
+        if (includePersonalLaps && user is not null)
+        {
+            var personalBest = await db.PersonalLaps
+                .Where(p => p.UserId == user.Id && p.CarId == carId
+                         && p.TrackId == week.TrackId && p.IsValidLap)
+                .MinAsync(p => (double?)p.LapTimeSeconds, ct);
+
+            if (personalBest is not null && (driverBest is null || personalBest < driverBest))
+                driverBest = personalBest;
+        }
 
         if (driverBest is null) return null;
 
-        var total = await db.LapTimeEntries
-            .CountAsync(l => l.WeekId == weekDbId && l.CarId == carId, ct);
+        bool driverInField = driverRaceBest.HasValue;
+        var total = fieldByDriver.Count;
 
-        var slowerCount = await db.LapTimeEntries
-            .CountAsync(l => l.WeekId == weekDbId && l.CarId == carId && l.LapTimeSeconds > driverBest, ct);
+        // Compare only against other drivers' race laps so the driver's own slower
+        // race result cannot inflate slowerCount when a personal lap supersedes it.
+        var slowerCount = fieldByDriver
+            .Where(d => d.CustId != customerId)
+            .Count(d => d.BestLap > driverBest.Value);
 
-        var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
+        var percentileRank = driverInField
+            ? (total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0)
+            : (total > 0 ? slowerCount * 100.0 / total : 100.0);
+
         var computedAt = DateTimeOffset.UtcNow;
-
-        var user = await db.Users
-            .FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
 
         if (user is not null)
         {
             var cached = await db.CarPercentileResults
                 .FirstOrDefaultAsync(
-                    r => r.UserId == user.Id && r.CarId == carId && r.WeekId == weekDbId, ct);
+                    r => r.UserId == user.Id && r.CarId == carId && r.WeekId == week.Id, ct);
 
             if (cached is null)
             {
@@ -51,7 +77,7 @@ public class PercentileCalculationService(AppDbContext db)
                 {
                     UserId         = user.Id,
                     CarId          = carId,
-                    WeekId         = weekDbId.Value,
+                    WeekId         = week.Id,
                     PercentileRank = percentileRank,
                     SampleSize     = total,
                     ComputedAt     = computedAt,

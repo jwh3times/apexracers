@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
+using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Xunit;
 
@@ -7,22 +8,55 @@ namespace ApexRacers.Tests.Services;
 
 public class CarRecommendationServiceTests
 {
-    private static (Week week, Car car1, Car car2) SeedWeekWithTwoCars(ApexRacers.Data.AppDbContext db)
+    private static (Week week, Car car1, Car car2, CarClass carClass, Subsession subsession) SeedWeekWithTwoCars(AppDbContext db)
     {
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackName = "Spa", ConfigName = "Full", IracingTrackId = 99, Season = season };
+        var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
         var car1 = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
         var car2 = new Car { Id = 2, Name = "Ferrari 296 GT3", NameAbbreviated = "F296" };
+        var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
+        var subsession = new Subsession { Id = -1, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-2) };
         db.Series.Add(series);
         db.Seasons.Add(season);
+        db.Tracks.Add(track);
         db.Weeks.Add(week);
         db.Cars.AddRange(car1, car2);
-        return (week, car1, car2);
+        db.CarClasses.Add(carClass);
+        db.Subsessions.Add(subsession);
+        return (week, car1, car2, carClass, subsession);
     }
 
-    private static CarRecommendationService CreateService(ApexRacers.Data.AppDbContext db) =>
-        new(db, new PercentileCalculationService(db));
+    private static void AddResult(AppDbContext db, Subsession subsession, Car car, CarClass carClass, long custId, double lapSeconds)
+    {
+        db.SubsessionResults.Add(new SubsessionResult
+        {
+            SubsessionId            = subsession.Id,
+            CustId                  = custId,
+            CarId                   = car.Id,
+            CarClassId              = carClass.Id,
+            BestLapSeconds          = lapSeconds,
+            AverageLapSeconds       = lapSeconds * 1.01,
+            FinishPosition          = 0,
+            FinishPositionInClass   = 0,
+            StartingPosition        = 0,
+            StartingPositionInClass = 0,
+            Incidents               = 0,
+            LapsComplete            = 5,
+            LapsLead                = 0,
+            ChampPoints             = 0,
+            AggregateChampPoints    = 0,
+            NewIRating              = 1500,
+            OldIRating              = 1500,
+            NewCpi                  = 2.0,
+            OldCpi                  = 2.0,
+            ReasonOutId             = 0,
+            Division                = 1,
+        });
+    }
+
+    private static CarRecommendationService CreateService(AppDbContext db) => new(db);
 
     [Fact]
     public async Task GetRecommendationsAsync_WeekNotFound_ReturnsEmpty()
@@ -38,9 +72,9 @@ public class CarRecommendationServiceTests
     public async Task GetRecommendationsAsync_NoLapsAndNoCachedPercentile_ReturnsEmpty()
     {
         await using var db = DbContextFactory.Create();
-        var (week, car1, _) = SeedWeekWithTwoCars(db);
-        // Only driver 999 has a lap; customer 1 has no lap and no cached percentile
-        db.LapTimeEntries.Add(new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 999, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        // Only driver 999 has a result; customer 1 has no lap and no cached percentile
+        AddResult(db, subsession, car1, carClass, custId: 999, lapSeconds: 70);
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
@@ -52,12 +86,22 @@ public class CarRecommendationServiceTests
     public async Task GetRecommendationsAsync_TwoCars_RanksByFastestActualLap()
     {
         await using var db = DbContextFactory.Create();
-        var (week, car1, car2) = SeedWeekWithTwoCars(db);
-        db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 2, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 2, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 2, DriverCustomerId = 3, LapTimeSeconds = 70, Car = car2, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+        var (week, car1, car2, carClass, subsession) = SeedWeekWithTwoCars(db);
+        // car1: driver 1 ran 90s, driver 2 ran 70s
+        // car2: driver 11 ran 60s, driver 1 ran another race — driver 1 needs a car2 result
+        // Since composite key is (SubsessionId, CustId), driver 1 can only appear once per
+        // subsession. Use a second subsession for car2.
+        await db.SaveChangesAsync(); // flush seed entities first
+        AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 2, lapSeconds: 70);
+        await db.SaveChangesAsync();
+
+        var subsession2 = new Subsession { Id = -2, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-1) };
+        db.Subsessions.Add(subsession2);
+        await db.SaveChangesAsync();
+
+        AddResult(db, subsession2, car2, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, subsession2, car2, carClass, custId: 3, lapSeconds: 70);
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
@@ -77,26 +121,28 @@ public class CarRecommendationServiceTests
     public async Task GetRecommendationsAsync_ComputesHistoricalPercentileWhenNoCacheExists()
     {
         await using var db = DbContextFactory.Create();
-        var (week, car1, _) = SeedWeekWithTwoCars(db);
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
 
-        // Week 1 = current week (no lap for driver 1)
-        db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+        // Week 1 = current week (no result for driver 1 in car1)
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
 
         // Previous week — driver 1 ran 60 s and beat all 3 others (100%)
         var series2 = new Series { Id = 2, Name = "Other Series" };
         var season2 = new Season { Id = 2, SeriesId = 2, Year = 2026, Quarter = 2, Active = true, Series = series2 };
-        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 2, WeekNumber = 5, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackName = "Mugello", ConfigName = "GP", IracingTrackId = 88, Season = season2 };
+        var prevTrack = new Track { Id = 88, Name = "Mugello", ConfigName = "GP" };
+        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 2, WeekNumber = 5, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = season2 };
+        var prevSubsession = new Subsession { Id = -2, SeasonId = 2, WeekNumber = 5, WeekId = prevWeek.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-14) };
         db.Series.Add(series2);
         db.Seasons.Add(season2);
+        db.Tracks.Add(prevTrack);
         db.Weeks.Add(prevWeek);
-        db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 1, LapTimeSeconds = 60, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 101, LapTimeSeconds = 65, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 102, LapTimeSeconds = 70, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = prevWeek.Id, CarId = 1, DriverCustomerId = 103, LapTimeSeconds = 75, Car = car1, Week = prevWeek, RecordedAt = DateTimeOffset.UtcNow });
+        db.Subsessions.Add(prevSubsession);
+        AddResult(db, prevSubsession, car1, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, prevSubsession, car1, carClass, custId: 101, lapSeconds: 65);
+        AddResult(db, prevSubsession, car1, carClass, custId: 102, lapSeconds: 70);
+        AddResult(db, prevSubsession, car1, carClass, custId: 103, lapSeconds: 75);
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
@@ -112,18 +158,17 @@ public class CarRecommendationServiceTests
     public async Task GetRecommendationsAsync_ProjectsLapTimeFromCachedPercentile_WhenNoLapThisWeek()
     {
         await using var db = DbContextFactory.Create();
-        var (week, car1, _) = SeedWeekWithTwoCars(db);
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
 
         // Three other drivers in week 1 / car1 with sorted laps: 70, 80, 90
-        db.LapTimeEntries.AddRange(
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 100, LapTimeSeconds = 70, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 200, LapTimeSeconds = 80, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow },
-            new LapTimeEntry { WeekId = week.Id, CarId = 1, DriverCustomerId = 300, LapTimeSeconds = 90, Car = car1, Week = week, RecordedAt = DateTimeOffset.UtcNow });
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
 
         // Customer 1 is linked to a user account with a cached 50th-percentile result for car1
         var userId = Guid.NewGuid();
-        db.Users.Add(new ApexRacers.Data.ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.CarPercentileResults.Add(new ApexRacers.Core.Models.CarPercentileResult
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.CarPercentileResults.Add(new CarPercentileResult
         {
             UserId = userId, CarId = 1, WeekId = Guid.NewGuid(), // some previous week's guid
             PercentileRank = 50.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,

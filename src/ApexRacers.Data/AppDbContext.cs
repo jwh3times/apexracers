@@ -13,10 +13,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SeasonCar> SeasonCars => Set<SeasonCar>();
     public DbSet<Week> Weeks => Set<Week>();
     public DbSet<Car> Cars => Set<Car>();
-    public DbSet<LapTimeEntry> LapTimeEntries => Set<LapTimeEntry>();
+    public DbSet<Subsession> Subsessions => Set<Subsession>();
+    public DbSet<SubsessionResult> SubsessionResults => Set<SubsessionResult>();
     public DbSet<PersonalLap> PersonalLaps => Set<PersonalLap>();
     public DbSet<CarPercentileResult> CarPercentileResults => Set<CarPercentileResult>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<Track> Tracks => Set<Track>();
+    public DbSet<CarClass> CarClasses => Set<CarClass>();
+    public DbSet<CarClassCar> CarClassCars => Set<CarClassCar>();
+    public DbSet<SeasonCarClass> SeasonCarClasses => Set<SeasonCarClass>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

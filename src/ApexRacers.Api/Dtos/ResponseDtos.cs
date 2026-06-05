@@ -77,5 +77,5 @@ public record CarAnalyticsDto(
     double BestPercentileRank,
     double? PersonalBestLapSeconds,
     double? MedianLapSeconds,
-    int TotalLaps,
+    int TotalWeeks,
     IReadOnlyList<WeeklyPercentileDto> PercentileHistory);

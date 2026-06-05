@@ -12,12 +12,9 @@ public class WeekConfiguration : IEntityTypeConfiguration<Week>
 
         builder.HasIndex(w => new { w.SeasonId, w.WeekNumber }).IsUnique();
 
-        builder.Property(w => w.TrackName)
-            .IsRequired()
-            .HasMaxLength(200);
-
-        builder.Property(w => w.ConfigName)
-            .IsRequired()
-            .HasMaxLength(200);
+        builder.HasOne(w => w.Track)
+            .WithMany(t => t.Weeks)
+            .HasForeignKey(w => w.TrackId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

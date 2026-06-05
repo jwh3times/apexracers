@@ -10,10 +10,7 @@ public class PersonalLapConfiguration : IEntityTypeConfiguration<PersonalLap>
     {
         builder.HasKey(p => p.Id);
 
-        builder.HasIndex(p => new { p.UserId, p.CarId, p.IracingTrackId });
-
-        builder.Property(p => p.TrackName).IsRequired().HasMaxLength(200);
-        builder.Property(p => p.ConfigName).IsRequired().HasMaxLength(200);
+        builder.HasIndex(p => new { p.UserId, p.CarId, p.TrackId });
 
         builder.HasOne<ApplicationUser>()
             .WithMany()
@@ -23,6 +20,11 @@ public class PersonalLapConfiguration : IEntityTypeConfiguration<PersonalLap>
         builder.HasOne(p => p.Car)
             .WithMany(c => c.PersonalLaps)
             .HasForeignKey(p => p.CarId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.Track)
+            .WithMany(t => t.PersonalLaps)
+            .HasForeignKey(p => p.TrackId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

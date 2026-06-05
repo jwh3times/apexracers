@@ -15,6 +15,8 @@ public class SeriesConfiguration : IEntityTypeConfiguration<Series>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(s => s.Category).HasMaxLength(50);
+
         builder.HasMany(s => s.Seasons)
             .WithOne(s => s.Series)
             .HasForeignKey(s => s.SeriesId)

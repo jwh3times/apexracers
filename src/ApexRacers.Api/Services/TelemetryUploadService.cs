@@ -25,6 +25,20 @@ public class TelemetryUploadService(AppDbContext db)
             db.Cars.Add(car);
         }
 
+        // Upsert the track — the ingestion worker is the authoritative source but
+        // telemetry files can arrive before ingestion has run.
+        var track = await db.Tracks.FindAsync([session.IracingTrackId], ct);
+        if (track is null)
+        {
+            track = new Track
+            {
+                Id         = session.IracingTrackId,
+                Name       = session.TrackName,
+                ConfigName = session.ConfigName,
+            };
+            db.Tracks.Add(track);
+        }
+
         var validLaps = session.Laps.Where(l => l.IsValid).ToList();
 
         foreach (var lap in validLaps)
@@ -33,9 +47,7 @@ public class TelemetryUploadService(AppDbContext db)
             {
                 UserId           = userId,
                 CarId            = session.IracingCarId,
-                IracingTrackId   = session.IracingTrackId,
-                TrackName        = session.TrackName,
-                ConfigName       = session.ConfigName,
+                TrackId          = session.IracingTrackId,
                 LapTimeSeconds   = lap.LapTimeSeconds,
                 IsValidLap       = true,
                 AirTempCelsius   = session.AirTempCelsius,

@@ -8,16 +8,23 @@ public class PersonalLapService(AppDbContext db)
 {
     public async Task<List<PersonalLapDto>> GetPersonalBestsAsync(Guid userId, CancellationToken ct = default)
     {
-        var laps = await db.PersonalLaps
-            .Include(l => l.Car)
+        var rows = await db.PersonalLaps
             .Where(l => l.UserId == userId && l.IsValidLap)
+            .Select(l => new {
+                l.CarId,
+                CarName    = l.Car.Name,
+                TrackName  = l.Track.Name,
+                ConfigName = l.Track.ConfigName,
+                l.LapTimeSeconds,
+                l.RecordedAt,
+            })
             .ToListAsync(ct);
 
-        return laps
-            .GroupBy(l => new { l.CarId, l.Car.Name, l.TrackName, l.ConfigName })
+        return rows
+            .GroupBy(l => new { l.CarId, l.CarName, l.TrackName, l.ConfigName })
             .Select(g => new PersonalLapDto(
                 g.Key.CarId,
-                g.Key.Name,
+                g.Key.CarName,
                 g.Key.TrackName,
                 g.Key.ConfigName,
                 g.Min(l => l.LapTimeSeconds),

@@ -43,7 +43,7 @@ const MOCK_ANALYTICS = [
     bestPercentileRank: 92.0,
     personalBestLapSeconds: 137.2,
     medianLapSeconds: 139.5,
-    totalLaps: 48,
+    totalWeeks: 48,
     percentileHistory: [
       { weekNumber: 1, trackName: 'Monza', configName: 'GP', percentileRank: 80.0, sampleSize: 100, computedAt: '2026-01-01T00:00:00Z' },
       { weekNumber: 2, trackName: 'Spa', configName: 'Full', percentileRank: 92.0, sampleSize: 110, computedAt: '2026-01-08T00:00:00Z' },
@@ -58,7 +58,7 @@ const MOCK_ANALYTICS = [
     bestPercentileRank: 70.0,
     personalBestLapSeconds: 138.9,
     medianLapSeconds: 139.5,
-    totalLaps: 20,
+    totalWeeks: 20,
     percentileHistory: [
       { weekNumber: 1, trackName: 'Monza', configName: 'GP', percentileRank: 60.0, sampleSize: 100, computedAt: '2026-01-01T00:00:00Z' },
       { weekNumber: 2, trackName: 'Spa', configName: 'Full', percentileRank: 70.0, sampleSize: 110, computedAt: '2026-01-08T00:00:00Z' },

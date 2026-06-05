@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Seeder;
@@ -21,181 +23,482 @@ await using var db = new AppDbContext(options);
 
 Console.WriteLine("ApexRacers Seeder — connecting to database…");
 
-// ── Driver pool ───────────────────────────────────────────────────────────────
-// 200 fake driver customer IDs. Each driver gets a deterministic skill factor
-// so their lap times are consistent across all series.
-const int DriverStart = 100_001;
-const int DriverCount = 200;
+// ── Locate response objects ───────────────────────────────────────────────────
+var responseObjectsPath = FindResponseObjectsPath();
+Console.WriteLine($"Using response objects at: {responseObjectsPath}");
 
-var driverSkillFactors = new Dictionary<long, double>();
-for (int i = 0; i < DriverCount; i++)
+// ── Parse JSON reference data ─────────────────────────────────────────────────
+var jsonOptions = new JsonSerializerOptions
 {
-    long id = DriverStart + i;
-    driverSkillFactors[id] = ComputeSkillFactor(id);
-}
+    PropertyNameCaseInsensitive = true,
+    NumberHandling = JsonNumberHandling.AllowReadingFromString,
+};
 
-// ── Main seeding loop ─────────────────────────────────────────────────────────
-int totalLapTimes = 0;
+var trackCatalog = JsonSerializer
+    .Deserialize<List<TrackApiEntry>>(
+        File.ReadAllText(Path.Combine(responseObjectsPath, "track", "get.json")), jsonOptions)!
+    .ToDictionary(t => t.TrackId);
 
-foreach (var series in SeedData.AllSeries)
-{
-    Console.WriteLine($"  Seeding: {series.Name}");
+var carCatalog = JsonSerializer
+    .Deserialize<List<CarApiEntry>>(
+        File.ReadAllText(Path.Combine(responseObjectsPath, "car", "get.json")), jsonOptions)!
+    .ToDictionary(c => c.CarId);
 
-    await UpsertMetadataAsync(db, series);
+var carClasses = JsonSerializer
+    .Deserialize<List<CarClassApiEntry>>(
+        File.ReadAllText(Path.Combine(responseObjectsPath, "carclass", "get.json")), jsonOptions)!;
 
-    // Resolve the Week DB-generated GUIDs after metadata is saved
-    var weekIds = await db.Weeks
-        .Where(w => w.SeasonId == series.SeasonId)
-        .ToDictionaryAsync(w => w.WeekNumber, w => w.Id);
+var seriesCatalog = JsonSerializer
+    .Deserialize<List<SeriesApiEntry>>(
+        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "get.json")), jsonOptions)!
+    .ToDictionary(s => s.SeriesId);
 
-    // Collect all cars for this series (main class + faster class if any)
-    var allCars = series.FasterClassCars is null
-        ? series.Cars
-        : [.. series.Cars, .. series.FasterClassCars];
+var seasonsCatalog = JsonSerializer
+    .Deserialize<List<SeasonApiEntry>>(
+        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "seasons.json")), jsonOptions)!
+    .ToDictionary(s => s.SeasonId);
 
-    foreach (var week in series.Weeks)
+// Build car_id → estimated avg speed (mph) from relative_speed.
+// Calibrated so GT3 (relative_speed 52) ≈ 90 mph, GTP (≥160) ≈ 110 mph.
+var carSpeedMph = BuildCarSpeedLookup(carClasses);
+
+var scheduleFiles = Directory.GetFiles(
+    Path.Combine(responseObjectsPath, "series"), "season_schedule-*.json");
+
+var schedules = scheduleFiles
+    .Select(f => JsonSerializer.Deserialize<SeasonScheduleResponse>(File.ReadAllText(f), jsonOptions)!)
+    .Where(s => s.Schedules.Count > 0)
+    .ToList();
+
+Console.WriteLine($"Loaded {trackCatalog.Count:N0} tracks, {carCatalog.Count:N0} cars, {carClasses.Count:N0} car classes, {schedules.Count} schedules.");
+
+// ── Step 1: Seed all tracks from catalog ──────────────────────────────────────
+Console.WriteLine("Seeding tracks…");
+var existingTrackIds = await db.Tracks.Select(t => t.Id).ToHashSetAsync();
+
+var newTracks = trackCatalog.Values
+    .Where(t => !existingTrackIds.Contains(t.TrackId))
+    .Select(t => new Track
     {
-        if (!weekIds.TryGetValue(week.WeekNumber, out var weekId))
-            continue;
+        Id                = t.TrackId,
+        Name              = t.TrackName,
+        ConfigName        = t.ConfigName ?? "",
+        CategoryId        = t.CategoryId,
+        Category          = t.Category,
+        TrackConfigLength = t.TrackConfigLength,
+        IsDirt            = t.IsDirt,
+        IsOval            = t.IsOval,
+        Location          = t.Location,
+        TimeZone          = t.TimeZone,
+        Retired           = t.Retired,
+    })
+    .ToList();
 
-        foreach (var car in allCars)
-        {
-            // Skip if already seeded for this (week, car) combination
-            bool alreadySeeded = await db.LapTimeEntries
-                .AnyAsync(l => l.WeekId == weekId && l.CarId == car.CarId);
-            if (alreadySeeded)
-                continue;
+db.Tracks.AddRange(newTracks);
+await db.SaveChangesAsync();
+Console.WriteLine($"  {newTracks.Count:N0} tracks added ({existingTrackIds.Count:N0} already present).");
 
-            // Determine if this car is in the faster class
-            bool isFasterClass = series.FasterClassCars?.Any(c => c.CarId == car.CarId) ?? false;
-            double baseLap = week.BaseLapSeconds
-                + car.OffsetSeconds
-                + (isFasterClass ? week.FasterClassOffset : 0.0);
+// ── Step 2: Seed all cars from catalog ───────────────────────────────────────
+Console.WriteLine("Seeding cars…");
+var existingCarIds = await db.Cars.Select(c => c.Id).ToHashSetAsync();
 
-            var entries = new List<LapTimeEntry>(DriverCount);
-            foreach (var (driverId, skillFactor) in driverSkillFactors)
-            {
-                double lapTime = GenerateLapTime(driverId, car.CarId, week.WeekNumber, baseLap, skillFactor, week.StdDevSeconds);
-                entries.Add(new LapTimeEntry
-                {
-                    DriverCustomerId = driverId,
-                    CarId            = car.CarId,
-                    WeekId           = weekId,
-                    LapTimeSeconds   = lapTime,
-                    RecordedAt       = week.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
-                });
-            }
+var newCars = carCatalog.Values
+    .Where(c => !existingCarIds.Contains(c.CarId))
+    .Select(c => new Car
+    {
+        Id                   = c.CarId,
+        Name                 = c.CarName,
+        NameAbbreviated      = c.CarNameAbbreviated,
+        Retired              = c.Retired,
+        FreeWithSubscription = c.FreeWithSubscription,
+        PackageId            = c.PackageId,
+        Hp                   = c.Hp,
+        CarWeight            = c.CarWeight,
+    })
+    .ToList();
 
-            db.LapTimeEntries.AddRange(entries);
-            await db.SaveChangesAsync();
-            totalLapTimes += entries.Count;
-        }
-    }
+db.Cars.AddRange(newCars);
+await db.SaveChangesAsync();
+Console.WriteLine($"  {newCars.Count:N0} cars added ({existingCarIds.Count:N0} already present).");
 
-    Console.WriteLine($"    Done");
-}
+// ── Step 3: Seed car classes and car-class membership ─────────────────────────
+Console.WriteLine("Seeding car classes…");
+var existingCarClassIds = await db.CarClasses.Select(c => c.Id).ToHashSetAsync();
 
-Console.WriteLine($"\nSeeding complete — {totalLapTimes:N0} lap time entries written.");
+var newCarClasses = carClasses
+    .Where(c => !existingCarClassIds.Contains(c.CarClassId))
+    .Select(c => new CarClass
+    {
+        Id            = c.CarClassId,
+        Name          = c.Name,
+        ShortName     = c.ShortName,
+        RelativeSpeed = c.RelativeSpeed,
+    })
+    .ToList();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+db.CarClasses.AddRange(newCarClasses);
+await db.SaveChangesAsync();
+Console.WriteLine($"  {newCarClasses.Count:N0} car classes added ({existingCarClassIds.Count:N0} already present).");
 
-static async Task UpsertMetadataAsync(AppDbContext db, SeriesDef series)
+var existingCarClassCarKeys = await db.CarClassCars
+    .Select(cc => new { cc.CarClassId, cc.CarId })
+    .ToHashSetAsync();
+
+var newCarClassCars = carClasses
+    .SelectMany(c => c.CarsInClass.Select(m => new CarClassCar
+    {
+        CarClassId = c.CarClassId,
+        CarId      = m.CarId,
+    }))
+    .Where(cc => !existingCarClassCarKeys.Contains(new { cc.CarClassId, cc.CarId })
+                 && existingCarIds.Union(newCars.Select(c => c.Id)).Contains(cc.CarId))
+    .ToList();
+
+db.CarClassCars.AddRange(newCarClassCars);
+await db.SaveChangesAsync();
+Console.WriteLine($"  {newCarClassCars.Count:N0} car-class memberships added.");
+
+// ── Step 4: Seed series, seasons, weeks, season-cars from schedules ───────────
+Console.WriteLine("Seeding series / seasons / weeks…");
+
+foreach (var schedule in schedules)
 {
+    var firstWeek = schedule.Schedules[0];
+    var (year, quarter) = ParseSeasonYearQuarter(firstWeek.SeasonName);
+
+    Console.WriteLine($"  {firstWeek.SeriesName} ({firstWeek.SeasonId}) — {year} S{quarter}");
+
     // Series
-    var seriesEntity = await db.Series.FindAsync(series.SeriesId);
-    if (seriesEntity is null)
-        db.Series.Add(new Series { Id = series.SeriesId, Name = series.Name });
-    else
-        seriesEntity.Name = series.Name;
+    seriesCatalog.TryGetValue(firstWeek.SeriesId, out var seriesEntry);
+    // Derive official from the first matching season entry
+    var seriesOfficial = seasonsCatalog.Values
+        .FirstOrDefault(s => s.SeriesId == firstWeek.SeriesId)?.Official;
+    var minLicenseGroup = seriesEntry?.AllowedLicenses.Count > 0
+        ? seriesEntry.AllowedLicenses.Min(l => l.LicenseGroup)
+        : (int?)null;
 
-    // Season
-    var season = await db.Seasons.FindAsync(series.SeasonId);
-    if (season is null)
+    var series = await db.Series.FindAsync(firstWeek.SeriesId);
+    if (series is null)
     {
-        db.Seasons.Add(new Season
+        db.Series.Add(new Series
         {
-            Id       = series.SeasonId,
-            SeriesId = series.SeriesId,
-            Year     = series.Year,
-            Quarter  = series.Quarter,
-            Active   = true,
+            Id           = firstWeek.SeriesId,
+            Name         = firstWeek.SeriesName,
+            CategoryId   = seriesEntry?.CategoryId,
+            Category     = seriesEntry?.Category,
+            LicenseGroup = minLicenseGroup,
+            Official     = seriesOfficial,
         });
     }
     else
     {
-        season.Active = true;
+        series.Name         = firstWeek.SeriesName;
+        series.CategoryId   ??= seriesEntry?.CategoryId;
+        series.Category     ??= seriesEntry?.Category;
+        series.LicenseGroup ??= minLicenseGroup;
+        series.Official     ??= seriesOfficial;
+    }
+
+    // Season
+    seasonsCatalog.TryGetValue(firstWeek.SeasonId, out var seasonEntry);
+
+    var season = await db.Seasons.FindAsync(firstWeek.SeasonId);
+    if (season is null)
+    {
+        db.Seasons.Add(new Season
+        {
+            Id           = firstWeek.SeasonId,
+            SeriesId     = firstWeek.SeriesId,
+            Year         = year,
+            Quarter      = quarter,
+            Active       = true,
+            LicenseGroup = seasonEntry?.LicenseGroup,
+            Official     = seasonEntry?.Official,
+            Drops        = seasonEntry?.Drops,
+            FixedSetup   = seasonEntry?.FixedSetup,
+            Multiclass   = seasonEntry?.Multiclass,
+        });
+    }
+    else
+    {
+        season.Active       = true;
+        season.LicenseGroup ??= seasonEntry?.LicenseGroup;
+        season.Official     ??= seasonEntry?.Official;
+        season.Drops        ??= seasonEntry?.Drops;
+        season.FixedSetup   ??= seasonEntry?.FixedSetup;
+        season.Multiclass   ??= seasonEntry?.Multiclass;
     }
 
     await db.SaveChangesAsync();
 
-    // Cars
-    var allCars = series.FasterClassCars is null
-        ? series.Cars
-        : [.. series.Cars, .. series.FasterClassCars];
-
-    foreach (var car in allCars)
+    // SeasonCarClass
+    if (seasonEntry is not null)
     {
-        if (await db.Cars.FindAsync(car.CarId) is null)
+        foreach (var carClassId in seasonEntry.CarClassIds)
         {
-            db.Cars.Add(new Car
+            if (await db.SeasonCarClasses.FindAsync(firstWeek.SeasonId, carClassId) is null
+                && await db.CarClasses.FindAsync(carClassId) is not null)
             {
-                Id              = car.CarId,
-                Name            = car.Name,
-                NameAbbreviated = car.Abbr,
-            });
+                db.SeasonCarClasses.Add(new SeasonCarClass
+                {
+                    SeasonId   = firstWeek.SeasonId,
+                    CarClassId = carClassId,
+                });
+            }
         }
+        await db.SaveChangesAsync();
+    }
 
-        if (await db.SeasonCars.FindAsync(series.SeasonId, car.CarId) is null)
-        {
-            db.SeasonCars.Add(new SeasonCar
-            {
-                SeasonId = series.SeasonId,
-                CarId    = car.CarId,
-            });
-        }
+    // Collect distinct cars across all weeks
+    var allCarIds = schedule.Schedules
+        .SelectMany(w => w.CarRestrictions.Select(c => c.CarId))
+        .Distinct()
+        .ToList();
+
+    foreach (var carId in allCarIds)
+    {
+        if (await db.SeasonCars.FindAsync(firstWeek.SeasonId, carId) is null)
+            db.SeasonCars.Add(new SeasonCar { SeasonId = firstWeek.SeasonId, CarId = carId });
     }
 
     // Weeks
-    foreach (var week in series.Weeks)
+    foreach (var week in schedule.Schedules)
     {
+        var startDate = DateOnly.Parse(week.StartDate);
+
         var existing = await db.Weeks.FirstOrDefaultAsync(
-            w => w.SeasonId == series.SeasonId && w.WeekNumber == week.WeekNumber);
+            w => w.SeasonId == week.SeasonId && w.WeekNumber == week.RaceWeekNum);
 
         if (existing is null)
-        {
             db.Weeks.Add(new Week
             {
-                SeasonId       = series.SeasonId,
-                WeekNumber     = week.WeekNumber,
-                IracingTrackId = week.TrackId,
-                TrackName      = week.TrackName,
-                ConfigName     = week.ConfigName,
-                StartDate      = week.StartDate,
+                SeasonId   = week.SeasonId,
+                WeekNumber = week.RaceWeekNum,
+                TrackId    = week.Track.TrackId,
+                StartDate  = startDate,
             });
-        }
         else
         {
-            existing.IracingTrackId = week.TrackId;
-            existing.TrackName      = week.TrackName;
-            existing.ConfigName     = week.ConfigName;
-            existing.StartDate      = week.StartDate;
+            existing.TrackId   = week.Track.TrackId;
+            existing.StartDate = startDate;
         }
     }
 
     await db.SaveChangesAsync();
 }
 
+// ── Step 5: Synthetic driver pool ─────────────────────────────────────────────
+const int DriverStart = 100_001;
+const int DriverCount = 200;
+
+var driverSkillFactors = Enumerable.Range(0, DriverCount)
+    .ToDictionary(i => (long)(DriverStart + i), i => ComputeSkillFactor(DriverStart + i));
+
+// ── Step 6: Seed subsessions and results ─────────────────────────────────────
+Console.WriteLine("Seeding subsessions and race results…");
+int totalSubsessions = 0;
+int totalResults = 0;
+
+// Load all car classes for CarClassId lookup
+var carClassByCar = carClasses
+    .SelectMany(cc => cc.CarsInClass.Select(m => (m.CarId, cc.CarClassId)))
+    .GroupBy(x => x.CarId)
+    .ToDictionary(g => g.Key, g => g.First().CarClassId);
+
+// Ensure all car classes exist in DB (already seeded in step 3, but use their IDs)
+var dbCarClassIds = await db.CarClasses.Select(c => c.Id).ToHashSetAsync();
+
+foreach (var schedule in schedules)
+{
+    var firstWeek = schedule.Schedules[0];
+    var avgSpeedMph = GetAvgSpeedMph(firstWeek.SeasonId);
+
+    var weekRows = await db.Weeks
+        .Where(w => w.SeasonId == firstWeek.SeasonId)
+        .ToListAsync();
+    var weekByNumber = weekRows.ToDictionary(w => w.WeekNumber);
+
+    foreach (var week in schedule.Schedules)
+    {
+        if (!weekByNumber.TryGetValue(week.RaceWeekNum, out var weekRow))
+            continue;
+
+        var carIds = week.CarRestrictions.Select(c => c.CarId).ToList();
+        if (carIds.Count == 0) continue;
+
+        var trackLength = trackCatalog.TryGetValue(week.Track.TrackId, out var t)
+            ? t.TrackConfigLength ?? 2.5
+            : 2.5;
+
+        // Use a deterministic negative ID to avoid collisions with real iRacing subsession IDs
+        var subsessionId = -(firstWeek.SeasonId * 100 + week.RaceWeekNum);
+
+        bool alreadySeeded = await db.Subsessions.AnyAsync(s => s.Id == subsessionId);
+        if (alreadySeeded) continue;
+
+        var subsession = new ApexRacers.Core.Models.Subsession
+        {
+            Id                   = subsessionId,
+            SeasonId             = firstWeek.SeasonId,
+            WeekNumber           = week.RaceWeekNum,
+            WeekId               = weekRow.Id,
+            TrackId              = week.Track.TrackId,
+            OfficialSession      = true,
+            EventStrengthOfField = 1500,
+            SplitNum             = 0,
+            StartTime            = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
+        };
+        db.Subsessions.Add(subsession);
+        await db.SaveChangesAsync();
+        totalSubsessions++;
+
+        foreach (var carId in carIds)
+        {
+            var mph     = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
+            var baseLap = trackLength / mph * 3600.0;
+            var stdDev  = Math.Max(1.0, baseLap * 0.02);
+            var carOffset = GetCarOffset(carId);
+
+            // Resolve CarClassId for this car
+            carClassByCar.TryGetValue(carId, out var carClassId);
+            // If no class found, skip (shouldn't happen with full catalog)
+            if (carClassId == 0 || !dbCarClassIds.Contains(carClassId)) continue;
+
+            // Generate results ordered by lap time to assign finish positions
+            var driverLaps = driverSkillFactors
+                .Select(kvp => (
+                    CustId: kvp.Key,
+                    LapSeconds: GenerateLapTime(
+                        kvp.Key, carId, week.RaceWeekNum,
+                        baseLap + carOffset, kvp.Value, stdDev)))
+                .OrderBy(x => x.LapSeconds)
+                .ToList();
+
+            for (int pos = 0; pos < driverLaps.Count; pos++)
+            {
+                var (custId, lapSeconds) = driverLaps[pos];
+                db.SubsessionResults.Add(new ApexRacers.Core.Models.SubsessionResult
+                {
+                    SubsessionId            = subsessionId,
+                    CustId                  = custId,
+                    CarId                   = carId,
+                    CarClassId              = carClassId,
+                    BestLapSeconds          = lapSeconds,
+                    AverageLapSeconds       = lapSeconds * 1.01,
+                    FinishPosition          = pos,
+                    FinishPositionInClass   = pos,
+                    StartingPosition        = pos,
+                    StartingPositionInClass = pos,
+                    Incidents               = 0,
+                    LapsComplete            = 30,
+                    LapsLead                = pos == 0 ? 30 : 0,
+                    ChampPoints             = Math.Max(0, 35 - pos),
+                    AggregateChampPoints    = Math.Max(0, 35 - pos),
+                    NewIRating              = 1500,
+                    OldIRating              = 1500,
+                    NewCpi                  = 2.0,
+                    OldCpi                  = 2.0,
+                    ReasonOutId             = 0,
+                    Division                = 1,
+                    DropRace                = false,
+                    Interval                = pos == 0 ? 0.0 : lapSeconds - driverLaps[0].LapSeconds,
+                });
+            }
+
+            await db.SaveChangesAsync();
+            totalResults += driverLaps.Count;
+        }
+    }
+
+    Console.WriteLine($"  {firstWeek.SeriesName}: done");
+}
+
+Console.WriteLine($"\nSeeding complete — {totalSubsessions:N0} subsessions, {totalResults:N0} race results written.");
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+static string FindResponseObjectsPath()
+{
+    var candidate = Path.Combine(Environment.CurrentDirectory, "iracing-api-response-objects");
+    if (Directory.Exists(candidate)) return candidate;
+
+    var dir = new DirectoryInfo(AppContext.BaseDirectory);
+    while (dir != null)
+    {
+        var p = Path.Combine(dir.FullName, "iracing-api-response-objects");
+        if (Directory.Exists(p)) return p;
+        dir = dir.Parent;
+    }
+
+    throw new DirectoryNotFoundException(
+        "Cannot find iracing-api-response-objects. Run the seeder from the repo root.");
+}
+
+// Fallback average speed (mph) per season when a car has no class entry.
+static double GetAvgSpeedMph(int seasonId) => seasonId switch
+{
+    6115 => 90.0,  // GT3 Challenge Fixed
+    6099 => 83.0,  // GT4 Challenge
+    6091 => 99.0,  // Ring Meister (Ligier LMP3)
+    6124 => 90.0,  // IMSA (GT3 baseline; GTP cars get their own speed from carSpeedMph)
+    _    => 88.0,
+};
+
+// Build a car_id → avg-speed-mph lookup from the car class catalog.
+// relative_speed is an arbitrary iRacing ranking, not mph — calibrated here
+// so GT3 (rel 52) ≈ 90 mph and GTP (rel ≥160) ≈ 110 mph.
+static Dictionary<int, double> BuildCarSpeedLookup(IReadOnlyList<CarClassApiEntry> carClasses)
+{
+    var lookup = new Dictionary<int, double>();
+    foreach (var cls in carClasses)
+    {
+        double mph = cls.RelativeSpeed switch
+        {
+            >= 160 => 110.0,  // GTP, Indy, modern F1
+            >= 120 => 105.0,  // LMP1, LMP2
+            >= 80  => 100.0,  // older prototypes, Riley DP
+            >= 65  => 95.0,   // LMP3, GTE
+            >= 48  => 90.0,   // GT3
+            >= 38  => 83.0,   // GT4, slower sports cars
+            _      => 75.0,
+        };
+        foreach (var car in cls.CarsInClass)
+            lookup.TryAdd(car.CarId, mph);
+    }
+    return lookup;
+}
+
+static (int Year, int Quarter) ParseSeasonYearQuarter(string seasonName)
+{
+    // "GT3 Challenge Fixed by Fanatec - 2026 Season 2"
+    var dash = seasonName.LastIndexOf(" - ", StringComparison.Ordinal);
+    if (dash >= 0)
+    {
+        var tail = seasonName[(dash + 3)..].Trim(); // "2026 Season 2"
+        var parts = tail.Split(' ');
+        if (parts.Length >= 3 &&
+            int.TryParse(parts[0], out var year) &&
+            int.TryParse(parts[2], out var quarter))
+            return (year, quarter);
+    }
+    return (DateTimeOffset.UtcNow.Year, 1);
+}
+
+// Deterministic per-car offset: spreads cars ±1.5 s within the class.
+static double GetCarOffset(int carId)
+{
+    var rng = new Random(HashCode.Combine(carId, 0x5F3759DF));
+    return (rng.NextDouble() - 0.5) * 3.0;
+}
+
 // Deterministic skill factor for a driver: 0 = fastest, 1 = slowest.
-// Distribution is approximately normal (mean 0.55, stdDev 0.2), clipped to [0,1].
 static double ComputeSkillFactor(long driverId)
 {
     var rng = new Random((int)(driverId ^ (driverId >> 16)));
     return Math.Clamp(NextGaussian(rng, 0.55, 0.20), 0.0, 1.0);
 }
 
-// Generates a lap time.
-// The driver's skill factor linearly maps to +/- 2.5s from the base time.
-// A per-lap gaussian noise adds ±(stdDev * 0.3) for natural variation.
+// Generates a lap time from a base time, skill factor, and gaussian noise.
 static double GenerateLapTime(
     long driverId, int carId, int weekNumber,
     double baseLapSeconds, double skillFactor, double stdDev)
@@ -203,14 +506,12 @@ static double GenerateLapTime(
     int seed = HashCode.Combine((int)(driverId & 0x7FFFFFFF), carId, weekNumber);
     var rng = new Random(seed);
     double lapTime = baseLapSeconds
-        + ((skillFactor - 0.5) * 5.0)
+        + ((skillFactor - 0.5) * stdDev * 5.0)
         + NextGaussian(rng, 0.0, stdDev * 0.3);
-
-    // Floor at base - 3s so even the fastest seeded drivers stay realistic
-    return Math.Max(lapTime, baseLapSeconds - 3.0);
+    return Math.Max(lapTime, baseLapSeconds * 0.97);
 }
 
-// Box-Muller transform for a normally distributed random double.
+// Box-Muller transform.
 static double NextGaussian(Random rng, double mean, double stdDev)
 {
     double u1 = 1.0 - rng.NextDouble();

@@ -1,6 +1,7 @@
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
+using Aydsko.iRacingData.Searches;
 using Aydsko.iRacingData.Series;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,25 +51,19 @@ public sealed class Worker(
         var activeSeries = seasonsResponse.Data.Where(s => s.Active).ToList();
         logger.LogDebug("Found {Count} active series", activeSeries.Count);
 
-        // Fetch car-class → car-IDs lookup once for the whole run.
-        var carClassesResponse = await client.GetCarClassesAsync(ct);
-        var carClassToCarIds = carClassesResponse.Data.ToDictionary(
-            cc => cc.CarClassId,
-            cc => cc.CarsInClass.Where(c => !c.Retired).Select(c => c.CarId).ToList());
+        var seriesProcessed       = 0;
+        var subsessionsIndexed    = 0;
 
-        var seriesProcessed  = 0;
-        var lapTimesUpserted = 0;
-
-        // Steps 2–5 — Process each active season independently so one failure
+        // Steps 2–4 — Process each active season independently so one failure
         // doesn't abort the whole run.
         foreach (var seasonSeries in activeSeries)
         {
             try
             {
-                var (series, laps) = await ProcessSeasonAsync(
-                    db, client, seasonSeries, carClassToCarIds, ct);
-                seriesProcessed  += series;
-                lapTimesUpserted += laps;
+                var (series, subsessions) = await ProcessSeasonAsync(
+                    db, client, seasonSeries, ct);
+                seriesProcessed       += series;
+                subsessionsIndexed    += subsessions;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -79,15 +74,14 @@ public sealed class Worker(
         }
 
         logger.LogInformation(
-            "Ingestion run complete at {Time} — series processed: {SeriesProcessed}, lap times upserted: {LapTimesUpserted}",
-            DateTimeOffset.UtcNow, seriesProcessed, lapTimesUpserted);
+            "Ingestion run complete at {Time} — series processed: {SeriesProcessed}, subsessions indexed: {SubsessionsIndexed}",
+            DateTimeOffset.UtcNow, seriesProcessed, subsessionsIndexed);
     }
 
-    private async Task<(int seriesProcessed, int lapTimesUpserted)> ProcessSeasonAsync(
+    private async Task<(int seriesProcessed, int subsessionsIndexed)> ProcessSeasonAsync(
         AppDbContext db,
         IDataClient client,
         SeasonSeries seasonSeries,
-        Dictionary<int, List<int>> carClassToCarIds,
         CancellationToken ct)
     {
         // Series name comes from the first schedule entry; SeriesId is on the root.
@@ -107,16 +101,26 @@ public sealed class Worker(
         {
             db.Seasons.Add(new Season
             {
-                Id        = seasonSeries.SeasonId,
-                SeriesId  = seasonSeries.SeriesId,
-                Year      = seasonSeries.SeasonYear,
-                Quarter   = seasonSeries.SeasonQuarter,
-                Active    = true,
+                Id           = seasonSeries.SeasonId,
+                SeriesId     = seasonSeries.SeriesId,
+                Year         = seasonSeries.SeasonYear,
+                Quarter      = seasonSeries.SeasonQuarter,
+                Active       = true,
+                LicenseGroup = seasonSeries.LicenseGroup,
+                Official     = seasonSeries.Official,
+                Drops        = seasonSeries.Drops,
+                FixedSetup   = seasonSeries.FixedSetup,
+                Multiclass   = seasonSeries.Multiclass,
             });
         }
         else
         {
-            season.Active = true;
+            season.Active       = true;
+            season.LicenseGroup = seasonSeries.LicenseGroup;
+            season.Official     = seasonSeries.Official;
+            season.Drops        = seasonSeries.Drops;
+            season.FixedSetup   = seasonSeries.FixedSetup;
+            season.Multiclass   = seasonSeries.Multiclass;
         }
 
         await db.SaveChangesAsync(ct);
@@ -130,10 +134,27 @@ public sealed class Worker(
             return (0, 0);
         }
 
-        var weekByIndex = new Dictionary<int, Week>(); // raceWeekNum → Week entity
-
         foreach (var item in scheduleResponse.Data.Schedules)
         {
+            // Upsert track
+            var track = await db.Tracks.FindAsync([item.Track.TrackId], ct);
+            if (track is null)
+            {
+                track = new Track
+                {
+                    Id         = item.Track.TrackId,
+                    Name       = item.Track.TrackName,
+                    ConfigName = item.Track.ConfigName ?? "",
+                };
+                db.Tracks.Add(track);
+                await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                track.Name       = item.Track.TrackName;
+                track.ConfigName = item.Track.ConfigName ?? "";
+            }
+
             var week = await db.Weeks
                 .FirstOrDefaultAsync(
                     w => w.SeasonId == seasonSeries.SeasonId && w.WeekNumber == item.RaceWeekNum, ct);
@@ -142,25 +163,19 @@ public sealed class Worker(
             {
                 week = new Week
                 {
-                    SeasonId       = seasonSeries.SeasonId,
-                    WeekNumber     = item.RaceWeekNum,
-                    IracingTrackId = item.Track.TrackId,
-                    TrackName      = item.Track.TrackName,
-                    ConfigName     = item.Track.ConfigName ?? "",
-                    StartDate      = item.StartDate,
+                    SeasonId   = seasonSeries.SeasonId,
+                    WeekNumber = item.RaceWeekNum,
+                    TrackId    = item.Track.TrackId,
+                    StartDate  = item.StartDate,
                 };
                 db.Weeks.Add(week);
                 await db.SaveChangesAsync(ct); // flush to get DB-generated Week.Id
             }
             else
             {
-                week.IracingTrackId = item.Track.TrackId;
-                week.TrackName      = item.Track.TrackName;
-                week.ConfigName     = item.Track.ConfigName ?? "";
-                week.StartDate      = item.StartDate;
+                week.TrackId   = item.Track.TrackId;
+                week.StartDate = item.StartDate;
             }
-
-            weekByIndex[item.RaceWeekNum] = week;
 
             foreach (var car in item.RaceWeekCars)
             {
@@ -187,101 +202,205 @@ public sealed class Worker(
 
         await db.SaveChangesAsync(ct);
 
-        // ── Step 4: Fetch TT results for the current race week ────────────────────
+        // ── Step 4: Index new race subsessions ────────────────────────────────────
+        var indexed = await IndexNewSubsessionsAsync(db, client, seasonSeries, ct);
 
-        var currentWeekIndex = seasonSeries.RaceWeek; // 0-based
-        if (!weekByIndex.TryGetValue(currentWeekIndex, out var currentWeek))
-        {
-            logger.LogDebug(
-                "Season {SeasonId}: current week index {Week} not in schedule",
-                seasonSeries.SeasonId, currentWeekIndex);
-            return (1, 0);
-        }
-
-        var currentItem = scheduleResponse.Data.Schedules
-            .FirstOrDefault(s => s.RaceWeekNum == currentWeekIndex);
-        if (currentItem is null) return (1, 0);
-
-        var weekCarIds = currentItem.RaceWeekCars.Select(c => c.CarId).ToHashSet();
-
-        var lapTimesUpserted = 0;
-
+        // Upsert SeasonCarClass entries after indexing so new CarClass rows created
+        // during subsession indexing are available for the FK guard.
         foreach (var carClassId in seasonSeries.CarClassIds)
         {
-            // Resolve the single car for this class that ran this week.
-            // Multi-car classes in TT are rare; skip them for now since the API
-            // result doesn't tell us which car each driver used.
-            var carsThisWeek = carClassToCarIds.GetValueOrDefault(carClassId, [])
-                .Where(id => weekCarIds.Contains(id))
-                .ToList();
-
-            if (carsThisWeek.Count != 1)
+            if (await db.SeasonCarClasses.FindAsync([seasonSeries.SeasonId, carClassId], ct) is null
+                && await db.CarClasses.FindAsync([carClassId], ct) is not null)
             {
-                logger.LogDebug(
-                    "Season {SeasonId} class {ClassId} has {Count} cars in week {Week} — skipping",
-                    seasonSeries.SeasonId, carClassId, carsThisWeek.Count, currentWeekIndex);
-                continue;
-            }
-
-            var carId = carsThisWeek[0];
-
-            var ttResponse = await client.GetSeasonTimeTrialResultsAsync(
-                seasonSeries.SeasonId, carClassId, currentWeekIndex, division: null, ct);
-
-            if (ttResponse?.Data.Results is not { Length: > 0 })
-            {
-                logger.LogDebug(
-                    "No TT results for season {SeasonId} class {ClassId} week {Week}",
-                    seasonSeries.SeasonId, carClassId, currentWeekIndex);
-                continue;
-            }
-
-            // ── Step 5: Upsert LapTimeEntry records ───────────────────────────────
-            // Batch-load all existing entries for this (week, car) to avoid one
-            // DB round-trip per driver.
-            var existing = await db.LapTimeEntries
-                .Where(l => l.WeekId == currentWeek.Id && l.CarId == carId)
-                .ToDictionaryAsync(l => l.DriverCustomerId, ct);
-
-            foreach (var result in ttResponse.Data.Results)
-            {
-                if (result.BestNlapsTime is null) continue;
-
-                var lapSecs = result.BestNlapsTime.Value.TotalSeconds;
-
-                if (existing.TryGetValue(result.CustomerId, out var entry))
+                db.SeasonCarClasses.Add(new SeasonCarClass
                 {
-                    if (lapSecs < entry.LapTimeSeconds)
-                    {
-                        entry.LapTimeSeconds = lapSecs;
-                        entry.RecordedAt     = DateTimeOffset.UtcNow;
-                        lapTimesUpserted++;
-                    }
-                }
-                else
-                {
-                    var newEntry = new LapTimeEntry
-                    {
-                        DriverCustomerId = result.CustomerId,
-                        CarId            = carId,
-                        WeekId           = currentWeek.Id,
-                        LapTimeSeconds   = lapSecs,
-                        RecordedAt       = DateTimeOffset.UtcNow,
-                    };
-                    db.LapTimeEntries.Add(newEntry);
-                    existing[result.CustomerId] = newEntry; // prevent duplicate add within batch
-                    lapTimesUpserted++;
-                }
+                    SeasonId   = seasonSeries.SeasonId,
+                    CarClassId = carClassId,
+                });
             }
-
-            await db.SaveChangesAsync(ct);
-
-            logger.LogDebug(
-                "Season {SeasonId} class {ClassId} week {Week}: processed {Count} TT results",
-                seasonSeries.SeasonId, carClassId, currentWeekIndex,
-                ttResponse.Data.Results.Length);
         }
 
-        return (1, lapTimesUpserted);
+        await db.SaveChangesAsync(ct);
+
+        return (1, indexed);
+    }
+
+    private async Task<int> IndexNewSubsessionsAsync(
+        AppDbContext db, IDataClient client, SeasonSeries seasonSeries, CancellationToken ct)
+    {
+        // Narrow the search to sessions starting after the last indexed one (minus a
+        // 1-hour buffer for concurrent splits). Null on first run → full season fetch.
+        var lastIndexedStart = await db.Subsessions
+            .Where(s => s.SeasonId == seasonSeries.SeasonId)
+            .MaxAsync(s => (DateTimeOffset?)s.StartTime, ct);
+
+        DateTime? searchRangeBegin = lastIndexedStart.HasValue
+            ? lastIndexedStart.Value.UtcDateTime.AddHours(-1)
+            : null;
+
+        var searchResponse = await client.SearchOfficialResultsAsync(new OfficialSearchParameters
+        {
+            SeriesId        = seasonSeries.SeriesId,
+            SeasonYear      = seasonSeries.SeasonYear,
+            SeasonQuarter   = seasonSeries.SeasonQuarter,
+            EventTypes      = new[] { 5 },  // Race only
+            OfficialOnly    = true,
+            StartRangeBegin = searchRangeBegin,
+        }, ct);
+
+        if (searchResponse?.Data.Items is not { Length: > 0 }) return 0;
+
+        var candidateIds = searchResponse.Data.Items
+            .Select(i => i.SubsessionId)
+            .ToHashSet();
+
+        var existingIds = await db.Subsessions
+            .Where(s => candidateIds.Contains(s.Id))
+            .Select(s => s.Id)
+            .ToHashSetAsync(ct);
+
+        var newIds = candidateIds.Except(existingIds).ToList();
+
+        int stored = 0;
+        foreach (var subsessionId in newIds)
+        {
+            try
+            {
+                var resultResponse = await client.GetSubSessionResultAsync(subsessionId, includeLicenses: false, ct);
+                if (resultResponse?.Data is null) continue;
+
+                var data = resultResponse.Data;
+
+                // Find race simsession
+                var raceSession = data.SessionResults
+                    .FirstOrDefault(s => s.SimSessionType == 6);
+                if (raceSession is null) continue;
+
+                // Resolve WeekId from DB (RaceWeekIndex is 0-based week number)
+                var weekId = await db.Weeks
+                    .Where(w => w.SeasonId == data.SeasonId && w.WeekNumber == data.RaceWeekIndex)
+                    .Select(w => (Guid?)w.Id)
+                    .FirstOrDefaultAsync(ct);
+
+                if (weekId is null)
+                {
+                    logger.LogWarning(
+                        "Week not found for season {SeasonId} week {WeekIndex} — skipping subsession {SubsessionId}",
+                        data.SeasonId, data.RaceWeekIndex, subsessionId);
+                    continue;
+                }
+
+                // Upsert track if unknown
+                if (await db.Tracks.FindAsync([data.Track.TrackId], ct) is null)
+                {
+                    db.Tracks.Add(new Track
+                    {
+                        Id         = data.Track.TrackId,
+                        Name       = data.Track.TrackName,
+                        ConfigName = data.Track.ConfigName ?? "",
+                    });
+                    await db.SaveChangesAsync(ct);
+                }
+
+                // Determine split number from session_splits order
+                var splitNum = 0;
+                if (data.SessionSplits is { Length: > 0 })
+                {
+                    var idx = Array.FindIndex(data.SessionSplits, s => s.SubSessionId == subsessionId);
+                    splitNum = idx >= 0 ? idx : 0;
+                }
+
+                var subsession = new Subsession
+                {
+                    Id                   = subsessionId,
+                    SeasonId             = data.SeasonId,
+                    WeekNumber           = data.RaceWeekIndex,
+                    WeekId               = weekId,
+                    TrackId              = data.Track.TrackId,
+                    OfficialSession      = data.OfficialSession,
+                    EventStrengthOfField = data.EventStrengthOfField,
+                    StartTime            = data.StartTime,
+                    EndTime              = data.EndTime,   // DateTimeOffset, not nullable in SubSessionResult
+                    SplitNum             = splitNum,
+                };
+                db.Subsessions.Add(subsession);
+                await db.SaveChangesAsync(ct);
+
+                foreach (var r in raceSession.Results)
+                {
+                    // Skip AI drivers and team events (null CustomerId)
+                    if (r.AI || r.CustomerId is null) continue;
+
+                    var bestLapSecs = r.BestLapTime?.TotalSeconds ?? -1;
+                    var avgLapSecs  = r.AverageLap?.TotalSeconds ?? -1;
+
+                    // Upsert car
+                    if (await db.Cars.FindAsync([r.CarId], ct) is null)
+                    {
+                        db.Cars.Add(new Car
+                        {
+                            Id              = r.CarId,
+                            Name            = r.CarName,
+                            NameAbbreviated = r.CarName,
+                        });
+                    }
+
+                    // Upsert car class
+                    if (await db.CarClasses.FindAsync([r.CarClassId], ct) is null)
+                    {
+                        db.CarClasses.Add(new CarClass
+                        {
+                            Id            = r.CarClassId,
+                            Name          = r.CarClassName,
+                            ShortName     = r.CarClassShortName,
+                            RelativeSpeed = 0,
+                        });
+                    }
+
+                    db.SubsessionResults.Add(new SubsessionResult
+                    {
+                        SubsessionId              = subsessionId,
+                        CustId                    = (long)r.CustomerId!.Value,
+                        CarId                     = r.CarId,
+                        CarClassId                = r.CarClassId,
+                        FinishPosition            = r.FinishPosition,
+                        FinishPositionInClass     = r.FinishPositionInClass,
+                        StartingPosition          = r.StartingPosition,
+                        StartingPositionInClass   = r.StartingPositionInClass ?? 0,
+                        Incidents                 = r.Incidents,
+                        BestLapSeconds            = bestLapSecs,
+                        AverageLapSeconds         = avgLapSecs,
+                        LapsComplete              = r.LapsComplete,
+                        LapsLead                  = r.LapsLead,
+                        ChampPoints               = r.ChampPoints,
+                        AggregateChampPoints      = r.AggregateChampionshipPoints,
+                        NewIRating                = r.NewIRating,
+                        OldIRating                = r.OldIRating,
+                        NewCpi                    = (double)r.NewCornersPerIncident,
+                        OldCpi                    = (double)r.OldCornersPerIncident,
+                        ReasonOut                 = r.ReasonOut,
+                        ReasonOutId               = r.ReasonOutId,
+                        Division                  = r.Division,
+                        DropRace                  = r.DropRace,
+                        Interval                  = r.ClassInterval?.TotalSeconds ?? -1,
+                    });
+                }
+
+                await db.SaveChangesAsync(ct);
+                db.ChangeTracker.Clear();
+                stored++;
+
+                logger.LogDebug(
+                    "Indexed subsession {SubsessionId} (season {SeasonId} week {WeekIndex})",
+                    subsessionId, data.SeasonId, data.RaceWeekIndex);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex,
+                    "Failed to index subsession {SubsessionId} — skipping", subsessionId);
+            }
+        }
+
+        return stored;
     }
 }

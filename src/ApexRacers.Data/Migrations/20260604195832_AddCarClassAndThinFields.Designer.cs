@@ -3,6 +3,7 @@ using System;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ApexRacers.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604195832_AddCarClassAndThinFields")]
+    partial class AddCarClassAndThinFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -171,6 +174,47 @@ namespace ApexRacers.Data.Migrations
                     b.ToTable("FeatureFlags", "iracing");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.LapTimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<float?>("AirTempCelsius")
+                        .HasColumnType("real");
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("DriverCustomerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<double>("LapTimeSeconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<float?>("TrackTempCelsius")
+                        .HasColumnType("real");
+
+                    b.Property<byte?>("TrackWetness")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("WeekId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeekId");
+
+                    b.HasIndex("CarId", "WeekId");
+
+                    b.HasIndex("DriverCustomerId", "WeekId");
+
+                    b.ToTable("LapTimeEntries", "iracing");
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.PersonalLap", b =>
                 {
                     b.Property<Guid>("Id")
@@ -311,135 +355,6 @@ namespace ApexRacers.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Series", "iracing");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.Subsession", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("EndTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EventStrengthOfField")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("OfficialSession")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("SeasonId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SplitNum")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("StartTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("TrackId")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("WeekId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("WeekNumber")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackId");
-
-                    b.HasIndex("WeekId");
-
-                    b.HasIndex("SeasonId", "WeekNumber");
-
-                    b.ToTable("Subsessions", "iracing");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.SubsessionResult", b =>
-                {
-                    b.Property<int>("SubsessionId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("CustId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("AggregateChampPoints")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("AverageLapSeconds")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("BestLapSeconds")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("CarClassId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CarId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ChampPoints")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Division")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("DropRace")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("FinishPosition")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("FinishPositionInClass")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Incidents")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("Interval")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("LapsComplete")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LapsLead")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("NewCpi")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("NewIRating")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("OldCpi")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("OldIRating")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ReasonOut")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("ReasonOutId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("StartingPosition")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("StartingPositionInClass")
-                        .HasColumnType("integer");
-
-                    b.HasKey("SubsessionId", "CustId");
-
-                    b.HasIndex("CarClassId");
-
-                    b.HasIndex("CustId");
-
-                    b.HasIndex("CarId", "SubsessionId");
-
-                    b.ToTable("SubsessionResults", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Track", b =>
@@ -775,6 +690,25 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Week");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.LapTimeEntry", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.Car", "Car")
+                        .WithMany("LapTimeEntries")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ApexRacers.Core.Models.Week", "Week")
+                        .WithMany("LapTimeEntries")
+                        .HasForeignKey("WeekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+
+                    b.Navigation("Week");
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.PersonalLap", b =>
                 {
                     b.HasOne("ApexRacers.Core.Models.Car", "Car")
@@ -847,59 +781,6 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("CarClass");
 
                     b.Navigation("Season");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.Subsession", b =>
-                {
-                    b.HasOne("ApexRacers.Core.Models.Season", "Season")
-                        .WithMany()
-                        .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ApexRacers.Core.Models.Track", "Track")
-                        .WithMany()
-                        .HasForeignKey("TrackId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ApexRacers.Core.Models.Week", "Week")
-                        .WithMany("Subsessions")
-                        .HasForeignKey("WeekId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Season");
-
-                    b.Navigation("Track");
-
-                    b.Navigation("Week");
-                });
-
-            modelBuilder.Entity("ApexRacers.Core.Models.SubsessionResult", b =>
-                {
-                    b.HasOne("ApexRacers.Core.Models.CarClass", "CarClass")
-                        .WithMany()
-                        .HasForeignKey("CarClassId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ApexRacers.Core.Models.Car", "Car")
-                        .WithMany()
-                        .HasForeignKey("CarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ApexRacers.Core.Models.Subsession", "Subsession")
-                        .WithMany("Results")
-                        .HasForeignKey("SubsessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Car");
-
-                    b.Navigation("CarClass");
-
-                    b.Navigation("Subsession");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>
@@ -978,6 +859,8 @@ namespace ApexRacers.Data.Migrations
 
                     b.Navigation("CarPercentileResults");
 
+                    b.Navigation("LapTimeEntries");
+
                     b.Navigation("PersonalLaps");
 
                     b.Navigation("SeasonCars");
@@ -1004,11 +887,6 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Seasons");
                 });
 
-            modelBuilder.Entity("ApexRacers.Core.Models.Subsession", b =>
-                {
-                    b.Navigation("Results");
-                });
-
             modelBuilder.Entity("ApexRacers.Core.Models.Track", b =>
                 {
                     b.Navigation("PersonalLaps");
@@ -1020,7 +898,7 @@ namespace ApexRacers.Data.Migrations
                 {
                     b.Navigation("CarPercentileResults");
 
-                    b.Navigation("Subsessions");
+                    b.Navigation("LapTimeEntries");
                 });
 #pragma warning restore 612, 618
         }

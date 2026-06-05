@@ -133,8 +133,8 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
         {/* Stats row */}
         <div className="flex items-center gap-6 pt-2 border-t border-line-2 flex-wrap">
           <div>
-            <p className="text-th text-on-surface-variant">Total Laps</p>
-            <p className="font-mono text-mono-fluid font-semibold text-on-surface mt-0.5">{data.totalLaps}</p>
+            <p className="text-th text-on-surface-variant">Total Weeks</p>
+            <p className="font-mono text-mono-fluid font-semibold text-on-surface mt-0.5">{data.totalWeeks}</p>
           </div>
           {data.personalBestLapSeconds != null && (
             <div>
@@ -188,10 +188,6 @@ function SecondaryCarCard({ data }: { data: CarAnalytics }) {
 
         {/* Stats */}
         <div className="flex items-center gap-5 pt-2 border-t border-line-2 text-small-fluid flex-wrap">
-          <div>
-            <span className="text-on-surface-variant">Laps: </span>
-            <span className="text-on-surface font-semibold">{data.totalLaps}</span>
-          </div>
           <div>
             <span className="text-on-surface-variant">Weeks: </span>
             <span className="text-on-surface font-semibold">{data.percentileHistory.length}</span>

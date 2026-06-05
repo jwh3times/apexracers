@@ -168,10 +168,10 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 All sizing in the frontend scales continuously with viewport width via `clamp()` rather than Tailwind responsive breakpoints. The utility classes are defined in `src/web/src/index.css` and must be used for any new UI work — do not reach for one-off Tailwind classes for the same purposes.
 
-**Typography**
+##### Typography
 
 | Class | Purpose |
-|---|---|
+| --- | --- |
 | `text-page-title` | Large page heading (`h1`) |
 | `text-section-head` | Card / panel section heading (`h2`, `h3`) |
 | `text-eyebrow` | Mono ALL-CAPS label above a heading |
@@ -181,10 +181,10 @@ All sizing in the frontend scales continuously with viewport width via `clamp()`
 | `text-kpi-value` | Large mono KPI number |
 | `text-mono-fluid` | Mono data values — lap times, rank numbers |
 
-**Layout & spacing**
+##### Layout & spacing
 
 | Class | Purpose |
-|---|---|
+| --- | --- |
 | `page-wrap` | Outer page padding — apply to `<main>` |
 | `card-r` | Card border-radius |
 | `card-p` | Card body padding |
@@ -196,7 +196,7 @@ All sizing in the frontend scales continuously with viewport width via `clamp()`
 | `grid-kpi` | Auto-fit KPI tile grid (wraps naturally) |
 | `grid-cards` | Auto-fill series card grid |
 
-**Standard card pattern**
+##### Standard card pattern
 
 Every card uses a consistent combination of a CSS `cardStyle` constant for the box-shadow and optional `scanTexture` for header backgrounds:
 
@@ -219,7 +219,7 @@ const scanTexture: React.CSSProperties = {
 </div>
 ```
 
-**Color tokens**
+##### Color tokens
 
 The primary accent is cyan, not green. Use `text-primary-container` / `bg-primary-container` / `border-primary-container` for all accent text, icon, button, and border use cases. Do not hardcode old green values (`#00FF88`, `#00e479`, `text-primary-fixed-dim`).
 

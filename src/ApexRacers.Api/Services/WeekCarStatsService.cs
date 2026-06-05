@@ -15,21 +15,23 @@ public class WeekCarStatsService(AppDbContext db)
 
         if (weekDbId is null) return [];
 
-        var laps = await db.LapTimeEntries
-            .Where(l => l.WeekId == weekDbId)
-            .Select(l => new { l.CarId, l.Car.Name, l.LapTimeSeconds })
+        // Best lap per driver per car, then compute stats
+        var driverBests = await db.SubsessionResults
+            .Where(r => r.Subsession.WeekId == weekDbId && r.BestLapSeconds > 0)
+            .GroupBy(r => new { r.CustId, r.CarId, CarName = r.Car.Name })
+            .Select(g => new { g.Key.CarId, g.Key.CarName, BestLap = g.Min(r => r.BestLapSeconds) })
             .ToListAsync(ct);
 
-        return laps
-            .GroupBy(l => new { l.CarId, l.Name })
+        return driverBests
+            .GroupBy(r => new { r.CarId, r.CarName })
             .Select(g =>
             {
-                var sorted = g.Select(l => l.LapTimeSeconds).Order().ToList();
+                var sorted = g.Select(r => r.BestLap).Order().ToList();
                 int mid = sorted.Count / 2;
                 double median = sorted.Count % 2 == 0
                     ? (sorted[mid - 1] + sorted[mid]) / 2.0
                     : sorted[mid];
-                return new WeekCarDto(g.Key.CarId, g.Key.Name, sorted.Count, sorted[0], median);
+                return new WeekCarDto(g.Key.CarId, g.Key.CarName, sorted.Count, sorted[0], median);
             })
             .OrderBy(d => d.FastestLapSeconds)
             .ToList();

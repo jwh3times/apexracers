@@ -11,12 +11,13 @@ public class RecommendationsController(CarRecommendationService recommendations)
     public async Task<IActionResult> GetRecommendationsAsync(
         [FromQuery] int seriesId,
         [FromQuery] int weekNumber,
-        CancellationToken ct)
+        [FromQuery] bool includePersonalLaps = false,
+        CancellationToken ct = default)
     {
         var customerIdClaim = User.FindFirst("iracing_id")?.Value;
         if (!long.TryParse(customerIdClaim, out var customerId))
             return Ok(Array.Empty<object>());
 
-        return Ok(await recommendations.GetRecommendationsAsync(seriesId, weekNumber, customerId, ct));
+        return Ok(await recommendations.GetRecommendationsAsync(seriesId, weekNumber, customerId, includePersonalLaps, ct));
     }
 }

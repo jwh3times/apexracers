@@ -42,7 +42,7 @@ export interface CarAnalytics {
   bestPercentileRank: number;
   personalBestLapSeconds: number | null;
   medianLapSeconds: number | null;
-  totalLaps: number;
+  totalWeeks: number;
   percentileHistory: WeeklyPercentile[];
 }
 
