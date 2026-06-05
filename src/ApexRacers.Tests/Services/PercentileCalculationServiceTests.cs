@@ -125,7 +125,7 @@ public class PercentileCalculationServiceTests
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
-        db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week.Id, PercentileRank = 50, SampleSize = 2, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) });
+        db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 50, SampleSize = 2, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) });
         await db.SaveChangesAsync();
 
         await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1);

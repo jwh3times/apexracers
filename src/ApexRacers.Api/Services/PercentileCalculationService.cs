@@ -17,6 +17,7 @@ public class PercentileCalculationService(AppDbContext db)
     {
         var week = await db.Weeks
             .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
+            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
             .Select(w => new { w.Id, w.TrackId })
             .FirstOrDefaultAsync(ct);
 
@@ -69,7 +70,7 @@ public class PercentileCalculationService(AppDbContext db)
         {
             var cached = await db.CarPercentileResults
                 .FirstOrDefaultAsync(
-                    r => r.UserId == user.Id && r.CarId == carId && r.WeekId == week.Id, ct);
+                    r => r.UserId == user.Id && r.CarId == carId && r.SeriesId == seriesId && r.WeekId == week.Id, ct);
 
             if (cached is null)
             {
@@ -77,6 +78,7 @@ public class PercentileCalculationService(AppDbContext db)
                 {
                     UserId         = user.Id,
                     CarId          = carId,
+                    SeriesId       = seriesId,
                     WeekId         = week.Id,
                     PercentileRank = percentileRank,
                     SampleSize     = total,

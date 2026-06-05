@@ -299,8 +299,11 @@ Console.WriteLine("Seeding subsessions and race results…");
 int totalSubsessions = 0;
 int totalResults = 0;
 
-// Load all car classes for CarClassId lookup
+// Load all car classes for CarClassId lookup.
+// Exclude class 0 ("Hosted All Cars Class") — it contains every car and causes
+// the carClassId == 0 guard below to skip cars that have a real class as well.
 var carClassByCar = carClasses
+    .Where(cc => cc.CarClassId != 0)
     .SelectMany(cc => cc.CarsInClass.Select(m => (m.CarId, cc.CarClassId)))
     .GroupBy(x => x.CarId)
     .ToDictionary(g => g.Key, g => g.First().CarClassId);
@@ -330,41 +333,40 @@ foreach (var schedule in schedules)
             ? t.TrackConfigLength ?? 2.5
             : 2.5;
 
-        // Use a deterministic negative ID to avoid collisions with real iRacing subsession IDs
-        var subsessionId = -(firstWeek.SeasonId * 100 + week.RaceWeekNum);
-
-        bool alreadySeeded = await db.Subsessions.AnyAsync(s => s.Id == subsessionId);
-        if (alreadySeeded) continue;
-
-        var subsession = new ApexRacers.Core.Models.Subsession
+        // One synthetic subsession per car per week. Each driver races one car
+        // so the (SubsessionId, CustId) PK is never violated.
+        // ID formula: -(seasonId * 10000 + weekNum * 100 + carIndex)
+        for (int carIndex = 0; carIndex < carIds.Count; carIndex++)
         {
-            Id                   = subsessionId,
-            SeasonId             = firstWeek.SeasonId,
-            WeekNumber           = week.RaceWeekNum,
-            WeekId               = weekRow.Id,
-            TrackId              = week.Track.TrackId,
-            OfficialSession      = true,
-            EventStrengthOfField = 1500,
-            SplitNum             = 0,
-            StartTime            = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
-        };
-        db.Subsessions.Add(subsession);
-        await db.SaveChangesAsync();
-        totalSubsessions++;
-
-        foreach (var carId in carIds)
-        {
-            var mph     = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
-            var baseLap = trackLength / mph * 3600.0;
-            var stdDev  = Math.Max(1.0, baseLap * 0.02);
+            var carId     = carIds[carIndex];
+            var mph       = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
+            var baseLap   = trackLength / mph * 3600.0;
+            var stdDev    = Math.Max(1.0, baseLap * 0.02);
             var carOffset = GetCarOffset(carId);
 
-            // Resolve CarClassId for this car
             carClassByCar.TryGetValue(carId, out var carClassId);
-            // If no class found, skip (shouldn't happen with full catalog)
             if (carClassId == 0 || !dbCarClassIds.Contains(carClassId)) continue;
 
-            // Generate results ordered by lap time to assign finish positions
+            var subsessionId = -(firstWeek.SeasonId * 10000 + week.RaceWeekNum * 100 + carIndex);
+
+            bool alreadySeeded = await db.Subsessions.AnyAsync(s => s.Id == subsessionId);
+            if (alreadySeeded) continue;
+
+            db.Subsessions.Add(new ApexRacers.Core.Models.Subsession
+            {
+                Id                   = subsessionId,
+                SeasonId             = firstWeek.SeasonId,
+                WeekNumber           = week.RaceWeekNum,
+                WeekId               = weekRow.Id,
+                TrackId              = week.Track.TrackId,
+                OfficialSession      = true,
+                EventStrengthOfField = 1500,
+                SplitNum             = 0,
+                StartTime            = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
+            });
+            await db.SaveChangesAsync();
+            totalSubsessions++;
+
             var driverLaps = driverSkillFactors
                 .Select(kvp => (
                     CustId: kvp.Key,
@@ -413,7 +415,137 @@ foreach (var schedule in schedules)
     Console.WriteLine($"  {firstWeek.SeriesName}: done");
 }
 
-Console.WriteLine($"\nSeeding complete — {totalSubsessions:N0} subsessions, {totalResults:N0} race results written.");
+Console.WriteLine($"\nSubsession seeding complete — {totalSubsessions:N0} subsessions, {totalResults:N0} race results written.");
+
+// ── Step 7: Seed CarPercentileResult for ApplicationUsers ─────────────────
+Console.WriteLine("Seeding percentile snapshots for application users…");
+
+var appUsers = await db.Users
+    .Where(u => u.IRacingCustomerId != null)
+    .ToListAsync();
+
+if (appUsers.Count == 0)
+{
+    Console.WriteLine("  No application users with iRacing Customer IDs found — skipping.");
+}
+else
+{
+    var custIds = appUsers.Select(u => u.IRacingCustomerId!.Value).ToList();
+
+    // Best lap per (custId, carId, seriesId, weekId) across all seeded results
+    var userResults = await db.SubsessionResults
+        .Where(r => custIds.Contains(r.CustId)
+                 && r.BestLapSeconds > 0
+                 && r.Subsession.WeekId.HasValue)
+        .Select(r => new
+        {
+            r.CustId,
+            r.CarId,
+            r.BestLapSeconds,
+            WeekId   = r.Subsession.WeekId!.Value,
+            SeriesId = r.Subsession.Season.SeriesId,
+        })
+        .ToListAsync();
+
+    if (userResults.Count == 0)
+    {
+        Console.WriteLine("  No matching race results found for application users — skipping.");
+    }
+    else
+    {
+        var userBestByGroup = userResults
+            .GroupBy(r => (r.CustId, r.CarId, r.SeriesId, r.WeekId))
+            .Select(g => new
+            {
+                g.Key.CustId,
+                g.Key.CarId,
+                g.Key.SeriesId,
+                g.Key.WeekId,
+                BestLap = g.Min(r => r.BestLapSeconds),
+            })
+            .ToList();
+
+        var relevantWeekIds = userBestByGroup.Select(r => r.WeekId).Distinct().ToList();
+        var relevantCarIds  = userBestByGroup.Select(r => r.CarId).Distinct().ToList();
+
+        // Back-date each percentile snapshot to the last day of its race week so
+        // the analytics trend chart shows a meaningful time axis instead of all
+        // rows sharing today's date.
+        var weekStartDates = await db.Weeks
+            .Where(w => relevantWeekIds.Contains(w.Id))
+            .Select(w => new { w.Id, w.StartDate })
+            .ToDictionaryAsync(w => w.Id, w => w.StartDate);
+
+        // Full field: best lap per (custId, carId, weekId) across all drivers in those weeks
+        var fieldResults = await db.SubsessionResults
+            .Where(r => r.Subsession.WeekId.HasValue
+                     && relevantWeekIds.Contains(r.Subsession.WeekId!.Value)
+                     && relevantCarIds.Contains(r.CarId)
+                     && r.BestLapSeconds > 0)
+            .GroupBy(r => new { r.CustId, r.CarId, WeekId = r.Subsession.WeekId!.Value })
+            .Select(g => new { g.Key.CustId, g.Key.CarId, g.Key.WeekId, BestLap = g.Min(r => r.BestLapSeconds) })
+            .ToListAsync();
+
+        var fieldByCarWeek = fieldResults
+            .GroupBy(r => (r.CarId, r.WeekId))
+            .ToDictionary(g => g.Key, g => g.Select(r => r.BestLap).OrderBy(t => t).ToList());
+
+        // Load existing CarPercentileResult rows for upsert
+        var userIds = appUsers.Select(u => u.Id).ToList();
+        var existingRows = await db.CarPercentileResults
+            .Where(r => userIds.Contains(r.UserId))
+            .ToListAsync();
+
+        var existingLookup = existingRows
+            .ToDictionary(r => (r.UserId, r.CarId, r.SeriesId, r.WeekId));
+
+        var custIdToUser = appUsers.ToDictionary(u => u.IRacingCustomerId!.Value);
+        int written      = 0;
+
+        foreach (var entry in userBestByGroup)
+        {
+            if (!custIdToUser.TryGetValue(entry.CustId, out var appUser)) continue;
+            if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldLaps)) continue;
+
+            var total          = fieldLaps.Count;
+            var slowerCount    = fieldLaps.Count(t => t > entry.BestLap);
+            var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
+
+            // Simulate the timestamp as the final day of the race week at 20:00 UTC.
+            var weekStart  = weekStartDates.TryGetValue(entry.WeekId, out var sd) ? sd : DateOnly.FromDateTime(DateTime.UtcNow);
+            var computedAt = new DateTimeOffset(weekStart.AddDays(6).ToDateTime(new TimeOnly(20, 0)), TimeSpan.Zero);
+
+            var key = (appUser.Id, entry.CarId, entry.SeriesId, entry.WeekId);
+            if (existingLookup.TryGetValue(key, out var existing))
+            {
+                existing.PercentileRank = percentileRank;
+                existing.SampleSize     = total;
+                existing.ComputedAt     = computedAt;
+            }
+            else
+            {
+                var newRow = new CarPercentileResult
+                {
+                    UserId         = appUser.Id,
+                    CarId          = entry.CarId,
+                    SeriesId       = entry.SeriesId,
+                    WeekId         = entry.WeekId,
+                    PercentileRank = percentileRank,
+                    SampleSize     = total,
+                    ComputedAt     = computedAt,
+                };
+                db.CarPercentileResults.Add(newRow);
+                existingLookup[key] = newRow;
+            }
+            written++;
+        }
+
+        await db.SaveChangesAsync();
+        Console.WriteLine($"  {written:N0} percentile snapshots written for {appUsers.Count} user(s).");
+    }
+}
+
+Console.WriteLine("\nSeeding complete.");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

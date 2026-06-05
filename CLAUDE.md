@@ -18,7 +18,8 @@ dotnet run --project src/ApexRacers.Api
 # Run the ingestion worker (requires all iRacing + database env vars)
 dotnet run --project src/ApexRacers.Ingestion
 
-# Seed the database with synthetic lap time data for all 7 series (idempotent)
+# Seed the database with catalog data + synthetic lap times for all 7 series (idempotent)
+# Requires iracing-api-response-objects/ to be populated first (gitignored — see README).
 # Requires DATABASE_CONNECTION_STRING or falls back to the local Docker default.
 dotnet run --project src/ApexRacers.Seeder
 
@@ -136,17 +137,51 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
-- `AuthController` — account management: register, login, profile update (`PUT /api/auth/profile`), and iRacing OAuth 2.0 callback (pending)
-- `TelemetryController` — iRacing `.ibt` file upload and personal lap history (`/api/telemetry`)
+- `AuthController` — account management: register, login, profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), iRacing OAuth 2.0 callback (`POST /api/auth/callback`)
+- `TelemetryController` — iRacing `.ibt` file upload (`POST /api/telemetry/upload`) and personal best laps (`GET /api/telemetry/laps`)
 - `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
 - `FeatureFlagsController` — returns the caller's active feature flags (`/api/feature-flags`)
 - `UserAnalyticsController` — per-user analytics summary, optionally filtered by series (`/api/users/me/analytics`)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
+Services in `src/ApexRacers.Api/Services/`:
+
+- `SeriesService` — active series list
+- `WeekCarStatsService` — aggregate lap stats per car for a series week
+- `PercentileCalculationService` — compute and cache driver percentile rank
+- `CarRecommendationService` — ranked car recommendations based on personal percentile data
+- `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
+- `AuthService` — registration, login (JWT), profile updates
+- `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
+- `PersonalLapService` — query personal best laps per track+car
+- `AdminService` — user role management and feature flag CRUD
+
 ### No over-abstraction
 
 Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContext` directly in service classes. Introduce abstractions only when they solve a concrete problem.
+
+### Core models
+
+`src/ApexRacers.Core/Models/` contains the domain entities:
+
+| Model | Description |
+| --- | --- |
+| `ApplicationUser` | Extends `IdentityUser<Guid>`; adds `DisplayName`, `IRacingCustomerId`, `ThemePreference` |
+| `Series` | iRacing series (Id, Name, SeasonId, CurrentWeekNumber) |
+| `Season` | Season for a series (SeasonId, Year) |
+| `Week` | Race week (SeasonId, WeekNumber, TrackId, StartDate) |
+| `Track` | Full iRacing track catalog (Id, Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired) |
+| `Car` | iRacing car (Id, Name, RelativeSpeed) |
+| `CarClass` | iRacing car class grouping |
+| `CarClassCar` | Many-to-many join between CarClass and Car |
+| `SeasonCar` | Cars available in a season |
+| `SeasonCarClass` | Car classes available in a season |
+| `Subsession` | iRacing race session (Id, SeasonId, WeekNumber, TrackId, OfficialSession, EventStrengthOfField, StartTime, EndTime, SplitNum) |
+| `SubsessionResult` | One driver's result in a subsession (CarId, CarClassId, FinishPosition, BestLapSeconds, Incidents, …) |
+| `PersonalLap` | User's personal best lap per track+car (UserId, CarId, TrackId, LapTimeSeconds, IsValidLap, TrackTempCelsius, TrackWetness, RecordedAt) |
+| `CarPercentileResult` | Cached percentile rank (UserId, CarId, SeriesId, WeekId, PercentileRank, SampleSize, ComputedAt) |
+| `FeatureFlag` | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt) |
 
 ### iRacing data ingestion
 
@@ -160,9 +195,32 @@ Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API)
 
 The app has two layout tiers defined in `src/web/src/App.tsx`:
 
-- **`path="/"`** — the public marketing landing page (`HomePage`). Rendered **outside** `AppShell`; it embeds its own header, nav, and footer. No Sidebar or TopNav is shown.
-- **All other routes** (`/dashboard`, `/series`, `/analytics`, `/recommendations`, etc.) — nested inside `AppShell` (Sidebar + TopNav + Footer). These are accessible without an explicit auth guard, but API calls will 401 for unauthenticated users.
-- **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
+**Public routes (no AppShell — own layout):**
+
+| Path | Component |
+| --- | --- |
+| `/` | `HomePage` — marketing landing page with its own header/nav/footer |
+| `/login` | `LoginPage` |
+| `/terms` | `TermsOfServicePage` |
+| `/privacy` | `PrivacyPolicyPage` |
+
+**App routes (nested inside `AppShell` — Sidebar + TopNav + Footer):**
+
+| Path | Component |
+| --- | --- |
+| `/dashboard` | `DashboardPage` — recent laps, active series, welcome |
+| `/series` | `SeriesPage` — browse all series |
+| `/series/:seriesId/weeks/:weekNumber` | `WeekDetailPage` — cars and lap stats for a week |
+| `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown |
+| `/analytics` | `AnalyticsPage` — per-car percentile history with sparklines |
+| `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
+| `/my-laps` | `MyLapsPage` — personal best per track+car |
+| `/telemetry` | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries |
+| `/profile` | `ProfilePage` — user profile with series/lap stats |
+| `/settings` | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout |
+| `/admin` | `AdminPage` — user role management and feature flag CRUD (AdminGuard) |
+
+**`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
 
 #### Fluid design system
 
@@ -225,7 +283,12 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 #### Shared components
 
-`src/web/src/components/Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
+`src/web/src/components/` contains:
+
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Recommendations, My Laps, Telemetry, Settings, Profile, Admin)
+- `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
+- `Footer.tsx` — Global footer (rendered inside AppShell)
+- `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
 
 ```tsx
 {sparkData.length >= 2 && (
@@ -235,11 +298,19 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 )}
 ```
 
-`src/web/src/components/PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
+- `PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
+
+#### Contexts
+
+`src/web/src/context/` contains three React contexts:
+
+- `AuthContext` — Manages user session, JWT token, login/logout, profile updates, role tier selection, and alert toggle. Wrap components that need auth state with `useAuth()`.
+- `ThemeContext` — Manages theme preference (`auto` / `light` / `dark`), applies the CSS class to `<html>`, and persists the selection to the API via `PUT /api/auth/theme`.
+- `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `hasFlag(key)` for conditional feature rendering.
 
 #### Shared utilities
 
-`src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Several pages already import it correctly (`AnalyticsPage`, `ProfilePage`). Always import from the shared module.
+`src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Pages that already import it correctly: `AnalyticsPage`, `ProfilePage`, `TelemetryPage`, `DashboardPage`. Always import from the shared module.
 
 ### EF Core design-time factory
 
@@ -269,6 +340,18 @@ reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:Te
 ```
 
 When adding new service logic, add corresponding xUnit tests in `src/ApexRacers.Tests/`. Controllers are excluded from coverage targets (they contain no logic). Services and domain helpers in `Core` are the primary targets.
+
+Current test files in `src/ApexRacers.Tests/Services/`:
+
+- `SeriesServiceTests`
+- `WeekCarStatsServiceTests`
+- `PercentileCalculationServiceTests`
+- `CarRecommendationServiceTests`
+- `UserAnalyticsServiceTests`
+- `AuthServiceTests`
+- `TelemetryUploadServiceTests`
+- `PersonalLapServiceTests`
+- `IbtParserTests` (telemetry `.ibt` file parsing)
 
 ---
 

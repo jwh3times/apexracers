@@ -7,6 +7,16 @@ import Sparkline from '../components/Sparkline';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function trendAxisLabels(history: { computedAt: string }[]): [string, string] {
+  const start = new Date(history[0].computedAt);
+  const end   = new Date(history[history.length - 1].computedAt);
+  if (start.getFullYear() !== end.getFullYear()) {
+    return [String(start.getFullYear()), String(end.getFullYear())];
+  }
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return [fmt(start), fmt(end)];
+}
+
 function topPercentLabel(rank: number): string {
   return `TOP ${Math.max(1, Math.ceil(100 - rank))}%`;
 }
@@ -79,6 +89,9 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
       : null;
   const isGold = data.bestPercentileRank >= 95;
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
+  const [trendStart, trendEnd] = data.percentileHistory.length >= 2
+    ? trendAxisLabels(data.percentileHistory)
+    : ['', ''];
 
   return (
     <div
@@ -125,8 +138,13 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
 
         {/* Sparkline — only rendered when there are at least 2 data points */}
         {sparkData.length >= 2 && (
-          <div className="w-full">
+          <div className="w-full flex flex-col gap-1.5">
+            <p className="text-th text-on-surface-variant">Percentile Trend</p>
             <Sparkline data={sparkData} w={460} h={76} />
+            <div className="flex justify-between">
+              <span className="text-[10px] font-mono text-on-surface-variant">{trendStart}</span>
+              <span className="text-[10px] font-mono text-on-surface-variant">{trendEnd}</span>
+            </div>
           </div>
         )}
 
@@ -161,6 +179,9 @@ function FeaturedCarCard({ data }: { data: CarAnalytics }) {
 function SecondaryCarCard({ data }: { data: CarAnalytics }) {
   const improving = isImproving(data.percentileHistory);
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
+  const [trendStart, trendEnd] = data.percentileHistory.length >= 2
+    ? trendAxisLabels(data.percentileHistory)
+    : ['', ''];
 
   return (
     <div
@@ -184,7 +205,16 @@ function SecondaryCarCard({ data }: { data: CarAnalytics }) {
         </div>
 
         {/* Sparkline — only rendered when there are at least 2 data points */}
-        {sparkData.length >= 2 && <Sparkline data={sparkData} w={240} h={52} />}
+        {sparkData.length >= 2 && (
+          <div className="w-full flex flex-col gap-1">
+            <p className="text-th text-on-surface-variant">Percentile Trend</p>
+            <Sparkline data={sparkData} w={240} h={52} />
+            <div className="flex justify-between">
+              <span className="text-[10px] font-mono text-on-surface-variant">{trendStart}</span>
+              <span className="text-[10px] font-mono text-on-surface-variant">{trendEnd}</span>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="flex items-center gap-5 pt-2 border-t border-line-2 text-small-fluid flex-wrap">

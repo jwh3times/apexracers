@@ -10,6 +10,7 @@ public class WeekCarStatsService(AppDbContext db)
     {
         var weekDbId = await db.Weeks
             .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
+            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
             .Select(w => (Guid?)w.Id)
             .FirstOrDefaultAsync(ct);
 

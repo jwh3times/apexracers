@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, type WeekCar } from '../services/api';
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = (seconds % 60).toFixed(3).padStart(6, '0');
-  return `${mins}:${secs}`;
-}
+import { formatLapTime } from '../utils/lapTime';
 
 const scanTexture: React.CSSProperties = {
   backgroundImage:

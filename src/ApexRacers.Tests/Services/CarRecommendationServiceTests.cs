@@ -109,12 +109,12 @@ public class CarRecommendationServiceTests
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Rank);
         Assert.Equal(2, result[0].CarId);        // Car2: fastest actual lap (60 s)
-        Assert.Equal(60.0, result[0].EstimatedLapSeconds);
-        Assert.False(result[0].IsProjected);
+        Assert.Equal(60.0, result[0].BestLapSeconds);
+        Assert.NotNull(result[0].BestLapSeconds);
         Assert.Equal(2, result[1].Rank);
         Assert.Equal(1, result[1].CarId);        // Car1: slower actual lap (90 s)
-        Assert.Equal(90.0, result[1].EstimatedLapSeconds);
-        Assert.False(result[1].IsProjected);
+        Assert.Equal(90.0, result[1].BestLapSeconds);
+        Assert.NotNull(result[1].BestLapSeconds);
     }
 
     [Fact]
@@ -148,10 +148,10 @@ public class CarRecommendationServiceTests
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
 
         var dto = Assert.Single(result);
-        Assert.True(dto.IsProjected);
+        Assert.Null(dto.BestLapSeconds);
         Assert.Equal(100.0, dto.PercentileRank); // beat all 3 others in prev week
         // 100th percentile in [70, 80, 90]: pos = 0 → fastest = 70 s
-        Assert.Equal(70.0, dto.EstimatedLapSeconds, precision: 6);
+        Assert.Equal(70.0, dto.ProjectedLapSeconds, precision: 6);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class CarRecommendationServiceTests
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
         db.CarPercentileResults.Add(new CarPercentileResult
         {
-            UserId = userId, CarId = 1, WeekId = Guid.NewGuid(), // some previous week's guid
+            UserId = userId, CarId = 1, SeriesId = 1, WeekId = Guid.NewGuid(), // some previous week's guid
             PercentileRank = 50.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync();
@@ -179,9 +179,9 @@ public class CarRecommendationServiceTests
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
-        Assert.True(dto.IsProjected);
+        Assert.Null(dto.BestLapSeconds);
         Assert.Equal(50.0, dto.PercentileRank);
         // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
-        Assert.Equal(80.0, dto.EstimatedLapSeconds, precision: 6);
+        Assert.Equal(80.0, dto.ProjectedLapSeconds, precision: 6);
     }
 }

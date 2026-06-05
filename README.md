@@ -73,11 +73,17 @@ The dev server starts on `http://localhost:5173`. All `/api` requests are proxie
 
 ### 6. Seed the database (optional)
 
-Populate all series with synthetic lap time data so the UI is usable without live iRacing data:
+The seeder loads iRacing catalog data (tracks, cars, car classes, series, seasons, weeks) from JSON files in `iracing-api-response-objects/`, then generates synthetic lap time data for all series so the UI is usable without live iRacing data. The directory is gitignored due to file size — you must populate it manually before running the seeder.
+
+Use [apex-iracing](https://github.com/tomtoday/apex-iracing) to fetch the required iRacing API response objects and save them into `iracing-api-response-objects/`.
+
+Once the directory is populated:
 
 ```bash
 dotnet run --project src/ApexRacers.Seeder
 ```
+
+The seeder is idempotent — safe to run multiple times.
 
 ### 7. Run the ingestion worker (optional)
 

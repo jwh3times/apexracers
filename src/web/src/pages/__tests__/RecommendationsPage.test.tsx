@@ -14,12 +14,12 @@ const MOCK_RECS = [
   {
     rank: 1, carId: 2, carName: 'Ferrari 296 GT3',
     percentileRank: 87.5, sampleSize: 200,
-    estimatedLapSeconds: 78.5, isProjected: false,
+    bestLapSeconds: 78.5, projectedLapSeconds: 78.2,
   },
   {
     rank: 2, carId: 1, carName: 'Porsche 992 GT3',
     percentileRank: 72.0, sampleSize: 180,
-    estimatedLapSeconds: 79.1, isProjected: true,
+    bestLapSeconds: null, projectedLapSeconds: 79.1,
   },
 ];
 
@@ -48,36 +48,36 @@ describe('RecommendationsPage', () => {
     );
   });
 
-  it('renders top recommendation with car name and formatted lap time', async () => {
+  it('renders top recommendation with car name and formatted lap times', async () => {
     mockGetRecs.mockResolvedValue(MOCK_RECS);
     renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
       expect(screen.getByText('#1')).toBeInTheDocument();
-      // 78.5 s → 1:18.500
+      // bestLapSeconds: 78.5 → 1:18.500
       expect(screen.getByText('1:18.500')).toBeInTheDocument();
+      // projectedLapSeconds: 78.2 → 1:18.200
+      expect(screen.getByText('1:18.200')).toBeInTheDocument();
       expect(screen.getByText('87.5th')).toBeInTheDocument();
     });
   });
 
-  it('shows projected badge for cars without an actual lap this week', async () => {
+  it('shows dash in Best Lap column for cars without an actual lap this week', async () => {
     mockGetRecs.mockResolvedValue(MOCK_RECS);
     renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
-      // Porsche is projected (isProjected: true) — badge should appear
-      const badges = screen.getAllByText('Projected');
-      expect(badges.length).toBeGreaterThan(0);
+      // Porsche has bestLapSeconds: null — dash appears in the Best Lap cell
+      expect(screen.getByText('—')).toBeInTheDocument();
     });
   });
 
-  it('does not show projected badge for cars with an actual lap', async () => {
-    mockGetRecs.mockResolvedValue([
-      { ...MOCK_RECS[0], isProjected: false },
-    ]);
+  it('shows formatted best lap for cars with an actual lap', async () => {
+    mockGetRecs.mockResolvedValue(MOCK_RECS);
     renderPage('?seriesId=1&weekNumber=10');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
-      expect(screen.queryByText('Projected')).not.toBeInTheDocument();
+      // Ferrari has bestLapSeconds: 78.5 → 1:18.500 (no dash)
+      expect(screen.getByText('1:18.500')).toBeInTheDocument();
     });
   });
 

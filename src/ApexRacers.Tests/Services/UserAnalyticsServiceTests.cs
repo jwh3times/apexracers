@@ -27,7 +27,7 @@ public class UserAnalyticsServiceTests
         db.Users.Add(MakeUser(userId, iracingId: 42));
         db.CarPercentileResults.Add(new CarPercentileResult
         {
-            UserId = userId, CarId = car.Id, WeekId = week.Id,
+            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
             PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
             Car = car, Week = week,
         });
@@ -69,8 +69,8 @@ public class UserAnalyticsServiceTests
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week1.Id, PercentileRank = 60.0, SampleSize = 80, ComputedAt = DateTimeOffset.UtcNow.AddDays(-14), Car = car, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week2.Id, PercentileRank = 80.0, SampleSize = 90, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7), Car = car, Week = week2 });
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 60.0, SampleSize = 80, ComputedAt = DateTimeOffset.UtcNow.AddDays(-14), Car = car, Week = week1 },
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 80.0, SampleSize = 90, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7), Car = car, Week = week2 });
         await db.SaveChangesAsync();
 
         var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
@@ -93,8 +93,8 @@ public class UserAnalyticsServiceTests
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = car1.Id, WeekId = week1.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = car2.Id, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week2 });
+            new CarPercentileResult { UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week1.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week1 },
+            new CarPercentileResult { UserId = userId, CarId = car2.Id, SeriesId = 2, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week2 });
         await db.SaveChangesAsync();
 
         var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, seriesId: 1);
@@ -112,7 +112,7 @@ public class UserAnalyticsServiceTests
         db.Users.Add(MakeUser(userId, iracingId: null));
         db.CarPercentileResults.Add(new CarPercentileResult
         {
-            UserId = userId, CarId = car.Id, WeekId = week.Id,
+            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
             PercentileRank = 75.0, SampleSize = 60, ComputedAt = DateTimeOffset.UtcNow,
             Car = car, Week = week,
         });
@@ -142,8 +142,8 @@ public class UserAnalyticsServiceTests
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week },
-            new CarPercentileResult { UserId = userId, CarId = 2, WeekId = week.Id, PercentileRank = 90.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week });
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week },
+            new CarPercentileResult { UserId = userId, CarId = 2, SeriesId = 1, WeekId = week.Id, PercentileRank = 90.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week });
         await db.SaveChangesAsync();
 
         var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
@@ -173,8 +173,8 @@ public class UserAnalyticsServiceTests
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week1.Id, PercentileRank = 90.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = 1, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week2 });
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 90.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week1 },
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week2 });
 
         // week1 field laps: [60, 70, 80] → median = 70
         AddResult(db, subsession1, car, carClass, custId: 1, lapSeconds: 70);

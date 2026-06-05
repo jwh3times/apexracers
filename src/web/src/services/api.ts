@@ -80,8 +80,8 @@ export interface CarRecommendation {
   carName: string;
   percentileRank: number;
   sampleSize: number;
-  estimatedLapSeconds: number;
-  isProjected: boolean;
+  projectedLapSeconds: number;
+  bestLapSeconds: number | null;
 }
 
 export interface AdminUser {

@@ -7,15 +7,6 @@ function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
 }
 
-function ProjectedBadge() {
-  return (
-    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold tracking-wide bg-surface-container text-on-surface-variant border border-line-2">
-      <span className="material-symbols-outlined text-[10px]" aria-hidden="true">calculate</span>
-      Projected
-    </span>
-  );
-}
-
 const cardStyle: React.CSSProperties = {
   boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
 };
@@ -50,15 +41,16 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
         {/* Stats row */}
         <div className="flex gap-6 flex-wrap">
           <div>
-            <p className="text-th text-on-surface-variant mb-1">
-              {rec.isProjected ? 'Projected Lap' : 'Best Lap'}
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
-                {formatLapTime(rec.estimatedLapSeconds)}
-              </span>
-              {rec.isProjected && <ProjectedBadge />}
-            </div>
+            <p className="text-th text-on-surface-variant mb-1">Best Lap</p>
+            <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
+              {rec.bestLapSeconds != null ? formatLapTime(rec.bestLapSeconds) : '—'}
+            </span>
+          </div>
+          <div>
+            <p className="text-th text-on-surface-variant mb-1">Projected Lap</p>
+            <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
+              {formatLapTime(rec.projectedLapSeconds)}
+            </span>
           </div>
           <div>
             <p className="text-th text-on-surface-variant mb-1">
@@ -108,6 +100,7 @@ function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommen
           <th className="th-p text-th text-on-surface-variant text-left w-10">#</th>
           <th className="th-p text-th text-on-surface-variant text-left">Car</th>
           <th className="th-p text-th text-on-surface-variant text-right">Best Lap</th>
+          <th className="th-p text-th text-on-surface-variant text-right">Projected Lap</th>
           <th className="th-p text-th text-on-surface-variant text-right w-28">Percentile</th>
           <th className="th-p text-th text-on-surface-variant text-right w-24">Entries</th>
           <th className="th-p w-20" />
@@ -122,13 +115,11 @@ function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommen
             <td className="td-p text-body-fluid font-medium text-on-surface max-w-0">
               <span className="block truncate">{r.carName}</span>
             </td>
-            <td className="td-p text-right">
-              <div className="flex items-center justify-end gap-2">
-                <span className="font-mono text-mono-fluid text-on-surface">
-                  {formatLapTime(r.estimatedLapSeconds)}
-                </span>
-                {r.isProjected && <ProjectedBadge />}
-              </div>
+            <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
+              {r.bestLapSeconds != null ? formatLapTime(r.bestLapSeconds) : '—'}
+            </td>
+            <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
+              {formatLapTime(r.projectedLapSeconds)}
             </td>
             <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
               {ordinal(r.percentileRank)}

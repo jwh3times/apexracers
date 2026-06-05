@@ -16,6 +16,7 @@ public class CarRecommendationService(AppDbContext db)
     {
         var week = await db.Weeks
             .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
+            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
             .Select(w => new { w.Id, SeriesId = w.Season.SeriesId, w.WeekNumber, w.TrackId })
             .FirstOrDefaultAsync(ct);
 
@@ -48,21 +49,22 @@ public class CarRecommendationService(AppDbContext db)
             .Where(r => r.CustId == customerId)
             .ToDictionary(r => r.CarId, r => r.BestLap);
 
-        // User + all-time best cached percentile per car (used for projected path).
+        // User + series-scoped running average percentile per car (used for projected path).
         var user = await db.Users.FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
 
+        // Load (Sum, Count) per car so we can compute a running average that includes this week.
         var cachedPercentiles = user is not null
             ? await db.CarPercentileResults
-                .Where(r => r.UserId == user.Id)
+                .Where(r => r.UserId == user.Id && r.SeriesId == week.SeriesId)
                 .GroupBy(r => r.CarId)
-                .Select(g => new { CarId = g.Key, BestPercentile = g.Max(r => r.PercentileRank) })
-                .ToDictionaryAsync(x => x.CarId, x => x.BestPercentile, ct)
-            : new Dictionary<int, double>();
+                .Select(g => new { CarId = g.Key, Sum = g.Sum(r => r.PercentileRank), Count = g.Count() })
+                .ToDictionaryAsync(x => x.CarId, x => (x.Sum, x.Count), ct)
+            : new Dictionary<int, (double Sum, int Count)>();
 
-        // Existing per-week cache rows for this user (for upsert without per-car queries).
+        // Existing per-week, per-series cache rows for this user (for upsert without per-car queries).
         var existingCacheThisWeek = user is not null
             ? await db.CarPercentileResults
-                .Where(r => r.UserId == user.Id && r.WeekId == weekDbId)
+                .Where(r => r.UserId == user.Id && r.WeekId == weekDbId && r.SeriesId == week.SeriesId)
                 .ToDictionaryAsync(r => r.CarId, ct)
             : new Dictionary<int, CarPercentileResult>();
 
@@ -79,7 +81,8 @@ public class CarRecommendationService(AppDbContext db)
 
         // Batch-compute historical percentile for projected cars that lack a cached value.
         var projectedCarIds = carNames.Keys
-            .Where(carId => !actualLapsThisWeek.ContainsKey(carId) && !cachedPercentiles.ContainsKey(carId))
+            .Where(carId => !actualLapsThisWeek.ContainsKey(carId) && !cachedPercentiles.ContainsKey(carId)
+                            && !existingCacheThisWeek.ContainsKey(carId))
             .ToList();
 
         var historicalPercentileByCar = new Dictionary<int, double>();
@@ -150,6 +153,31 @@ public class CarRecommendationService(AppDbContext db)
                 var slowerCount = carField.Count(r => r.CustId != customerId && r.BestLap > driverBest);
                 var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
 
+                // Compute the running average percentile that will include this week's reading.
+                // cachedPercentiles holds (Sum, Count) of all prior rows for this (user, car, series).
+                double newAvg;
+                if (cachedPercentiles.TryGetValue(carId, out var prior))
+                {
+                    if (existingCacheThisWeek.TryGetValue(carId, out _))
+                    {
+                        // Updating an existing week row: swap out old value, keep count the same.
+                        var oldReading = existingCacheThisWeek[carId].PercentileRank;
+                        newAvg = prior.Count > 0
+                            ? (prior.Sum - oldReading + percentileRank) / prior.Count
+                            : percentileRank;
+                    }
+                    else
+                    {
+                        // New week row: add to sum and increment count.
+                        newAvg = (prior.Sum + percentileRank) / (prior.Count + 1);
+                    }
+                }
+                else
+                {
+                    // No prior history at all for this car/series — first ever reading.
+                    newAvg = percentileRank;
+                }
+
                 if (user is not null)
                 {
                     if (existingCacheThisWeek.TryGetValue(carId, out var cached))
@@ -164,6 +192,7 @@ public class CarRecommendationService(AppDbContext db)
                         {
                             UserId         = user.Id,
                             CarId          = carId,
+                            SeriesId       = week.SeriesId,
                             WeekId         = weekDbId,
                             PercentileRank = percentileRank,
                             SampleSize     = total,
@@ -172,21 +201,30 @@ public class CarRecommendationService(AppDbContext db)
                     }
                 }
 
+                var actualSortedLaps = carField.Select(r => r.BestLap).ToList();
+                var projectedFromActual = ProjectedLapTime(actualSortedLaps, newAvg);
+
                 results.Add(new CarRecommendationDto(
                     Rank: 0,
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: percentileRank,
                     SampleSize: total,
-                    EstimatedLapSeconds: raceBestLap,
-                    IsProjected: false));
+                    ProjectedLapSeconds: projectedFromActual ?? raceBestLap,
+                    BestLapSeconds: raceBestLap));
             }
             else
             {
                 // Projected path — driver hasn't raced this car this week.
-                if (!cachedPercentiles.TryGetValue(carId, out var historicalPercentile) &&
-                    !historicalPercentileByCar.TryGetValue(carId, out historicalPercentile))
+                double historicalPercentile;
+                if (cachedPercentiles.TryGetValue(carId, out var priorTuple))
+                {
+                    historicalPercentile = priorTuple.Sum / priorTuple.Count;
+                }
+                else if (!historicalPercentileByCar.TryGetValue(carId, out historicalPercentile))
+                {
                     continue;
+                }
 
                 var sortedLaps = carField.Select(r => r.BestLap).ToList();
                 var projectedLap = ProjectedLapTime(sortedLaps, historicalPercentile);
@@ -198,8 +236,8 @@ public class CarRecommendationService(AppDbContext db)
                     CarName: carName,
                     PercentileRank: historicalPercentile,
                     SampleSize: carField.Count,
-                    EstimatedLapSeconds: projectedLap.Value,
-                    IsProjected: true));
+                    ProjectedLapSeconds: projectedLap.Value,
+                    BestLapSeconds: null));
             }
         }
 
@@ -207,7 +245,7 @@ public class CarRecommendationService(AppDbContext db)
             await db.SaveChangesAsync(ct);
 
         return results
-            .OrderBy(r => r.EstimatedLapSeconds)
+            .OrderBy(r => r.ProjectedLapSeconds)
             .Select((r, i) => r with { Rank = i + 1 })
             .ToList();
     }

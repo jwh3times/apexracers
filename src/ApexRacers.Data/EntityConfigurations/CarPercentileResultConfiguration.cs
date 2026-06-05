@@ -24,5 +24,12 @@ public class CarPercentileResultConfiguration : IEntityTypeConfiguration<CarPerc
             .WithMany(w => w.CarPercentileResults)
             .HasForeignKey(r => r.WeekId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Series>()
+            .WithMany()
+            .HasForeignKey(r => r.SeriesId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(r => new { r.UserId, r.CarId, r.SeriesId, r.WeekId }).IsUnique();
     }
 }
