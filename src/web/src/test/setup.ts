@@ -1,9 +1,9 @@
 import '@testing-library/jest-dom';
 
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
   private cb: ResizeObserverCallback;
   constructor(cb: ResizeObserverCallback) { this.cb = cb; }
-  observe(target: Element) {
+  observe(_target: Element) {
     this.cb([{ contentRect: { width: 300 } } as ResizeObserverEntry], this);
   }
   unobserve() {}
