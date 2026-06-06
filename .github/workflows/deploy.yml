@@ -97,7 +97,7 @@ jobs:
           docker push "$IMAGE"
 
       - name: Deploy to App Service
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v3.0.8
         with:
           app-name: ${{ secrets.API_APP_NAME }}
           images: ${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
