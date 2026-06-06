@@ -10,11 +10,19 @@ Object.defineProperty(globalThis, 'localStorage', {
   value: {
     getItem: (k: string): string | null =>
       Object.prototype.hasOwnProperty.call(_localStore, k) ? _localStore[k] : null,
-    setItem: (k: string, v: string) => { _localStore[k] = String(v); },
-    removeItem: (k: string) => { delete _localStore[k]; },
-    clear: () => { for (const k of Object.keys(_localStore)) delete _localStore[k]; },
+    setItem: (k: string, v: string) => {
+      _localStore[k] = String(v);
+    },
+    removeItem: (k: string) => {
+      delete _localStore[k];
+    },
+    clear: () => {
+      for (const k of Object.keys(_localStore)) delete _localStore[k];
+    },
     key: (i: number): string | null => Object.keys(_localStore)[i] ?? null,
-    get length() { return Object.keys(_localStore).length; },
+    get length() {
+      return Object.keys(_localStore).length;
+    },
   },
 });
 
