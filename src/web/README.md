@@ -81,11 +81,11 @@ Auth state is managed by `AuthContext` (`src/context/AuthContext.tsx`). Use the 
 
 ## Contexts
 
-| Context | Hook | Purpose |
-|---|---|---|
-| `AuthContext` | `useAuth()` | User session, JWT + refresh token, login/logout, profile updates, role, alerts toggle |
-| `ThemeContext` | `useTheme()` | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API |
-| `FeatureFlagContext` | `useFeatureFlags()` | Fetches flags from `/api/feature-flags`; exposes `hasFlag(key)` |
+| Context              | Hook                | Purpose                                                                               |
+| -------------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| `AuthContext`        | `useAuth()`         | User session, JWT + refresh token, login/logout, profile updates, role, alerts toggle |
+| `ThemeContext`       | `useTheme()`        | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API               |
+| `FeatureFlagContext` | `useFeatureFlags()` | Fetches flags from `/api/feature-flags`; exposes `hasFlag(key)`                       |
 
 ## Design system
 
