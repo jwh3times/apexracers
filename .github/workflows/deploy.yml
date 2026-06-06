@@ -62,6 +62,10 @@ jobs:
         run: npm ci
         working-directory: src/web
 
+      - name: Check Prettier formatting
+        run: npx prettier --check .
+        working-directory: src/web
+
       - name: Run frontend tests with coverage (>80%)
         run: npx vitest run --coverage
         working-directory: src/web
