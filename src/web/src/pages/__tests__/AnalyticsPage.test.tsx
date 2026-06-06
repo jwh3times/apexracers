@@ -29,8 +29,28 @@ const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetMyAnalytics = vi.mocked(api.getMyAnalytics);
 
 const MOCK_SERIES = [
-  { id: 1, name: 'VRS GT3 Sprint', seasonId: 2024, currentWeekNumber: 5 },
-  { id: 2, name: 'Porsche Cup', seasonId: 2024, currentWeekNumber: 3 },
+  {
+    id: 1,
+    name: 'VRS GT3 Sprint',
+    seasonId: 2024,
+    currentWeekNumber: 5,
+    category: null,
+    trackName: null,
+    trackConfigName: null,
+    carCount: 0,
+    driverCount: 0,
+  },
+  {
+    id: 2,
+    name: 'Porsche Cup',
+    seasonId: 2024,
+    currentWeekNumber: 3,
+    category: null,
+    trackName: null,
+    trackConfigName: null,
+    carCount: 0,
+    driverCount: 0,
+  },
 ];
 
 const MOCK_ANALYTICS = [
@@ -45,8 +65,22 @@ const MOCK_ANALYTICS = [
     medianLapSeconds: 139.5,
     totalWeeks: 48,
     percentileHistory: [
-      { weekNumber: 1, trackName: 'Monza', configName: 'GP', percentileRank: 80.0, sampleSize: 100, computedAt: '2026-01-01T00:00:00Z' },
-      { weekNumber: 2, trackName: 'Spa', configName: 'Full', percentileRank: 92.0, sampleSize: 110, computedAt: '2026-01-08T00:00:00Z' },
+      {
+        weekNumber: 1,
+        trackName: 'Monza',
+        configName: 'GP',
+        percentileRank: 80.0,
+        sampleSize: 100,
+        computedAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        weekNumber: 2,
+        trackName: 'Spa',
+        configName: 'Full',
+        percentileRank: 92.0,
+        sampleSize: 110,
+        computedAt: '2026-01-08T00:00:00Z',
+      },
     ],
   },
   {
@@ -60,8 +94,22 @@ const MOCK_ANALYTICS = [
     medianLapSeconds: 139.5,
     totalWeeks: 20,
     percentileHistory: [
-      { weekNumber: 1, trackName: 'Monza', configName: 'GP', percentileRank: 60.0, sampleSize: 100, computedAt: '2026-01-01T00:00:00Z' },
-      { weekNumber: 2, trackName: 'Spa', configName: 'Full', percentileRank: 70.0, sampleSize: 110, computedAt: '2026-01-08T00:00:00Z' },
+      {
+        weekNumber: 1,
+        trackName: 'Monza',
+        configName: 'GP',
+        percentileRank: 60.0,
+        sampleSize: 100,
+        computedAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        weekNumber: 2,
+        trackName: 'Spa',
+        configName: 'Full',
+        percentileRank: 70.0,
+        sampleSize: 110,
+        computedAt: '2026-01-08T00:00:00Z',
+      },
     ],
   },
 ];
@@ -70,7 +118,7 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <AnalyticsPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -83,7 +131,7 @@ describe('AnalyticsPage', () => {
       displayName: 'Test Driver',
       email: 't@t.com',
       iRacingCustomerId: 100042,
-  role: 'Standard',
+      role: 'Standard',
     };
     mockGetSeries.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);
@@ -160,11 +208,11 @@ describe('AnalyticsPage', () => {
     });
   });
 
-  it('calls getMyAnalytics with the new seriesId when a different series tab is clicked', async () => {
+  it('calls getMyAnalytics with the new seriesId when a different series is selected', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     renderPage();
-    await waitFor(() => expect(screen.getByText('Porsche Cup')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Porsche Cup'));
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
     await waitFor(() => expect(mockGetMyAnalytics).toHaveBeenCalledWith(2));
   });
 

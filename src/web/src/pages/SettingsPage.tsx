@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [iRacingCustomerId, setIRacingCustomerId] = useState(
-    user?.iRacingCustomerId?.toString() ?? '',
+    user?.iRacingCustomerId?.toString() ?? ''
   );
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -41,7 +41,7 @@ export default function SettingsPage() {
       const result = await api.updateProfile(
         displayName,
         iRacingCustomerId ? Number(iRacingCustomerId) : null,
-        email,
+        email
       );
       await updateSession(result);
       setProfileSaved(true);
@@ -93,7 +93,10 @@ export default function SettingsPage() {
           {/* Avatar placeholder */}
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full bg-surface-container-highest border-2 border-primary-fixed-dim shadow-[0_0_15px_rgba(0,228,121,0.3)] flex items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-primary-fixed-dim fill" aria-hidden="true">
+              <span
+                className="material-symbols-outlined text-4xl text-primary-fixed-dim fill"
+                aria-hidden="true"
+              >
                 person
               </span>
             </div>
@@ -107,7 +110,9 @@ export default function SettingsPage() {
               Account Settings
             </p>
             <div className="mt-3 inline-flex items-center gap-2 bg-[#FFD700] text-black px-3 py-1 rounded-sm font-label-caps text-label-caps">
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">stars</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+                stars
+              </span>
               Pro Tier Driver
             </div>
           </div>
@@ -117,8 +122,12 @@ export default function SettingsPage() {
           {/* Personal Information */}
           <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6">
             <div className="flex items-center gap-3 border-b border-line pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">person</span>
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">Personal Information</h3>
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">
+                person
+              </span>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">
+                Personal Information
+              </h3>
             </div>
 
             <form onSubmit={saveProfile} className="space-y-4">
@@ -171,7 +180,8 @@ export default function SettingsPage() {
                   className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
                 <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
-                  Used to look up your lap time percentile. Will be set automatically once iRacing OAuth is available.
+                  Used to look up your lap time percentile. Will be set automatically once iRacing
+                  OAuth is available.
                 </p>
               </div>
 
@@ -193,7 +203,9 @@ export default function SettingsPage() {
           {/* Connections + Preferences */}
           <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 flex flex-col">
             <div className="flex items-center gap-3 border-b border-line pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">link</span>
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">
+                link
+              </span>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Connections</h3>
             </div>
 
@@ -203,8 +215,12 @@ export default function SettingsPage() {
                   <span className="font-data-md text-data-md text-[#00D1FF]">iR</span>
                 </div>
                 <div>
-                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">iRacing Account</p>
-                  <p className={`font-label-caps text-label-caps flex items-center gap-1 mt-1 ${connected ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}>
+                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">
+                    iRacing Account
+                  </p>
+                  <p
+                    className={`font-label-caps text-label-caps flex items-center gap-1 mt-1 ${connected ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}
+                  >
                     <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
                       {connected ? 'check_circle' : 'radio_button_unchecked'}
                     </span>
@@ -225,17 +241,32 @@ export default function SettingsPage() {
             {/* Preferences */}
             <div className="mt-auto pt-6 border-t border-line">
               <div className="flex items-center gap-3 mb-4">
-                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">tune</span>
+                <span
+                  className="material-symbols-outlined text-primary-fixed-dim"
+                  aria-hidden="true"
+                >
+                  tune
+                </span>
                 <h3 className="font-headline-sm text-headline-sm text-on-surface">Preferences</h3>
               </div>
 
               {/* Theme */}
               <div className="mb-5">
-                <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">Theme</p>
+                <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">
+                  Theme
+                </p>
                 <div className="flex gap-2">
                   {(['auto', 'light', 'dark'] as ThemePreference[]).map(opt => {
-                    const icons: Record<ThemePreference, string> = { auto: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
-                    const labels: Record<ThemePreference, string> = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+                    const icons: Record<ThemePreference, string> = {
+                      auto: 'brightness_auto',
+                      light: 'light_mode',
+                      dark: 'dark_mode',
+                    };
+                    const labels: Record<ThemePreference, string> = {
+                      auto: 'Auto',
+                      light: 'Light',
+                      dark: 'Dark',
+                    };
                     const active = theme === opt;
                     return (
                       <button
@@ -247,7 +278,9 @@ export default function SettingsPage() {
                             : 'border-line-2 text-on-surface-variant hover:border-line-2 hover:text-on-surface'
                         }`}
                       >
-                        <span className="material-symbols-outlined text-[15px]" aria-hidden="true">{icons[opt]}</span>
+                        <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+                          {icons[opt]}
+                        </span>
                         {labels[opt]}
                       </button>
                     );
@@ -275,7 +308,9 @@ export default function SettingsPage() {
           {/* Security */}
           <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 md:col-span-2">
             <div className="flex items-center gap-3 border-b border-line pb-4">
-              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">lock</span>
+              <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">
+                lock
+              </span>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Security</h3>
             </div>
 
@@ -349,7 +384,12 @@ export default function SettingsPage() {
           {user?.role !== 'Admin' && (
             <div className="bg-surface rounded-xl border border-line-2 p-6 space-y-6 md:col-span-2">
               <div className="flex items-center gap-3 border-b border-line pb-4">
-                <span className="material-symbols-outlined text-primary-fixed-dim" aria-hidden="true">experiment</span>
+                <span
+                  className="material-symbols-outlined text-primary-fixed-dim"
+                  aria-hidden="true"
+                >
+                  experiment
+                </span>
                 <div>
                   <h3 className="font-headline-sm text-headline-sm text-on-surface">Access Tier</h3>
                   <p className="font-body-sm text-[12px] text-on-surface-variant mt-0.5">
@@ -373,9 +413,14 @@ export default function SettingsPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-body-sm text-body-sm text-on-surface font-semibold">{tier}</span>
+                        <span className="font-body-sm text-body-sm text-on-surface font-semibold">
+                          {tier}
+                        </span>
                         {isActive && (
-                          <span className="material-symbols-outlined text-[16px] text-primary-fixed-dim" aria-hidden="true">
+                          <span
+                            className="material-symbols-outlined text-[16px] text-primary-fixed-dim"
+                            aria-hidden="true"
+                          >
                             check_circle
                           </span>
                         )}
@@ -389,7 +434,11 @@ export default function SettingsPage() {
               </div>
 
               {roleError && <p className="font-body-sm text-body-sm text-error">{roleError}</p>}
-              {roleSaved && <p className="font-body-sm text-body-sm text-primary-fixed-dim">Access tier updated.</p>}
+              {roleSaved && (
+                <p className="font-body-sm text-body-sm text-primary-fixed-dim">
+                  Access tier updated.
+                </p>
+              )}
             </div>
           )}
         </div>

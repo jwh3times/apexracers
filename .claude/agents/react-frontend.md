@@ -41,12 +41,24 @@ When adding a new endpoint, update both `ResponseDtos.cs` (backend) and `api.ts`
 
 Auth state lives entirely in `AuthContext` (`src/context/AuthContext.tsx`):
 
-- JWT persisted in IndexedDB via `dbGet`/`dbSet`/`dbRemove` (`src/services/db.ts`), keys prefixed `ar_`.
-- Claims decoded client-side by `decodeJwt()`: `sub`, `email`, `name`, `role`, `iracing_id`.
+- JWT (15 min) + refresh token (7 days) — both persisted in IndexedDB via `dbGet`/`dbSet`/`dbRemove` (`src/services/db.ts`), keys `ar_token` and `ar_refresh_token`.
+- Claims decoded client-side by `decodeJwt()`: `sub`, `email`, `name`, `role`, `iracing_id`, `exp`.
 - Roles: `Standard` | `Beta` | `Alpha` | `Admin`.
 - `useAuth()` hook returns `{ user, loading, login, logout, updateSession, alertsEnabled, setAlertsEnabled }`.
-- `login()` accepts `AuthResult + email`; `updateSession()` refreshes token and role after profile/role changes.
-- **Never read the JWT or decode claims outside of `AuthContext`.** Never store the token in `localStorage` or component state.
+- `login()` accepts `AuthResult + email`; persists refresh token if present. `updateSession()` refreshes JWT after profile/role changes. `logout()` calls `api.revokeToken` then clears both tokens.
+- On mount, `AuthContext` silently calls `api.refreshTokens` if the stored JWT is expired but a valid refresh token exists — so the session survives between visits without requiring re-login.
+- **Never read the JWT or decode claims outside of `AuthContext`.** Never store either token in `localStorage` or component state.
+
+### 401 interceptor in api.ts
+
+All six HTTP helpers (`get`, `post`, `postJson`, `putJson`, `deleteReq`, `postForm`) intercept 401 responses:
+
+1. Call `tryRefresh()` — exchanges the stored refresh token for a new JWT + refresh token via `POST /api/auth/refresh`.
+2. `tryRefresh` deduplicates concurrent 401s: the first call sets `_refreshPromise`; all subsequent callers await the same promise.
+3. On success: call `_onTokenRefreshed(newToken, newRefreshToken)` (registered by `AuthContext` to persist both to IndexedDB).
+4. On failure: call `_onSessionExpired()` (registered by `AuthContext` to clear user state) then throw.
+
+New module-level exports in `api.ts`: `setRefreshToken`, `onTokenRefreshed`, `onSessionExpired`. `clearToken` now clears both access and refresh tokens.
 
 ## Feature flags
 
@@ -72,18 +84,57 @@ src/utils/              ← pure helper functions (e.g. lapTime.ts)
 
 ## Styling
 
-Tailwind CSS with project-specific design tokens. Use these class names consistently:
+Tailwind CSS with a **fluid design system** — all sizing scales continuously with viewport width via `clamp()`. Use the custom utility classes from `src/index.css`; do not reach for one-off Tailwind classes for the same purposes.
 
-| Token | Use |
+**Primary accent is cyan.** Use `text-primary-container` / `bg-primary-container` / `border-primary-container` for all accent text, icons, buttons, and borders. Never hardcode old green values (`#00FF88`, `text-primary-fixed-dim`).
+
+### Typography
+
+| Class | Use |
 |---|---|
-| `glass-panel` | Card/panel backgrounds |
-| `text-on-surface` | Primary text |
-| `text-on-surface-variant` | Secondary/muted text |
-| `text-primary-fixed-dim` | Accent text (lap times, links, highlights) |
-| `font-display-lg` / `font-headline-md` / `font-headline-sm` | Heading hierarchy |
-| `font-body-lg` / `font-body-sm` | Body text |
-| `font-label-caps` / `text-label-caps` | Caps labels, navigation |
-| `font-data-lg` / `font-data-md` | Numeric data displays |
+| `text-page-title` | Large page heading (`h1`) |
+| `text-section-head` | Card/panel section heading (`h2`, `h3`) |
+| `text-eyebrow` | Mono ALL-CAPS label above a heading |
+| `text-body-fluid` | Standard body and list text |
+| `text-small-fluid` | Secondary/supporting text |
+| `text-th` | Table column header |
+| `text-kpi-value` | Large mono KPI number |
+| `text-mono-fluid` | Mono data values — lap times, rank numbers |
+
+### Layout & spacing
+
+| Class | Use |
+|---|---|
+| `page-wrap` | Outer page padding — apply to `<main>` |
+| `card-r` | Card border-radius |
+| `card-p` | Card body padding |
+| `card-hp` | Card section-header padding (scan-texture rows) |
+| `kpi-p` | KPI tile padding |
+| `td-p` / `th-p` | Table cell / header padding |
+| `gap-fluid` / `gap-fluid-lg` | Column/row gaps |
+| `btn-fluid` / `btn-fluid-sm` | Button height, padding, font-size, radius |
+| `grid-kpi` | Auto-fit KPI tile grid |
+| `grid-cards` | Auto-fill series card grid |
+
+### Standard card pattern
+
+Every card uses a consistent `cardStyle` + optional `scanTexture` for header rows:
+
+```tsx
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+const scanTexture: React.CSSProperties = {
+  backgroundImage: 'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
+
+<div className="card-r border border-white/10 bg-surface overflow-hidden" style={cardStyle}>
+  <div className="card-hp border-b border-white/10 flex items-center justify-between" style={scanTexture}>
+    <h3 className="text-section-head text-on-surface">Section title</h3>
+  </div>
+  <div className="card-p">{/* body */}</div>
+</div>
+```
 
 Icons use Material Symbols via `<span className="material-symbols-outlined" aria-hidden="true">icon_name</span>`. Always include `aria-hidden="true"` on decorative icons.
 

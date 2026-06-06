@@ -40,9 +40,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result =
-        tab === 'signin'
-          ? await api.login(email, password)
-          : await api.register(email, password);
+        tab === 'signin' ? await api.login(email, password) : await api.register(email, password);
       await login(result, email);
       navigate('/dashboard');
     } catch (err) {
@@ -99,7 +97,7 @@ export default function LoginPage() {
 
           {/* Tabs */}
           <div className="flex border-b border-line-2 mb-8" role="tablist">
-            {(['signin', 'register'] as const).map((t) => (
+            {(['signin', 'register'] as const).map(t => (
               <button
                 key={t}
                 role="tab"
@@ -123,7 +121,9 @@ export default function LoginPage() {
               title="iRacing OAuth coming soon"
               className="w-full bg-gradient-to-r from-surface-container-high to-surface-container-lowest border border-secondary-container/40 text-on-surface flex items-center justify-center gap-4 py-4 rounded-lg opacity-50 cursor-not-allowed mb-6"
             >
-              <span className="material-symbols-outlined text-secondary-fixed-dim">sports_esports</span>
+              <span className="material-symbols-outlined text-secondary-fixed-dim">
+                sports_esports
+              </span>
               <span className="font-body-lg text-body-lg font-semibold tracking-wide">
                 {tab === 'signin' ? 'Sign in' : 'Sign up'} with iRacing (Coming Soon)
               </span>
@@ -161,7 +161,7 @@ export default function LoginPage() {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={e => setEmail(e.target.value)}
                     placeholder="driver@example.com"
                     className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                   />
@@ -195,13 +195,13 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-12 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => setShowPassword(v => !v)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
                   >
                     <span className="material-symbols-outlined text-[20px]">
@@ -229,7 +229,7 @@ export default function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full bg-surface-container-low border border-line-2 rounded-lg pl-12 pr-4 py-3 font-body-lg text-body-lg text-on-surface focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50"
                     />
@@ -246,8 +246,8 @@ export default function LoginPage() {
                 {loading
                   ? 'Please wait…'
                   : tab === 'signin'
-                  ? 'Access Telemetry'
-                  : 'Create Account'}
+                    ? 'Access Telemetry'
+                    : 'Create Account'}
               </button>
             </form>
           </div>

@@ -51,7 +51,10 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/series" element={<SeriesPage />} />
         <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
-        <Route path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile" element={<PercentileCarPage />} />
+        <Route
+          path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+          element={<PercentileCarPage />}
+        />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/my-laps" element={<MyLapsPage />} />

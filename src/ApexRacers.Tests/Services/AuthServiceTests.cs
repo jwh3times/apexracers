@@ -37,13 +37,14 @@ public class AuthServiceTests
     private static AuthService BuildService(ServiceProvider provider)
     {
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
-        var config = new ConfigurationBuilder()
+        var db          = provider.GetRequiredService<AppDbContext>();
+        var config      = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!"
             })
             .Build();
-        return new AuthService(userManager, config);
+        return new AuthService(userManager, config, db);
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
@@ -349,5 +350,115 @@ public class AuthServiceTests
 
         await Assert.ThrowsAsync<NotImplementedException>(() =>
             svc.HandleCallbackAsync("code", "state"));
+    }
+
+    // ── RefreshAsync / RevokeAsync ────────────────────────────────────────────
+
+    [Fact]
+    public async Task RegisterAsync_ReturnsRefreshToken()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+
+        Assert.NotNull(result.RefreshToken);
+        Assert.NotEmpty(result.RefreshToken!);
+    }
+
+    [Fact]
+    public async Task LoginAsync_CorrectCredentials_ReturnsRefreshToken()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"));
+
+        Assert.NotNull(result);
+        Assert.NotNull(result!.RefreshToken);
+        Assert.NotEmpty(result.RefreshToken!);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ValidToken_ReturnsNewAccessAndRefreshTokens()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var originalRefresh = reg.RefreshToken!;
+
+        var refreshed = await svc.RefreshAsync(originalRefresh);
+
+        // Access token must be non-empty
+        Assert.NotEmpty(refreshed.Token);
+        // New refresh token must be non-empty and different from the one that was rotated out
+        Assert.NotNull(refreshed.RefreshToken);
+        Assert.NotEmpty(refreshed.RefreshToken!);
+        Assert.NotEqual(originalRefresh, refreshed.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_RotatesToken_OldTokenIsRevoked()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var oldRefresh = reg.RefreshToken!;
+
+        // Rotate once — this revokes oldRefresh
+        await svc.RefreshAsync(oldRefresh);
+
+        // Re-using the old token must throw
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync(oldRefresh));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_InvalidToken_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync("this-token-does-not-exist"));
+    }
+
+    [Fact]
+    public async Task RevokeAsync_ValidToken_SubsequentRefreshThrows()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var login   = await svc.LoginAsync(
+            (await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234")) is { }
+                ? new LoginRequest("driver@example.com", "Pass1234")
+                : throw new InvalidOperationException()));
+
+        var refreshToken = login!.RefreshToken!;
+
+        await svc.RevokeAsync(refreshToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync(refreshToken));
+    }
+
+    [Fact]
+    public async Task RevokeAsync_UnknownToken_DoesNotThrow()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        // Should complete without throwing — unknown tokens are silently ignored
+        await svc.RevokeAsync("garbage");
     }
 }

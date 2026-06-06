@@ -112,7 +112,7 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         await db.SaveChangesAsync();
 
-        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1);
+        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId);
 
         Assert.Single(db.CarPercentileResults);
     }
@@ -128,7 +128,7 @@ public class PercentileCalculationServiceTests
         db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 50, SampleSize = 2, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) });
         await db.SaveChangesAsync();
 
-        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1);
+        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId);
 
         Assert.Single(db.CarPercentileResults);
         Assert.Equal(100.0, db.CarPercentileResults.Single().PercentileRank);
@@ -173,14 +173,38 @@ public class PercentileCalculationServiceTests
         await db.SaveChangesAsync();
 
         var withoutPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, includePersonalLaps: false);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: false);
         var withPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, includePersonalLaps: true);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: true);
 
         Assert.NotNull(withoutPersonal);
         Assert.Equal(50.0, withoutPersonal.PercentileRank);
         Assert.NotNull(withPersonal);
         Assert.Equal(75.0, withPersonal.PercentileRank);
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_ReturnsSeriesNameTrackNameAndDistribution()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 65);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 60);
+        AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 70);
+        await db.SaveChangesAsync();
+
+        var result = await new PercentileCalculationService(db)
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1);
+
+        Assert.NotNull(result);
+        Assert.Equal("GT3 Cup", result.SeriesName);
+        Assert.Equal("Spa", result.TrackName);
+        Assert.Equal("Full", result.TrackConfigName);
+        Assert.Equal(65.0, result.YourBestLapSeconds);
+        Assert.Equal(60.0, result.FieldBestLapSeconds);
+        Assert.Equal(65.0, result.FieldMedianLapSeconds);
+        Assert.Equal(20, result.Distribution.Count);
+        Assert.Contains(result.Distribution, b => b.ContainsUser);
     }
 
     [Fact]
@@ -205,12 +229,45 @@ public class PercentileCalculationServiceTests
         await db.SaveChangesAsync();
 
         var withoutPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, includePersonalLaps: false);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: false);
         var withPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, includePersonalLaps: true);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: true);
 
         Assert.Null(withoutPersonal);
         Assert.NotNull(withPersonal);
         Assert.Equal(200.0 / 3, withPersonal.PercentileRank, precision: 10);
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_IncludePersonalLaps_UnknownTypedLapIncludedWhenFilterActive()
+    {
+        // Laps uploaded before SessionType was tracked default to Unknown.
+        // They must always pass through any session-type filter so pre-migration
+        // data is never silently dropped.
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
+        AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 80);
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = car.Id, TrackId = week.TrackId,
+            LapTimeSeconds = 65, IsValidLap = true,
+            SessionType = LapSessionType.Unknown, // pre-migration default
+            RecordedAt = DateTimeOffset.UtcNow, Car = car, Track = week.Track,
+        });
+        await db.SaveChangesAsync();
+
+        // custId=1 has no race result but has an Unknown-typed personal lap.
+        // With a Race filter active the Unknown lap must still be included.
+        var result = await new PercentileCalculationService(db)
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                callerUserId: userId,
+                includePersonalLaps: true,
+                personalLapTypes: [LapSessionType.Race]);
+
+        Assert.NotNull(result);
+        Assert.Equal(100.0, result.PercentileRank, precision: 10); // 65s beats 70 and 80
     }
 }

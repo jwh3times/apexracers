@@ -184,4 +184,157 @@ public class CarRecommendationServiceTests
         // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
         Assert.Equal(80.0, dto.ProjectedLapSeconds, precision: 6);
     }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PersonalLapPath_IncludesCarWhenNoSubsessionResult()
+    {
+        // Driver has no SubsessionResult for car1 this week but uploaded a personal lap.
+        // With includePersonalLaps=true the car should appear using the personal lap for percentile.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+
+        // Three other drivers in the field with sorted laps: 70, 80, 90
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        // Personal lap at the same track — 65s beats all three others
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = 1, TrackId = 99,
+            LapTimeSeconds = 65.0, IsValidLap = true,
+            SessionType = LapSessionType.Race,
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true);
+
+        var dto = Assert.Single(result);
+        Assert.Equal(1, dto.CarId);
+        Assert.Equal(65.0, dto.BestLapSeconds); // personal lap shown as best
+        // 65s beats all 3 → slowerCount = 3, total = 3 → 100%
+        Assert.Equal(100.0, dto.PercentileRank, precision: 6);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PersonalLapPath_ExcludesCarWhenFlagOff()
+    {
+        // Same setup as above but includePersonalLaps=false → car should not appear.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = 1, TrackId = 99,
+            LapTimeSeconds = 65.0, IsValidLap = true,
+            SessionType = LapSessionType.Race,
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: false);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PersonalLapPath_SessionTypeFilter_ExcludesMismatch()
+    {
+        // Personal lap is a Practice lap; filter is Race-only → car should not appear.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = 1, TrackId = 99,
+            LapTimeSeconds = 65.0, IsValidLap = true,
+            SessionType = LapSessionType.Practice, // practice lap, not race
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            includePersonalLaps: true,
+            personalLapTypes: [LapSessionType.Race]);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PersonalLapPath_SessionTypeFilter_IncludesUnknownType()
+    {
+        // Laps uploaded before SessionType tracking was added have SessionType=Unknown.
+        // They must always be included when a filter is active, never silently excluded.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = 1, TrackId = 99,
+            LapTimeSeconds = 65.0, IsValidLap = true,
+            SessionType = LapSessionType.Unknown, // pre-migration default
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            includePersonalLaps: true,
+            personalLapTypes: [LapSessionType.Race]);
+
+        var dto = Assert.Single(result);
+        Assert.Equal(65.0, dto.BestLapSeconds);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_ActualPath_BestLapSeconds_ReflectsPersonalLapWhenFaster()
+    {
+        // Driver has a SubsessionResult (90s) and a personal lap (65s, race).
+        // BestLapSeconds in the DTO should be 65s.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+
+        AddResult(db, subsession, car1, carClass, custId: 1,   lapSeconds: 90); // driver's race lap
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 70);
+        await db.SaveChangesAsync();
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = 1, TrackId = 99,
+            LapTimeSeconds = 65.0, IsValidLap = true,
+            SessionType = LapSessionType.Race,
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true);
+
+        var dto = Assert.Single(result);
+        Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap
+    }
 }

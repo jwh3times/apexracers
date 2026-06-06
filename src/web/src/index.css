@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -12,8 +12,8 @@ html {
   --surface: #171719;
   --surface-2: #1d1d21;
   --surface-3: #242429;
-  --line: rgba(255,255,255,.07);
-  --line-2: rgba(255,255,255,.12);
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
   --text: #f2f2f4;
   --text-dim: #9a9aa3;
   --text-faint: #646470;
@@ -22,10 +22,10 @@ html {
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
   --accent-line: color-mix(in oklab, var(--accent) 38%, transparent);
   --accent-text: var(--accent);
-  --grid: rgba(255,255,255,.04);
-  --card-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8);
-  --glass-bg: rgba(15,15,18,0.7);
-  --glass-border: rgba(255,255,255,0.1);
+  --grid: rgba(255, 255, 255, 0.04);
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 40px -24px rgba(0, 0, 0, 0.8);
+  --glass-bg: rgba(15, 15, 18, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 /* ── Palette — light override ─────────────────────────────── */
@@ -35,8 +35,8 @@ html.theme-light {
   --surface: #ffffff;
   --surface-2: #f8f9f9;
   --surface-3: #eef0f0;
-  --line: rgba(15,18,20,.09);
-  --line-2: rgba(15,18,20,.16);
+  --line: rgba(15, 18, 20, 0.09);
+  --line-2: rgba(15, 18, 20, 0.16);
   --text: #13151a;
   --text-dim: #5b5e68;
   --text-faint: #9498a3;
@@ -45,10 +45,10 @@ html.theme-light {
   --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
   --accent-line: color-mix(in oklab, var(--accent) 55%, white);
   --accent-text: color-mix(in oklab, var(--accent) 78%, black);
-  --grid: rgba(15,18,20,.05);
-  --card-shadow: 0 1px 2px rgba(15,18,20,.04), 0 16px 36px -26px rgba(15,18,20,.4);
-  --glass-bg: rgba(255,255,255,0.75);
-  --glass-border: rgba(15,18,20,0.12);
+  --grid: rgba(15, 18, 20, 0.05);
+  --card-shadow: 0 1px 2px rgba(15, 18, 20, 0.04), 0 16px 36px -26px rgba(15, 18, 20, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(15, 18, 20, 0.12);
 }
 
 /* ── Palette — auto (follows OS preference) ───────────────── */
@@ -59,8 +59,8 @@ html.theme-light {
     --surface: #ffffff;
     --surface-2: #f8f9f9;
     --surface-3: #eef0f0;
-    --line: rgba(15,18,20,.09);
-    --line-2: rgba(15,18,20,.16);
+    --line: rgba(15, 18, 20, 0.09);
+    --line-2: rgba(15, 18, 20, 0.16);
     --text: #13151a;
     --text-dim: #5b5e68;
     --text-faint: #9498a3;
@@ -69,10 +69,10 @@ html.theme-light {
     --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
     --accent-line: color-mix(in oklab, var(--accent) 55%, white);
     --accent-text: color-mix(in oklab, var(--accent) 78%, black);
-    --grid: rgba(15,18,20,.05);
-    --card-shadow: 0 1px 2px rgba(15,18,20,.04), 0 16px 36px -26px rgba(15,18,20,.4);
-    --glass-bg: rgba(255,255,255,0.75);
-    --glass-border: rgba(15,18,20,0.12);
+    --grid: rgba(15, 18, 20, 0.05);
+    --card-shadow: 0 1px 2px rgba(15, 18, 20, 0.04), 0 16px 36px -26px rgba(15, 18, 20, 0.4);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(15, 18, 20, 0.12);
   }
 }
 
@@ -153,8 +153,8 @@ html.theme-light {
   --font-headline-md: Sora;
   --font-body-lg: Inter;
   --font-display-lg: Sora;
-  --font-data-md: "JetBrains Mono";
-  --font-data-lg: "JetBrains Mono";
+  --font-data-md: 'JetBrains Mono';
+  --font-data-lg: 'JetBrains Mono';
   --font-body-sm: Inter;
 
   /* Font sizes */
@@ -209,7 +209,11 @@ html.theme-light {
   }
 
   .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
   }
 
   .material-symbols-outlined.fill {
@@ -223,96 +227,114 @@ html.theme-light {
    without any component needing to know the screen size.
    ─────────────────────────────────────────────────────────────────────────── */
 @layer utilities {
-
   /* Page wrapper — full width, fluid side padding, no hard max-width cap */
   .page-wrap {
     width: 100%;
-    padding-left:   clamp(20px, 3vw, 72px);
-    padding-right:  clamp(20px, 3vw, 72px);
-    padding-top:    clamp(20px, 2.5vw, 44px);
+    padding-left: clamp(20px, 3vw, 72px);
+    padding-right: clamp(20px, 3vw, 72px);
+    padding-top: clamp(20px, 2.5vw, 44px);
     padding-bottom: clamp(40px, 5vw, 100px);
   }
 
   /* ── Typography ─────────────────────────────────── */
   .text-page-title {
-    font-size:      clamp(22px, 2.2vw, 42px);
-    font-weight:    700;
+    font-size: clamp(22px, 2.2vw, 42px);
+    font-weight: 700;
     letter-spacing: -0.025em;
-    line-height:    1.05;
+    line-height: 1.05;
   }
   .text-section-head {
-    font-size:   clamp(13px, 1.1vw, 18px);
+    font-size: clamp(13px, 1.1vw, 18px);
     font-weight: 600;
   }
   /* small mono ALL-CAPS label above a heading */
   .text-eyebrow {
-    font-family:     "JetBrains Mono", monospace;
-    font-size:       clamp(9px, 0.65vw, 12px);
-    letter-spacing:  0.16em;
-    text-transform:  uppercase;
-    font-weight:     600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(9px, 0.65vw, 12px);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 600;
   }
-  .text-body-fluid  { font-size: clamp(12px, 0.85vw, 15px); }
-  .text-small-fluid { font-size: clamp(10px, 0.72vw, 13px); }
-  .text-th          { font-size: clamp(9px,  0.65vw, 11px); letter-spacing: 0.09em; text-transform: uppercase; font-weight: 600; }
-  .text-kpi-value   {
-    font-family:    "JetBrains Mono", monospace;
-    font-size:      clamp(22px, 2vw, 38px);
-    font-weight:    700;
+  .text-body-fluid {
+    font-size: clamp(12px, 0.85vw, 15px);
+  }
+  .text-small-fluid {
+    font-size: clamp(10px, 0.72vw, 13px);
+  }
+  .text-th {
+    font-size: clamp(9px, 0.65vw, 11px);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .text-kpi-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(22px, 2vw, 38px);
+    font-weight: 700;
     letter-spacing: -0.02em;
-    line-height:    1;
+    line-height: 1;
   }
   /* mono lap times, rank numbers */
-  .text-mono-fluid  {
-    font-family: "JetBrains Mono", monospace;
-    font-size:   clamp(12px, 0.9vw, 15px);
+  .text-mono-fluid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 0.9vw, 15px);
   }
 
   /* ── Spacing ────────────────────────────────────── */
   /* card outer border-radius */
-  .card-r  { border-radius: clamp(10px, 1vw, 18px); }
+  .card-r {
+    border-radius: clamp(10px, 1vw, 18px);
+  }
   /* general card body padding */
-  .card-p  { padding: clamp(14px, 1.5vw, 26px); }
+  .card-p {
+    padding: clamp(14px, 1.5vw, 26px);
+  }
   /* scan-texture card section header padding */
   .card-hp {
-    padding-top:    clamp(10px, 1vw, 18px);
+    padding-top: clamp(10px, 1vw, 18px);
     padding-bottom: clamp(10px, 1vw, 18px);
-    padding-left:   clamp(14px, 1.5vw, 24px);
-    padding-right:  clamp(14px, 1.5vw, 24px);
+    padding-left: clamp(14px, 1.5vw, 24px);
+    padding-right: clamp(14px, 1.5vw, 24px);
   }
   /* KPI tile padding */
-  .kpi-p  { padding: clamp(12px, 1.4vw, 22px); }
-  /* table cell padding */
-  .td-p   {
-    padding-top:    clamp(10px, 0.9vw, 16px);
-    padding-bottom: clamp(10px, 0.9vw, 16px);
-    padding-left:   clamp(10px, 1vw, 18px);
-    padding-right:  clamp(10px, 1vw, 18px);
+  .kpi-p {
+    padding: clamp(12px, 1.4vw, 22px);
   }
-  .th-p   {
+  /* table cell padding */
+  .td-p {
+    padding-top: clamp(10px, 0.9vw, 16px);
+    padding-bottom: clamp(10px, 0.9vw, 16px);
+    padding-left: clamp(10px, 1vw, 18px);
+    padding-right: clamp(10px, 1vw, 18px);
+  }
+  .th-p {
     padding-bottom: clamp(8px, 0.7vw, 13px);
-    padding-left:   clamp(10px, 1vw, 18px);
-    padding-right:  clamp(10px, 1vw, 18px);
-    padding-top:    clamp(10px, 0.9vw, 16px);
+    padding-left: clamp(10px, 1vw, 18px);
+    padding-right: clamp(10px, 1vw, 18px);
+    padding-top: clamp(10px, 0.9vw, 16px);
   }
 
   /* ── Gaps ───────────────────────────────────────── */
-  .gap-fluid    { gap: clamp(10px, 1.2vw, 20px); }
-  .gap-fluid-lg { gap: clamp(14px, 1.5vw, 28px); }
+  .gap-fluid {
+    gap: clamp(10px, 1.2vw, 20px);
+  }
+  .gap-fluid-lg {
+    gap: clamp(14px, 1.5vw, 28px);
+  }
 
   /* ── Buttons ────────────────────────────────────── */
   .btn-fluid {
-    height:      clamp(30px, 2.4vw, 44px);
-    padding-left:  clamp(10px, 1vw, 18px);
+    height: clamp(30px, 2.4vw, 44px);
+    padding-left: clamp(10px, 1vw, 18px);
     padding-right: clamp(10px, 1vw, 18px);
-    font-size:   clamp(12px, 0.85vw, 15px);
+    font-size: clamp(12px, 0.85vw, 15px);
     border-radius: clamp(7px, 0.8vw, 11px);
   }
   .btn-fluid-sm {
-    height:      clamp(26px, 2vw, 36px);
-    padding-left:  clamp(8px, 0.8vw, 14px);
+    height: clamp(26px, 2vw, 36px);
+    padding-left: clamp(8px, 0.8vw, 14px);
     padding-right: clamp(8px, 0.8vw, 14px);
-    font-size:   clamp(11px, 0.75vw, 13.5px);
+    font-size: clamp(11px, 0.75vw, 13.5px);
     border-radius: clamp(6px, 0.7vw, 9px);
   }
 
@@ -351,18 +373,264 @@ html.theme-light {
 
   /* Gradient border that fades from dark to gold — apply alongside glass-panel */
   .gradient-border-gold {
-    background: linear-gradient(#0F0F12, #0F0F12) padding-box,
-                linear-gradient(to bottom, rgba(15, 15, 18, 1), #FFD700) border-box;
+    background:
+      linear-gradient(#0f0f12, #0f0f12) padding-box,
+      linear-gradient(to bottom, rgba(15, 15, 18, 1), #ffd700) border-box;
     border: 1px solid transparent;
   }
 
   .tier-badge-gold {
-    background-color: #FFD700;
+    background-color: #ffd700;
     color: #000;
   }
 
   .tier-badge-green {
     background-color: #00e0ff;
     color: #000;
+  }
+}
+
+/* ── CalculationSource component ──────────────────────────────────────────────
+   Uses the app's existing palette tokens (--accent, --surface-*, --line-*, --text-*).
+   The pcs- local vars are thin aliases so the rules stay self-contained.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pcs {
+  --pcs-accent: var(--accent);
+  --pcs-accent-ink: #001f26;
+  --pcs-accent-soft: var(--accent-soft);
+  --pcs-accent-line: var(--accent-line);
+  --pcs-surface: var(--surface);
+  --pcs-surface-2: var(--surface-2);
+  --pcs-surface-3: var(--surface-3);
+  --pcs-line: var(--line);
+  --pcs-line-2: var(--line-2);
+  --pcs-text: var(--text);
+  --pcs-text-dim: var(--text-dim);
+  --pcs-text-faint: var(--text-faint);
+  --pcs-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  background: var(--pcs-surface);
+  border: 1px solid var(--pcs-line-2);
+  border-radius: 15px;
+  padding: 20px;
+  color: var(--pcs-text);
+  box-shadow: var(--card-shadow);
+}
+
+.pcs-head {
+  font-family: var(--pcs-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pcs-text-faint);
+  font-weight: 600;
+  margin-bottom: 13px;
+}
+
+/* ── mode tiles ──────────────────────────────────────────────────────────── */
+.pcs-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pcs-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 13px;
+  border: 1px solid var(--pcs-line-2);
+  background: var(--pcs-surface-2);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--pcs-text);
+  transition:
+    border-color 0.14s,
+    background 0.14s,
+    box-shadow 0.14s;
+}
+.pcs-tile:hover {
+  border-color: var(--pcs-text-faint);
+}
+.pcs-tile:focus-visible {
+  outline: 2px solid var(--pcs-accent);
+  outline-offset: 2px;
+}
+.pcs-tile.is-on {
+  border-color: var(--pcs-accent-line);
+  background: var(--pcs-accent-soft);
+  box-shadow: 0 0 0 1px var(--pcs-accent-line) inset;
+}
+
+.pcs-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--pcs-line-2);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  transition: border-color 0.14s;
+}
+.pcs-tile.is-on .pcs-radio {
+  border-color: var(--pcs-accent);
+}
+.pcs-tile.is-on .pcs-radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--pcs-accent);
+  box-shadow: 0 0 10px var(--pcs-accent);
+}
+
+.pcs-tile-ic {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--pcs-surface-3);
+  color: var(--pcs-text-dim);
+  flex-shrink: 0;
+}
+.pcs-tile.is-on .pcs-tile-ic {
+  background: var(--pcs-accent-soft);
+  color: var(--pcs-accent);
+  border: 1px solid var(--pcs-accent-line);
+}
+
+.pcs-tile-txt {
+  min-width: 0;
+}
+.pcs-tile-title {
+  display: block;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.pcs-tile-desc {
+  display: block;
+  color: var(--pcs-text-dim);
+  font-size: 11.5px;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* ── reveal (animated expand) ────────────────────────────────────────────── */
+.pcs-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.34s cubic-bezier(0.3, 0.7, 0.3, 1),
+    opacity 0.26s;
+}
+.pcs-reveal.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.pcs-reveal > div {
+  overflow: hidden;
+}
+
+.pcs-inset {
+  margin-top: 13px;
+  padding: 15px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--pcs-line);
+}
+
+.pcs-inset-lbl {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pcs-text-faint);
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* ── pills ───────────────────────────────────────────────────────────────── */
+.pcs-pill-row {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pcs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--pcs-line-2);
+  background: transparent;
+  color: var(--pcs-text-dim);
+  font: inherit;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color 0.13s,
+    background 0.13s,
+    color 0.13s,
+    box-shadow 0.13s;
+}
+.pcs-pill:hover {
+  border-color: var(--pcs-text-faint);
+  color: var(--pcs-text);
+}
+.pcs-pill:focus-visible {
+  outline: 2px solid var(--pcs-accent);
+  outline-offset: 2px;
+}
+.pcs-pill.is-on {
+  background: var(--pcs-accent);
+  border-color: transparent;
+  color: var(--pcs-accent-ink);
+  box-shadow: 0 0 20px -8px var(--pcs-accent);
+}
+
+.pcs-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.pcs-pill.is-on .pcs-pill-dot {
+  opacity: 0.85;
+}
+
+.pcs-pill.is-locked {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--pcs-accent-line);
+  background: var(--pcs-accent-soft);
+  color: var(--pcs-accent);
+}
+
+.pcs-lock {
+  display: grid;
+  place-items: center;
+  opacity: 0.85;
+}
+.pcs-plus {
+  color: var(--pcs-text-faint);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 1px;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcs-reveal {
+    transition: none;
   }
 }

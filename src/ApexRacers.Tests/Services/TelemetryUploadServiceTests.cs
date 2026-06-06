@@ -84,7 +84,22 @@ public class TelemetryUploadServiceTests
             Assert.Equal(userId, l.UserId);
             Assert.True(l.IsValidLap);
             Assert.Equal(95.0, l.LapTimeSeconds, precision: 2);
+            Assert.Equal(LapSessionType.Unknown, l.SessionType);
         });
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ValidLaps_SavesSessionTypeFromFile()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = Guid.NewGuid();
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 1, lapTime: 90.0f, validLaps: true, eventType: LapSessionType.Race);
+        await svc.ProcessAsync(stream, userId, CancellationToken.None);
+
+        var lap = Assert.Single(db.PersonalLaps);
+        Assert.Equal(LapSessionType.Race, lap.SessionType);
     }
 
     [Fact]

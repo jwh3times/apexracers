@@ -25,7 +25,11 @@ function Consumer() {
 }
 
 function renderWithProvider() {
-  return render(<ThemeProvider><Consumer /></ThemeProvider>);
+  return render(
+    <ThemeProvider>
+      <Consumer />
+    </ThemeProvider>
+  );
 }
 
 describe('ThemeContext', () => {

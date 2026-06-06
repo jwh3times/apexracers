@@ -1,8 +1,15 @@
 import { useEffect, useReducer, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { api, type PercentileResult } from '../services/api';
+import {
+  api,
+  type DistributionBin,
+  type PercentileResult,
+  type RecommendationOptions,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PercentileBadge from '../components/PercentileBadge';
+import CalculationSource, { type PaceSourceValue } from '../components/CalculationSource';
+import { formatLapTime } from '../utils/lapTime';
 
 type FetchState = {
   loading: boolean;
@@ -37,12 +44,39 @@ function formatDate(iso: string): string {
   });
 }
 
-function rankLabel(p: number): string {
-  if (p >= 90) return 'Elite';
-  if (p >= 75) return 'Fast';
-  if (p >= 50) return 'Above average';
-  if (p >= 25) return 'Below average';
-  return 'Still learning';
+function formatGap(yourBest: number, fieldBest: number): string {
+  const diff = yourBest - fieldBest;
+  return diff <= 0 ? 'You hold P1' : `+${diff.toFixed(3)}s`;
+}
+
+function DistributionChart({ bins }: { bins: DistributionBin[] }) {
+  if (bins.length === 0) return null;
+  const maxCount = Math.max(...bins.map(b => b.count), 1);
+  const w = 460;
+  const h = 80;
+  const barW = w / bins.length;
+  const gap = 1.5;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" aria-hidden="true">
+      {bins.map((bin, i) => {
+        const barH = Math.max(2, (bin.count / maxCount) * (h - 2));
+        const x = i * barW + gap;
+        const y = h - barH;
+        return (
+          <rect
+            key={i}
+            x={x}
+            y={y}
+            width={barW - gap * 2}
+            height={barH}
+            rx={2}
+            fill={bin.containsUser ? 'var(--color-primary-container)' : 'rgba(255,255,255,0.12)'}
+          />
+        );
+      })}
+    </svg>
+  );
 }
 
 const cardStyle: React.CSSProperties = {
@@ -62,10 +96,11 @@ export default function PercentileCarPage() {
   }>();
   const location = useLocation();
   const { user } = useAuth();
-  const carName =
-    (location.state as { carName?: string } | null)?.carName ?? `Car ${carId}`;
+  const carName = (location.state as { carName?: string } | null)?.carName ?? `Car ${carId}`;
 
   const [customerId, setCustomerId] = useState('');
+  const [lookedUpId, setLookedUpId] = useState<number | null>(null);
+  const [paceSource, setPaceSource] = useState<PaceSourceValue>({ mode: 'official', sessions: [] });
   const [{ loading, result, error, notFound }, dispatch] = useReducer(fetchReducer, {
     loading: false,
     result: null,
@@ -74,56 +109,66 @@ export default function PercentileCarPage() {
   });
 
   const profileId = user?.iRacingCustomerId ?? null;
+  const effectiveId = profileId ?? lookedUpId;
 
-  function runFetch(id: number) {
+  useEffect(() => {
+    if (!effectiveId || !seriesId || !weekNumber || !carId) return;
+    const blended = paceSource.mode === 'blend';
+    const options: RecommendationOptions = {
+      includePersonalLaps: blended,
+      personalLapTypes: blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
+    };
     dispatch({ type: 'start' });
     api
-      .getPercentile(Number(seriesId), Number(weekNumber), Number(carId), id)
+      .getPercentile(Number(seriesId), Number(weekNumber), Number(carId), effectiveId, options)
       .then(data => dispatch({ type: 'success', result: data }))
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : '';
-        if (msg.includes('404')) dispatch({ type: 'not_found' });
+        if (msg.includes('→ 404')) dispatch({ type: 'not_found' });
         else dispatch({ type: 'error', message: msg || 'Failed to load percentile.' });
       });
-  }
-
-  // Auto-fetch when the profile has an iRacing customer ID
-  useEffect(() => {
-    if (profileId && seriesId && weekNumber && carId) {
-      runFetch(profileId);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, seriesId, weekNumber, carId]);
+  }, [effectiveId, seriesId, weekNumber, carId, paceSource]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const id = Number(customerId.trim());
     if (!id) return;
-    runFetch(id);
+    setLookedUpId(id);
   }
+
+  const trackSubtitle = result
+    ? [
+        result.seriesName,
+        result.trackName,
+        result.trackConfigName && result.trackConfigName !== result.trackName
+          ? `· ${result.trackConfigName}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' — ')
+    : null;
 
   return (
     <main className="page-wrap">
       {/* Breadcrumb */}
       <Link
         to={`/series/${seriesId}/weeks/${weekNumber}`}
-        className="inline-flex items-center gap-2 text-body-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
+        className="inline-flex items-center gap-2 text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
       >
-        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+        <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+          arrow_back
+        </span>
         Car breakdown
       </Link>
 
       {/* Header */}
       <div className="mb-6">
-        <p className="text-eyebrow text-primary-container">
-          WEEK {weekNumber} · PERCENTILE
-        </p>
-        <h1 className="text-page-title text-on-surface mt-2 mb-1">
-          {carName}
-        </h1>
-        <p className="text-body-fluid text-on-surface-variant">
-          Week {weekNumber} &mdash; lap time percentile
-        </p>
+        <p className="text-eyebrow text-primary-container">WEEK {weekNumber} · PERCENTILE</p>
+        <h1 className="text-page-title text-on-surface mt-2 mb-1">{carName}</h1>
+        {trackSubtitle && (
+          <p className="text-body-fluid text-on-surface-variant">{trackSubtitle}</p>
+        )}
       </div>
 
       {/* Loading */}
@@ -135,7 +180,10 @@ export default function PercentileCarPage() {
 
       {/* Manual lookup form — only shown when no iRacing ID is saved in the profile */}
       {!profileId && !loading && (
-        <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 mb-6">
+        <div
+          className="card-r border border-line-2 bg-surface p-6 flex flex-col gap-4 mb-6"
+          style={cardStyle}
+        >
           <div className="flex items-start gap-3 p-3 bg-surface-container rounded-lg border border-line">
             <span
               className="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5 shrink-0"
@@ -145,10 +193,7 @@ export default function PercentileCarPage() {
             </span>
             <p className="text-body-fluid text-on-surface-variant">
               Set your iRacing Customer ID in your{' '}
-              <Link
-                to="/profile"
-                className="text-primary-container hover:opacity-80"
-              >
+              <Link to="/profile" className="text-primary-container hover:opacity-80">
                 profile
               </Link>{' '}
               to skip this step.
@@ -157,10 +202,7 @@ export default function PercentileCarPage() {
 
           <form onSubmit={handleLookup} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="customer-id"
-                className="text-body-fluid text-on-surface"
-              >
+              <label htmlFor="customer-id" className="text-body-fluid text-on-surface">
                 iRacing Customer ID
               </label>
               <input
@@ -177,7 +219,9 @@ export default function PercentileCarPage() {
               type="submit"
               disabled={!customerId}
               className="self-start inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              style={{ boxShadow: customerId ? '0 0 26px -8px var(--color-primary-container)' : undefined }}
+              style={{
+                boxShadow: customerId ? '0 0 26px -8px var(--color-primary-container)' : undefined,
+              }}
             >
               Look up my percentile
             </button>
@@ -185,59 +229,118 @@ export default function PercentileCarPage() {
         </div>
       )}
 
-      {/* Percentile result */}
-      {result && (() => {
-        const topPct = Math.max(1, Math.ceil(100 - result.percentileRank));
-        return (
-          <div
-            className="card-r border border-line-2 bg-surface overflow-hidden mb-4"
-            style={{ ...cardStyle, ...scanTexture }}
-          >
-            <div className="grid md:grid-cols-2 gap-0">
-              {/* Left: badge + summary */}
-              <div className="flex flex-col items-center justify-center gap-[18px] p-8 border-b md:border-b-0 md:border-r border-line-2">
-                <PercentileBadge pct={topPct} size="lg" />
-                <div className="text-center">
-                  <p className="text-section-head text-on-surface">
-                    You beat{' '}
-                    <span className="text-primary-container">{result.percentileRank.toFixed(1)}%</span>
-                    {' '}of the field
-                  </p>
-                  <p className="text-body-fluid text-on-surface-variant mt-1">
-                    {rankLabel(result.percentileRank)}
-                  </p>
-                </div>
-              </div>
+      {/* Pace source selector — shown once we have an ID to fetch for */}
+      {effectiveId !== null && !loading && (
+        <CalculationSource value={paceSource} onChange={setPaceSource} className="mb-6" />
+      )}
 
-              {/* Right: stats */}
-              <div className="flex flex-col justify-center gap-6 p-8">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                  <div>
-                    <p className="text-th text-on-surface-variant mb-1">
-                      Drivers in field
+      {/* Percentile result */}
+      {result &&
+        (() => {
+          const topPct = Math.max(1, Math.ceil(100 - result.percentileRank));
+          const driversAhead = Math.round(result.sampleSize * (1 - result.percentileRank / 100));
+          const rank = Math.max(1, driversAhead + 1);
+          const gapToP1 = formatGap(result.yourBestLapSeconds, result.fieldBestLapSeconds);
+
+          return (
+            <div
+              className="card-r border border-line-2 bg-surface overflow-hidden"
+              style={cardStyle}
+            >
+              <div className="grid md:grid-cols-2 gap-0">
+                {/* Left: badge + headline + stat grid */}
+                <div
+                  className="flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2"
+                  style={scanTexture}
+                >
+                  <PercentileBadge pct={topPct} size="lg" />
+
+                  <div className="text-center">
+                    <p className="text-section-head text-on-surface">
+                      You're faster than{' '}
+                      <span className="text-primary-container">
+                        {result.percentileRank.toFixed(1)}%
+                      </span>{' '}
+                      of the field
                     </p>
-                    <p className="font-mono text-[24px] font-bold text-on-surface leading-none">
-                      {result.sampleSize.toLocaleString()}
+                    <p className="text-body-fluid text-on-surface-variant mt-1">
+                      P{rank} of {result.sampleSize.toLocaleString()} recorded drivers
                     </p>
                   </div>
-                  <div>
-                    <p className="text-th text-on-surface-variant mb-1">
-                      Computed
-                    </p>
-                    <p className="text-body-fluid text-on-surface">
-                      {formatDate(result.computedAt)}
-                    </p>
+
+                  {/* 2×2 stat grid */}
+                  <div className="w-full grid grid-cols-2 gap-px bg-line-2 border border-line-2 card-r overflow-hidden">
+                    {(
+                      [
+                        { label: 'Your best', value: formatLapTime(result.yourBestLapSeconds) },
+                        { label: 'Field best', value: formatLapTime(result.fieldBestLapSeconds) },
+                        {
+                          label: 'Field median',
+                          value: formatLapTime(result.fieldMedianLapSeconds),
+                        },
+                        { label: 'Gap to P1', value: gapToP1 },
+                      ] as const
+                    ).map(stat => (
+                      <div key={stat.label} className="bg-surface p-4 flex flex-col gap-1">
+                        <span className="text-th text-on-surface-variant">{stat.label}</span>
+                        <span className="text-mono-fluid text-on-surface font-semibold">
+                          {stat.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
+                </div>
+
+                {/* Right: distribution + extra stats */}
+                <div className="flex flex-col justify-between gap-6 p-8">
+                  {/* Histogram */}
+                  <div>
+                    <p className="text-th text-on-surface-variant mb-3">Lap time distribution</p>
+                    <DistributionChart bins={result.distribution} />
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="w-3 h-3 rounded-sm bg-primary-container shrink-0" />
+                      <span className="text-small-fluid text-on-surface-variant">
+                        Your position
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Three quick stats */}
+                  <div className="flex flex-col gap-4">
+                    {(
+                      [
+                        { label: 'Percentile rank', value: `${result.percentileRank.toFixed(1)}%` },
+                        { label: 'Drivers ahead', value: driversAhead.toLocaleString() },
+                        { label: 'Laps analysed', value: result.sampleSize.toLocaleString() },
+                      ] as const
+                    ).map(stat => (
+                      <div key={stat.label} className="flex items-baseline justify-between gap-4">
+                        <span className="text-body-fluid text-on-surface-variant">
+                          {stat.label}
+                        </span>
+                        <span className="text-mono-fluid text-on-surface font-semibold">
+                          {stat.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Cache note */}
+                  <p className="text-small-fluid text-on-surface-variant/60 border-t border-line-2 pt-4">
+                    Computed {formatDate(result.computedAt)}
+                  </p>
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* Not found */}
       {notFound && (
-        <div className="card-r border border-line-2 bg-surface p-6 flex items-start gap-3 mb-4" style={cardStyle}>
+        <div
+          className="card-r border border-line-2 bg-surface p-6 flex items-start gap-3 mb-4"
+          style={cardStyle}
+        >
           <span
             className="material-symbols-outlined text-on-surface-variant mt-0.5"
             aria-hidden="true"
@@ -246,8 +349,7 @@ export default function PercentileCarPage() {
           </span>
           <div className="flex flex-col gap-1">
             <p className="text-body-fluid text-on-surface">
-              No race lap found for the{' '}
-              <span className="font-medium">{carName}</span> this week.
+              No race lap found for the <span className="font-medium">{carName}</span> this week.
             </p>
             <p className="text-small-fluid text-on-surface-variant">
               Upload your telemetry to record a lap, then check back here.

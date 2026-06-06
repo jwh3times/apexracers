@@ -21,7 +21,8 @@ export default function Sparkline({ data, h = 38 }: Props) {
 
   if (data.length < 2) return null;
   const c = 'var(--color-primary-container)';
-  const min = Math.min(...data), max = Math.max(...data);
+  const min = Math.min(...data),
+    max = Math.max(...data);
   const range = Math.max(1, max - min);
   const pad = 3;
   const X = (i: number) => pad + (i / (data.length - 1)) * (w - pad * 2);
@@ -39,8 +40,18 @@ export default function Sparkline({ data, h = 38 }: Props) {
               <stop offset="1" stopColor={c} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <polygon points={`${pad},${h - pad} ${line} ${w - pad},${h - pad}`} fill={`url(#${id})`} />
-          <polyline points={line} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <polygon
+            points={`${pad},${h - pad} ${line} ${w - pad},${h - pad}`}
+            fill={`url(#${id})`}
+          />
+          <polyline
+            points={line}
+            fill="none"
+            stroke={c}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
           <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="3" fill={c} />
         </>
       )}

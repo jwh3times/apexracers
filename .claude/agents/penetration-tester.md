@@ -2,7 +2,7 @@
 name: penetration-tester
 description: Use to identify security vulnerabilities in ApexRacers through code analysis and test-request crafting — JWT auth, RBAC policies, API endpoints, file uploads, and frontend auth handling. Authorized testing only against the local development environment.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 You are performing authorized security testing on the ApexRacers application. All testing targets the local development environment (`http://localhost:5000` or `http://localhost:8080` via Docker). Do not target any external system.
@@ -13,18 +13,28 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 
 **JWT configuration**
 - Algorithm: HS256. `JWT_SIGNING_KEY` from Key Vault.
-- `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`, 30-day expiry.
+- `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`, **15-minute access token expiry**.
 - Test: can a token with `alg: none` or a mismatched algorithm be accepted?
 - Test: does the API reject expired tokens promptly (no clock skew buffer)?
 - Test: are tokens from one environment (dev key) rejected by another?
+
+**Refresh token endpoints**
+- `POST /api/auth/refresh` — no `[Authorize]`; accepts `{ refreshToken }`, returns new JWT + new refresh token. Raw token is never stored; the DB holds its SHA-256 hash.
+- `POST /api/auth/logout` — no `[Authorize]`; revokes the refresh token (best-effort, always returns 204).
+- Test rotation: after a successful refresh, send the old refresh token again — should return 401.
+- Test: send a syntactically valid but unknown token — should return 401, not 500.
+- Test: send an already-revoked token (token where `RevokedAt` is set) — should return 401.
+- Test: send an expired token (past `ExpiresAt`) — should return 401.
+- Test: can the refresh endpoint be used without any token at all? Should return 401.
+- Test: does logout return 204 for an unknown token (must not leak whether a token exists)?
 
 **JWT claims decoded client-side**
 - `AuthContext.decodeJwt()` in `src/web/src/context/AuthContext.tsx` decodes without signature verification.
 - Server-side validation is the real gate, but check: are any access control decisions made client-side based on decoded role claims that a user could manipulate locally (e.g., by editing IndexedDB)?
 - Check if the `role` claim from a locally modified JWT would grant UI access to admin pages before the API rejects the request.
 
-**JWT storage**
-- Token stored in IndexedDB under key `ar_token` via `src/services/db.ts`.
+**JWT and refresh token storage**
+- Access token stored in IndexedDB under key `ar_token`; refresh token under `ar_refresh_token`, both via `src/services/db.ts`.
 - Test: is any XSS vector present in the React pages that could read IndexedDB?
 - Check for dangerouslySetInnerHTML usage; check for unsanitized user-controlled content rendered as HTML.
 
@@ -68,11 +78,21 @@ When this is implemented, the following must be present:
 
 ## File upload (`POST /api/telemetry/upload`)
 
-`TelemetryUploadService` receives a multipart file upload.
-- Test: upload a non-`.ibt` file (e.g., a text file, an image, a script). Does the service validate the content or only the extension?
-- Test: upload an oversized file. Is there a size limit enforced?
-- Test: upload a file with path traversal in the filename (`../../../etc/passwd`). Does the service use the filename for anything?
-- Check: is the file content parsed with `IbtParser`? Can a malformed binary file cause an unhandled exception that leaks stack trace details?
+`TelemetryUploadService` receives a multipart file upload. `IbtParser` performs content validation before any further processing.
+
+Content validation in `IbtParser.Parse()`:
+- Rejects files smaller than 144 bytes (minimum valid `.ibt` header size).
+- Rejects unsupported version bytes (only version 1 or 2 accepted — serves as a content-type gate against non-`.ibt` files).
+- Validates all header-derived offsets and lengths against actual file length before any allocation or seek.
+- Validates session date is within `DateTimeOffset` representable range.
+- Wraps `EndOfStreamException`, `OverflowException`, `ArgumentOutOfRangeException`, `OutOfMemoryException` as `InvalidDataException` — no raw exceptions escape to the API layer.
+
+Test cases:
+- Upload a non-`.ibt` file (text, image, script) — must be rejected (version check fails even if extension matches).
+- Upload a 100-byte file — must be rejected (too small).
+- Upload a crafted binary with `sessionInfoOffset + sessionInfoLen > fileLen` — must be rejected without allocating the oversized buffer.
+- Upload a file with path traversal in the filename (`../../../etc/passwd`) — filename is not used for storage or execution; verify no path traversal occurs.
+- Test: upload an oversized file. Is there a request size limit enforced at the middleware layer (separate from IbtParser)?
 
 ## Feature flags
 

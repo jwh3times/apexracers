@@ -1,4 +1,5 @@
 using System.Text;
+using ApexRacers.Core.Models;
 
 namespace ApexRacers.Tests.Helpers;
 
@@ -18,22 +19,23 @@ internal static class FakeIbtBuilder
     /// <param name="validLaps">When false, writes a negative lapTime so IsValid=false.</param>
     /// <param name="includesLapVars">When false, omits LapCompleted/LapLastLapTime vars → empty laps list.</param>
     public static MemoryStream Build(
-        int    laps           = 2,
-        float  lapTime        = 90.5f,
-        bool   validLaps      = true,
-        bool   includesLapVars = true,
-        int    trackId        = 42,
-        string trackName      = "Spa-Francorchamps",
-        string configName     = "Full",
-        int    carId          = 99,
-        string carName        = "Porsche 992 GT3",
-        string carNameShort   = "P992",
-        long   customerId     = 12345,
-        string driverName     = "Jerry Holland",
-        long   sessionDate    = 0)
+        int            laps           = 2,
+        float          lapTime        = 90.5f,
+        bool           validLaps      = true,
+        bool           includesLapVars = true,
+        int            trackId        = 42,
+        string         trackName      = "Spa-Francorchamps",
+        string         configName     = "Full",
+        int            carId          = 99,
+        string         carName        = "Porsche 992 GT3",
+        string         carNameShort   = "P992",
+        long           customerId     = 12345,
+        string         driverName     = "Jerry Holland",
+        long           sessionDate    = 0,
+        LapSessionType eventType      = LapSessionType.Unknown)
     {
         var yamlBytes = Encoding.UTF8.GetBytes(BuildYaml(
-            trackId, trackName, configName, carId, carName, carNameShort, customerId, driverName));
+            trackId, trackName, configName, carId, carName, carNameShort, customerId, driverName, eventType));
 
         int numVars           = includesLapVars ? 2 : 0;
         int sessionInfoLen    = yamlBytes.Length;
@@ -88,18 +90,33 @@ internal static class FakeIbtBuilder
         return new MemoryStream(buf);
     }
 
+    private static string EventTypeString(LapSessionType t) => t switch
+    {
+        LapSessionType.Race        => "Race",
+        LapSessionType.Practice    => "Practice",
+        LapSessionType.Qualifying  => "Qualify",
+        LapSessionType.TimeTrial   => "Time Trial",
+        LapSessionType.LoneQualify => "Lone Qualify",
+        _                          => "",
+    };
+
     private static string BuildYaml(
         int trackId, string trackName, string configName,
         int carId, string carName, string carNameShort,
-        long customerId, string driverName) =>
-        $"""
+        long customerId, string driverName,
+        LapSessionType eventType = LapSessionType.Unknown)
+    {
+        var eventTypeLine = eventType != LapSessionType.Unknown
+            ? $"\n EventType: {EventTypeString(eventType)}"
+            : "";
+        return $"""
         ---
         WeekendInfo:
          TrackID: {trackId}
          TrackDisplayName: {trackName}
          TrackConfigName: {configName}
          AirTemp: 25.0 C
-         TrackTemp: 35.0 C
+         TrackTemp: 35.0 C{eventTypeLine}
         DriverInfo:
          DriverCarIdx: 0
          DriverUserID: {customerId}
@@ -111,6 +128,7 @@ internal static class FakeIbtBuilder
            UserName: {driverName}
         ...
         """;
+    }
 
     private static void WriteI32(byte[] b, int o, int v)    => BitConverter.GetBytes(v).CopyTo(b, o);
     private static void WriteI64(byte[] b, int o, long v)   => BitConverter.GetBytes(v).CopyTo(b, o);

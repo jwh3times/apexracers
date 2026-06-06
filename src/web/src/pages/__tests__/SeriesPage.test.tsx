@@ -11,11 +11,17 @@ vi.mock('../../services/api', () => ({
 const mockGetSeries = vi.mocked(api.getSeries);
 
 function renderPage() {
-  return render(<MemoryRouter><SeriesPage /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <SeriesPage />
+    </MemoryRouter>
+  );
 }
 
 describe('SeriesPage', () => {
-  beforeEach(() => { vi.resetAllMocks(); });
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('shows loading state initially', () => {
     mockGetSeries.mockReturnValue(new Promise(() => {}));
@@ -37,7 +43,17 @@ describe('SeriesPage', () => {
 
   it('renders series as links when currentWeekNumber is set', async () => {
     mockGetSeries.mockResolvedValue([
-      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 },
+      {
+        id: 1,
+        name: 'GT3 Cup',
+        seasonId: 10,
+        currentWeekNumber: 5,
+        category: null,
+        trackName: null,
+        trackConfigName: null,
+        carCount: 0,
+        driverCount: 0,
+      },
     ]);
     renderPage();
     await waitFor(() => {
@@ -48,7 +64,17 @@ describe('SeriesPage', () => {
 
   it('renders series as plain text when currentWeekNumber is null', async () => {
     mockGetSeries.mockResolvedValue([
-      { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: null },
+      {
+        id: 1,
+        name: 'GT3 Cup',
+        seasonId: 10,
+        currentWeekNumber: null,
+        category: null,
+        trackName: null,
+        trackConfigName: null,
+        carCount: 0,
+        driverCount: 0,
+      },
     ]);
     renderPage();
     await waitFor(() => {

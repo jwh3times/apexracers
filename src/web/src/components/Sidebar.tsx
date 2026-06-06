@@ -32,7 +32,9 @@ export default function Sidebar() {
               }`
             }
           >
-            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">{icon}</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
+              {icon}
+            </span>
             {label}
           </NavLink>
         ))}
@@ -47,7 +49,9 @@ export default function Sidebar() {
               }`
             }
           >
-            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">admin_panel_settings</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
+              admin_panel_settings
+            </span>
             Admin Panel
           </NavLink>
         )}

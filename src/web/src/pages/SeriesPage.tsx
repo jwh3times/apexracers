@@ -19,38 +19,95 @@ function SeriesCard({ s }: { s: Series }) {
       className="card-r border border-line-2 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full"
       style={cardStyle}
     >
-      {/* Header with scan texture */}
+      {/* Header */}
       <div
         className="px-[18px] pt-[16px] pb-[16px] border-b border-line-2"
         style={{
           ...scanTexture,
-          background: 'linear-gradient(135deg, rgba(0,224,255,0.04) 0%, transparent 60%)',
+          background:
+            'linear-gradient(120deg, var(--md-sys-color-surface-container-high, rgba(255,255,255,0.03)), transparent)',
         }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-eyebrow text-primary-container">
-            {active ? `Week ${s.currentWeekNumber}` : 'Off Season'}
-          </span>
-          <span className="text-small-fluid font-mono text-on-surface-variant/60">
+          {s.category ? (
+            <span
+              className="text-[11px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+              style={{
+                background: 'color-mix(in srgb, var(--color-primary-container) 15%, transparent)',
+                color: 'var(--color-primary-container)',
+                border:
+                  '1px solid color-mix(in srgb, var(--color-primary-container) 30%, transparent)',
+              }}
+            >
+              {s.category}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[11px] font-mono text-on-surface-variant/50">
             S{s.seasonId}
+            {active ? ` · WK ${s.currentWeekNumber}` : ''}
           </span>
         </div>
-        <h3 className="mt-[14px] text-section-head text-on-surface leading-snug">
+        <h3
+          className="mt-[14px] text-on-surface leading-snug"
+          style={{ fontSize: '16.5px', letterSpacing: '-0.01em', lineHeight: 1.15 }}
+        >
           {s.name}
         </h3>
       </div>
 
       {/* Body */}
-      <div className="px-[18px] py-[15px] flex flex-col gap-3 flex-1">
-        <div className="text-small-fluid text-on-surface-variant">
-          Season {s.seasonId}
-          {active ? ` · Week ${s.currentWeekNumber}` : ''}
-        </div>
-        {active && (
-          <div className="mt-auto flex items-center justify-end">
-            <span className="text-small-fluid text-primary-container font-semibold">View week →</span>
+      <div className="px-[18px] pt-[15px] pb-[16px] flex flex-col gap-3 flex-1">
+        {/* Track row */}
+        {s.trackName && (
+          <div className="flex items-center gap-[9px] text-small-fluid text-on-surface-variant">
+            <span
+              className="material-symbols-outlined shrink-0"
+              style={{ fontSize: 15, color: 'var(--color-primary-container)' }}
+              aria-hidden="true"
+            >
+              flag
+            </span>
+            <span className="font-semibold text-on-surface">{s.trackName}</span>
+            {s.trackConfigName && s.trackConfigName !== s.trackName && (
+              <span className="text-on-surface-variant/50">· {s.trackConfigName}</span>
+            )}
           </div>
         )}
+
+        {/* Stats + action row */}
+        <div className="mt-auto pt-2 flex items-end justify-between">
+          <div className="flex gap-4">
+            {s.carCount > 0 && (
+              <div>
+                <div
+                  className="font-mono uppercase tracking-wider text-on-surface-variant/60"
+                  style={{ fontSize: '10.5px' }}
+                >
+                  Cars
+                </div>
+                <div className="text-mono-fluid font-bold">{s.carCount}</div>
+              </div>
+            )}
+            {s.driverCount > 0 && (
+              <div>
+                <div
+                  className="font-mono uppercase tracking-wider text-on-surface-variant/60"
+                  style={{ fontSize: '10.5px' }}
+                >
+                  Drivers
+                </div>
+                <div className="text-mono-fluid font-bold">{s.driverCount.toLocaleString()}</div>
+              </div>
+            )}
+          </div>
+          {active && (
+            <span className="text-small-fluid text-primary-container font-semibold">
+              View week →
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -71,13 +128,14 @@ export default function SeriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .getSeries()
       .then(setSeries)
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load series.'),
+        setError(err instanceof Error ? err.message : 'Failed to load series.')
       )
       .finally(() => setLoading(false));
   }, []);
@@ -110,9 +168,17 @@ export default function SeriesPage() {
     );
   }
 
-  const filtered = search.trim()
+  const categories = Array.from(
+    new Set(series.map(s => s.category).filter((c): c is string => !!c))
+  ).sort();
+
+  const searchFiltered = search.trim()
     ? series.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
     : series;
+
+  const filtered = activeCategory
+    ? searchFiltered.filter(s => s.category === activeCategory)
+    : searchFiltered;
 
   const firstActive = series.find(s => s.currentWeekNumber != null);
   const subtitle = firstActive
@@ -122,14 +188,10 @@ export default function SeriesPage() {
   return (
     <main className="page-wrap">
       {/* Page head */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-eyebrow text-primary-container">
-            BROWSE SERIES
-          </p>
-          <h1 className="text-page-title text-on-surface mt-2 mb-1">
-            Active series
-          </h1>
+          <p className="text-eyebrow text-primary-container">BROWSE SERIES</p>
+          <h1 className="text-page-title text-on-surface mt-2 mb-1">Active series</h1>
           <p className="text-body-fluid text-on-surface-variant">{subtitle}</p>
         </div>
 
@@ -150,6 +212,35 @@ export default function SeriesPage() {
           />
         </div>
       </div>
+
+      {/* Category filter chips */}
+      {categories.length > 1 && (
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={`btn-fluid-sm border font-mono uppercase tracking-wider transition-colors ${
+              activeCategory === null
+                ? 'border-primary-container bg-primary-container/10 text-primary-container'
+                : 'border-line-2 text-on-surface-variant hover:border-primary-container/40 hover:text-on-surface'
+            }`}
+          >
+            All
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
+              className={`btn-fluid-sm border font-mono uppercase tracking-wider transition-colors ${
+                activeCategory === cat
+                  ? 'border-primary-container bg-primary-container/10 text-primary-container'
+                  : 'border-line-2 text-on-surface-variant hover:border-primary-container/40 hover:text-on-surface'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <p className="text-body-fluid text-on-surface-variant">No series match your search.</p>

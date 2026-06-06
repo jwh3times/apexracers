@@ -64,7 +64,9 @@ describe('PercentileBadge', () => {
     const { container } = render(<PercentileBadge pct={100} />);
     const circles = container.querySelectorAll('circle');
     const accentCircle = circles[1];
-    const dashArray = parseFloat((accentCircle.getAttribute('stroke-dasharray') ?? '0').split(' ')[0]);
+    const dashArray = parseFloat(
+      (accentCircle.getAttribute('stroke-dasharray') ?? '0').split(' ')[0]
+    );
     const dashOffset = parseFloat(accentCircle.getAttribute('stroke-dashoffset') ?? '0');
     // fillFrac = (100 - 100) / 100 = 0, so dashoffset = circ * 1 = circ
     expect(dashOffset).toBeCloseTo(dashArray, 0);

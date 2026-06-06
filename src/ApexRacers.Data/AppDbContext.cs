@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CarClass> CarClasses => Set<CarClass>();
     public DbSet<CarClassCar> CarClassCars => Set<CarClassCar>();
     public DbSet<SeasonCarClass> SeasonCarClasses => Set<SeasonCarClass>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<FeatureFlag>()
             .HasIndex(f => f.Key)
             .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.ToTable("RefreshTokens", "identity");
+            b.HasIndex(t => t.TokenHash).IsUnique();
+            b.HasIndex(t => t.UserId);
+            b.HasOne<ApplicationUser>()
+             .WithMany()
+             .HasForeignKey(t => t.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }

@@ -9,7 +9,7 @@ import Sparkline from '../components/Sparkline';
 
 function trendAxisLabels(history: { computedAt: string }[]): [string, string] {
   const start = new Date(history[0].computedAt);
-  const end   = new Date(history[history.length - 1].computedAt);
+  const end = new Date(history[history.length - 1].computedAt);
   if (start.getFullYear() !== end.getFullYear()) {
     return [String(start.getFullYear()), String(end.getFullYear())];
   }
@@ -22,7 +22,9 @@ function topPercentLabel(rank: number): string {
 }
 
 function isImproving(history: { percentileRank: number }[]): boolean {
-  return history.length >= 2 && history[history.length - 1].percentileRank > history[0].percentileRank;
+  return (
+    history.length >= 2 && history[history.length - 1].percentileRank > history[0].percentileRank
+  );
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -88,7 +90,12 @@ function reducer(state: State, action: Action): State {
     case 'SELECT_CAR':
       return { ...state, selectedCarId: action.carId };
     case 'ANALYTICS_ERROR':
-      return { ...state, error: action.message, analyticsLoading: false, allAnalyticsLoading: false };
+      return {
+        ...state,
+        error: action.message,
+        analyticsLoading: false,
+        allAnalyticsLoading: false,
+      };
     default:
       return state;
   }
@@ -115,7 +122,13 @@ const cardStyle: React.CSSProperties = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; flipLabels?: boolean }) {
+function FeaturedCarCard({
+  data,
+  flipLabels = false,
+}: {
+  data: CarAnalytics;
+  flipLabels?: boolean;
+}) {
   const improving = isImproving(data.percentileHistory);
   const lapDelta =
     data.personalBestLapSeconds != null && data.medianLapSeconds != null
@@ -123,9 +136,8 @@ function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; fli
       : null;
   const isGold = data.bestPercentileRank >= 95;
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
-  const [trendStart, trendEnd] = data.percentileHistory.length >= 2
-    ? trendAxisLabels(data.percentileHistory)
-    : ['', ''];
+  const [trendStart, trendEnd] =
+    data.percentileHistory.length >= 2 ? trendAxisLabels(data.percentileHistory) : ['', ''];
   const primaryLabel = flipLabels ? data.seriesName : data.carName;
   const secondaryLabel = flipLabels ? data.carName : data.seriesName;
 
@@ -144,7 +156,9 @@ function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; fli
           </div>
           {improving && (
             <span className="inline-flex items-center gap-1 px-[10px] h-[24px] rounded-[7px] border border-primary-container/30 bg-primary-container/10 text-primary-container text-[11px] font-semibold shrink-0">
-              <span className="material-symbols-outlined text-[12px]" aria-hidden="true">trending_up</span>
+              <span className="material-symbols-outlined text-[12px]" aria-hidden="true">
+                trending_up
+              </span>
               Improving
             </span>
           )}
@@ -184,7 +198,9 @@ function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; fli
         <div className="flex items-center gap-6 pt-2 border-t border-line-2 flex-wrap">
           <div>
             <p className="text-th text-on-surface-variant">Total Weeks</p>
-            <p className="font-mono text-mono-fluid font-semibold text-on-surface mt-0.5">{data.totalWeeks}</p>
+            <p className="font-mono text-mono-fluid font-semibold text-on-surface mt-0.5">
+              {data.totalWeeks}
+            </p>
           </div>
           {data.personalBestLapSeconds != null && (
             <div>
@@ -197,8 +213,11 @@ function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; fli
           {lapDelta != null && (
             <div>
               <p className="text-th text-on-surface-variant">Best vs Median</p>
-              <p className={`font-mono text-mono-fluid font-semibold mt-0.5 ${lapDelta < 0 ? 'text-primary-container' : 'text-error'}`}>
-                {lapDelta < 0 ? '' : '+'}{lapDelta.toFixed(3)}s
+              <p
+                className={`font-mono text-mono-fluid font-semibold mt-0.5 ${lapDelta < 0 ? 'text-primary-container' : 'text-error'}`}
+              >
+                {lapDelta < 0 ? '' : '+'}
+                {lapDelta.toFixed(3)}s
               </p>
             </div>
           )}
@@ -208,20 +227,22 @@ function FeaturedCarCard({ data, flipLabels = false }: { data: CarAnalytics; fli
   );
 }
 
-function SecondaryCarCard({ data, flipLabels = false }: { data: CarAnalytics; flipLabels?: boolean }) {
+function SecondaryCarCard({
+  data,
+  flipLabels = false,
+}: {
+  data: CarAnalytics;
+  flipLabels?: boolean;
+}) {
   const improving = isImproving(data.percentileHistory);
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
-  const [trendStart, trendEnd] = data.percentileHistory.length >= 2
-    ? trendAxisLabels(data.percentileHistory)
-    : ['', ''];
+  const [trendStart, trendEnd] =
+    data.percentileHistory.length >= 2 ? trendAxisLabels(data.percentileHistory) : ['', ''];
   const primaryLabel = flipLabels ? data.seriesName : data.carName;
   const secondaryLabel = flipLabels ? data.carName : data.seriesName;
 
   return (
-    <div
-      className="card-r border border-line-2 bg-surface overflow-hidden"
-      style={cardStyle}
-    >
+    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
       <div className="card-p flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -276,8 +297,14 @@ export default function AnalyticsPage() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const {
     viewMode,
-    series, selectedSeriesId, analytics, seriesLoading, analyticsLoading,
-    allAnalytics, allAnalyticsLoading, selectedCarId,
+    series,
+    selectedSeriesId,
+    analytics,
+    seriesLoading,
+    analyticsLoading,
+    allAnalytics,
+    allAnalyticsLoading,
+    selectedCarId,
     error,
   } = state;
 
@@ -311,7 +338,10 @@ export default function AnalyticsPage() {
     return (
       <main className="page-wrap">
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-          <span className="material-symbols-outlined text-5xl text-on-surface-variant" aria-hidden="true">
+          <span
+            className="material-symbols-outlined text-5xl text-on-surface-variant"
+            aria-hidden="true"
+          >
             analytics
           </span>
           <h2 className="text-page-title text-on-surface">Sign in to view analytics</h2>
@@ -332,9 +362,8 @@ export default function AnalyticsPage() {
 
   // Derived display data
   const isLoading = viewMode === 'series' ? analyticsLoading : allAnalyticsLoading;
-  const displayAnalytics = viewMode === 'series'
-    ? analytics
-    : allAnalytics.filter(a => a.carId === selectedCarId);
+  const displayAnalytics =
+    viewMode === 'series' ? analytics : allAnalytics.filter(a => a.carId === selectedCarId);
   const [featuredCard, ...otherCards] = displayAnalytics;
 
   const uniqueCars = allAnalytics.reduce<{ id: number; name: string }[]>((acc, a) => {
@@ -367,24 +396,27 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Series chips (series mode) */}
+      {/* Series selector (series mode) */}
       {viewMode === 'series' && !seriesLoading && series.length > 0 && (
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-2 pb-2 min-w-max">
+        <div className="flex items-center gap-3 mb-6">
+          <label
+            htmlFor="analytics-series-select"
+            className="text-body-fluid text-on-surface-variant shrink-0"
+          >
+            Series:
+          </label>
+          <select
+            id="analytics-series-select"
+            value={selectedSeriesId ?? ''}
+            onChange={e => dispatch({ type: 'SELECT_SERIES', seriesId: Number(e.target.value) })}
+            className="text-body-fluid text-on-surface bg-surface-container border border-line-2 rounded-[9px] px-3 py-[7px] cursor-pointer focus:outline-none focus:border-primary-container/50 transition-colors"
+          >
             {series.map(s => (
-              <button
-                key={s.id}
-                onClick={() => dispatch({ type: 'SELECT_SERIES', seriesId: s.id })}
-                className={`inline-flex items-center h-[32px] px-[14px] rounded-[9px] border font-semibold text-small-fluid cursor-pointer transition-all ${
-                  selectedSeriesId === s.id
-                    ? 'bg-primary-container text-on-primary-fixed border-transparent'
-                    : 'border-white/[0.12] bg-transparent text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
+              <option key={s.id} value={s.id}>
                 {s.name}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       )}
 
@@ -392,60 +424,77 @@ export default function AnalyticsPage() {
         <p className="text-body-fluid text-on-surface-variant mb-6">No active series found.</p>
       )}
 
-      {/* Car chips (car mode) */}
+      {/* Car selector (car mode) */}
       {viewMode === 'car' && !allAnalyticsLoading && uniqueCars.length > 0 && (
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-2 pb-2 min-w-max">
+        <div className="flex items-center gap-3 mb-6">
+          <label
+            htmlFor="analytics-car-select"
+            className="text-body-fluid text-on-surface-variant shrink-0"
+          >
+            Car:
+          </label>
+          <select
+            id="analytics-car-select"
+            value={selectedCarId ?? ''}
+            onChange={e => dispatch({ type: 'SELECT_CAR', carId: Number(e.target.value) })}
+            className="text-body-fluid text-on-surface bg-surface-container border border-line-2 rounded-[9px] px-3 py-[7px] cursor-pointer focus:outline-none focus:border-primary-container/50 transition-colors"
+          >
             {uniqueCars.map(c => (
-              <button
-                key={c.id}
-                onClick={() => dispatch({ type: 'SELECT_CAR', carId: c.id })}
-                className={`inline-flex items-center h-[32px] px-[14px] rounded-[9px] border font-semibold text-small-fluid cursor-pointer transition-all ${
-                  selectedCarId === c.id
-                    ? 'bg-primary-container text-on-primary-fixed border-transparent'
-                    : 'border-white/[0.12] bg-transparent text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
+              <option key={c.id} value={c.id}>
                 {c.name}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       )}
 
       {/* Loading */}
       {isLoading && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading analytics&hellip;</p>
+        <p className="text-body-fluid text-on-surface-variant animate-pulse">
+          Loading analytics&hellip;
+        </p>
       )}
 
       {/* Error */}
-      {!isLoading && error && (
-        <p className="text-body-fluid text-error">{error}</p>
-      )}
+      {!isLoading && error && <p className="text-body-fluid text-error">{error}</p>}
 
       {/* Empty state — series mode */}
-      {viewMode === 'series' && !isLoading && !error && analytics.length === 0 && selectedSeriesId !== null && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
-            query_stats
-          </span>
-          <p className="text-body-fluid text-on-surface-variant max-w-xs">
-            No percentile data for this series yet.{' '}
-            <Link to="/series" className="text-primary-container hover:opacity-80">Browse series</Link>{' '}
-            and compute your percentile to start tracking trends.
-          </p>
-        </div>
-      )}
+      {viewMode === 'series' &&
+        !isLoading &&
+        !error &&
+        analytics.length === 0 &&
+        selectedSeriesId !== null && (
+          <div className="flex flex-col items-center gap-3 py-20 text-center">
+            <span
+              className="material-symbols-outlined text-4xl text-on-surface-variant"
+              aria-hidden="true"
+            >
+              query_stats
+            </span>
+            <p className="text-body-fluid text-on-surface-variant max-w-xs">
+              No percentile data for this series yet.{' '}
+              <Link to="/series" className="text-primary-container hover:opacity-80">
+                Browse series
+              </Link>{' '}
+              and compute your percentile to start tracking trends.
+            </p>
+          </div>
+        )}
 
       {/* Empty state — car mode */}
       {viewMode === 'car' && !isLoading && !error && allAnalytics.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
+          <span
+            className="material-symbols-outlined text-4xl text-on-surface-variant"
+            aria-hidden="true"
+          >
             query_stats
           </span>
           <p className="text-body-fluid text-on-surface-variant max-w-xs">
             No percentile data yet.{' '}
-            <Link to="/series" className="text-primary-container hover:opacity-80">Browse series</Link>{' '}
+            <Link to="/series" className="text-primary-container hover:opacity-80">
+              Browse series
+            </Link>{' '}
             and compute your percentile to start tracking trends.
           </p>
         </div>

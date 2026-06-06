@@ -35,7 +35,9 @@ function ProfileDropdown() {
         aria-haspopup="true"
       >
         <div className="h-full w-full rounded-full bg-surface-container flex items-center justify-center overflow-hidden">
-          <span className="material-symbols-outlined text-primary-container" aria-hidden="true">person</span>
+          <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
+            person
+          </span>
         </div>
         <div className="absolute bottom-0 right-0 h-3 w-3 bg-primary-container border-2 border-surface rounded-full"></div>
       </button>
@@ -47,7 +49,9 @@ function ProfileDropdown() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-body-sm"
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">person</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              person
+            </span>
             Profile
           </Link>
           <Link
@@ -55,7 +59,9 @@ function ProfileDropdown() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-body-sm"
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">settings</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              settings
+            </span>
             Settings
           </Link>
           <div className="border-t border-line-2" />
@@ -63,7 +69,9 @@ function ProfileDropdown() {
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-error hover:bg-error/10 transition-colors font-body-sm"
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              logout
+            </span>
             Logout
           </button>
         </div>

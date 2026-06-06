@@ -12,7 +12,7 @@ import type { User } from '../../context/AuthContext';
 const mockNavigate = vi.fn();
 const mockLogout = vi.fn();
 
-vi.mock('react-router-dom', async (importOriginal) => {
+vi.mock('react-router-dom', async importOriginal => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
@@ -31,7 +31,7 @@ function renderTopNav(initialPath = '/') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <TopNav />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -114,7 +114,7 @@ describe('TopNav', () => {
     expect(screen.getByRole('link', { name: /^profile$/i })).toBeInTheDocument();
     await user.click(menuBtn);
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument()
     );
   });
 
@@ -145,7 +145,7 @@ describe('TopNav', () => {
     fireEvent.mouseDown(document.body);
 
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument()
     );
   });
 
@@ -197,7 +197,7 @@ describe('TopNav', () => {
     await user.click(screen.getByRole('link', { name: /^profile$/i }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: /^profile$/i })).not.toBeInTheDocument()
     );
   });
 
@@ -214,7 +214,7 @@ describe('TopNav', () => {
     await user.click(screen.getByRole('link', { name: /^settings$/i }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /^settings$/i })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: /^settings$/i })).not.toBeInTheDocument()
     );
   });
 

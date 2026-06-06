@@ -25,28 +25,37 @@ Two schemas in one database:
 | `Series` | int PK | A racing series (e.g., GT3 Cup) |
 | `Seasons` | int PK | Belongs to Series; `Active` bool |
 | `SeasonCars` | composite | Links Season ↔ Car |
-| `Weeks` | **Guid PK** | Belongs to Season; has `IracingTrackId` |
-| `Cars` | int PK | Car definitions |
-| `LapTimeEntries` | int PK | One row per driver lap; `DriverCustomerId` is iRacing ID |
-| `CarPercentileResults` | int PK | Cache/upsert — one row per (UserId, CarId, WeekId) |
-| `PersonalLaps` | int PK | Best personal lap per (UserId, CarId, TrackName, ConfigName) |
+| `SeasonCarClasses` | composite | Links Season ↔ CarClass |
+| `Weeks` | **Guid PK** | Belongs to Season; `TrackId` FK |
+| `Tracks` | int PK | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired) |
+| `Cars` | int PK | Car definitions (Name, RelativeSpeed) |
+| `CarClasses` | int PK | Car class groupings (Name, ShortName, RelativeSpeed) |
+| `CarClassCars` | composite | Many-to-many: CarClass ↔ Car |
+| `Subsessions` | int PK | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum) |
+| `SubsessionResults` | composite | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …) |
+| `CarPercentileResults` | composite | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute |
+| `PersonalLaps` | Guid PK | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness` |
 | `FeatureFlags` | int PK | Unique index on `Key` |
 
-**`identity` schema** — all ASP.NET Identity tables:
+**`identity` schema** — all ASP.NET Identity tables plus refresh tokens:
 
-`Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims`
+`Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims`, `RefreshTokens`
 
-`ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string` and `IRacingCustomerId long?`.
+`ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?`, and `ThemePreference string`.
+
+`RefreshTokens`: `Id` (Guid PK), `UserId` (Guid FK → Users, cascade delete), `TokenHash` (unique index — SHA-256 hex of the raw token, raw token is never stored), `ExpiresAt`, `CreatedAt`, `RevokedAt?`. A token is active when `RevokedAt` is null and `ExpiresAt > UtcNow`.
 
 ## Week.Id is a Guid
 
-`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other entity PK is an `int` (database sequence). Do not switch Week to int or introduce database-generated GUIDs on other entities without a migration plan.
+`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other entity PK is an `int` (database sequence), except `PersonalLap` (Guid) and `RefreshToken` (Guid). Do not switch these PKs without a migration plan.
 
 ## Critical indexes
 
-`LapTimeEntry` has two composite indexes — these drive every percentile query:
-- `(CarId, WeekId)` — filters all laps for a car in a week
-- `(DriverCustomerId, WeekId)` — finds a specific driver's laps
+`SubsessionResult` has indexes that drive every percentile query:
+- `(CarId, WeekId)` — filters all results for a car in a week (via `Subsession.WeekId`)
+- `(CustId, SeasonId, WeekNumber)` — finds a specific driver's results for a week
+
+`RefreshToken.TokenHash` has a unique index — lookup by hash is the only way to find a token (raw tokens are never stored).
 
 `FeatureFlag.Key` has a unique index — enforced at DB level, not just application level.
 
@@ -87,10 +96,11 @@ Services query `AppDbContext` directly via LINQ — no raw SQL, no stored proced
 
 Key access patterns to be aware of:
 
-- **Percentile query** (`PercentileCalculationService`): resolves `Week.Id` (Guid) by joining through `Season` on `SeriesId`, then queries `LapTimeEntries` twice — once for driver best, once for counts. Relies on both `LapTimeEntry` composite indexes.
-- **Recommendations** (`CarRecommendationService`): joins `Seasons → SeasonCars → Cars` to find cars available in a series this week.
+- **Percentile query** (`PercentileCalculationService`): resolves `Week.Id` (Guid) via `Season` join on `SeriesId`, then queries `SubsessionResults` (joined through `Subsession`) for driver best and field distribution. The caller's `UserId` (from JWT sub) is used for cache writes and personal lap lookup; the public `customerId` (iRacing customer ID query param) is used only for race field lookup.
+- **Recommendations** (`CarRecommendationService`): joins `Seasons → SeasonCars → Cars` to find cars available in a series this week, then cross-references `CarPercentileResults` for the authenticated user.
 - **Analytics** (`UserAnalyticsService`): loads `CarPercentileResults` joined with `Car` and `Week` for a user's history across series.
 - **CarPercentileResult upsert**: check-then-insert-or-update pattern; not a true SQL UPSERT but safe for single-instance API.
+- **Refresh token rotation**: single `SaveChangesAsync` revokes the old `RefreshToken` row (sets `RevokedAt`) and inserts the new one atomically.
 
 Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or project to DTOs with `.Select()` when only a subset of fields is needed.
 

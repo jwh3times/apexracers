@@ -1,7 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, type CarRecommendation } from '../services/api';
+import { api, type CarRecommendation, type Series } from '../services/api';
 import { formatLapTime } from '../utils/lapTime';
+import CalculationSource, { type PaceSourceValue } from '../components/CalculationSource';
+
+type FetchState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ok'; recs: CarRecommendation[] }
+  | { status: 'error'; message: string };
+
+type FetchAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_OK'; recs: CarRecommendation[] }
+  | { type: 'FETCH_ERROR'; message: string }
+  | { type: 'RESET' };
+
+function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { status: 'loading' };
+    case 'FETCH_OK':
+      return { status: 'ok', recs: action.recs };
+    case 'FETCH_ERROR':
+      return { status: 'error', message: action.message };
+    case 'RESET':
+      return { status: 'idle' };
+  }
+}
 
 function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
@@ -16,7 +42,15 @@ const scanTexture: React.CSSProperties = {
     'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
 };
 
-function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; seriesId: number; weekNumber: number }) {
+function HeroCard({
+  rec,
+  seriesId,
+  weekNumber,
+}: {
+  rec: CarRecommendation;
+  seriesId: number;
+  weekNumber: number;
+}) {
   return (
     <div
       className="card-r border border-line-2 bg-surface overflow-hidden"
@@ -26,9 +60,7 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <span className="text-eyebrow text-primary-container">
-              TOP MATCH
-            </span>
+            <span className="text-eyebrow text-primary-container">TOP MATCH</span>
             <h2 className="text-[22px] font-bold tracking-[-0.025em] text-on-surface leading-tight">
               {rec.carName}
             </h2>
@@ -53,17 +85,13 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
             </span>
           </div>
           <div>
-            <p className="text-th text-on-surface-variant mb-1">
-              Your Percentile
-            </p>
+            <p className="text-th text-on-surface-variant mb-1">Your Percentile</p>
             <span className="font-mono text-[22px] font-bold text-primary-container leading-none">
               {ordinal(rec.percentileRank)}
             </span>
           </div>
           <div>
-            <p className="text-th text-on-surface-variant mb-1">
-              Sample Size
-            </p>
+            <p className="text-th text-on-surface-variant mb-1">Sample Size</p>
             <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
               {rec.sampleSize.toLocaleString()}
             </span>
@@ -85,14 +113,24 @@ function HeroCard({ rec, seriesId, weekNumber }: { rec: CarRecommendation; serie
           style={{ boxShadow: '0 0 26px -8px var(--color-primary-container)' }}
         >
           Race this car
-          <span className="material-symbols-outlined text-[17px]" aria-hidden="true">arrow_forward</span>
+          <span className="material-symbols-outlined text-[17px]" aria-hidden="true">
+            arrow_forward
+          </span>
         </Link>
       </div>
     </div>
   );
 }
 
-function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommendation[]; seriesId: number; weekNumber: number }) {
+function RecommendationTable({
+  recs,
+  seriesId,
+  weekNumber,
+}: {
+  recs: CarRecommendation[];
+  seriesId: number;
+  weekNumber: number;
+}) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -108,7 +146,10 @@ function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommen
       </thead>
       <tbody>
         {recs.map(r => (
-          <tr key={r.carId} className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors">
+          <tr
+            key={r.carId}
+            className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors"
+          >
             <td className="td-p font-mono text-body-fluid text-on-surface-variant text-center">
               #{r.rank}
             </td>
@@ -143,120 +184,183 @@ function RecommendationTable({ recs, seriesId, weekNumber }: { recs: CarRecommen
 }
 
 export default function RecommendationsPage() {
-  const [searchParams] = useSearchParams();
-  const weekNumberParam = searchParams.get('weekNumber');
+  const [searchParams, setSearchParams] = useSearchParams();
   const seriesIdParam = searchParams.get('seriesId');
-  const weekNumber = weekNumberParam != null ? Number(weekNumberParam) : null;
-  const seriesId = seriesIdParam != null ? Number(seriesIdParam) : null;
 
-  const [recs, setRecs] = useState<CarRecommendation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [allSeries, setAllSeries] = useState<Series[]>([]);
+  const [seriesLoading, setSeriesLoading] = useState(true);
+  const [paceSource, setPaceSource] = useState<PaceSourceValue>({ mode: 'official', sessions: [] });
+
+  const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' } as FetchState);
 
   useEffect(() => {
-    if (weekNumber == null || seriesId == null) return;
-    setLoading(true);
-    setRecs([]);
-    setError(null);
-    api.getRecommendations(seriesId, weekNumber)
-      .then(setRecs)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load recommendations.'))
-      .finally(() => setLoading(false));
-  }, [weekNumber, seriesId]);
+    api
+      .getSeries()
+      .then(data => {
+        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name));
+        setAllSeries(sorted);
+      })
+      .catch(() => setAllSeries([]))
+      .finally(() => setSeriesLoading(false));
+  }, []);
 
-  if (weekNumber == null || seriesId == null) {
-    return (
-      <main className="page-wrap">
-        <div>
-          <p className="text-eyebrow text-primary-container">
-            RECOMMENDATIONS
-          </p>
-          <h1 className="text-page-title text-on-surface mt-2 mb-1">
-            My Car Recommendations
-          </h1>
-          <p className="text-body-fluid text-on-surface-variant max-w-prose mt-2">
-            Navigate to a week from the{' '}
-            <Link to="/series" className="text-primary-container hover:opacity-80 transition-opacity">
-              Series page
-            </Link>{' '}
-            and click &ldquo;See my car recommendations&rdquo; to view your personalized rankings.
-          </p>
-        </div>
-      </main>
-    );
-  }
+  const selectedSeriesId =
+    seriesIdParam != null ? Number(seriesIdParam) : (allSeries[0]?.id ?? null);
+  const selectedSeries = allSeries.find(s => s.id === selectedSeriesId) ?? null;
+  const weekNumber = selectedSeries?.currentWeekNumber ?? null;
+
+  useEffect(() => {
+    if (selectedSeriesId == null || weekNumber == null) {
+      dispatch({ type: 'RESET' });
+      return;
+    }
+    dispatch({ type: 'FETCH_START' });
+    const blended = paceSource.mode === 'blend';
+    api
+      .getRecommendations(selectedSeriesId, weekNumber, {
+        includePersonalLaps: blended,
+        personalLapTypes:
+          blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
+      })
+      .then(recs => dispatch({ type: 'FETCH_OK', recs }))
+      .catch((err: unknown) =>
+        dispatch({
+          type: 'FETCH_ERROR',
+          message: err instanceof Error ? err.message : 'Failed to load recommendations.',
+        })
+      );
+  }, [selectedSeriesId, weekNumber, paceSource]);
 
   return (
     <main className="page-wrap">
       <div className="mb-6">
-        <Link
-          to="/series"
-          className="inline-flex items-center gap-2 text-body-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
-        >
-          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
-          Back to Series
-        </Link>
-        <p className="text-eyebrow text-primary-container">
-          RECOMMENDATIONS
-        </p>
-        <h1 className="text-page-title text-on-surface mt-2 mb-1">
-          My Car Recommendations
-        </h1>
-        <p className="text-body-fluid text-on-surface-variant">
-          Week {weekNumber} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve driven use your
-          actual best time; others are projected from your historical percentile.
-        </p>
+        <p className="text-eyebrow text-primary-container">RECOMMENDATIONS</p>
+        <h1 className="text-page-title text-on-surface mt-2 mb-4">My Car Recommendations</h1>
+
+        {seriesLoading && (
+          <p className="text-body-fluid text-on-surface-variant animate-pulse">
+            Loading series&hellip;
+          </p>
+        )}
+
+        {!seriesLoading && allSeries.length === 0 && (
+          <p className="text-body-fluid text-on-surface-variant">No active series found.</p>
+        )}
+
+        {!seriesLoading && allSeries.length > 0 && (
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            {/* Left: week description */}
+            <p className="text-body-fluid text-on-surface-variant max-w-prose">
+              {weekNumber != null ? (
+                <>
+                  Week {weekNumber} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve
+                  driven use your actual best time; others are projected from your historical
+                  percentile.
+                </>
+              ) : (
+                <>This series does not have an active week.</>
+              )}
+            </p>
+
+            {/* Right: series selector */}
+            <div className="flex items-center gap-3 shrink-0">
+              <label htmlFor="series-select" className="text-body-fluid text-on-surface-variant">
+                Series:
+              </label>
+              <select
+                id="series-select"
+                value={selectedSeriesId ?? ''}
+                onChange={e => {
+                  if (e.target.value) setSearchParams({ seriesId: e.target.value });
+                }}
+                className="text-body-fluid text-on-surface bg-surface-container border border-line-2 rounded-[9px] px-3 py-[7px] cursor-pointer focus:outline-none focus:border-primary-container/50 transition-colors"
+              >
+                {allSeries.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
-      {loading && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <div className="flex flex-col gap-fluid">
+        {/* Pace source selector */}
+        {selectedSeries && weekNumber != null && (
+          <CalculationSource value={paceSource} onChange={setPaceSource} />
+        )}
 
-      {error && (
-        <div className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error" style={cardStyle}>
-          {error}
-        </div>
-      )}
+        {fetchState.status === 'loading' && (
+          <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
+        )}
 
-      {!loading && !error && recs.length === 0 && (
-        <div
-          className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
-          style={cardStyle}
-        >
-          <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
-            person_off
-          </span>
-          <p className="text-body-fluid text-on-surface-variant">
-            No recommendations available. Set your iRacing Customer ID in your{' '}
-            <Link to="/profile" className="text-primary-container hover:opacity-80 transition-opacity">
-              profile
-            </Link>{' '}
-            and upload a lap for at least one car in this series.
-          </p>
-        </div>
-      )}
+        {fetchState.status === 'error' && (
+          <div
+            className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
+            style={cardStyle}
+          >
+            {fetchState.message}
+          </div>
+        )}
 
-      {recs.length > 0 && (
-        <div className="flex flex-col gap-fluid">
-          <HeroCard rec={recs[0]} seriesId={seriesId} weekNumber={weekNumber} />
-
-          {recs.length > 1 && (
-            <div
-              className="card-r border border-line-2 bg-surface overflow-hidden"
-              style={cardStyle}
+        {fetchState.status === 'ok' && fetchState.recs.length === 0 && (
+          <div
+            className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
+            style={cardStyle}
+          >
+            <span
+              className="material-symbols-outlined text-4xl text-on-surface-variant"
+              aria-hidden="true"
             >
-              <div
-                className="flex items-center justify-between card-hp border-b border-line-2"
-                style={scanTexture}
+              person_off
+            </span>
+            <p className="text-body-fluid text-on-surface-variant">
+              No recommendations available. Set your iRacing Customer ID in your{' '}
+              <Link
+                to="/profile"
+                className="text-primary-container hover:opacity-80 transition-opacity"
               >
-                <h2 className="text-section-head text-on-surface">Other Options</h2>
-              </div>
-              <RecommendationTable recs={recs.slice(1)} seriesId={seriesId} weekNumber={weekNumber} />
-            </div>
+                profile
+              </Link>{' '}
+              and upload a lap for at least one car in this series.
+            </p>
+          </div>
+        )}
+
+        {fetchState.status === 'ok' &&
+          fetchState.recs.length > 0 &&
+          selectedSeriesId != null &&
+          weekNumber != null && (
+            <>
+              <HeroCard
+                rec={fetchState.recs[0]}
+                seriesId={selectedSeriesId}
+                weekNumber={weekNumber}
+              />
+
+              {fetchState.recs.length > 1 && (
+                <div
+                  className="card-r border border-line-2 bg-surface overflow-hidden"
+                  style={cardStyle}
+                >
+                  <div
+                    className="flex items-center justify-between card-hp border-b border-line-2"
+                    style={scanTexture}
+                  >
+                    <h2 className="text-section-head text-on-surface">Other Options</h2>
+                  </div>
+                  <RecommendationTable
+                    recs={fetchState.recs.slice(1)}
+                    seriesId={selectedSeriesId}
+                    weekNumber={weekNumber}
+                  />
+                </div>
+              )}
+            </>
           )}
-        </div>
-      )}
+      </div>
     </main>
   );
 }

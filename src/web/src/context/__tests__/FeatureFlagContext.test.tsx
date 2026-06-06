@@ -23,7 +23,7 @@ function renderWithProvider(flagKey = 'test.flag') {
   return render(
     <FeatureFlagProvider>
       <Consumer flagKey={flagKey} />
-    </FeatureFlagProvider>,
+    </FeatureFlagProvider>
   );
 }
 
@@ -34,34 +34,88 @@ describe('FeatureFlagContext', () => {
   });
 
   it('isEnabled returns false when there is no user', async () => {
-    await act(async () => { renderWithProvider(); });
+    await act(async () => {
+      renderWithProvider();
+    });
     expect(screen.getByTestId('result')).toHaveTextContent('off');
     expect(vi.mocked(api.getFeatureFlags)).not.toHaveBeenCalled();
   });
 
   it('fetches flags when a user is present and marks matching key as enabled', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
     vi.mocked(api.getFeatureFlags).mockResolvedValue([
-      { id: 1, key: 'test.flag', name: 'Test', description: null, isEnabled: true, minimumRole: 'Beta', createdAt: '', updatedAt: '' },
+      {
+        id: 1,
+        key: 'test.flag',
+        name: 'Test',
+        description: null,
+        isEnabled: true,
+        minimumRole: 'Beta',
+        createdAt: '',
+        updatedAt: '',
+      },
     ]);
-    await act(async () => { renderWithProvider('test.flag'); });
+    await act(async () => {
+      renderWithProvider('test.flag');
+    });
     await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('on'));
   });
 
   it('returns false for a key not in the fetched flags', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
     vi.mocked(api.getFeatureFlags).mockResolvedValue([
-      { id: 1, key: 'other.flag', name: 'Other', description: null, isEnabled: true, minimumRole: 'Beta', createdAt: '', updatedAt: '' },
+      {
+        id: 1,
+        key: 'other.flag',
+        name: 'Other',
+        description: null,
+        isEnabled: true,
+        minimumRole: 'Beta',
+        createdAt: '',
+        updatedAt: '',
+      },
     ]);
-    await act(async () => { renderWithProvider('test.flag'); });
+    await act(async () => {
+      renderWithProvider('test.flag');
+    });
     await waitFor(() => expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalled());
     expect(screen.getByTestId('result')).toHaveTextContent('off');
   });
 
   it('clears flags and returns false after user logs out', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
     vi.mocked(api.getFeatureFlags).mockResolvedValue([
-      { id: 1, key: 'test.flag', name: 'Test', description: null, isEnabled: true, minimumRole: 'Beta', createdAt: '', updatedAt: '' },
+      {
+        id: 1,
+        key: 'test.flag',
+        name: 'Test',
+        description: null,
+        isEnabled: true,
+        minimumRole: 'Beta',
+        createdAt: '',
+        updatedAt: '',
+      },
     ]);
     const { rerender } = renderWithProvider('test.flag');
     await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('on'));
@@ -71,16 +125,25 @@ describe('FeatureFlagContext', () => {
       rerender(
         <FeatureFlagProvider>
           <Consumer flagKey="test.flag" />
-        </FeatureFlagProvider>,
+        </FeatureFlagProvider>
       );
     });
     expect(screen.getByTestId('result')).toHaveTextContent('off');
   });
 
   it('handles API errors gracefully and leaves flags empty', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     vi.mocked(api.getFeatureFlags).mockRejectedValue(new Error('Network error'));
-    await act(async () => { renderWithProvider('test.flag'); });
+    await act(async () => {
+      renderWithProvider('test.flag');
+    });
     await waitFor(() => expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalled());
     expect(screen.getByTestId('result')).toHaveTextContent('off');
   });

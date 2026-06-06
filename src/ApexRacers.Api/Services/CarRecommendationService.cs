@@ -12,6 +12,7 @@ public class CarRecommendationService(AppDbContext db)
         int weekNumber,
         long customerId,
         bool includePersonalLaps = false,
+        IReadOnlyList<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
         var week = await db.Weeks
@@ -72,8 +73,10 @@ public class CarRecommendationService(AppDbContext db)
         var personalBestByCar = new Dictionary<int, double>();
         if (includePersonalLaps && user is not null)
         {
+            var types = personalLapTypes ?? [];
             personalBestByCar = await db.PersonalLaps
-                .Where(p => p.UserId == user.Id && p.IsValidLap && p.TrackId == week.TrackId)
+                .Where(p => p.UserId == user.Id && p.IsValidLap && p.TrackId == week.TrackId
+                         && (!types.Any() || types.Contains(p.SessionType) || p.SessionType == LapSessionType.Unknown))
                 .GroupBy(p => p.CarId)
                 .Select(g => new { CarId = g.Key, BestLap = g.Min(p => p.LapTimeSeconds) })
                 .ToDictionaryAsync(x => x.CarId, x => x.BestLap, ct);
@@ -210,12 +213,77 @@ public class CarRecommendationService(AppDbContext db)
                     CarName: carName,
                     PercentileRank: percentileRank,
                     SampleSize: total,
-                    ProjectedLapSeconds: projectedFromActual ?? raceBestLap,
-                    BestLapSeconds: raceBestLap));
+                    ProjectedLapSeconds: projectedFromActual ?? driverBest,
+                    BestLapSeconds: driverBest));
+            }
+            else if (personalBestByCar.TryGetValue(carId, out var personalLap))
+            {
+                // Personal lap path — driver uploaded a lap for this car at this track but has
+                // no SubsessionResult for it this week. Compute a fresh percentile against the
+                // current field; user is not in the race, so denominator is the full field size.
+                var total = carField.Count;
+                var slowerCount = carField.Count(r => r.BestLap > personalLap);
+                var percentileRank = total > 0 ? slowerCount * 100.0 / total : 100.0;
+
+                double newAvg;
+                if (cachedPercentiles.TryGetValue(carId, out var prior2))
+                {
+                    if (existingCacheThisWeek.TryGetValue(carId, out _))
+                    {
+                        var oldReading = existingCacheThisWeek[carId].PercentileRank;
+                        newAvg = prior2.Count > 0
+                            ? (prior2.Sum - oldReading + percentileRank) / prior2.Count
+                            : percentileRank;
+                    }
+                    else
+                    {
+                        newAvg = (prior2.Sum + percentileRank) / (prior2.Count + 1);
+                    }
+                }
+                else
+                {
+                    newAvg = percentileRank;
+                }
+
+                if (user is not null)
+                {
+                    if (existingCacheThisWeek.TryGetValue(carId, out var cached2))
+                    {
+                        cached2.PercentileRank = percentileRank;
+                        cached2.SampleSize     = total;
+                        cached2.ComputedAt     = computedAt;
+                    }
+                    else
+                    {
+                        db.CarPercentileResults.Add(new CarPercentileResult
+                        {
+                            UserId         = user.Id,
+                            CarId          = carId,
+                            SeriesId       = week.SeriesId,
+                            WeekId         = weekDbId,
+                            PercentileRank = percentileRank,
+                            SampleSize     = total,
+                            ComputedAt     = computedAt,
+                        });
+                    }
+                }
+
+                var plSortedLaps = carField.Select(r => r.BestLap).ToList();
+                var plProjected  = ProjectedLapTime(plSortedLaps, newAvg);
+                if (plProjected is null) continue;
+
+                results.Add(new CarRecommendationDto(
+                    Rank: 0,
+                    CarId: carId,
+                    CarName: carName,
+                    PercentileRank: percentileRank,
+                    SampleSize: total,
+                    ProjectedLapSeconds: plProjected.Value,
+                    BestLapSeconds: personalLap));
             }
             else
             {
-                // Projected path — driver hasn't raced this car this week.
+                // Projected path — driver hasn't raced this car this week and has no personal lap.
                 double historicalPercentile;
                 if (cachedPercentiles.TryGetValue(carId, out var priorTuple))
                 {

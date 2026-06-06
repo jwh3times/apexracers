@@ -14,7 +14,11 @@ const mockGetMyLaps = vi.mocked(api.getMyLaps);
 
 async function renderPage() {
   await act(async () => {
-    render(<MemoryRouter><TelemetryPage /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <TelemetryPage />
+      </MemoryRouter>
+    );
   });
 }
 

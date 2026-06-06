@@ -1,13 +1,33 @@
 namespace ApexRacers.Api.Dtos;
 
-public record SeriesDto(int Id, string Name, int SeasonId, int? CurrentWeekNumber);
+public record SeriesDto(
+    int Id,
+    string Name,
+    int SeasonId,
+    int? CurrentWeekNumber,
+    string? Category,
+    string? TrackName,
+    string? TrackConfigName,
+    int CarCount,
+    int DriverCount);
 
 public record WeekCarDto(
     int CarId,
     string CarName,
+    string? ClassName,
     int EntryCount,
     double? FastestLapSeconds,
     double? MedianLapSeconds);
+
+public record WeekDetailDto(
+    string SeriesName,
+    string? Category,
+    string? TrackName,
+    string? TrackConfigName,
+    double? TrackLengthMiles,
+    IReadOnlyList<WeekCarDto> Cars);
+
+public record DistributionBin(double MinSeconds, double MaxSeconds, int Count, bool ContainsUser);
 
 public record PercentileResultDto(
     int SeriesId,
@@ -16,7 +36,14 @@ public record PercentileResultDto(
     long CustomerId,
     double PercentileRank,
     int SampleSize,
-    DateTimeOffset ComputedAt);
+    DateTimeOffset ComputedAt,
+    string SeriesName,
+    string? TrackName,
+    string? TrackConfigName,
+    double YourBestLapSeconds,
+    double FieldBestLapSeconds,
+    double FieldMedianLapSeconds,
+    IReadOnlyList<DistributionBin> Distribution);
 
 public record CarRecommendationDto(
     int Rank,
@@ -27,7 +54,7 @@ public record CarRecommendationDto(
     double ProjectedLapSeconds,
     double? BestLapSeconds);
 
-public record AuthResultDto(string Token, Guid UserId, string DisplayName);
+public record AuthResultDto(string Token, Guid UserId, string DisplayName, string? RefreshToken = null);
 
 public record AdminUserDto(Guid UserId, string Email, string DisplayName, string Role);
 

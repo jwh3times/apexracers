@@ -20,19 +20,24 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
-    api.getFeatureFlags()
+    api
+      .getFeatureFlags()
       .then((flags: FeatureFlag[]) => {
         if (cancelled) return;
         const map: Record<string, boolean> = {};
         for (const f of flags) map[f.key] = true;
         setFlagMap(map);
       })
-      .catch(() => { if (!cancelled) setFlagMap({}); });
-    return () => { cancelled = true; };
+      .catch(() => {
+        if (!cancelled) setFlagMap({});
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.userId, user?.role]);
 
   return (
-    <FeatureFlagContext.Provider value={{ isEnabled: (key) => flagMap[key] === true }}>
+    <FeatureFlagContext.Provider value={{ isEnabled: key => flagMap[key] === true }}>
       {children}
     </FeatureFlagContext.Provider>
   );

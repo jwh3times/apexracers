@@ -7,7 +7,7 @@ import { api } from '../../services/api';
 const mockNavigate = vi.fn();
 const mockLogin = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('react-router-dom', async (importOriginal) => {
+vi.mock('react-router-dom', async importOriginal => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
@@ -86,7 +86,11 @@ describe('LoginPage', () => {
 
   it('calls auth.login and navigates to dashboard on successful sign in', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.login).mockResolvedValue({ token: 'jwt-abc', userId: 'u1', displayName: 'Jerry' });
+    vi.mocked(api.login).mockResolvedValue({
+      token: 'jwt-abc',
+      userId: 'u1',
+      displayName: 'Jerry',
+    });
     renderPage();
     await user.type(screen.getByLabelText(/email address/i), 'jerry@example.com');
     await user.type(screen.getByLabelText(/^password$/i), 'mypassword');
@@ -95,7 +99,7 @@ describe('LoginPage', () => {
       expect(vi.mocked(api.login)).toHaveBeenCalledWith('jerry@example.com', 'mypassword');
       expect(mockLogin).toHaveBeenCalledWith(
         { token: 'jwt-abc', userId: 'u1', displayName: 'Jerry' },
-        'jerry@example.com',
+        'jerry@example.com'
       );
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });
@@ -125,7 +129,11 @@ describe('LoginPage', () => {
 
   it('calls auth.login and navigates to dashboard on successful registration', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.register).mockResolvedValue({ token: 'jwt-xyz', userId: 'u2', displayName: 'New User' });
+    vi.mocked(api.register).mockResolvedValue({
+      token: 'jwt-xyz',
+      userId: 'u2',
+      displayName: 'New User',
+    });
     renderPage();
     await user.click(screen.getByRole('tab', { name: 'Create Account' }));
     await user.type(screen.getByLabelText(/email address/i), 'new@example.com');
@@ -136,7 +144,7 @@ describe('LoginPage', () => {
       expect(vi.mocked(api.register)).toHaveBeenCalledWith('new@example.com', 'secret123');
       expect(mockLogin).toHaveBeenCalledWith(
         { token: 'jwt-xyz', userId: 'u2', displayName: 'New User' },
-        'new@example.com',
+        'new@example.com'
       );
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });

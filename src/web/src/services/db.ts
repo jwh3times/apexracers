@@ -9,7 +9,10 @@ function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => { _db = req.result; resolve(_db!); };
+    req.onsuccess = () => {
+      _db = req.result;
+      resolve(_db!);
+    };
     req.onerror = () => reject(req.error);
   });
 }

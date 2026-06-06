@@ -46,12 +46,16 @@ describe('AdminPage', () => {
   // ── Layout ──────────────────────────────────────────────────────────────────
 
   it('renders the Admin Panel heading', async () => {
-    await act(async () => { renderPage(); });
+    await act(async () => {
+      renderPage();
+    });
     expect(screen.getByRole('heading', { name: /admin panel/i })).toBeInTheDocument();
   });
 
   it('renders Users and Feature Flags tabs', async () => {
-    await act(async () => { renderPage(); });
+    await act(async () => {
+      renderPage();
+    });
     expect(screen.getByRole('button', { name: /^users$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /feature flags/i })).toBeInTheDocument();
   });
@@ -78,7 +82,12 @@ describe('AdminPage', () => {
 
   it('calls setAdminUserRole and removes Save button after successful save', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.setAdminUserRole).mockResolvedValue({ userId: 'u1', email: 'alice@example.com', displayName: 'Alice', role: 'Alpha' });
+    vi.mocked(api.setAdminUserRole).mockResolvedValue({
+      userId: 'u1',
+      email: 'alice@example.com',
+      displayName: 'Alice',
+      role: 'Alpha',
+    });
     renderPage();
     await waitFor(() => screen.getByText('alice@example.com'));
 
@@ -86,8 +95,12 @@ describe('AdminPage', () => {
     await user.selectOptions(selects[0], 'Alpha');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
 
-    await waitFor(() => expect(vi.mocked(api.setAdminUserRole)).toHaveBeenCalledWith('u1', 'Alpha'));
-    await waitFor(() => expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(vi.mocked(api.setAdminUserRole)).toHaveBeenCalledWith('u1', 'Alpha')
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument()
+    );
   });
 
   it('shows an error message when setAdminUserRole fails', async () => {
@@ -131,11 +144,22 @@ describe('AdminPage', () => {
     renderPage();
     await waitFor(() => screen.getByText('alice@example.com'));
     await user.click(screen.getByRole('button', { name: /feature flags/i }));
-    await waitFor(() => expect(screen.getByText(/failed to load feature flags/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/failed to load feature flags/i)).toBeInTheDocument()
+    );
   });
 
   it('creates a new flag when the create form is submitted', async () => {
-    const newFlag: FeatureFlag = { id: 2, key: 'dark.mode', name: 'Dark Mode', description: null, isEnabled: false, minimumRole: 'Standard', createdAt: '', updatedAt: '' };
+    const newFlag: FeatureFlag = {
+      id: 2,
+      key: 'dark.mode',
+      name: 'Dark Mode',
+      description: null,
+      isEnabled: false,
+      minimumRole: 'Standard',
+      createdAt: '',
+      updatedAt: '',
+    };
     vi.mocked(api.createFeatureFlag).mockResolvedValue(newFlag);
     const user = await switchToFlagsTab();
     await waitFor(() => screen.getByText('new.ui'));
@@ -146,9 +170,11 @@ describe('AdminPage', () => {
 
     await user.click(screen.getByRole('button', { name: /create flag/i }));
 
-    await waitFor(() => expect(vi.mocked(api.createFeatureFlag)).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'dark.mode', name: 'Dark Mode' }),
-    ));
+    await waitFor(() =>
+      expect(vi.mocked(api.createFeatureFlag)).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'dark.mode', name: 'Dark Mode' })
+      )
+    );
     await waitFor(() => expect(screen.getByText('dark.mode')).toBeInTheDocument());
   });
 
@@ -192,12 +218,19 @@ describe('AdminPage', () => {
     await waitFor(() => screen.getByText('new.ui'));
 
     await user.click(screen.getByRole('button', { name: /^edit$/i }));
-    const nameInput = screen.getAllByRole('textbox').find(el => (el as HTMLInputElement).value === 'New UI')!;
+    const nameInput = screen
+      .getAllByRole('textbox')
+      .find(el => (el as HTMLInputElement).value === 'New UI')!;
     await user.clear(nameInput);
     await user.type(nameInput, 'Updated Name');
 
     await user.click(screen.getByRole('button', { name: /^save$/i }));
-    await waitFor(() => expect(vi.mocked(api.updateFeatureFlag)).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'Updated Name' })));
+    await waitFor(() =>
+      expect(vi.mocked(api.updateFeatureFlag)).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ name: 'Updated Name' })
+      )
+    );
     await waitFor(() => expect(screen.getByText('Updated Name')).toBeInTheDocument());
   });
 

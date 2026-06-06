@@ -31,7 +31,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag async EF Core methods called without `await` or `CancellationToken` where one is available.
 
 **Auth and RBAC**
-- Flag any new endpoint that handles user-specific data and lacks `[Authorize]`.
+- Flag any new endpoint that handles user-specific data and lacks `[Authorize]`. **Exception**: `POST /api/auth/refresh` and `POST /api/auth/logout` intentionally have no `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT has expired.
 - Flag any new admin endpoint that lacks `[Authorize(Policy = "AdminOnly")]`.
 - Flag use of `[Authorize(Roles = "...")]` — this project uses claim-based policies (`RequireClaim("role", ...)`), not role-based authorization.
 - Flag any hardcoded JWT key, password, or secret in source code.

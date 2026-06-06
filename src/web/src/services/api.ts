@@ -4,6 +4,7 @@ export interface AuthResult {
   token: string;
   userId: string;
   displayName: string;
+  refreshToken?: string;
 }
 
 export interface Series {
@@ -11,6 +12,11 @@ export interface Series {
   name: string;
   seasonId: number;
   currentWeekNumber: number | null;
+  category: string | null;
+  trackName: string | null;
+  trackConfigName: string | null;
+  carCount: number;
+  driverCount: number;
 }
 
 export interface TelemetryUploadResult {
@@ -59,9 +65,26 @@ export interface PersonalLap {
 export interface WeekCar {
   carId: number;
   carName: string;
+  className: string | null;
   entryCount: number;
   fastestLapSeconds: number | null;
   medianLapSeconds: number | null;
+}
+
+export interface WeekDetail {
+  seriesName: string;
+  category: string | null;
+  trackName: string | null;
+  trackConfigName: string | null;
+  trackLengthMiles: number | null;
+  cars: WeekCar[];
+}
+
+export interface DistributionBin {
+  minSeconds: number;
+  maxSeconds: number;
+  count: number;
+  containsUser: boolean;
 }
 
 export interface PercentileResult {
@@ -72,6 +95,13 @@ export interface PercentileResult {
   percentileRank: number;
   sampleSize: number;
   computedAt: string; // ISO 8601
+  seriesName: string;
+  trackName: string | null;
+  trackConfigName: string | null;
+  yourBestLapSeconds: number;
+  fieldBestLapSeconds: number;
+  fieldMedianLapSeconds: number;
+  distribution: DistributionBin[];
 }
 
 export interface CarRecommendation {
@@ -82,6 +112,19 @@ export interface CarRecommendation {
   sampleSize: number;
   projectedLapSeconds: number;
   bestLapSeconds: number | null;
+}
+
+export type LapSessionType =
+  | 'Unknown'
+  | 'Practice'
+  | 'Qualifying'
+  | 'TimeTrial'
+  | 'Race'
+  | 'LoneQualify';
+
+export interface RecommendationOptions {
+  includePersonalLaps?: boolean;
+  personalLapTypes?: LapSessionType[];
 }
 
 export interface AdminUser {
@@ -105,22 +148,85 @@ export interface FeatureFlag {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
+let _refreshToken: string | null = null;
+let _onTokenRefreshed: ((token: string, refreshToken: string) => void) | null = null;
+let _onSessionExpired: (() => void) | null = null;
+let _refreshPromise: Promise<boolean> | null = null;
 
-export function setToken(token: string): void { _token = token; }
-export function clearToken(): void { _token = null; }
+export function setToken(token: string): void {
+  _token = token;
+}
+export function setRefreshToken(token: string | null): void {
+  _refreshToken = token;
+}
+export function clearToken(): void {
+  _token = null;
+  _refreshToken = null;
+}
+export function onTokenRefreshed(cb: (token: string, refreshToken: string) => void): void {
+  _onTokenRefreshed = cb;
+}
+export function onSessionExpired(cb: () => void): void {
+  _onSessionExpired = cb;
+}
 
 function authHeaders(): Record<string, string> {
   return _token ? { Authorization: `Bearer ${_token}` } : {};
 }
 
+async function tryRefresh(): Promise<boolean> {
+  if (!_refreshToken) return false;
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: _refreshToken }),
+      });
+      if (!res.ok) {
+        _onSessionExpired?.();
+        return false;
+      }
+      const data = (await res.json()) as AuthResult;
+      _token = data.token;
+      if (data.refreshToken) _refreshToken = data.refreshToken;
+      _onTokenRefreshed?.(data.token, data.refreshToken ?? '');
+      return true;
+    } catch {
+      _onSessionExpired?.();
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: authHeaders() });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, { headers: authHeaders() });
+      if (!retry.ok) throw new Error(`GET ${path} → ${retry.status} ${retry.statusText}`);
+      return retry.json() as Promise<T>;
+    }
+  }
   if (!res.ok) throw new Error(`GET ${path} → ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
 async function post<T>(path: string): Promise<T> {
   const res = await fetch(path, { method: 'POST', headers: authHeaders() });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, { method: 'POST', headers: authHeaders() });
+      if (!retry.ok) throw new Error(`POST ${path} → ${retry.status} ${retry.statusText}`);
+      return retry.json() as Promise<T>;
+    }
+  }
   if (!res.ok) throw new Error(`POST ${path} → ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
@@ -131,6 +237,20 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(body),
+      });
+      if (!retry.ok) {
+        const text = await retry.text().catch(() => retry.statusText);
+        throw new Error(text || `POST ${path} → ${retry.status}`);
+      }
+      return retry.json() as Promise<T>;
+    }
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `POST ${path} → ${res.status}`);
@@ -144,6 +264,20 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(body),
+      });
+      if (!retry.ok) {
+        const text = await retry.text().catch(() => retry.statusText);
+        throw new Error(text || `PUT ${path} → ${retry.status}`);
+      }
+      return retry.json() as Promise<T>;
+    }
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `PUT ${path} → ${res.status}`);
@@ -153,11 +287,28 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
 
 async function deleteReq(path: string): Promise<void> {
   const res = await fetch(path, { method: 'DELETE', headers: authHeaders() });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, { method: 'DELETE', headers: authHeaders() });
+      if (!retry.ok) throw new Error(`DELETE ${path} → ${retry.status} ${retry.statusText}`);
+      return;
+    }
+  }
   if (!res.ok) throw new Error(`DELETE ${path} → ${res.status} ${res.statusText}`);
 }
 
 async function postForm<T>(path: string, body: FormData): Promise<T> {
   const res = await fetch(path, { method: 'POST', headers: authHeaders(), body });
+  if (res.status === 401) {
+    if (await tryRefresh()) {
+      const retry = await fetch(path, { method: 'POST', headers: authHeaders(), body });
+      if (!retry.ok) {
+        const text = await retry.text().catch(() => retry.statusText);
+        throw new Error(text || `POST ${path} → ${retry.status}`);
+      }
+      return retry.json() as Promise<T>;
+    }
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `POST ${path} → ${res.status}`);
@@ -173,6 +324,11 @@ export const api = {
     return get('/api/series');
   },
 
+  /** GET /api/series/:seriesId/weeks/:weekNumber — series + track metadata and full car breakdown */
+  getWeekDetail(seriesId: number, weekNumber: number): Promise<WeekDetail> {
+    return get(`/api/series/${seriesId}/weeks/${weekNumber}`);
+  },
+
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars — cars with aggregate lap stats */
   getCarsForWeek(seriesId: number, weekNumber: number): Promise<WeekCar[]> {
     return get(`/api/series/${seriesId}/weeks/${weekNumber}/cars`);
@@ -184,14 +340,23 @@ export const api = {
     weekNumber: number,
     carId: number,
     customerId: number,
+    options?: RecommendationOptions
   ): Promise<PercentileResult> {
     const qs = new URLSearchParams({ customerId: String(customerId) });
+    if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
+    options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
     return get(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`);
   },
 
   /** GET /api/users/me/recommendations?seriesId=&weekNumber= */
-  getRecommendations(seriesId: number, weekNumber: number): Promise<CarRecommendation[]> {
+  getRecommendations(
+    seriesId: number,
+    weekNumber: number,
+    options?: RecommendationOptions
+  ): Promise<CarRecommendation[]> {
     const qs = new URLSearchParams({ seriesId: String(seriesId), weekNumber: String(weekNumber) });
+    if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
+    options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
     return get(`/api/users/me/recommendations?${qs}`);
   },
 
@@ -206,7 +371,11 @@ export const api = {
   },
 
   /** PUT /api/auth/profile — update display name, email, and optional iRacing customer ID, returns fresh JWT */
-  updateProfile(displayName: string, iRacingCustomerId: number | null, email: string): Promise<AuthResult> {
+  updateProfile(
+    displayName: string,
+    iRacingCustomerId: number | null,
+    email: string
+  ): Promise<AuthResult> {
     return putJson('/api/auth/profile', { displayName, iRacingCustomerId, email });
   },
 
@@ -231,9 +400,7 @@ export const api = {
   /** GET /api/users/me/analytics?seriesId= — per-car percentile history and trend for the authenticated user */
   getMyAnalytics(seriesId?: number): Promise<CarAnalytics[]> {
     const path =
-      seriesId != null
-        ? `/api/users/me/analytics?seriesId=${seriesId}`
-        : '/api/users/me/analytics';
+      seriesId != null ? `/api/users/me/analytics?seriesId=${seriesId}` : '/api/users/me/analytics';
     return get(path);
   },
 
@@ -245,6 +412,22 @@ export const api = {
   /** PUT /api/auth/role — self-assign Standard, Beta, or Alpha role, returns fresh JWT */
   updateRole(role: string): Promise<AuthResult> {
     return putJson('/api/auth/role', { role });
+  },
+
+  /** POST /api/auth/refresh — exchange a refresh token for a new access + refresh token pair */
+  refreshTokens(refreshToken: string): Promise<AuthResult> {
+    return postJson('/api/auth/refresh', { refreshToken });
+  },
+
+  /** POST /api/auth/logout — revoke a refresh token (best-effort, never throws) */
+  revokeToken(refreshToken: string): Promise<void> {
+    return fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ refreshToken }),
+    })
+      .then(() => void 0)
+      .catch(() => void 0);
   },
 
   /** GET /api/feature-flags — flags the authenticated user is entitled to see */
@@ -281,12 +464,15 @@ export const api = {
   },
 
   /** PUT /api/admin/feature-flags/:id */
-  updateFeatureFlag(id: number, data: {
-    name: string;
-    description: string | null;
-    isEnabled: boolean;
-    minimumRole: string;
-  }): Promise<FeatureFlag> {
+  updateFeatureFlag(
+    id: number,
+    data: {
+      name: string;
+      description: string | null;
+      isEnabled: boolean;
+      minimumRole: string;
+    }
+  ): Promise<FeatureFlag> {
     return putJson(`/api/admin/feature-flags/${id}`, data);
   },
 

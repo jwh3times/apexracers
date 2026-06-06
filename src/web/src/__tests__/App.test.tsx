@@ -12,7 +12,9 @@ vi.mock('../services/db', () => ({
 
 describe('App', () => {
   it('renders the public landing page on the home route', async () => {
-    await act(async () => { render(<App />); });
+    await act(async () => {
+      render(<App />);
+    });
     // "/" renders the public landing page outside AppShell — the landing header
     // shows Sign in and Start free CTAs; the sidebar nav (Home, Browse Series) is not visible
     expect(screen.getAllByRole('link', { name: /sign in/i }).length).toBeGreaterThan(0);
@@ -21,9 +23,9 @@ describe('App', () => {
   });
 
   it('renders the home page content by default', async () => {
-    await act(async () => { render(<App />); });
-    expect(
-      screen.getByRole('heading', { name: /win races/i })
-    ).toBeInTheDocument();
+    await act(async () => {
+      render(<App />);
+    });
+    expect(screen.getByRole('heading', { name: /win races/i })).toBeInTheDocument();
   });
 });

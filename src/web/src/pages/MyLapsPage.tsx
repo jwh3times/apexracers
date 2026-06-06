@@ -49,7 +49,9 @@ function StatCard({
         </span>
       </div>
       <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">{label}</p>
-      <p className={`font-data-lg text-[48px] leading-none font-extrabold tracking-tighter ${gold ? 'text-tertiary-fixed-dim' : 'text-primary-fixed-dim'}`}>
+      <p
+        className={`font-data-lg text-[48px] leading-none font-extrabold tracking-tighter ${gold ? 'text-tertiary-fixed-dim' : 'text-primary-fixed-dim'}`}
+      >
         {value}
       </p>
       {sub && (
@@ -74,24 +76,28 @@ export default function MyLapsPage() {
 
   useEffect(() => {
     setLoading(true);
-    api.getMyLaps()
+    api
+      .getMyLaps()
       .then(setLaps)
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load laps.'))
+        setError(err instanceof Error ? err.message : 'Failed to load laps.')
+      )
       .finally(() => setLoading(false));
   }, []);
 
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
   const uniqueTracks = new Set(laps.map(l => l.trackName)).size;
-  const bestLap = laps.length > 0
-    ? laps.reduce((best, l) => l.bestLapSeconds < best.bestLapSeconds ? l : best)
-    : null;
+  const bestLap =
+    laps.length > 0
+      ? laps.reduce((best, l) => (l.bestLapSeconds < best.bestLapSeconds ? l : best))
+      : null;
 
   const filtered = search.trim()
-    ? laps.filter(l =>
-        l.carName.toLowerCase().includes(search.toLowerCase()) ||
-        l.trackName.toLowerCase().includes(search.toLowerCase()) ||
-        (l.configName ?? '').toLowerCase().includes(search.toLowerCase()),
+    ? laps.filter(
+        l =>
+          l.carName.toLowerCase().includes(search.toLowerCase()) ||
+          l.trackName.toLowerCase().includes(search.toLowerCase()) ||
+          (l.configName ?? '').toLowerCase().includes(search.toLowerCase())
       )
     : laps;
 
@@ -112,18 +118,22 @@ export default function MyLapsPage() {
         <p className="text-on-surface-variant font-body-sm animate-pulse">Loading&hellip;</p>
       )}
 
-      {error && (
-        <div className="glass-panel rounded-lg p-6 font-body-sm text-error">{error}</div>
-      )}
+      {error && <div className="glass-panel rounded-lg p-6 font-body-sm text-error">{error}</div>}
 
       {!loading && !error && laps.length === 0 && (
         <div className="glass-panel rounded-xl p-8 flex flex-col items-center gap-4 text-center max-w-md">
-          <span className="material-symbols-outlined text-4xl text-on-surface-variant" aria-hidden="true">
+          <span
+            className="material-symbols-outlined text-4xl text-on-surface-variant"
+            aria-hidden="true"
+          >
             timer_off
           </span>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
             No laps recorded yet.{' '}
-            <Link to="/telemetry" className="text-primary-fixed-dim hover:text-primary transition-colors">
+            <Link
+              to="/telemetry"
+              className="text-primary-fixed-dim hover:text-primary transition-colors"
+            >
               Upload a telemetry file
             </Link>{' '}
             to get started.
@@ -164,7 +174,10 @@ export default function MyLapsPage() {
           <div className="glass-panel rounded-xl border border-outline-variant/30 flex flex-col md:flex-row gap-4 p-4 items-center justify-between">
             <div className="flex flex-wrap gap-3 w-full md:w-auto">
               <div className="relative w-full md:w-64">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none" aria-hidden="true">
+                <span
+                  className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none"
+                  aria-hidden="true"
+                >
                   search
                 </span>
                 <input
@@ -213,7 +226,10 @@ export default function MyLapsPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-surface-container-highest rounded flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-[16px] text-on-surface-variant" aria-hidden="true">
+                            <span
+                              className="material-symbols-outlined text-[16px] text-on-surface-variant"
+                              aria-hidden="true"
+                            >
                               directions_car
                             </span>
                           </div>
@@ -222,9 +238,7 @@ export default function MyLapsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-on-surface-variant">
-                        {trackLabel(lap)}
-                      </td>
+                      <td className="py-3 px-4 text-on-surface-variant">{trackLabel(lap)}</td>
                       <td className="py-3 px-4 font-data-md text-data-md text-right text-primary-fixed-dim">
                         {formatLapTime(lap.bestLapSeconds)}
                       </td>

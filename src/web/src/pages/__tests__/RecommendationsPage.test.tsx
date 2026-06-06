@@ -1,25 +1,63 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RecommendationsPage from '../RecommendationsPage';
 import { api } from '../../services/api';
 
 vi.mock('../../services/api', () => ({
-  api: { getRecommendations: vi.fn() },
+  api: {
+    getSeries: vi.fn(),
+    getRecommendations: vi.fn(),
+  },
 }));
 
+const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetRecs = vi.mocked(api.getRecommendations);
+
+// Ferrari sorts before Porsche alphabetically — auto-selected first
+const MOCK_SERIES = [
+  {
+    id: 1,
+    name: 'Porsche Cup',
+    seasonId: 10,
+    currentWeekNumber: 10,
+    category: 'Road',
+    trackName: null,
+    trackConfigName: null,
+    carCount: 1,
+    driverCount: 50,
+  },
+  {
+    id: 2,
+    name: 'Ferrari GT3 Challenge',
+    seasonId: 11,
+    currentWeekNumber: 8,
+    category: 'Road',
+    trackName: null,
+    trackConfigName: null,
+    carCount: 3,
+    driverCount: 100,
+  },
+];
 
 const MOCK_RECS = [
   {
-    rank: 1, carId: 2, carName: 'Ferrari 296 GT3',
-    percentileRank: 87.5, sampleSize: 200,
-    bestLapSeconds: 78.5, projectedLapSeconds: 78.2,
+    rank: 1,
+    carId: 2,
+    carName: 'Ferrari 296 GT3',
+    percentileRank: 87.5,
+    sampleSize: 200,
+    bestLapSeconds: 78.5,
+    projectedLapSeconds: 78.2,
   },
   {
-    rank: 2, carId: 1, carName: 'Porsche 992 GT3',
-    percentileRank: 72.0, sampleSize: 180,
-    bestLapSeconds: null, projectedLapSeconds: 79.1,
+    rank: 2,
+    carId: 1,
+    carName: 'Porsche 992 GT3',
+    percentileRank: 72.0,
+    sampleSize: 180,
+    bestLapSeconds: null,
+    projectedLapSeconds: 79.1,
   },
 ];
 
@@ -32,25 +70,41 @@ function renderPage(search = '') {
 }
 
 describe('RecommendationsPage', () => {
-  beforeEach(() => { vi.resetAllMocks(); });
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
-  it('shows navigation prompt when no seriesId/weekNumber in query string', () => {
+  it('renders series dropdown and auto-selects first alphabetical series', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue([]);
     renderPage();
-    expect(screen.getByText(/navigate to a week/i)).toBeInTheDocument();
-    expect(mockGetRecs).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+    // Ferrari GT3 Challenge (id 2) sorts before Porsche Cup alphabetically
+    expect(mockGetRecs).toHaveBeenCalledWith(2, 8, expect.any(Object));
+  });
+
+  it('uses seriesId from URL when present', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue([]);
+    renderPage('?seriesId=1');
+    await waitFor(() => {
+      expect(mockGetRecs).toHaveBeenCalledWith(1, 10, expect.any(Object));
+    });
   });
 
   it('shows empty-state prompt with profile link when no recommendations', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue([]);
-    renderPage('?seriesId=1&weekNumber=10');
-    await waitFor(() =>
-      expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument(),
-    );
+    renderPage('?seriesId=1');
+    await waitFor(() => expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument());
   });
 
   it('renders top recommendation with car name and formatted lap times', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?seriesId=1&weekNumber=10');
+    renderPage('?seriesId=1');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
       expect(screen.getByText('#1')).toBeInTheDocument();
@@ -63,8 +117,9 @@ describe('RecommendationsPage', () => {
   });
 
   it('shows dash in Best Lap column for cars without an actual lap this week', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?seriesId=1&weekNumber=10');
+    renderPage('?seriesId=1');
     await waitFor(() => {
       // Porsche has bestLapSeconds: null — dash appears in the Best Lap cell
       expect(screen.getByText('—')).toBeInTheDocument();
@@ -72,8 +127,9 @@ describe('RecommendationsPage', () => {
   });
 
   it('shows formatted best lap for cars with an actual lap', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?seriesId=1&weekNumber=10');
+    renderPage('?seriesId=1');
     await waitFor(() => {
       expect(screen.getByText('Ferrari 296 GT3')).toBeInTheDocument();
       // Ferrari has bestLapSeconds: 78.5 → 1:18.500 (no dash)
@@ -82,8 +138,9 @@ describe('RecommendationsPage', () => {
   });
 
   it('renders other-options list for second and subsequent recommendations', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue(MOCK_RECS);
-    renderPage('?seriesId=1&weekNumber=10');
+    renderPage('?seriesId=1');
     await waitFor(() => {
       expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument();
       expect(screen.getByText('#2')).toBeInTheDocument();
@@ -91,8 +148,39 @@ describe('RecommendationsPage', () => {
   });
 
   it('shows error message when API fails', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockRejectedValue(new Error('Unauthorized'));
-    renderPage('?seriesId=1&weekNumber=10');
+    renderPage('?seriesId=1');
     await waitFor(() => expect(screen.getByText(/unauthorized/i)).toBeInTheDocument());
+  });
+
+  it('shows loading message while fetching series', () => {
+    mockGetSeries.mockReturnValue(new Promise(() => {})); // never resolves
+    renderPage();
+    expect(screen.getByText(/loading series/i)).toBeInTheDocument();
+  });
+
+  it('shows no active series message when getSeries returns empty', async () => {
+    mockGetSeries.mockResolvedValue([]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/no active series found/i)).toBeInTheDocument());
+  });
+
+  it('switching to blend mode re-fetches with includePersonalLaps true', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue([]);
+    renderPage('?seriesId=1');
+
+    await waitFor(() => expect(mockGetRecs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('radio', { name: /official \+ my uploaded laps/i }));
+
+    await waitFor(() =>
+      expect(mockGetRecs).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.objectContaining({ includePersonalLaps: true })
+      )
+    );
   });
 });

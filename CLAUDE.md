@@ -137,7 +137,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
-- `AuthController` — account management: register, login, profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), iRacing OAuth 2.0 callback (`POST /api/auth/callback`)
+- `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), iRacing OAuth 2.0 callback (`POST /api/auth/callback`)
 - `TelemetryController` — iRacing `.ibt` file upload (`POST /api/telemetry/upload`) and personal best laps (`GET /api/telemetry/laps`)
 - `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
 - `FeatureFlagsController` — returns the caller's active feature flags (`/api/feature-flags`)
@@ -152,7 +152,7 @@ Services in `src/ApexRacers.Api/Services/`:
 - `PercentileCalculationService` — compute and cache driver percentile rank
 - `CarRecommendationService` — ranked car recommendations based on personal percentile data
 - `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
-- `AuthService` — registration, login (JWT), profile updates
+- `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
 - `AdminService` — user role management and feature flag CRUD
@@ -182,6 +182,7 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 | `PersonalLap` | User's personal best lap per track+car (UserId, CarId, TrackId, LapTimeSeconds, IsValidLap, TrackTempCelsius, TrackWetness, RecordedAt) |
 | `CarPercentileResult` | Cached percentile rank (UserId, CarId, SeriesId, WeekId, PercentileRank, SampleSize, ComputedAt) |
 | `FeatureFlag` | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt) |
+| `RefreshToken` | Rotating refresh token (Id, UserId, TokenHash [SHA-256 hex], ExpiresAt, CreatedAt, RevokedAt?); stored in `identity` schema |
 
 ### iRacing data ingestion
 
@@ -304,7 +305,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/context/` contains three React contexts:
 
-- `AuthContext` — Manages user session, JWT token, login/logout, profile updates, role tier selection, and alert toggle. Wrap components that need auth state with `useAuth()`.
+- `AuthContext` — Manages user session, JWT access token + refresh token, silent token refresh on startup (when JWT is expired but refresh token is valid), login/logout (logout revokes the refresh token), profile updates, role tier selection, and alert toggle. Wrap components that need auth state with `useAuth()`.
 - `ThemeContext` — Manages theme preference (`auto` / `light` / `dark`), applies the CSS class to `<html>`, and persists the selection to the API via `PUT /api/auth/theme`.
 - `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `hasFlag(key)` for conditional feature rendering.
 

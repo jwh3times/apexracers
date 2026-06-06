@@ -8,6 +8,7 @@ public class PersonalLap
     public int TrackId { get; set; }
     public double LapTimeSeconds { get; set; }
     public bool IsValidLap { get; set; }
+    public LapSessionType SessionType { get; set; } = LapSessionType.Unknown;
     public float AirTempCelsius { get; set; }
     public float TrackTempCelsius { get; set; }
     public byte TrackWetness { get; set; }

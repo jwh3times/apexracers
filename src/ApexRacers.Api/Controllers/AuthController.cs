@@ -85,7 +85,28 @@ public class AuthController(AuthService auth) : ControllerBase
         }
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshAsync([FromBody] RefreshRequest request, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await auth.RefreshAsync(request.RefreshToken, ct));
+        }
+        catch (InvalidOperationException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> LogoutAsync([FromBody] RevokeRequest request, CancellationToken ct)
+    {
+        await auth.RevokeAsync(request.RefreshToken, ct);
+        return NoContent();
+    }
+
     [HttpPost("callback")]
+    [Authorize]
     public async Task<IActionResult> CallbackAsync(
         [FromQuery] string? code,
         [FromQuery] string? state,
@@ -94,6 +115,13 @@ public class AuthController(AuthService auth) : ControllerBase
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
             return BadRequest("code and state are required.");
 
-        return Ok(await auth.HandleCallbackAsync(code, state, ct));
+        try
+        {
+            return Ok(await auth.HandleCallbackAsync(code, state, ct));
+        }
+        catch (NotImplementedException)
+        {
+            return StatusCode(501, "iRacing OAuth linking is not yet available.");
+        }
     }
 }

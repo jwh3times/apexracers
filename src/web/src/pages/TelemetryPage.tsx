@@ -27,7 +27,10 @@ function FileRow({ item }: { item: FileStatus }) {
     <div className="px-4 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="material-symbols-outlined text-[16px] text-on-surface-variant shrink-0" aria-hidden="true">
+          <span
+            className="material-symbols-outlined text-[16px] text-on-surface-variant shrink-0"
+            aria-hidden="true"
+          >
             description
           </span>
           <span className="font-body-sm text-body-sm text-on-surface font-medium truncate">
@@ -39,13 +42,22 @@ function FileRow({ item }: { item: FileStatus }) {
             <span className="font-label-caps text-label-caps text-on-surface-variant">Pending</span>
           )}
           {item.status === 'uploading' && (
-            <span className="font-label-caps text-label-caps text-primary-fixed-dim animate-pulse">Uploading…</span>
+            <span className="font-label-caps text-label-caps text-primary-fixed-dim animate-pulse">
+              Uploading…
+            </span>
           )}
           {item.status === 'done' && (
-            <span className="material-symbols-outlined text-[18px] text-primary-container fill" aria-hidden="true">check_circle</span>
+            <span
+              className="material-symbols-outlined text-[18px] text-primary-container fill"
+              aria-hidden="true"
+            >
+              check_circle
+            </span>
           )}
           {item.status === 'error' && (
-            <span className="material-symbols-outlined text-[18px] text-error" aria-hidden="true">error</span>
+            <span className="material-symbols-outlined text-[18px] text-error" aria-hidden="true">
+              error
+            </span>
           )}
         </span>
       </div>
@@ -95,13 +107,18 @@ export default function TelemetryPage() {
 
   function fetchLaps() {
     setLapsLoading(true);
-    api.getMyLaps()
+    api
+      .getMyLaps()
       .then(laps => setRecentLaps(laps.slice(0, 5)))
-      .catch(() => {/* silently ignore — user may not be authenticated */})
+      .catch(() => {
+        /* silently ignore — user may not be authenticated */
+      })
       .finally(() => setLapsLoading(false));
   }
 
-  useEffect(() => { fetchLaps(); }, []);
+  useEffect(() => {
+    fetchLaps();
+  }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -111,14 +128,18 @@ export default function TelemetryPage() {
     setQueue(initial);
 
     for (let i = 0; i < files.length; i++) {
-      setQueue(q => q.map((item, idx) => idx === i ? { ...item, status: 'uploading' } : item));
+      setQueue(q => q.map((item, idx) => (idx === i ? { ...item, status: 'uploading' } : item)));
 
       try {
         const result = await api.uploadTelemetry(files[i]);
-        setQueue(q => q.map((item, idx) => idx === i ? { ...item, status: 'done', result } : item));
+        setQueue(q =>
+          q.map((item, idx) => (idx === i ? { ...item, status: 'done', result } : item))
+        );
       } catch (err) {
         const error = err instanceof Error ? err.message : 'Upload failed.';
-        setQueue(q => q.map((item, idx) => idx === i ? { ...item, status: 'error', error } : item));
+        setQueue(q =>
+          q.map((item, idx) => (idx === i ? { ...item, status: 'error', error } : item))
+        );
       }
     }
 
@@ -234,7 +255,9 @@ export default function TelemetryPage() {
           {hasQueue && (
             <div className="bg-surface border border-line rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
               {/* Panel header */}
-              <div className={`px-4 py-3 border-b border-line flex items-center gap-3 ${allDone ? 'border-primary-fixed-dim/30' : ''}`}>
+              <div
+                className={`px-4 py-3 border-b border-line flex items-center gap-3 ${allDone ? 'border-primary-fixed-dim/30' : ''}`}
+              >
                 {allDone ? (
                   <>
                     <span
@@ -328,7 +351,10 @@ export default function TelemetryPage() {
 
           {!lapsLoading && recentLaps.length === 0 && (
             <div className="px-6 py-8 flex flex-col items-center gap-3 text-center">
-              <span className="material-symbols-outlined text-3xl text-on-surface-variant" aria-hidden="true">
+              <span
+                className="material-symbols-outlined text-3xl text-on-surface-variant"
+                aria-hidden="true"
+              >
                 timer_off
               </span>
               <p className="font-body-sm text-body-sm text-on-surface-variant">

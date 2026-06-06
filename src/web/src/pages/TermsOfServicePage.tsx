@@ -22,8 +22,8 @@ export default function TermsOfServicePage() {
       <section className="mb-8">
         <h2 className="font-headline-md text-headline-md mb-3">3. iRacing Data</h2>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          ApexRacers is not affiliated with iRacing.com Motorsport Simulations. All iRacing lap
-          time and series data is sourced from the iRacing public API and remains the property of
+          ApexRacers is not affiliated with iRacing.com Motorsport Simulations. All iRacing lap time
+          and series data is sourced from the iRacing public API and remains the property of
           iRacing.com.
         </p>
       </section>

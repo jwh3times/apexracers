@@ -12,13 +12,22 @@ public class PercentileCalculationService(AppDbContext db)
         int weekNumber,
         int carId,
         long customerId,
+        Guid? callerUserId = null,
         bool includePersonalLaps = false,
+        IReadOnlyList<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
         var week = await db.Weeks
             .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
             .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
-            .Select(w => new { w.Id, w.TrackId })
+            .Select(w => new
+            {
+                w.Id,
+                w.TrackId,
+                SeriesName      = w.Season.Series.Name,
+                TrackName       = (string?)w.Track.Name,
+                TrackConfigName = (string?)w.Track.ConfigName,
+            })
             .FirstOrDefaultAsync(ct);
 
         if (week is null) return null;
@@ -35,14 +44,20 @@ public class PercentileCalculationService(AppDbContext db)
         var driverRaceBest = fieldByDriver.FirstOrDefault(d => d.CustId == customerId)?.BestLap;
         double? driverBest = driverRaceBest;
 
-        // Fetch the user once for both personal-lap lookup and cache upsert.
-        var user = await db.Users.FirstOrDefaultAsync(u => u.IRacingCustomerId == customerId, ct);
+        // Fetch the authenticated caller's profile for personal-lap lookup and cache upsert.
+        // Never use the caller-supplied customerId for this lookup — that would allow any user
+        // to read another user's private personal laps or write cache rows under their account.
+        var user = callerUserId.HasValue
+            ? await db.Users.FirstOrDefaultAsync(u => u.Id == callerUserId.Value, ct)
+            : null;
 
         if (includePersonalLaps && user is not null)
         {
+            var types = personalLapTypes ?? [];
             var personalBest = await db.PersonalLaps
                 .Where(p => p.UserId == user.Id && p.CarId == carId
-                         && p.TrackId == week.TrackId && p.IsValidLap)
+                         && p.TrackId == week.TrackId && p.IsValidLap
+                         && (!types.Any() || types.Contains(p.SessionType) || p.SessionType == LapSessionType.Unknown))
                 .MinAsync(p => (double?)p.LapTimeSeconds, ct);
 
             if (personalBest is not null && (driverBest is null || personalBest < driverBest))
@@ -95,6 +110,41 @@ public class PercentileCalculationService(AppDbContext db)
             await db.SaveChangesAsync(ct);
         }
 
-        return new PercentileResultDto(seriesId, weekNumber, carId, customerId, percentileRank, total, computedAt);
+        // Field stats and distribution
+        var sortedLaps = fieldByDriver.Select(d => d.BestLap).OrderBy(x => x).ToList();
+        var fieldBest = sortedLaps[0];
+        int mid = sortedLaps.Count / 2;
+        var fieldMedian = sortedLaps.Count % 2 == 0
+            ? (sortedLaps[mid - 1] + sortedLaps[mid]) / 2.0
+            : sortedLaps[mid];
+        var distribution = BuildDistribution(sortedLaps, driverBest.Value);
+
+        return new PercentileResultDto(
+            seriesId, weekNumber, carId, customerId,
+            percentileRank, total, computedAt,
+            week.SeriesName, week.TrackName, week.TrackConfigName,
+            driverBest.Value, fieldBest, fieldMedian,
+            distribution);
+    }
+
+    private static IReadOnlyList<DistributionBin> BuildDistribution(List<double> sortedLaps, double userBest)
+    {
+        const int binCount = 20;
+        var minBound = Math.Min(sortedLaps[0], userBest);
+        var maxBound = Math.Max(sortedLaps[^1], userBest);
+        var range = maxBound - minBound;
+        if (range < 0.001) range = 1.0;
+        var binWidth = range / binCount;
+
+        return Enumerable.Range(0, binCount)
+            .Select(i =>
+            {
+                var binMin = minBound + i * binWidth;
+                var binMax = i == binCount - 1 ? maxBound + 0.001 : binMin + binWidth;
+                var count = sortedLaps.Count(l => l >= binMin && l < binMax);
+                var containsUser = userBest >= binMin && userBest < binMax;
+                return new DistributionBin(binMin, binMax, count, containsUser);
+            })
+            .ToList();
     }
 }

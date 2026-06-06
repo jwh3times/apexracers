@@ -42,6 +42,54 @@ npx vitest run --coverage   # Coverage report (80% threshold enforced)
 
 Coverage is enforced at **80%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
 
+## Project structure
+
+```
+src/
+  pages/              ← one file per route; all app and public pages
+  pages/__tests__/    ← Vitest tests for every page
+  components/         ← shared UI: Sidebar, TopNav, Footer, Sparkline, PercentileBadge, CalculationSource
+  components/__tests__/
+  context/            ← AuthContext, ThemeContext, FeatureFlagContext
+  context/__tests__/
+  services/           ← api.ts (typed fetch client), db.ts (IndexedDB helpers)
+  services/__tests__/
+  utils/              ← lapTime.ts (formatLapTime) — import from here, never redefine
+  test/               ← setup.ts (Vitest global setup)
+  App.tsx             ← route definitions, AppShell layout
+  index.css           ← Tailwind base + fluid design token utilities
+```
+
 ## API client
 
-All fetch calls go through `src/services/api.ts`. Response types there must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
+All fetch calls go through `src/services/api.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
+
+The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
+
+## Authentication
+
+Auth state is managed by `AuthContext` (`src/context/AuthContext.tsx`). Use the `useAuth()` hook — never read tokens or decode JWT claims outside the context.
+
+- **Access token** (15-min JWT) and **refresh token** (7-day, rotating) are both stored in IndexedDB via `src/services/db.ts` under keys `ar_token` and `ar_refresh_token`.
+- On app load, `AuthContext` checks whether the stored JWT is expired. If it is but a refresh token exists, it silently calls the refresh endpoint to restore the session without re-login.
+- `logout()` revokes the refresh token server-side (`POST /api/auth/logout`) before clearing local state.
+
+## Contexts
+
+| Context | Hook | Purpose |
+|---|---|---|
+| `AuthContext` | `useAuth()` | User session, JWT + refresh token, login/logout, profile updates, role, alerts toggle |
+| `ThemeContext` | `useTheme()` | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API |
+| `FeatureFlagContext` | `useFeatureFlags()` | Fetches flags from `/api/feature-flags`; exposes `hasFlag(key)` |
+
+## Design system
+
+All sizing scales continuously with viewport width via `clamp()`. Use the utility classes from `index.css` — do not use ad-hoc Tailwind classes for the same purposes.
+
+**Primary accent is cyan** — use `text-primary-container` / `bg-primary-container` / `border-primary-container`. The old green tokens (`text-primary-fixed-dim`, `#00FF88`) are removed.
+
+**Typography:** `text-page-title`, `text-section-head`, `text-eyebrow`, `text-body-fluid`, `text-small-fluid`, `text-th`, `text-kpi-value`, `text-mono-fluid`
+
+**Layout:** `page-wrap`, `card-r`, `card-p`, `card-hp`, `kpi-p`, `td-p`, `th-p`, `gap-fluid`, `gap-fluid-lg`, `btn-fluid`, `btn-fluid-sm`, `grid-kpi`, `grid-cards`
+
+Every card uses `cardStyle` (box-shadow) + optional `scanTexture` (header background) CSS constants — see any existing page for the pattern.

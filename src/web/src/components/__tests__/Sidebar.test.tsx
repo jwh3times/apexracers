@@ -11,7 +11,11 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 function renderSidebar() {
-  return render(<MemoryRouter><Sidebar /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <Sidebar />
+    </MemoryRouter>
+  );
 }
 
 describe('Sidebar', () => {
@@ -23,14 +27,28 @@ describe('Sidebar', () => {
   });
 
   it('shows authenticated nav when a user is logged in', () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     renderSidebar();
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /admin panel/i })).not.toBeInTheDocument();
   });
 
   it('shows Admin Panel link for Admin users', () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Admin' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Admin',
+    };
     renderSidebar();
     expect(screen.getByRole('link', { name: /admin panel/i })).toBeInTheDocument();
   });

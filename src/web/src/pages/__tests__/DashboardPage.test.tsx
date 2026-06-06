@@ -14,10 +14,24 @@ vi.mock('../../services/api', () => ({
 }));
 
 function renderPage() {
-  return render(<MemoryRouter><DashboardPage /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <DashboardPage />
+    </MemoryRouter>
+  );
 }
 
-const baseSeries: Series = { id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 };
+const baseSeries: Series = {
+  id: 1,
+  name: 'GT3 Cup',
+  seasonId: 10,
+  currentWeekNumber: 5,
+  category: null,
+  trackName: null,
+  trackConfigName: null,
+  carCount: 0,
+  driverCount: 0,
+};
 
 const baseLap: PersonalLap = {
   carId: 1,
@@ -65,7 +79,7 @@ describe('DashboardPage', () => {
   it('shows "No active series available" when series list is empty', async () => {
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText('No active series available.')).toBeInTheDocument(),
+      expect(screen.getByText('No active series available.')).toBeInTheDocument()
     );
   });
 
@@ -85,7 +99,7 @@ describe('DashboardPage', () => {
     vi.mocked(api.getSeries).mockResolvedValue([baseSeries]);
     renderPage();
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: /view week/i })).toBeInTheDocument(),
+      expect(screen.getByRole('link', { name: /view week/i })).toBeInTheDocument()
     );
   });
 
@@ -122,7 +136,12 @@ describe('DashboardPage', () => {
 
   it('picks the lap with the lowest bestLapSeconds as overall best', async () => {
     const faster: PersonalLap = { ...baseLap, carName: 'Ferrari', bestLapSeconds: 120.0 };
-    const slower: PersonalLap = { ...baseLap, carId: 2, carName: 'Porsche 911', bestLapSeconds: 130.5 };
+    const slower: PersonalLap = {
+      ...baseLap,
+      carId: 2,
+      carName: 'Porsche 911',
+      bestLapSeconds: 130.5,
+    };
     vi.mocked(api.getMyLaps).mockResolvedValue([slower, faster]);
     renderPage();
     await waitFor(() => {
@@ -141,7 +160,7 @@ describe('DashboardPage', () => {
     vi.mocked(api.getMyLaps).mockRejectedValue(new Error('network'));
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText('No active series available.')).toBeInTheDocument(),
+      expect(screen.getByText('No active series available.')).toBeInTheDocument()
     );
   });
 });

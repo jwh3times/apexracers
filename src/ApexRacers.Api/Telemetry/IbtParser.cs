@@ -1,4 +1,5 @@
 using System.Text;
+using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Telemetry;
 
@@ -20,6 +21,32 @@ public static class IbtParser
     {
         if (!stream.CanSeek)
             throw new ArgumentException("Stream must be seekable.", nameof(stream));
+
+        try
+        {
+            return ParseCore(stream);
+        }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (
+            ex is EndOfStreamException or OverflowException or
+                  ArgumentOutOfRangeException or OutOfMemoryException)
+        {
+            throw new InvalidDataException("Malformed .ibt file.", ex);
+        }
+    }
+
+    private static ParsedIbtSession ParseCore(Stream stream)
+    {
+        long fileLen = stream.Length;
+
+        // Minimum valid .ibt: 144-byte combined header must be present.
+        // This is the content-validity gate — a non-.ibt file renamed with the
+        // right extension will fail the version check immediately after.
+        if (fileLen < 144)
+            throw new InvalidDataException("File is too small to be a valid .ibt file.");
 
         // ── 1. Read irsdk_header + irsdk_diskSubHeader (144 bytes total) ─────────
         var hdr = new byte[144];
@@ -44,9 +71,31 @@ public static class IbtParser
         long sessionStartDate  = RL64(hdr, 112);
         int sessionRecordCount = RI32(hdr, 140);
 
+        // ── Bounds-check all header-derived values before any allocation or seek ──
+        // sessionInfoOffset must lie within the file and not overflow when added to sessionInfoLen.
+        if (sessionInfoOffset < 144 || sessionInfoLen < 0 ||
+            (long)sessionInfoOffset + sessionInfoLen > fileLen)
+            throw new InvalidDataException("Invalid session info offset or length in .ibt header.");
+
+        // varHeaderOffset and numVars must fit within the file.
+        if (numVars < 0 || varHeaderOffset < 144 ||
+            (long)varHeaderOffset + (long)numVars * VarHeaderSize > fileLen)
+            throw new InvalidDataException("Invalid variable header offset or count in .ibt header.");
+
+        // Data buffer base offset must be non-negative.
+        if (bufLen < 0 || firstBufOffset < 0)
+            throw new InvalidDataException("Invalid data buffer configuration in .ibt header.");
+
+        // DateTimeOffset.FromUnixTimeSeconds throws ArgumentOutOfRangeException outside
+        // the representable range — validate up front to give a clear error message.
+        const long MinUnixSeconds = -62135596800L;
+        const long MaxUnixSeconds =  253402300799L;
+        if (sessionStartDate < MinUnixSeconds || sessionStartDate > MaxUnixSeconds)
+            throw new InvalidDataException("Invalid session date in .ibt file.");
+
         // Fall back to computing record count from file length if sub-header is missing
         if (sessionRecordCount <= 0 && bufLen > 0)
-            sessionRecordCount = (int)((stream.Length - firstBufOffset) / bufLen);
+            sessionRecordCount = (int)Math.Max(0L, (stream.Length - firstBufOffset) / bufLen);
 
         // ── 2. Session YAML ───────────────────────────────────────────────────────
         stream.Seek(sessionInfoOffset, SeekOrigin.Begin);
@@ -138,6 +187,7 @@ public static class IbtParser
             AirTempCelsius     = airTemp,
             TrackTempCelsius   = trackTemp,
             TrackWetness       = wetness,
+            SessionType        = info.SessionType,
             SessionDate        = DateTimeOffset.FromUnixTimeSeconds(sessionStartDate),
             Laps               = laps,
         };
@@ -152,20 +202,22 @@ public static class IbtParser
         int TrackId, string TrackName, string ConfigName,
         int CarId, string CarName, string CarNameShort,
         long DriverCustomerId, string DriverName,
-        float AirTempCelsius, float TrackTempCelsius);
+        float AirTempCelsius, float TrackTempCelsius,
+        LapSessionType SessionType);
 
     private static YamlInfo ParseYaml(string yaml)
     {
-        int    trackId          = 0;
-        string trackName        = "";
-        string configName       = "";
-        int    carId            = 0;
-        string carName          = "";
-        string carNameShort     = "";
-        long   driverCustomerId = 0;
-        string driverName       = "";
-        float  airTemp          = 0f;
-        float  trackTemp        = 0f;
+        int            trackId          = 0;
+        string         trackName        = "";
+        string         configName       = "";
+        int            carId            = 0;
+        string         carName          = "";
+        string         carNameShort     = "";
+        long           driverCustomerId = 0;
+        string         driverName       = "";
+        float          airTemp          = 0f;
+        float          trackTemp        = 0f;
+        LapSessionType sessionType      = LapSessionType.Unknown;
 
         int  driverCarIdx   = 0;
         bool inDrivers      = false;
@@ -189,6 +241,7 @@ public static class IbtParser
             else if (YamlVal(trimmed, "TrackConfigName:",    out v))     configName = v;
             else if (YamlVal(trimmed, "AirTemp:",            out v))     airTemp = ParseTemp(v);
             else if (YamlVal(trimmed, "TrackTemp:",          out v))     trackTemp = ParseTemp(v);
+            else if (YamlVal(trimmed, "EventType:",          out v))     sessionType = ParseEventType(v);
             else if (YamlVal(trimmed, "DriverCarIdx:",       out v))     int.TryParse(v, out driverCarIdx);
             else if (YamlVal(trimmed, "DriverUserID:",       out v) && !inDrivers) long.TryParse(v, out driverCustomerId);
             else if (trimmed == "Drivers:")                              inDrivers = true;
@@ -205,7 +258,8 @@ public static class IbtParser
         return new YamlInfo(trackId, trackName, configName,
                             carId, carName, carNameShort,
                             driverCustomerId, driverName,
-                            airTemp, trackTemp);
+                            airTemp, trackTemp,
+                            sessionType);
     }
 
     private static bool YamlVal(string line, string key, out string value)
@@ -218,6 +272,16 @@ public static class IbtParser
         value = "";
         return false;
     }
+
+    private static LapSessionType ParseEventType(string val) => val.Trim() switch
+    {
+        "Race"         => LapSessionType.Race,
+        "Practice"     => LapSessionType.Practice,
+        "Qualify"      => LapSessionType.Qualifying,
+        "Time Trial"   => LapSessionType.TimeTrial,
+        "Lone Qualify" => LapSessionType.LoneQualify,
+        _              => LapSessionType.Unknown,
+    };
 
     // Parses "26.11 C" or "26.11" → 26.11f
     private static float ParseTemp(string val)

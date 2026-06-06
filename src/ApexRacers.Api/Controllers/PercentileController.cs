@@ -1,9 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/series/{seriesId}/weeks/{weekNumber}/cars/{carId}/percentile")]
 public class PercentileController(PercentileCalculationService percentile) : ControllerBase
 {
@@ -14,9 +19,12 @@ public class PercentileController(PercentileCalculationService percentile) : Con
         int carId,
         [FromQuery] long customerId,
         [FromQuery] bool includePersonalLaps = false,
+        [FromQuery] List<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
-        var result = await percentile.ComputeAndCacheAsync(seriesId, weekNumber, carId, customerId, includePersonalLaps, ct);
+        Guid? callerUserId = Guid.TryParse(User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var g) ? g : null;
+        var result = await percentile.ComputeAndCacheAsync(
+            seriesId, weekNumber, carId, customerId, callerUserId, includePersonalLaps, personalLapTypes, ct);
         return result is null ? NotFound() : Ok(result);
     }
 }

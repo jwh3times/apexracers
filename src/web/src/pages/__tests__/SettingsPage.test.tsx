@@ -57,20 +57,45 @@ describe('SettingsPage', () => {
   });
 
   it('pre-fills display name from auth context', () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry Holland', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry Holland',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     renderPage();
     expect(screen.getByLabelText(/display name/i)).toHaveValue('Jerry Holland');
   });
 
   it('pre-fills iRacing Customer ID from auth context', () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: 100042, role: 'Standard' };
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: 100042,
+      role: 'Standard',
+    };
     renderPage();
     expect(screen.getByLabelText(/iRacing Customer ID/i)).toHaveValue(100042);
   });
 
   it('calls api.updateProfile and updateSession when Save Changes is clicked', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
-    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: '',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    vi.mocked(api.updateProfile).mockResolvedValue({
+      token: 'new-tok',
+      userId: 'u1',
+      displayName: 'Speed Demon',
+    });
     const user = userEvent.setup();
     renderPage();
     const input = screen.getByLabelText(/display name/i);
@@ -79,13 +104,28 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
       expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null, 'j@j.com');
-      expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Speed Demon' });
+      expect(mockUpdateSession).toHaveBeenCalledWith({
+        token: 'new-tok',
+        userId: 'u1',
+        displayName: 'Speed Demon',
+      });
     });
   });
 
   it('passes updated email to api.updateProfile when email is changed', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'old@example.com', iRacingCustomerId: null, role: 'Standard' };
-    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'old@example.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    vi.mocked(api.updateProfile).mockResolvedValue({
+      token: 'new-tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+    });
     const user = userEvent.setup();
     renderPage();
     const emailInput = screen.getByLabelText(/email address/i);
@@ -110,7 +150,14 @@ describe('SettingsPage', () => {
   });
 
   it('shows Connected and Disconnect button when user is logged in', () => {
-    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 'some.jwt.token',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     renderPage();
     expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /disconnect/i })).toBeInTheDocument();
@@ -140,7 +187,14 @@ describe('SettingsPage', () => {
   });
 
   it('shows an Error message when saveProfile fails with an Error instance', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: '',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     vi.mocked(api.updateProfile).mockRejectedValue(new Error('Server error'));
     const user = userEvent.setup();
     renderPage();
@@ -149,7 +203,14 @@ describe('SettingsPage', () => {
   });
 
   it('shows fallback message when saveProfile rejects with a non-Error value', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: '', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: '',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     vi.mocked(api.updateProfile).mockRejectedValue('oops');
     const user = userEvent.setup();
     renderPage();
@@ -160,7 +221,14 @@ describe('SettingsPage', () => {
   // ── Access Tier ─────────────────────────────────────────────────────────────
 
   it('shows Access Tier section for Standard users', () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     renderPage();
     expect(screen.getByText(/access tier/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /standard/i })).toBeInTheDocument();
@@ -169,13 +237,27 @@ describe('SettingsPage', () => {
   });
 
   it('hides Access Tier section for Admin users', () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Admin' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Admin',
+    };
     renderPage();
     expect(screen.queryByText(/access tier/i)).not.toBeInTheDocument();
   });
 
   it('disables the currently active tier button', () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
     renderPage();
     const betaButton = screen.getByRole('button', { name: /^beta/i });
     expect(betaButton).toBeDisabled();
@@ -183,19 +265,41 @@ describe('SettingsPage', () => {
   });
 
   it('calls api.updateRole and updateSession when a tier is selected', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
-    vi.mocked(api.updateRole).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    vi.mocked(api.updateRole).mockResolvedValue({
+      token: 'new-tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+    });
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole('button', { name: /^beta/i }));
     await waitFor(() => {
       expect(vi.mocked(api.updateRole)).toHaveBeenCalledWith('Beta');
-      expect(mockUpdateSession).toHaveBeenCalledWith({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+      expect(mockUpdateSession).toHaveBeenCalledWith({
+        token: 'new-tok',
+        userId: 'u1',
+        displayName: 'Jerry',
+      });
     });
   });
 
   it('shows tier error message when updateRole fails', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     vi.mocked(api.updateRole).mockRejectedValue(new Error('Not allowed'));
     const user = userEvent.setup();
     renderPage();
@@ -222,7 +326,14 @@ describe('SettingsPage', () => {
   });
 
   it('clicking Disconnect calls logout', async () => {
-    mockUser = { token: 'some.jwt.token', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
+    mockUser = {
+      token: 'some.jwt.token',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
     const user = userEvent.setup();
     renderPage();
     const disconnectBtn = screen.getByRole('button', { name: /disconnect/i });
@@ -231,18 +342,34 @@ describe('SettingsPage', () => {
   });
 
   it('shows Saved ✓ on the save button after a successful profile save', async () => {
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Standard' };
-    vi.mocked(api.updateProfile).mockResolvedValue({ token: 'new-tok', userId: 'u1', displayName: 'Jerry' });
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    vi.mocked(api.updateProfile).mockResolvedValue({
+      token: 'new-tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+    });
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole('button', { name: /save changes/i }));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument());
   });
 
   it('clicking the active tier button does not call api.updateRole', async () => {
-    mockUser = { token: 't', userId: 'u1', displayName: 'Jerry', email: 'j@j.com', iRacingCustomerId: null, role: 'Beta' };
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
     const user = userEvent.setup();
     renderPage();
     const betaButton = screen.getByRole('button', { name: /^beta/i });

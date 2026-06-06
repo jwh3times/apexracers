@@ -62,3 +62,6 @@ src/ApexRacers.Data/Seeds/Screenshots/
 
 # API Response Objects
 /iracing-api-response-objects/
+
+# Design Files
+src/web/ApexRacers-Designs/

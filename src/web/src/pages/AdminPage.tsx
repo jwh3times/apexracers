@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { AdminUser, FeatureFlag } from '../services/api';
 
 const ROLES = ['Standard', 'Beta', 'Alpha', 'Admin'] as const;
-type Role = typeof ROLES[number];
+type Role = (typeof ROLES)[number];
 
 // ── Users tab ─────────────────────────────────────────────────────────────────
 
@@ -15,7 +15,8 @@ function UsersTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getAdminUsers()
+    api
+      .getAdminUsers()
       .then(setUsers)
       .catch(() => setError('Failed to load users.'))
       .finally(() => setLoading(false));
@@ -32,7 +33,7 @@ function UsersTab() {
     setSaving(prev => new Set(prev).add(user.userId));
     try {
       const updated = await api.setAdminUserRole(user.userId, newRole);
-      setUsers(prev => prev.map(u => u.userId === user.userId ? updated : u));
+      setUsers(prev => prev.map(u => (u.userId === user.userId ? updated : u)));
       setPendingRoles(prev => {
         const next = { ...prev };
         delete next[user.userId];
@@ -41,11 +42,20 @@ function UsersTab() {
     } catch {
       setError(`Failed to update role for ${user.email}.`);
     } finally {
-      setSaving(prev => { const next = new Set(prev); next.delete(user.userId); return next; });
+      setSaving(prev => {
+        const next = new Set(prev);
+        next.delete(user.userId);
+        return next;
+      });
     }
   }
 
-  if (loading) return <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">Loading users…</p>;
+  if (loading)
+    return (
+      <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+        Loading users…
+      </p>
+    );
 
   return (
     <div className="glass-panel rounded-xl overflow-hidden border border-line-2">
@@ -55,7 +65,9 @@ function UsersTab() {
           <thead>
             <tr className="bg-surface-container/50 border-b border-line-2">
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">EMAIL</th>
-              <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">DISPLAY NAME</th>
+              <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
+                DISPLAY NAME
+              </th>
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">ROLE</th>
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant"></th>
             </tr>
@@ -68,12 +80,20 @@ function UsersTab() {
               const isDirty = !isAdmin && pending !== undefined && pending !== user.role;
               const isSaving = saving.has(user.userId);
               return (
-                <tr key={user.userId} className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0">
+                <tr
+                  key={user.userId}
+                  className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0"
+                >
                   <td className="p-4 font-body-sm text-body-sm text-on-surface">{user.email}</td>
-                  <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">{user.displayName}</td>
+                  <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">
+                    {user.displayName}
+                  </td>
                   <td className="p-4">
                     {isAdmin ? (
-                      <span className="font-body-sm text-body-sm text-on-surface-variant/50 px-3 py-1.5 inline-block" title="Managed via Key Vault">
+                      <span
+                        className="font-body-sm text-body-sm text-on-surface-variant/50 px-3 py-1.5 inline-block"
+                        title="Managed via Key Vault"
+                      >
                         Admin
                       </span>
                     ) : (
@@ -83,7 +103,9 @@ function UsersTab() {
                         className="min-w-28 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                       >
                         {ROLES.filter(r => r !== 'Admin').map(r => (
-                          <option key={r} value={r}>{r}</option>
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
                         ))}
                       </select>
                     )}
@@ -111,7 +133,13 @@ function UsersTab() {
 
 // ── Feature flags tab ─────────────────────────────────────────────────────────
 
-const BLANK_FLAG = { key: '', name: '', description: '', isEnabled: true, minimumRole: 'Standard' as Role };
+const BLANK_FLAG = {
+  key: '',
+  name: '',
+  description: '',
+  isEnabled: true,
+  minimumRole: 'Standard' as Role,
+};
 
 function FlagsTab() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -120,11 +148,17 @@ function FlagsTab() {
   const [createForm, setCreateForm] = useState({ ...BLANK_FLAG });
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', description: '', isEnabled: true, minimumRole: 'Standard' as Role });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    isEnabled: true,
+    minimumRole: 'Standard' as Role,
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.getAdminFeatureFlags()
+    api
+      .getAdminFeatureFlags()
       .then(setFlags)
       .catch(() => setError('Failed to load feature flags.'))
       .finally(() => setLoading(false));
@@ -168,7 +202,7 @@ function FlagsTab() {
         ...editForm,
         description: editForm.description || null,
       });
-      setFlags(prev => prev.map(f => f.id === editingId ? updated : f));
+      setFlags(prev => prev.map(f => (f.id === editingId ? updated : f)));
       setEditingId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update flag.');
@@ -187,7 +221,12 @@ function FlagsTab() {
     }
   }
 
-  if (loading) return <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">Loading flags…</p>;
+  if (loading)
+    return (
+      <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+        Loading flags…
+      </p>
+    );
 
   return (
     <div className="flex flex-col gap-6">
@@ -223,7 +262,11 @@ function FlagsTab() {
               onChange={e => setCreateForm(p => ({ ...p, minimumRole: e.target.value as Role }))}
               className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
             >
-              {ROLES.map(r => <option key={r} value={r}>{r}+</option>)}
+              {ROLES.map(r => (
+                <option key={r} value={r}>
+                  {r}+
+                </option>
+              ))}
             </select>
             <label className="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant cursor-pointer">
               <input
@@ -256,20 +299,37 @@ function FlagsTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container/50 border-b border-line-2">
-                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">KEY</th>
-                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">NAME / DESCRIPTION</th>
-                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">MIN ROLE</th>
-                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">ENABLED</th>
+                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
+                    KEY
+                  </th>
+                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
+                    NAME / DESCRIPTION
+                  </th>
+                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
+                    MIN ROLE
+                  </th>
+                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
+                    ENABLED
+                  </th>
                   <th className="p-4 font-label-caps text-label-caps text-on-surface-variant"></th>
                 </tr>
               </thead>
               <tbody>
-                {flags.map(flag => (
+                {flags.map(flag =>
                   editingId === flag.id ? (
-                    <tr key={flag.id} className="border-b border-surface-container-high bg-surface-container/30">
-                      <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">{flag.key}</td>
+                    <tr
+                      key={flag.id}
+                      className="border-b border-surface-container-high bg-surface-container/30"
+                    >
+                      <td className="p-4 font-body-sm text-body-sm text-on-surface-variant">
+                        {flag.key}
+                      </td>
                       <td className="p-4" colSpan={2}>
-                        <form onSubmit={handleUpdate} id={`edit-${flag.id}`} className="flex flex-wrap gap-2">
+                        <form
+                          onSubmit={handleUpdate}
+                          id={`edit-${flag.id}`}
+                          className="flex flex-wrap gap-2"
+                        >
                           <input
                             required
                             value={editForm.name}
@@ -278,16 +338,24 @@ function FlagsTab() {
                           />
                           <input
                             value={editForm.description}
-                            onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
+                            onChange={e =>
+                              setEditForm(p => ({ ...p, description: e.target.value }))
+                            }
                             placeholder="Description"
                             className="bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors flex-1"
                           />
                           <select
                             value={editForm.minimumRole}
-                            onChange={e => setEditForm(p => ({ ...p, minimumRole: e.target.value as Role }))}
+                            onChange={e =>
+                              setEditForm(p => ({ ...p, minimumRole: e.target.value as Role }))
+                            }
                             className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                           >
-                            {ROLES.map(r => <option key={r} value={r}>{r}+</option>)}
+                            {ROLES.map(r => (
+                              <option key={r} value={r}>
+                                {r}+
+                              </option>
+                            ))}
                           </select>
                         </form>
                       </td>
@@ -297,7 +365,9 @@ function FlagsTab() {
                             type="checkbox"
                             form={`edit-${flag.id}`}
                             checked={editForm.isEnabled}
-                            onChange={e => setEditForm(p => ({ ...p, isEnabled: e.target.checked }))}
+                            onChange={e =>
+                              setEditForm(p => ({ ...p, isEnabled: e.target.checked }))
+                            }
                             className="w-4 h-4"
                           />
                           Enabled
@@ -322,12 +392,19 @@ function FlagsTab() {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={flag.id} className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0">
-                      <td className="p-4 font-body-sm text-body-sm text-primary-fixed-dim font-mono">{flag.key}</td>
+                    <tr
+                      key={flag.id}
+                      className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0"
+                    >
+                      <td className="p-4 font-body-sm text-body-sm text-primary-fixed-dim font-mono">
+                        {flag.key}
+                      </td>
                       <td className="p-4">
                         <p className="font-body-sm text-body-sm text-on-surface">{flag.name}</p>
                         {flag.description && (
-                          <p className="font-body-sm text-[12px] text-on-surface-variant mt-0.5">{flag.description}</p>
+                          <p className="font-body-sm text-[12px] text-on-surface-variant mt-0.5">
+                            {flag.description}
+                          </p>
                         )}
                       </td>
                       <td className="p-4">
@@ -336,7 +413,9 @@ function FlagsTab() {
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className={`font-label-caps text-label-caps ${flag.isEnabled ? 'text-primary-fixed-dim' : 'text-on-surface-variant/50'}`}>
+                        <span
+                          className={`font-label-caps text-label-caps ${flag.isEnabled ? 'text-primary-fixed-dim' : 'text-on-surface-variant/50'}`}
+                        >
                           {flag.isEnabled ? 'Yes' : 'No'}
                         </span>
                       </td>
@@ -356,7 +435,7 @@ function FlagsTab() {
                       </td>
                     </tr>
                   )
-                ))}
+                )}
               </tbody>
             </table>
           </div>

@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import PercentileCarPage from '../PercentileCarPage';
 import { api } from '../../services/api';
+import type { PercentileResult } from '../../services/api';
 
 vi.mock('../../services/api', () => ({
   api: { getPercentile: vi.fn() },
@@ -19,7 +20,11 @@ vi.mock('../../context/AuthContext', () => ({
 
 const mockGetPercentile = vi.mocked(api.getPercentile);
 
-const MOCK_RESULT = {
+function makeBin(i: number, containsUser = false) {
+  return { minSeconds: 120 + i, maxSeconds: 121 + i, count: 5, containsUser };
+}
+
+const MOCK_RESULT: PercentileResult = {
   seriesId: 9001,
   weekNumber: 1,
   carId: 9001,
@@ -27,12 +32,21 @@ const MOCK_RESULT = {
   percentileRank: 73.4,
   sampleSize: 500,
   computedAt: '2026-05-11T12:00:00Z',
+  seriesName: 'VRS GT3 Sprint',
+  trackName: 'Spa-Francorchamps',
+  trackConfigName: 'Full',
+  yourBestLapSeconds: 132.5,
+  fieldBestLapSeconds: 130.0,
+  fieldMedianLapSeconds: 136.0,
+  distribution: Array.from({ length: 20 }, (_, i) => makeBin(i, i === 10)),
 };
 
-function renderPage(options: {
-  carId?: string;
-  state?: { carName?: string };
-} = {}) {
+function renderPage(
+  options: {
+    carId?: string;
+    state?: { carName?: string };
+  } = {}
+) {
   const carId = options.carId ?? '9001';
   return render(
     <MemoryRouter
@@ -49,7 +63,7 @@ function renderPage(options: {
           element={<PercentileCarPage />}
         />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -80,7 +94,7 @@ describe('PercentileCarPage', () => {
     renderPage();
 
     await waitFor(() =>
-      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001),
+      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001, expect.any(Object))
     );
   });
 
@@ -90,9 +104,7 @@ describe('PercentileCarPage', () => {
 
     renderPage();
 
-    await waitFor(() =>
-      expect(screen.getByText(/you beat/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/you're faster than/i)).toBeInTheDocument());
     expect(screen.queryByLabelText(/iRacing Customer ID/i)).not.toBeInTheDocument();
   });
 
@@ -102,9 +114,7 @@ describe('PercentileCarPage', () => {
 
     renderPage({ state: { carName: 'Porsche GT3' } });
 
-    await waitFor(() =>
-      expect(screen.getByText(/no race lap found/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no race lap found/i)).toBeInTheDocument());
   });
 
   // ── Manual form (no profile ID) ───────────────────────────────────────────
@@ -117,9 +127,7 @@ describe('PercentileCarPage', () => {
 
   it('submit button is disabled when input is empty', () => {
     renderPage();
-    expect(
-      screen.getByRole('button', { name: /look up my percentile/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /look up my percentile/i })).toBeDisabled();
   });
 
   it('calls getPercentile with correct ids on manual submit', async () => {
@@ -132,7 +140,7 @@ describe('PercentileCarPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
 
     await waitFor(() =>
-      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001),
+      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001, expect.any(Object))
     );
   });
 
@@ -145,31 +153,34 @@ describe('PercentileCarPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/you beat/i)).toBeInTheDocument(),
-    );
-    expect(screen.getByText(/73\.4%/)).toBeInTheDocument();
-    expect(screen.getByText(/500/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/you're faster than/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/73\.4%/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/500/).length).toBeGreaterThan(0);
   });
 
-  it('shows rank label for high percentile', async () => {
-    mockGetPercentile.mockResolvedValue({ ...MOCK_RESULT, percentileRank: 92.0 });
+  it('shows stat grid with your best and field best lap times', async () => {
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT);
+    mockIRacingCustomerId = 100001;
     renderPage();
 
-    fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {
-      target: { value: '100001' },
+    await waitFor(() => {
+      expect(screen.getByText('Your best')).toBeInTheDocument();
+      expect(screen.getByText('Field best')).toBeInTheDocument();
+      expect(screen.getByText('Field median')).toBeInTheDocument();
+      expect(screen.getByText('Gap to P1')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
+  });
 
-    await waitFor(() =>
-      expect(screen.getByText('Elite')).toBeInTheDocument(),
-    );
+  it('shows distribution chart label', async () => {
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT);
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/lap time distribution/i)).toBeInTheDocument());
   });
 
   it('shows not-found message on 404 after manual submit', async () => {
-    mockGetPercentile.mockRejectedValue(
-      new Error('GET /api/... → 404 Not Found'),
-    );
+    mockGetPercentile.mockRejectedValue(new Error('GET /api/... → 404 Not Found'));
     renderPage();
 
     fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {
@@ -177,9 +188,7 @@ describe('PercentileCarPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/no race lap found/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no race lap found/i)).toBeInTheDocument());
   });
 
   it('shows error message on non-404 failure', async () => {
@@ -191,8 +200,34 @@ describe('PercentileCarPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
 
+    await waitFor(() => expect(screen.getByText(/service unavailable/i)).toBeInTheDocument());
+  });
+
+  // ── CalculationSource ─────────────────────────────────────────────────────
+
+  it('shows CalculationSource pace controls when profileId is set', async () => {
+    mockIRacingCustomerId = 100001;
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT);
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('radiogroup')).toBeInTheDocument());
+  });
+
+  it('switching to blend mode re-fetches with includePersonalLaps true', async () => {
+    mockIRacingCustomerId = 100001;
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT);
+    renderPage();
+    await waitFor(() => expect(mockGetPercentile).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('radio', { name: /official \+ my uploaded laps/i }));
+
     await waitFor(() =>
-      expect(screen.getByText(/service unavailable/i)).toBeInTheDocument(),
+      expect(mockGetPercentile).toHaveBeenCalledWith(
+        9001,
+        1,
+        9001,
+        100001,
+        expect.objectContaining({ includePersonalLaps: true })
+      )
     );
   });
 });

@@ -20,7 +20,38 @@ public class SeriesService(AppDbContext db)
                     .Where(w => w.StartDate <= today)
                     .OrderByDescending(w => w.StartDate)
                     .Select(w => (int?)w.WeekNumber)
-                    .FirstOrDefault()))
+                    .FirstOrDefault(),
+                s.Series.Category,
+                s.Weeks
+                    .Where(w => w.StartDate <= today)
+                    .OrderByDescending(w => w.StartDate)
+                    .Select(w => w.Track.Name)
+                    .FirstOrDefault(),
+                s.Weeks
+                    .Where(w => w.StartDate <= today)
+                    .OrderByDescending(w => w.StartDate)
+                    .Select(w => w.Track.ConfigName)
+                    .FirstOrDefault(),
+                s.Weeks
+                    .Where(w => w.StartDate <= today)
+                    .OrderByDescending(w => w.StartDate)
+                    .Take(1)
+                    .SelectMany(w => w.Subsessions)
+                    .Where(sub => sub.OfficialSession)
+                    .SelectMany(sub => sub.Results)
+                    .Select(r => r.CarId)
+                    .Distinct()
+                    .Count(),
+                s.Weeks
+                    .Where(w => w.StartDate <= today)
+                    .OrderByDescending(w => w.StartDate)
+                    .Take(1)
+                    .SelectMany(w => w.Subsessions)
+                    .Where(sub => sub.OfficialSession)
+                    .SelectMany(sub => sub.Results)
+                    .Select(r => r.CustId)
+                    .Distinct()
+                    .Count()))
             .ToListAsync(ct);
     }
 }

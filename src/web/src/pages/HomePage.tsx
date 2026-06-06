@@ -10,14 +10,15 @@ const MAKE_COLOR: Record<string, string> = {
 };
 
 const TIMING_ROWS = [
-  { p: 1, drv: 'you',         car: 'Ferrari 296 GT3',     t: 111.418, gap: 0,     make: 'Ferrari'  },
-  { p: 2, drv: 'M. Tervonen', car: 'Porsche 911 GT3 R',   t: 111.602, gap: 0.184, make: 'Porsche'  },
-  { p: 3, drv: 'Y. Tanaka',   car: 'BMW M4 GT3',          t: 111.744, gap: 0.326, make: 'BMW'      },
-  { p: 4, drv: 'D. Reyes',    car: 'Mercedes-AMG GT3',    t: 111.910, gap: 0.492, make: 'Mercedes' },
-  { p: 5, drv: 'S. Halberg',  car: 'Audi R8 LMS EVO II',  t: 112.087, gap: 0.669, make: 'Audi'     },
+  { p: 1, drv: 'you', car: 'Ferrari 296 GT3', t: 111.418, gap: 0, make: 'Ferrari' },
+  { p: 2, drv: 'M. Tervonen', car: 'Porsche 911 GT3 R', t: 111.602, gap: 0.184, make: 'Porsche' },
+  { p: 3, drv: 'Y. Tanaka', car: 'BMW M4 GT3', t: 111.744, gap: 0.326, make: 'BMW' },
+  { p: 4, drv: 'D. Reyes', car: 'Mercedes-AMG GT3', t: 111.91, gap: 0.492, make: 'Mercedes' },
+  { p: 5, drv: 'S. Halberg', car: 'Audi R8 LMS EVO II', t: 112.087, gap: 0.669, make: 'Audi' },
 ];
 
-const SCAN_BG = 'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)';
+const SCAN_BG =
+  'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)';
 
 function TimingStrip() {
   return (
@@ -35,10 +36,12 @@ function TimingStrip() {
             LIVE · IMSA GT3 · WATKINS GLEN
           </span>
         </div>
-        <span className="font-mono text-[11px] text-on-surface-variant/50">WK 9 · 4,820 drivers</span>
+        <span className="font-mono text-[11px] text-on-surface-variant/50">
+          WK 9 · 4,820 drivers
+        </span>
       </div>
 
-      {TIMING_ROWS.map((r) => (
+      {TIMING_ROWS.map(r => (
         <div
           key={r.p}
           className={`flex items-center justify-between px-[18px] py-3 border-b border-line-2 last:border-b-0 ${
@@ -111,7 +114,6 @@ const FEATURES = [
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-surface">
-
       {/* ── Header ────────────────────────────────────────────── */}
       <header
         className="h-[70px] flex items-center px-[clamp(20px,5vw,64px)] border-b border-line-2 sticky top-0 z-20 backdrop-blur-[12px]"
@@ -130,7 +132,7 @@ export default function HomePage() {
         </div>
 
         <nav className="ml-11 hidden md:flex gap-1">
-          {['Series', 'How it works', 'Pricing'].map((l) => (
+          {['Series', 'How it works', 'Pricing'].map(l => (
             <span
               key={l}
               className="inline-flex items-center h-[34px] px-4 rounded-[10px] font-medium text-[14px] text-on-surface-variant cursor-default hover:text-on-surface hover:bg-surface-container transition-colors"
@@ -170,7 +172,10 @@ export default function HomePage() {
             className="font-bold leading-[.98] tracking-[-0.03em] mt-[22px] mb-0"
             style={{ fontSize: 'clamp(38px, 5.6vw, 68px)' }}
           >
-            Find the<br />tenths that<br />
+            Find the
+            <br />
+            tenths that
+            <br />
             <span className="text-primary-container">win races.</span>
           </h1>
 
@@ -198,9 +203,9 @@ export default function HomePage() {
 
           <div className="flex gap-7 mt-[38px]">
             {[
-              ['48K',   'laps ingested / day'],
+              ['48K', 'laps ingested / day'],
               ['1,240', 'active series'],
-              ['A→D',   'all license classes'],
+              ['A→D', 'all license classes'],
             ].map(([v, l]) => (
               <div key={l}>
                 <div className="font-mono text-[23px] font-bold">{v}</div>
@@ -216,17 +221,21 @@ export default function HomePage() {
       {/* ── Features ──────────────────────────────────────────── */}
       <section className="max-w-[1240px] mx-auto w-full px-[clamp(20px,5vw,64px)] pb-10">
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-          {FEATURES.map((f) => (
+          {FEATURES.map(f => (
             <div
               key={f.title}
               className="card-r border border-line-2 bg-surface card-p flex flex-col gap-fluid"
-              style={{ boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)' }}
+              style={{
+                boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+              }}
             >
               <div className="w-11 h-11 rounded-[12px] grid place-items-center bg-primary-container/[0.16] text-primary-container border border-primary-container/40">
                 <span className="material-symbols-outlined text-[22px]">{f.icon}</span>
               </div>
               <h3 className="m-0 text-[18px] font-bold tracking-[-0.01em]">{f.title}</h3>
-              <p className="m-0 text-[13.5px] text-on-surface-variant leading-[1.55]">{f.description}</p>
+              <p className="m-0 text-[13.5px] text-on-surface-variant leading-[1.55]">
+                {f.description}
+              </p>
             </div>
           ))}
         </div>
@@ -269,8 +278,12 @@ export default function HomePage() {
           APEX<b className="text-primary-container font-bold">//</b>RACERS
         </span>
         <span className="ml-auto">© 2026 ApexRacers · Not affiliated with iRacing.com</span>
-        <Link to="/terms" className="hover:text-on-surface-variant transition-colors">Terms</Link>
-        <Link to="/privacy" className="hover:text-on-surface-variant transition-colors">Privacy</Link>
+        <Link to="/terms" className="hover:text-on-surface-variant transition-colors">
+          Terms
+        </Link>
+        <Link to="/privacy" className="hover:text-on-surface-variant transition-colors">
+          Privacy
+        </Link>
       </footer>
     </div>
   );

@@ -1,4 +1,5 @@
 using ApexRacers.Api.Telemetry;
+using ApexRacers.Core.Models;
 using ApexRacers.Tests.Helpers;
 using Xunit;
 
@@ -14,12 +15,60 @@ public class IbtParserTests
     }
 
     [Fact]
+    public void Parse_FileTooSmall_ThrowsInvalidDataException()
+    {
+        using var stream = new MemoryStream(new byte[100]);
+        Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+    }
+
+    [Fact]
     public void Parse_UnsupportedVersion_ThrowsInvalidDataException()
     {
         // Build a stream with version = 5 (outside accepted range 1-2)
         var buf = new byte[144];
         BitConverter.GetBytes(5).CopyTo(buf, 0); // version
         using var stream = new MemoryStream(buf);
+        Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+    }
+
+    [Fact]
+    public void Parse_InvalidSessionInfoOffset_ThrowsInvalidDataException()
+    {
+        // sessionInfoOffset = 0 is below the 144-byte header floor
+        var buf = new byte[144];
+        BitConverter.GetBytes(1).CopyTo(buf, 0); // valid version
+        // sessionInfoOffset (offset 20) left as 0 — below minimum
+        using var stream = new MemoryStream(buf);
+        Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+    }
+
+    [Fact]
+    public void Parse_SessionInfoExceedsFileLength_ThrowsInvalidDataException()
+    {
+        var buf = new byte[200];
+        BitConverter.GetBytes(1).CopyTo(buf, 0);   // valid version
+        BitConverter.GetBytes(144).CopyTo(buf, 20); // sessionInfoOffset = 144
+        BitConverter.GetBytes(500).CopyTo(buf, 16); // sessionInfoLen = 500, exceeds fileLen
+        using var stream = new MemoryStream(buf);
+        Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+    }
+
+    [Fact]
+    public void Parse_NegativeNumVars_ThrowsInvalidDataException()
+    {
+        using var stream = FakeIbtBuilder.Build(laps: 0);
+        // Overwrite numVars at offset 24 with -1
+        var bytes = ((MemoryStream)stream).ToArray();
+        BitConverter.GetBytes(-1).CopyTo(bytes, 24);
+        using var bad = new MemoryStream(bytes);
+        Assert.Throws<InvalidDataException>(() => IbtParser.Parse(bad));
+    }
+
+    [Fact]
+    public void Parse_InvalidSessionDate_ThrowsInvalidDataException()
+    {
+        // long.MinValue is far outside the DateTimeOffset representable range
+        using var stream = FakeIbtBuilder.Build(sessionDate: long.MinValue);
         Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
     }
 
@@ -102,6 +151,31 @@ public class IbtParserTests
         var session = IbtParser.Parse(stream);
 
         Assert.Equal([1, 2, 3], session.Laps.Select(l => l.LapNumber).ToArray());
+    }
+
+    [Theory]
+    [InlineData(LapSessionType.Race,        "Race")]
+    [InlineData(LapSessionType.Practice,    "Practice")]
+    [InlineData(LapSessionType.Qualifying,  "Qualify")]
+    [InlineData(LapSessionType.TimeTrial,   "Time Trial")]
+    [InlineData(LapSessionType.LoneQualify, "Lone Qualify")]
+    public void Parse_EventType_IsDecodedFromYaml(LapSessionType expected, string _)
+    {
+        using var stream = FakeIbtBuilder.Build(eventType: expected);
+
+        var session = IbtParser.Parse(stream);
+
+        Assert.Equal(expected, session.SessionType);
+    }
+
+    [Fact]
+    public void Parse_MissingEventType_DefaultsToUnknown()
+    {
+        using var stream = FakeIbtBuilder.Build(eventType: LapSessionType.Unknown);
+
+        var session = IbtParser.Parse(stream);
+
+        Assert.Equal(LapSessionType.Unknown, session.SessionType);
     }
 
     [Fact]

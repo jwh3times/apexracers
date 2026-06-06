@@ -78,8 +78,8 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 
 ## Auth and RBAC
 
-- JWT HS256, 30-day expiry, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
-- Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional).
+- JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
+- Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
 - RBAC policies use `RequireClaim("role", ...)`, **not** `RequireRole`. Existing policies:
   - `AdminOnly` → `RequireClaim("role", "Admin")`
@@ -87,6 +87,16 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
   - `BetaOrAbove` → `RequireClaim("role", "Beta", "Alpha", "Admin")`
 - Self-service role changes (Standard/Beta/Alpha) via `PUT /api/auth/role`; Admin cannot self-demote.
 - Admin promotion only via `ADMIN_SEED_EMAILS` at startup or `AdminController`.
+
+### Refresh token rotation
+
+`AuthService` issues a **7-day rotating refresh token** alongside every JWT. Rules:
+
+- Raw token: 64 random bytes (via `RandomNumberGenerator.Fill`) encoded as Base64.
+- Stored in DB as SHA-256 hash (`RefreshToken` entity in `identity.RefreshTokens`). The raw token is never persisted.
+- `RefreshAsync(rawToken)`: validates hash + `IsActive`, revokes the old token, inserts a new one, and returns a new JWT + new refresh token — all in a single `SaveChangesAsync`.
+- `RevokeAsync(rawToken)`: best-effort; no-op if token not found.
+- `POST /api/auth/refresh` and `POST /api/auth/logout` do **not** have `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT expires.
 
 ## Configuration and Key Vault
 

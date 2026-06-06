@@ -103,6 +103,49 @@ public class WeekCarStatsServiceTests
     }
 
     [Fact]
+    public async Task GetCarsForWeekAsync_IncludesClassName()
+    {
+        await using var db = DbContextFactory.Create();
+        var (_, _, _, car, carClass, subsession) = SeedBasic(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
+        await db.SaveChangesAsync();
+
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1);
+
+        var dto = Assert.Single(result);
+        Assert.Equal("GT3", dto.ClassName);
+    }
+
+    [Fact]
+    public async Task GetWeekDetailAsync_ReturnsSeriesNameAndTrackInfo()
+    {
+        await using var db = DbContextFactory.Create();
+        var (_, _, _, car, carClass, subsession) = SeedBasic(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 90);
+        await db.SaveChangesAsync();
+
+        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 1, weekNumber: 1);
+
+        Assert.NotNull(result);
+        Assert.Equal("GT3 Cup", result.SeriesName);
+        Assert.Equal("Spa", result.TrackName);
+        Assert.Equal("Full", result.TrackConfigName);
+        Assert.Single(result.Cars);
+    }
+
+    [Fact]
+    public async Task GetWeekDetailAsync_UnknownSeries_ReturnsNull()
+    {
+        await using var db = DbContextFactory.Create();
+        SeedBasic(db);
+        await db.SaveChangesAsync();
+
+        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 99, weekNumber: 1);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task GetCarsForWeekAsync_MultipleCars_OrderedByFastestLapAscending()
     {
         await using var db = DbContextFactory.Create();

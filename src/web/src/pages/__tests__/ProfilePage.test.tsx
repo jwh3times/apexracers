@@ -29,27 +29,70 @@ const mockGetMyLaps = vi.mocked(api.getMyLaps);
 const mockGetSeries = vi.mocked(api.getSeries);
 
 const sampleLaps = [
-  { carId: 1, carName: 'Porsche 911 GT3 R', trackName: 'Spa-Francorchamps', configName: '', bestLapSeconds: 137.482, lapCount: 10, lastRecordedAt: '2024-01-01T00:00:00Z' },
-  { carId: 2, carName: 'Ferrari 296 GT3', trackName: 'Nürburgring', configName: 'GP', bestLapSeconds: 120.015, lapCount: 5, lastRecordedAt: '2024-02-01T00:00:00Z' },
+  {
+    carId: 1,
+    carName: 'Porsche 911 GT3 R',
+    trackName: 'Spa-Francorchamps',
+    configName: '',
+    bestLapSeconds: 137.482,
+    lapCount: 10,
+    lastRecordedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    carId: 2,
+    carName: 'Ferrari 296 GT3',
+    trackName: 'Nürburgring',
+    configName: 'GP',
+    bestLapSeconds: 120.015,
+    lapCount: 5,
+    lastRecordedAt: '2024-02-01T00:00:00Z',
+  },
 ];
 
 const sampleSeries = [
-  { id: 1, name: 'VRS GT3 Sprint', seasonId: 2024, currentWeekNumber: 5 },
-  { id: 2, name: 'Porsche Cup', seasonId: 2024, currentWeekNumber: null },
+  {
+    id: 1,
+    name: 'VRS GT3 Sprint',
+    seasonId: 2024,
+    currentWeekNumber: 5,
+    category: null,
+    trackName: null,
+    trackConfigName: null,
+    carCount: 0,
+    driverCount: 0,
+  },
+  {
+    id: 2,
+    name: 'Porsche Cup',
+    seasonId: 2024,
+    currentWeekNumber: null,
+    category: null,
+    trackName: null,
+    trackConfigName: null,
+    carCount: 0,
+    driverCount: 0,
+  },
 ];
 
 function renderPage() {
   return render(
     <MemoryRouter>
       <ProfilePage />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockUser = { token: 'tok', userId: 'u1', displayName: 'Test Driver', email: 't@t.com', iRacingCustomerId: 100042, role: 'Standard' };
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Test Driver',
+      email: 't@t.com',
+      iRacingCustomerId: 100042,
+      role: 'Standard',
+    };
     mockGetMyLaps.mockResolvedValue([]);
     mockGetSeries.mockResolvedValue([]);
   });
@@ -73,16 +116,12 @@ describe('ProfilePage', () => {
 
   it('shows empty lap state when no telemetry has been uploaded', async () => {
     renderPage();
-    await waitFor(() =>
-      expect(screen.getByText(/no lap data yet/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no lap data yet/i)).toBeInTheDocument());
   });
 
   it('shows no active series message when series list is empty', async () => {
     renderPage();
-    await waitFor(() =>
-      expect(screen.getByText(/no active series/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no active series/i)).toBeInTheDocument());
   });
 
   it('renders car rows in the performance table when laps are present', async () => {
@@ -95,7 +134,15 @@ describe('ProfilePage', () => {
   it('renders only the best lap per car when a car appears multiple times', async () => {
     const duplicateLaps = [
       ...sampleLaps,
-      { carId: 1, carName: 'Porsche 911 GT3 R', trackName: 'Monza', configName: '', bestLapSeconds: 140.0, lapCount: 3, lastRecordedAt: '2024-03-01T00:00:00Z' },
+      {
+        carId: 1,
+        carName: 'Porsche 911 GT3 R',
+        trackName: 'Monza',
+        configName: '',
+        bestLapSeconds: 140.0,
+        lapCount: 3,
+        lastRecordedAt: '2024-03-01T00:00:00Z',
+      },
     ];
     mockGetMyLaps.mockResolvedValue(duplicateLaps);
     renderPage();

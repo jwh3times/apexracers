@@ -1,9 +1,12 @@
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/users/me/recommendations")]
 public class RecommendationsController(CarRecommendationService recommendations) : ControllerBase
 {
@@ -12,12 +15,14 @@ public class RecommendationsController(CarRecommendationService recommendations)
         [FromQuery] int seriesId,
         [FromQuery] int weekNumber,
         [FromQuery] bool includePersonalLaps = false,
+        [FromQuery] List<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
         var customerIdClaim = User.FindFirst("iracing_id")?.Value;
         if (!long.TryParse(customerIdClaim, out var customerId))
             return Ok(Array.Empty<object>());
 
-        return Ok(await recommendations.GetRecommendationsAsync(seriesId, weekNumber, customerId, includePersonalLaps, ct));
+        return Ok(await recommendations.GetRecommendationsAsync(
+            seriesId, weekNumber, customerId, includePersonalLaps, personalLapTypes, ct));
     }
 }

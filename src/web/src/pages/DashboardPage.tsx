@@ -32,12 +32,14 @@ export default function DashboardPage() {
   const [lapsLoading, setLapsLoading] = useState(true);
 
   useEffect(() => {
-    api.getSeries()
+    api
+      .getSeries()
       .then(setSeries)
       .catch(() => {})
       .finally(() => setSeriesLoading(false));
 
-    api.getMyLaps()
+    api
+      .getMyLaps()
       .then(setLaps)
       .catch(() => {})
       .finally(() => setLapsLoading(false));
@@ -45,21 +47,19 @@ export default function DashboardPage() {
 
   const recentLaps = laps.slice(0, 5);
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
-  const bestLap = laps.length > 0
-    ? laps.reduce((best, l) => l.bestLapSeconds < best.bestLapSeconds ? l : best)
-    : null;
+  const bestLap =
+    laps.length > 0
+      ? laps.reduce((best, l) => (l.bestLapSeconds < best.bestLapSeconds ? l : best))
+      : null;
 
   return (
     <main className="page-wrap">
       {/* Page head */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-eyebrow text-primary-container">
-            Race Center
-          </p>
+          <p className="text-eyebrow text-primary-container">Race Center</p>
           <h1 className="text-page-title text-on-surface mt-2 mb-1">
-            Welcome back,{' '}
-            <span className="text-on-surface font-bold">{displayName}</span>
+            Welcome back, <span className="text-on-surface font-bold">{displayName}</span>
           </h1>
           <p className="text-body-fluid text-on-surface-variant">
             Here&rsquo;s where your pace stands right now.
@@ -70,7 +70,9 @@ export default function DashboardPage() {
             to="/telemetry"
             className="inline-flex items-center gap-2 btn-fluid border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
           >
-            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">upload_file</span>
+            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">
+              upload_file
+            </span>
             Upload telemetry
           </Link>
           <Link
@@ -78,7 +80,9 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold transition-all"
             style={{ boxShadow: '0 0 26px -8px var(--color-primary-container)' }}
           >
-            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">auto_awesome</span>
+            <span className="material-symbols-outlined text-[17px]" aria-hidden="true">
+              auto_awesome
+            </span>
             Find my edge
           </Link>
         </div>
@@ -92,7 +96,9 @@ export default function DashboardPage() {
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
-            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">sports_motorsports</span>
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              sports_motorsports
+            </span>
             Active series
           </div>
           <div className="text-kpi-value mt-2 text-on-surface">
@@ -106,12 +112,12 @@ export default function DashboardPage() {
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
-            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">timer</span>
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              timer
+            </span>
             Laps recorded
           </div>
-          <div className="text-kpi-value mt-2 text-on-surface">
-            {lapsLoading ? '—' : totalLaps}
-          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">{lapsLoading ? '—' : totalLaps}</div>
         </div>
 
         {/* Cars tracked — distinct car count, not car+track combos */}
@@ -120,7 +126,9 @@ export default function DashboardPage() {
           style={cardStyle}
         >
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
-            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">directions_car</span>
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              directions_car
+            </span>
             Cars tracked
           </div>
           <div className="text-kpi-value mt-2 text-on-surface">
@@ -134,11 +142,11 @@ export default function DashboardPage() {
         {/* Left column */}
         <div className="flex flex-col gap-fluid">
           {/* This week */}
-          <div
-            className="card-r border border-line-2 bg-surface overflow-hidden"
-            style={cardStyle}
-          >
-            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
+          <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+            <div
+              className="flex items-center justify-between card-hp border-b border-line-2"
+              style={scanTexture}
+            >
               <h3 className="text-section-head text-on-surface">This week</h3>
               <Link
                 to="/series"
@@ -161,10 +169,7 @@ export default function DashboardPage() {
             {!seriesLoading && series.length > 0 && (
               <div className="divide-y divide-white/[0.06]">
                 {series.slice(0, 5).map(s => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between px-5 py-[13px]"
-                  >
+                  <div key={s.id} className="flex items-center justify-between px-5 py-[13px]">
                     <div>
                       <div className="text-body-fluid font-medium text-on-surface">{s.name}</div>
                       <div className="text-small-fluid text-on-surface-variant mt-0.5">
@@ -188,11 +193,11 @@ export default function DashboardPage() {
           </div>
 
           {/* Personal bests */}
-          <div
-            className="card-r border border-line-2 bg-surface overflow-hidden"
-            style={cardStyle}
-          >
-            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
+          <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+            <div
+              className="flex items-center justify-between card-hp border-b border-line-2"
+              style={scanTexture}
+            >
               <h3 className="text-section-head text-on-surface">Personal bests</h3>
               <Link
                 to="/my-laps"
@@ -210,7 +215,10 @@ export default function DashboardPage() {
 
             {!lapsLoading && recentLaps.length === 0 && (
               <div className="flex flex-col items-center gap-3 py-10 text-center px-5">
-                <span className="material-symbols-outlined text-3xl text-on-surface-variant" aria-hidden="true">
+                <span
+                  className="material-symbols-outlined text-3xl text-on-surface-variant"
+                  aria-hidden="true"
+                >
                   timer_off
                 </span>
                 <p className="text-body-fluid text-on-surface-variant">
@@ -259,9 +267,7 @@ export default function DashboardPage() {
                 {bestLap && (
                   <div className="px-4 py-3 border-t border-line-2 flex items-center justify-between">
                     <div>
-                      <p className="text-th text-on-surface-variant">
-                        Overall Best
-                      </p>
+                      <p className="text-th text-on-surface-variant">Overall Best</p>
                       <p className="text-small-fluid text-on-surface-variant mt-0.5">
                         {bestLap.carName} &middot; {trackLabel(bestLap)}
                       </p>
@@ -282,7 +288,10 @@ export default function DashboardPage() {
             className="card-r border border-line-2 bg-surface overflow-hidden h-full"
             style={cardStyle}
           >
-            <div className="flex items-center justify-between card-hp border-b border-line-2" style={scanTexture}>
+            <div
+              className="flex items-center justify-between card-hp border-b border-line-2"
+              style={scanTexture}
+            >
               <h3 className="text-section-head text-on-surface">Active series</h3>
               <Link
                 to="/series"
@@ -311,14 +320,21 @@ export default function DashboardPage() {
                   return (
                     <Link
                       key={s.id}
-                      to={s.currentWeekNumber != null ? `/series/${s.id}/weeks/${s.currentWeekNumber}` : '/series'}
+                      to={
+                        s.currentWeekNumber != null
+                          ? `/series/${s.id}/weeks/${s.currentWeekNumber}`
+                          : '/series'
+                      }
                       className="block px-5 py-4 hover:bg-surface-container transition-colors"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-small-fluid font-mono text-primary-container font-semibold">
                           {s.currentWeekNumber != null ? `Week ${s.currentWeekNumber}` : 'Upcoming'}
                         </span>
-                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant" aria-hidden="true">
+                        <span
+                          className="material-symbols-outlined text-[16px] text-on-surface-variant"
+                          aria-hidden="true"
+                        >
                           chevron_right
                         </span>
                       </div>

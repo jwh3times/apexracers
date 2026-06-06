@@ -1,3 +1,5 @@
+using ApexRacers.Core.Models;
+
 namespace ApexRacers.Api.Telemetry;
 
 public sealed class ParsedIbtSession
@@ -13,6 +15,7 @@ public sealed class ParsedIbtSession
     public float AirTempCelsius { get; init; }
     public float TrackTempCelsius { get; init; }
     public byte TrackWetness { get; init; }
+    public LapSessionType SessionType { get; init; }
     public DateTimeOffset SessionDate { get; init; }
     public required IReadOnlyList<ParsedLap> Laps { get; init; }
 }

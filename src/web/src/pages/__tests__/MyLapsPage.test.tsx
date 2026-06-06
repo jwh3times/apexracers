@@ -20,7 +20,9 @@ function renderPage(search = '') {
 }
 
 describe('MyLapsPage', () => {
-  beforeEach(() => { vi.resetAllMocks(); });
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('shows empty state when no laps recorded', async () => {
     mockGetMyLaps.mockResolvedValue([]);
