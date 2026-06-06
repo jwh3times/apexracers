@@ -9,7 +9,7 @@ You are working inside the ApexRacers React frontend (`src/web/`). Know these pa
 
 ## Stack
 
-React 18 + Vite + TypeScript strict mode. All source in `src/web/src/`.
+React 19 + Vite + TypeScript strict mode. All source in `src/web/src/`.
 
 Dev commands (run from `src/web/`):
 ```bash
@@ -18,6 +18,7 @@ npm run dev:docker   # proxies /api → http://localhost:8080
 npm run dev:all      # starts dotnet API + Vite together
 npm run build        # tsc + Vite production build
 npm run lint         # ESLint
+npx prettier --check .      # Prettier format check (also enforced in CI)
 npx vitest run --coverage   # one-shot test run with coverage report
 ```
 
@@ -149,3 +150,12 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 - Test behavior, not implementation: prefer `getByRole`, `getByText`, `findBy*` over snapshot tests.
 - Mock `src/services/api.ts` with `vi.mock('../services/api')` in tests that call API methods.
 - Mock `src/context/AuthContext.tsx` when testing pages that call `useAuth()`.
+
+## CI requirements
+
+The CI pipeline (`test` job in `.github/workflows/deploy.yml`) runs from `src/web/` and blocks both deploy jobs on failure:
+1. `npm ci` — install dependencies (Node 26, locked via `package-lock.json`)
+2. `npx prettier --check .` — formatting check; any unformatted file fails the build
+3. `npx vitest run --coverage` — coverage must meet the 80% threshold
+
+Run `npx prettier --check .` locally before pushing. To auto-fix: `npx prettier --write .`.

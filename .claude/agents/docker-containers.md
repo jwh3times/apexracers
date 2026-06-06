@@ -13,7 +13,7 @@ You are working with the ApexRacers container setup. Know the multi-stage build 
 
 Three stages:
 
-1. **`frontend`** (`node:22-alpine`) — installs npm deps then builds React:
+1. **`frontend`** (`node:26-alpine`) — installs npm deps then builds React:
    - Copy `package.json` + `package-lock.json` first → `npm ci` → copy `src/web/` → `npm run build`
    - Output: `/app/dist`
 
@@ -105,7 +105,7 @@ Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose ex
 
 ## Base image versions
 
-- Node: `22-alpine`
+- Node: `26-alpine`
 - .NET SDK: `10.0`
 - .NET ASP.NET runtime: `10.0`
 - .NET runtime (ingestion): `10.0`

@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # this can be removed June 2, 2026
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # this can be removed June 16, 2026
 
 # ── Required GitHub Secrets ───────────────────────────────────────────────────
 # AZURE_CREDENTIALS       — JSON output of: az ad sp create-for-rbac --sdk-auth
@@ -54,7 +54,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '26'
           cache: 'npm'
           cache-dependency-path: src/web/package-lock.json
 

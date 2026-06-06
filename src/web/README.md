@@ -8,6 +8,7 @@ React + TypeScript + Vite frontend for ApexRacers. All `/api` requests are proxi
 - TypeScript 6, Vite 8
 - Tailwind CSS v4
 - Vitest + Testing Library
+- Node.js 26+ (required; enforced via `engines` in `package.json`)
 
 ## Dev servers
 
@@ -38,9 +39,13 @@ npm run lint     # ESLint
 npm run test          # Vitest one-shot run
 npm run test:watch    # Vitest in watch mode
 npx vitest run --coverage   # Coverage report (80% threshold enforced)
+npx prettier --check .      # Formatting check (also runs in CI)
+npx prettier --write .      # Auto-fix formatting
 ```
 
 Coverage is enforced at **80%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
+
+The CI `test` job runs `npx prettier --check .` before the Vitest coverage step. Any unformatted file blocks both deploy jobs.
 
 ## Project structure
 

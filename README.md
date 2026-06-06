@@ -19,7 +19,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Node.js 22+](https://nodejs.org/)
+- [Node.js 26+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - iRacing OAuth credentials (see note below)
 

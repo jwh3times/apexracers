@@ -54,6 +54,10 @@ npm run preview      # Serve the production build locally
 # Tests
 npm run test         # Vitest one-shot run
 npm run test:watch   # Vitest in watch mode
+
+# Formatting (required by CI — run before pushing)
+npx prettier --check .   # Check formatting (same check CI runs)
+npx prettier --write .   # Auto-fix formatting
 ```
 
 The API proxy target is controlled by `API_TARGET` in the relevant `.env.*` file (`src/web/.env.docker`, `src/web/.env.cloud`). The default (`npm run dev` / `dev:all`) falls back to `http://localhost:5000` with no env file needed.
@@ -324,6 +328,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 ### Frontend (Vitest)
 
 Coverage thresholds are enforced in `vite.config.ts` at **80%** across statements, branches, functions, and lines. `npx vitest run --coverage` must exit cleanly (no threshold errors) before any frontend change is considered done. When adding new source files, add corresponding tests to keep all four metrics above 80%.
+
+The CI `test` job (`.github/workflows/deploy.yml`) also runs `npx prettier --check .` from `src/web/` after `npm ci` and before the Vitest coverage step. Any unformatted file blocks both deploy jobs. Run `npx prettier --write .` locally to fix formatting before pushing.
 
 Run coverage:
 
