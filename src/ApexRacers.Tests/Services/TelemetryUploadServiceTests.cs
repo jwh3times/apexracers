@@ -14,11 +14,11 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 2, lapTime: 90.5f, validLaps: true);
-        var result = await svc.ProcessAsync(stream, Guid.NewGuid(), CancellationToken.None);
+        var result = await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.TotalLaps);
         Assert.Equal(2, result.ValidLaps);
-        Assert.Equal(90.5, result.BestLapSeconds!.Value, precision: 2);
+        Assert.Equal(90.5, result.BestLapSeconds!.Value, tolerance: 0.005);
         Assert.Equal("Spa-Francorchamps", result.TrackName);
         Assert.Equal("Porsche 992 GT3",   result.CarName);
         Assert.Equal(12345L,              result.CustomerId);
@@ -32,7 +32,7 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 2, validLaps: false);
-        var result = await svc.ProcessAsync(stream, Guid.NewGuid(), CancellationToken.None);
+        var result = await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.TotalLaps);
         Assert.Equal(0, result.ValidLaps);
@@ -46,7 +46,7 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 1, carId: 99);
-        await svc.ProcessAsync(stream, Guid.NewGuid(), CancellationToken.None);
+        await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var car = db.Cars.Single();
         Assert.Equal(99, car.Id);
@@ -58,11 +58,11 @@ public class TelemetryUploadServiceTests
     {
         await using var db = DbContextFactory.Create();
         db.Cars.Add(new Car { Id = 99, Name = "Porsche 992 GT3", NameAbbreviated = "P992" });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var svc = new TelemetryUploadService(db);
         using var stream = FakeIbtBuilder.Build(laps: 1, carId: 99);
-        await svc.ProcessAsync(stream, Guid.NewGuid(), CancellationToken.None);
+        await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Single(db.Cars);
     }
@@ -75,7 +75,7 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
-        await svc.ProcessAsync(stream, userId, CancellationToken.None);
+        await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
         var laps = db.PersonalLaps.ToList();
         Assert.Equal(3, laps.Count);
@@ -83,7 +83,7 @@ public class TelemetryUploadServiceTests
         {
             Assert.Equal(userId, l.UserId);
             Assert.True(l.IsValidLap);
-            Assert.Equal(95.0, l.LapTimeSeconds, precision: 2);
+            Assert.Equal(95.0, l.LapTimeSeconds, tolerance: 0.005);
             Assert.Equal(LapSessionType.Unknown, l.SessionType);
         });
     }
@@ -96,7 +96,7 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 1, lapTime: 90.0f, validLaps: true, eventType: LapSessionType.Race);
-        await svc.ProcessAsync(stream, userId, CancellationToken.None);
+        await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
         var lap = Assert.Single(db.PersonalLaps);
         Assert.Equal(LapSessionType.Race, lap.SessionType);
@@ -109,7 +109,7 @@ public class TelemetryUploadServiceTests
         var svc = new TelemetryUploadService(db);
 
         using var stream = FakeIbtBuilder.Build(laps: 2, validLaps: false);
-        await svc.ProcessAsync(stream, Guid.NewGuid(), CancellationToken.None);
+        await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Empty(db.PersonalLaps);
     }

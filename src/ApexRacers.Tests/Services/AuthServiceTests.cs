@@ -63,7 +63,7 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"));
+        var result = await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(result.Token);
         Assert.Equal("jerry", result.DisplayName);
@@ -77,10 +77,10 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"));
+        await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234")));
+            svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -107,7 +107,7 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -123,9 +123,9 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
+        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"));
+        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotEmpty(result!.Token);
@@ -138,9 +138,9 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
+        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"));
+        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -151,7 +151,7 @@ public class AuthServiceTests
         await using var provider = BuildProvider();
         var svc = BuildService(provider);
 
-        var result = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"));
+        var result = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -165,8 +165,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("New Name"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("New Name"), TestContext.Current.CancellationToken);
 
         Assert.Equal("New Name", result.DisplayName);
     }
@@ -178,8 +178,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L));
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -193,13 +193,13 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"));
-        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"), TestContext.Current.CancellationToken);
 
-        var canLoginWithNew = await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"));
+        var canLoginWithNew = await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         Assert.NotNull(canLoginWithNew);
 
-        var canLoginWithOld = await svc.LoginAsync(new LoginRequest("old@example.com", "Pass1234"));
+        var canLoginWithOld = await svc.LoginAsync(new LoginRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         Assert.Null(canLoginWithOld);
     }
 
@@ -210,8 +210,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"));
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"), TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
         Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "new@example.com");
@@ -224,11 +224,11 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg1 = await svc.RegisterAsync(new RegisterRequest("user1@example.com", "Pass1234"));
-        await svc.RegisterAsync(new RegisterRequest("user2@example.com", "Pass1234"));
+        var reg1 = await svc.RegisterAsync(new RegisterRequest("user1@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.RegisterAsync(new RegisterRequest("user2@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.UpdateProfileAsync(reg1.UserId, new UpdateProfileRequest("Name", Email: "user2@example.com")));
+            svc.UpdateProfileAsync(reg1.UserId, new UpdateProfileRequest("Name", Email: "user2@example.com"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -238,8 +238,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"));
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "user@example.com"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "user@example.com"), TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(result.Token);
     }
@@ -251,11 +251,11 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
-        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L));
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L), TestContext.Current.CancellationToken);
 
         // Second update without IRacingCustomerId — should not clear the first one
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name Two"));
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name Two"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -269,7 +269,7 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        var result = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -285,8 +285,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
-        var result = await svc.UpdateRoleAsync(reg.UserId, "Beta");
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateRoleAsync(reg.UserId, "Beta", TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
         Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Beta");
@@ -299,9 +299,9 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
-        await svc.UpdateRoleAsync(reg.UserId, "Alpha");
-        var result = await svc.UpdateRoleAsync(reg.UserId, "Standard");
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.UpdateRoleAsync(reg.UserId, "Alpha", TestContext.Current.CancellationToken);
+        var result = await svc.UpdateRoleAsync(reg.UserId, "Standard", TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
         Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
@@ -314,10 +314,10 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.UpdateRoleAsync(reg.UserId, "Admin"));
+            svc.UpdateRoleAsync(reg.UserId, "Admin", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public class AuthServiceTests
         var svc = BuildService(provider);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("admin@example.com", "Pass1234"));
+        var reg = await svc.RegisterAsync(new RegisterRequest("admin@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         // Promote to Admin via UserManager directly (as the startup seed would)
         var user = await userManager.FindByIdAsync(reg.UserId.ToString());
@@ -337,7 +337,7 @@ public class AuthServiceTests
         await userManager.AddToRoleAsync(user!, "Admin");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.UpdateRoleAsync(reg.UserId, "Standard"));
+            svc.UpdateRoleAsync(reg.UserId, "Standard", TestContext.Current.CancellationToken));
     }
 
     // ── HandleCallbackAsync ───────────────────────────────────────────────────
@@ -349,7 +349,7 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         await Assert.ThrowsAsync<NotImplementedException>(() =>
-            svc.HandleCallbackAsync("code", "state"));
+            svc.HandleCallbackAsync("code", "state", TestContext.Current.CancellationToken));
     }
 
     // ── RefreshAsync / RevokeAsync ────────────────────────────────────────────
@@ -361,7 +361,7 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.RefreshToken);
         Assert.NotEmpty(result.RefreshToken!);
@@ -374,8 +374,8 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
-        var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"));
+        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotNull(result!.RefreshToken);
@@ -389,10 +389,10 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         var originalRefresh = reg.RefreshToken!;
 
-        var refreshed = await svc.RefreshAsync(originalRefresh);
+        var refreshed = await svc.RefreshAsync(originalRefresh, TestContext.Current.CancellationToken);
 
         // Access token must be non-empty
         Assert.NotEmpty(refreshed.Token);
@@ -409,15 +409,15 @@ public class AuthServiceTests
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"));
+        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         var oldRefresh = reg.RefreshToken!;
 
         // Rotate once — this revokes oldRefresh
-        await svc.RefreshAsync(oldRefresh);
+        await svc.RefreshAsync(oldRefresh, TestContext.Current.CancellationToken);
 
         // Re-using the old token must throw
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RefreshAsync(oldRefresh));
+            svc.RefreshAsync(oldRefresh, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -428,7 +428,7 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RefreshAsync("this-token-does-not-exist"));
+            svc.RefreshAsync("this-token-does-not-exist", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -439,16 +439,17 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         var login   = await svc.LoginAsync(
-            (await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234")) is { }
+            (await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken) is { }
                 ? new LoginRequest("driver@example.com", "Pass1234")
-                : throw new InvalidOperationException()));
+                : throw new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         var refreshToken = login!.RefreshToken!;
 
-        await svc.RevokeAsync(refreshToken);
+        await svc.RevokeAsync(refreshToken, TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RefreshAsync(refreshToken));
+            svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -459,6 +460,6 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         // Should complete without throwing — unknown tokens are silently ignored
-        await svc.RevokeAsync("garbage");
+        await svc.RevokeAsync("garbage", TestContext.Current.CancellationToken);
     }
 }

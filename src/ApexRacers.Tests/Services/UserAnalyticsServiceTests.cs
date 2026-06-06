@@ -12,7 +12,7 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_NoPercentileData_ReturnsEmptyList()
     {
         await using var db = DbContextFactory.Create();
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(Guid.NewGuid(), null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(Guid.NewGuid(), null, TestContext.Current.CancellationToken);
         Assert.Empty(result);
     }
 
@@ -35,9 +35,9 @@ public class UserAnalyticsServiceTests
         AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5);
         // Another driver
         AddResult(db, subsession, car, carClass, custId: 99, lapSeconds: 65.0);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         var dto = result[0];
@@ -71,9 +71,9 @@ public class UserAnalyticsServiceTests
         db.CarPercentileResults.AddRange(
             new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 60.0, SampleSize = 80, ComputedAt = DateTimeOffset.UtcNow.AddDays(-14), Car = car, Week = week1 },
             new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 80.0, SampleSize = 90, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7), Car = car, Week = week2 });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         var dto = result[0];
@@ -95,9 +95,9 @@ public class UserAnalyticsServiceTests
         db.CarPercentileResults.AddRange(
             new CarPercentileResult { UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week1.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week1 },
             new CarPercentileResult { UserId = userId, CarId = car2.Id, SeriesId = 2, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week2 });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, seriesId: 1);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, seriesId: 1, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(car1.Id, result[0].CarId);
@@ -116,9 +116,9 @@ public class UserAnalyticsServiceTests
             PercentileRank = 75.0, SampleSize = 60, ComputedAt = DateTimeOffset.UtcNow,
             Car = car, Week = week,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(0, result[0].TotalWeeks);
@@ -144,9 +144,9 @@ public class UserAnalyticsServiceTests
         db.CarPercentileResults.AddRange(
             new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week },
             new CarPercentileResult { UserId = userId, CarId = 2, SeriesId = 1, WeekId = week.Id, PercentileRank = 90.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].CarId);
@@ -186,9 +186,9 @@ public class UserAnalyticsServiceTests
         AddResult(db, subsession2, car, carClass, custId: 2, lapSeconds: 110);
         AddResult(db, subsession2, car, carClass, custId: 3, lapSeconds: 120);
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(70.0, result[0].MedianLapSeconds);

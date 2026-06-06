@@ -14,9 +14,9 @@ public class SeriesServiceTests
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         db.Series.Add(series);
         db.Seasons.Add(new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = false, Series = series });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new SeriesService(db).GetActiveSeriesAsync();
+        var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -33,9 +33,9 @@ public class SeriesServiceTests
         db.Seasons.Add(season);
         db.Tracks.Add(track);
         db.Weeks.Add(week);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new SeriesService(db).GetActiveSeriesAsync();
+        var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.Id);
@@ -60,9 +60,9 @@ public class SeriesServiceTests
         db.Seasons.Add(season);
         db.Tracks.Add(track);
         db.Weeks.Add(week);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new SeriesService(db).GetActiveSeriesAsync();
+        var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Null(dto.CurrentWeekNumber);
@@ -82,9 +82,9 @@ public class SeriesServiceTests
         db.Seasons.Add(season);
         db.Tracks.AddRange(track1, track2);
         db.Weeks.AddRange(week1, week2);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new SeriesService(db).GetActiveSeriesAsync();
+        var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result[0].CurrentWeekNumber);
         Assert.Equal("Spa", result[0].TrackName);
@@ -126,9 +126,9 @@ public class SeriesServiceTests
         db.SubsessionResults.Add(
             new SubsessionResult { SubsessionId = 1, CustId = 99, CarId = 1, CarClassId = 10, BestLapSeconds = 88, Subsession = sub1, Car = car1, CarClass = carClass }
         );
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new SeriesService(db).GetActiveSeriesAsync();
+        var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result[0].CarCount);    // car1 + car2 from current week official sub
         Assert.Equal(3, result[0].DriverCount); // drivers 10, 20, 30

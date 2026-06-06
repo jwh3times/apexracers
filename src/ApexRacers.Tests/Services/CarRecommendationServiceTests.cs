@@ -63,7 +63,7 @@ public class CarRecommendationServiceTests
     {
         await using var db = DbContextFactory.Create();
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -75,9 +75,9 @@ public class CarRecommendationServiceTests
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         // Only driver 999 has a result; customer 1 has no lap and no cached percentile
         AddResult(db, subsession, car1, carClass, custId: 999, lapSeconds: 70);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -91,20 +91,20 @@ public class CarRecommendationServiceTests
         // car2: driver 11 ran 60s, driver 1 ran another race — driver 1 needs a car2 result
         // Since composite key is (SubsessionId, CustId), driver 1 can only appear once per
         // subsession. Use a second subsession for car2.
-        await db.SaveChangesAsync(); // flush seed entities first
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken); // flush seed entities first
         AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 90);
         AddResult(db, subsession, car1, carClass, custId: 2, lapSeconds: 70);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var subsession2 = new Subsession { Id = -2, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-1) };
         db.Subsessions.Add(subsession2);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         AddResult(db, subsession2, car2, carClass, custId: 1, lapSeconds: 60);
         AddResult(db, subsession2, car2, carClass, custId: 3, lapSeconds: 70);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Rank);
@@ -143,15 +143,15 @@ public class CarRecommendationServiceTests
         AddResult(db, prevSubsession, car1, carClass, custId: 101, lapSeconds: 65);
         AddResult(db, prevSubsession, car1, carClass, custId: 102, lapSeconds: 70);
         AddResult(db, prevSubsession, car1, carClass, custId: 103, lapSeconds: 75);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Null(dto.BestLapSeconds);
         Assert.Equal(100.0, dto.PercentileRank); // beat all 3 others in prev week
         // 100th percentile in [70, 80, 90]: pos = 0 → fastest = 70 s
-        Assert.Equal(70.0, dto.ProjectedLapSeconds, precision: 6);
+        Assert.Equal(70.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
 
     [Fact]
@@ -173,16 +173,16 @@ public class CarRecommendationServiceTests
             UserId = userId, CarId = 1, SeriesId = 1, WeekId = Guid.NewGuid(), // some previous week's guid
             PercentileRank = 50.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
         Assert.Null(dto.BestLapSeconds);
         Assert.Equal(50.0, dto.PercentileRank);
         // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
-        Assert.Equal(80.0, dto.ProjectedLapSeconds, precision: 6);
+        Assert.Equal(80.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
 
     [Fact]
@@ -208,16 +208,16 @@ public class CarRecommendationServiceTests
             SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true);
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap shown as best
         // 65s beats all 3 → slowerCount = 3, total = 3 → 100%
-        Assert.Equal(100.0, dto.PercentileRank, precision: 6);
+        Assert.Equal(100.0, dto.PercentileRank, tolerance: 1e-6);
     }
 
     [Fact]
@@ -239,10 +239,10 @@ public class CarRecommendationServiceTests
             SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: false);
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: false, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -266,12 +266,12 @@ public class CarRecommendationServiceTests
             SessionType = LapSessionType.Practice, // practice lap, not race
             RecordedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
             seriesId: 1, weekNumber: 1, customerId: 1,
             includePersonalLaps: true,
-            personalLapTypes: [LapSessionType.Race]);
+            personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -296,12 +296,12 @@ public class CarRecommendationServiceTests
             SessionType = LapSessionType.Unknown, // pre-migration default
             RecordedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
             seriesId: 1, weekNumber: 1, customerId: 1,
             includePersonalLaps: true,
-            personalLapTypes: [LapSessionType.Race]);
+            personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds);
@@ -318,7 +318,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 1,   lapSeconds: 90); // driver's race lap
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 80);
         AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 70);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
@@ -329,10 +329,10 @@ public class CarRecommendationServiceTests
             SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true);
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap

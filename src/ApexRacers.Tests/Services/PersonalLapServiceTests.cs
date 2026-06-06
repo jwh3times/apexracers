@@ -37,9 +37,9 @@ public class PersonalLapServiceTests
     {
         await using var db = DbContextFactory.Create();
         var (user, _, _) = SeedUserCarAndTrack(db);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id, TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -50,9 +50,9 @@ public class PersonalLapServiceTests
         await using var db = DbContextFactory.Create();
         var (user, car, track) = SeedUserCarAndTrack(db);
         db.PersonalLaps.Add(MakeLap(user, car, track, lapTime: 70, isValid: false));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id, TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -66,9 +66,9 @@ public class PersonalLapServiceTests
             MakeLap(user, car, track, lapTime: 70),
             MakeLap(user, car, track, lapTime: 60),
             MakeLap(user, car, track, lapTime: 80));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id, TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(60, dto.BestLapSeconds);
@@ -84,9 +84,9 @@ public class PersonalLapServiceTests
             MakeLap(user, car, track, lapTime: 70, isValid: true),
             MakeLap(user, car, track, lapTime: 60, isValid: false), // invalid — should not count
             MakeLap(user, car, track, lapTime: 80, isValid: true));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id, TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(2, dto.LapCount);
@@ -111,9 +111,9 @@ public class PersonalLapServiceTests
                 RecordedAt = DateTimeOffset.UtcNow.AddDays(-1),
                 Car = car2,
             });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id);
+        var result = await new PersonalLapService(db).GetPersonalBestsAsync(user.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].CarId); // Ferrari lap recorded 1 day ago

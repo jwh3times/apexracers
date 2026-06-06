@@ -96,8 +96,8 @@ public class IbtParserTests
         Assert.Equal("P992", session.CarNameAbbreviated);
         Assert.Equal(12345L, session.DriverCustomerId);
         Assert.Equal("Jerry Holland", session.DriverName);
-        Assert.Equal(25.0f, session.AirTempCelsius, precision: 1);
-        Assert.Equal(35.0f, session.TrackTempCelsius, precision: 1);
+        Assert.Equal(25.0f, session.AirTempCelsius, tolerance: 0.05f);
+        Assert.Equal(35.0f, session.TrackTempCelsius, tolerance: 0.05f);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class IbtParserTests
 
         Assert.Equal(3, session.Laps.Count);
         Assert.All(session.Laps, l => Assert.True(l.IsValid));
-        Assert.All(session.Laps, l => Assert.Equal(90.5, l.LapTimeSeconds, precision: 2));
+        Assert.All(session.Laps, l => Assert.Equal(90.5, l.LapTimeSeconds, tolerance: 0.005));
     }
 
     [Fact]

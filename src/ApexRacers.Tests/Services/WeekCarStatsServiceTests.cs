@@ -60,9 +60,9 @@ public class WeekCarStatsServiceTests
     {
         await using var db = DbContextFactory.Create();
         SeedBasic(db);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 99, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 99, weekNumber: 1, TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -75,9 +75,9 @@ public class WeekCarStatsServiceTests
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
         AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
         AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 90);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1, TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(3, dto.EntryCount);
@@ -94,9 +94,9 @@ public class WeekCarStatsServiceTests
         AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
         AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 80);
         AddResult(db, subsession, car, carClass, custId: 4, lapSeconds: 90);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1, TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(75, dto.MedianLapSeconds);
@@ -108,9 +108,9 @@ public class WeekCarStatsServiceTests
         await using var db = DbContextFactory.Create();
         var (_, _, _, car, carClass, subsession) = SeedBasic(db);
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1, TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal("GT3", dto.ClassName);
@@ -122,9 +122,9 @@ public class WeekCarStatsServiceTests
         await using var db = DbContextFactory.Create();
         var (_, _, _, car, carClass, subsession) = SeedBasic(db);
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 90);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 1, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 1, weekNumber: 1, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("GT3 Cup", result.SeriesName);
@@ -138,9 +138,9 @@ public class WeekCarStatsServiceTests
     {
         await using var db = DbContextFactory.Create();
         SeedBasic(db);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 99, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetWeekDetailAsync(seriesId: 99, weekNumber: 1, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -154,9 +154,9 @@ public class WeekCarStatsServiceTests
         db.Cars.Add(car2);
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         AddResult(db, subsession, car2, carClass, custId: 2, lapSeconds: 60);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1);
+        var result = await new WeekCarStatsService(db).GetCarsForWeekAsync(seriesId: 1, weekNumber: 1, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].CarId); // Ferrari is faster
