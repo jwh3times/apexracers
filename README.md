@@ -13,7 +13,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | `src/ApexRacers.Seeder/` | CLI tool that seeds synthetic lap time data (idempotent) |
 | `src/ApexRacers.Tests/` | xUnit unit tests for services and domain helpers |
 | `src/web/` | Vite + React + TypeScript frontend |
-| `infra/` | Azure Bicep infrastructure definitions |
+| `infra/` | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
 | `.github/workflows/` | GitHub Actions CI/CD pipelines |
 
 ## Prerequisites
@@ -90,6 +90,32 @@ The seeder is idempotent — safe to run multiple times.
 ```bash
 dotnet run --project src/ApexRacers.Ingestion
 ```
+
+## Ports
+
+All ports used across the project's config files (`docker-compose.yml`, `Dockerfile`, `launchSettings.json`, `vite.config.ts`, and the `.env` files):
+
+| Port | Service | Defined in | Notes |
+| ---- | ------- | ---------- | ----- |
+| `5432` | PostgreSQL | `docker-compose.yml` (`5432:5432`), `launchSettings.json`, `.env` | Exposed to host |
+| `5050` | pgAdmin (host) | `docker-compose.yml` (`5050:80`) | Host `5050` → container port `80` |
+| `8080` | API (Docker) | `docker-compose.yml` (`8080:8080`), `Dockerfile` (`EXPOSE`), `.env`, `src/web/.env.docker` | Containerized API listen port |
+| `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example` | Default when running the API directly |
+| `5173` | Vite dev server | Vite default (not pinned in `vite.config.ts`) | Auto-increments if the port is taken |
+| `443` | API (Azure cloud) | `src/web/.env.cloud` | `https://apexracers-api.azurewebsites.net` |
+
+The ingestion worker (`Dockerfile.ingestion`) exposes no port — it is a background worker with no HTTP listener.
+
+Request flow by mode (the frontend always talks to Vite on `5173`, which proxies `/api` onward):
+
+```text
+LOCAL   (npm run dev / dev:all)   :5173 ──/api──▶ :5000 (dotnet API) ──▶ :5432 (Postgres)
+DOCKER  (npm run dev:docker)      :5173 ──/api──▶ :8080 (API container) ──▶ :5432 (Postgres)
+                                                  pgAdmin → :5050 → (container :80)
+CLOUD   (npm run dev:cloud)       :5173 ──/api──▶ :443  apexracers-api.azurewebsites.net
+```
+
+> **Note:** The OAuth redirect URI differs by environment file — `.env` targets `:8080` (Docker) while `.env.example` targets `:5000` (local). It must match wherever the API is actually listening.
 
 ## iRacing OAuth credentials
 

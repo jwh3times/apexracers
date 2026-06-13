@@ -80,6 +80,8 @@ Get-Content src\ApexRacers.Data\Seeds\seed_gt3_series.sql | docker compose exec 
 
 Copy `.env.example` to `.env` and fill in `JWT_SIGNING_KEY` before running. `DATABASE_CONNECTION_STRING` is pre-filled for the Docker network.
 
+**Ports:** see the [Ports table in README.md](README.md#ports) for the full map of ports across all config files (Postgres 5432, pgAdmin 5050, API 8080/5000, Vite 5173).
+
 ### Azure (resource group: apexracers-rg)
 
 | Resource | Type | Location |
