@@ -106,22 +106,12 @@ All ports used across the project's config files (`docker-compose.yml`, `Dockerf
 
 The ingestion worker (`Dockerfile.ingestion`) exposes no port — it is a background worker with no HTTP listener.
 
-### Running alongside other local projects (fleet port lanes)
+### Running alongside other local projects
 
 Every host port above is parameterized (`${VAR:-default}`), so only the host-side
 mapping ever moves — container ports, the Dockerfile, and the deployed Azure image
-are untouched. ApexRacers owns the **canonical** defaults. When running multiple
-projects' Docker stacks at once, each project gets its own lane (bump the hundreds
-digit by project) so a plain `docker compose up` never collides:
-
-| Service | ApexRacers | GuardianTracker | LeaseBook |
-| --- | --- | --- | --- |
-| Postgres | `5432` | `5532` | `5632` |
-| App / API (host) | `8080` | `8081` | `8082` |
-| Frontend / Vite | `5173` | `5273` | `5373` |
-| pgAdmin | `5050` | `5150` | `5250` |
-
-To shift ApexRacers off its defaults, set `POSTGRES_PORT` / `API_PORT` /
+are untouched. To shift ApexRacers off its defaults so a plain `docker compose up`
+never collides with another local stack, set `POSTGRES_PORT` / `API_PORT` /
 `PGADMIN_PORT` in `.env`.
 
 Request flow by mode (the frontend always talks to Vite on `5173`, which proxies `/api` onward):
