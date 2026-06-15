@@ -16,7 +16,7 @@
       EF Core 10.0.4 but Microsoft.EntityFrameworkCore.Design 10.0.7 requires
       10.0.7 — without a common floor that produces MSB3277 warnings).
     -->
-    <PackageVersion Include="Aydsko.iRacingData" Version="2601.3.0" />
+    <PackageVersion Include="Aydsko.iRacingData" Version="2603.0.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
