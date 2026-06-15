@@ -48,7 +48,7 @@ Four services:
 | Service | Image | Port | Notes |
 |---|---|---|---|
 | `postgres` | `postgres:16-alpine` | 5432 | Healthcheck: `pg_isready -U apexracers` |
-| `pgadmin` | `dpage/pgadmin4` | 5050→80 | admin@apexracers.local / admin |
+| `pgadmin` | `dpage/pgadmin4` | 5050→80 | admin@apexracers.gg / admin |
 | `api` | built from `Dockerfile` | 8080 | Depends on postgres health |
 | `ingestion` | built from `ingestion.Dockerfile` | — | Profile: `ingestion` |
 

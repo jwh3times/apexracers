@@ -41,7 +41,7 @@ For local development, credentials are read from Azure Key Vault via `az login` 
 docker compose up -d
 ```
 
-PostgreSQL will be available on `localhost:5432`. pgAdmin is available at `http://localhost:5050` (login: `admin@apexracers.local` / `admin`).
+PostgreSQL will be available on `localhost:5432`. pgAdmin is available at `http://localhost:5050` (login: `admin@apexracers.gg` / `admin`).
 
 ### 3. Apply database migrations
 
