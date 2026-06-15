@@ -19,7 +19,7 @@ dotnet run --project src/ApexRacers.Api
 dotnet run --project src/ApexRacers.Ingestion
 
 # Seed the database with catalog data + synthetic lap times for all 7 series (idempotent)
-# Requires iracing-api-response-objects/ to be populated first (gitignored — see README).
+# Requires private/iracing-api-response-objects/ to be populated first (gitignored — see README).
 # Requires DATABASE_CONNECTION_STRING or falls back to the local Docker default.
 dotnet run --project src/ApexRacers.Seeder
 
