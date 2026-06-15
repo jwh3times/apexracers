@@ -551,19 +551,34 @@ Console.WriteLine("\nSeeding complete.");
 
 static string FindResponseObjectsPath()
 {
-    var candidate = Path.Combine(Environment.CurrentDirectory, "iracing-api-response-objects");
-    if (Directory.Exists(candidate)) return candidate;
+    // Local-only files were relocated under private/; check both the legacy
+    // repo-root location and private/ so existing setups keep working.
+    string[] relativeCandidates =
+    {
+        "iracing-api-response-objects",
+        Path.Combine("private", "iracing-api-response-objects"),
+    };
+
+    foreach (var rel in relativeCandidates)
+    {
+        var candidate = Path.Combine(Environment.CurrentDirectory, rel);
+        if (Directory.Exists(candidate)) return candidate;
+    }
 
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (dir != null)
     {
-        var p = Path.Combine(dir.FullName, "iracing-api-response-objects");
-        if (Directory.Exists(p)) return p;
+        foreach (var rel in relativeCandidates)
+        {
+            var p = Path.Combine(dir.FullName, rel);
+            if (Directory.Exists(p)) return p;
+        }
         dir = dir.Parent;
     }
 
     throw new DirectoryNotFoundException(
-        "Cannot find iracing-api-response-objects. Run the seeder from the repo root.");
+        "Cannot find iracing-api-response-objects (checked repo root and private/). "
+        + "Populate it under private/ and run the seeder from the repo root.");
 }
 
 // Fallback average speed (mph) per season when a car has no class entry.

@@ -113,7 +113,7 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 
 **A1.5 — Reseed (optional but expected for a usable UI)**
 ```bash
-# Requires iracing-api-response-objects/ populated (gitignored — see README §6).
+# Requires private/iracing-api-response-objects/ populated (gitignored — see README §6).
 dotnet run --project src/ApexRacers.Seeder
 ```
 

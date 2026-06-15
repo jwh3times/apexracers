@@ -1,6 +1,6 @@
 ---
 name: docs-updater
-description: Use to keep project documentation current after code changes — CLAUDE.md, README.md, PRD.md, and all agent files in .claude/agents/. Run after completing a feature, security fix, or architectural change.
+description: Use to keep project documentation current after code changes — CLAUDE.md, README.md, private/PRD.md, and all agent files in .claude/agents/. Run after completing a feature, security fix, or architectural change.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---
@@ -14,7 +14,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `CLAUDE.md` | Claude agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the authoritative guide agents read on every task |
 | `README.md` | Human developers (setup) | Prerequisites, local dev setup steps, seed/ingestion instructions |
 | `src/web/README.md` | Frontend developers | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system |
-| `PRD.md` | Product context | Features, user stories, what is and isn't implemented |
+| `private/PRD.md` | Product context | Features, user stories, what is and isn't implemented |
 | `.claude/agents/dotnet-api.md` | dotnet-api subagent | .NET patterns, JWT/auth configuration, EF Core rules, test rules |
 | `.claude/agents/react-frontend.md` | react-frontend subagent | API client patterns, auth flow, design token system, test rules |
 | `.claude/agents/postgres-specialist.md` | postgres-specialist subagent | Full schema (both schemas, all tables, PKs, indexes), query patterns |
@@ -91,7 +91,7 @@ Select-String "@layer components" src/web/src/index.css -A 200
 
 - Do not edit agent frontmatter (`name`, `description`, `tools`, `model`) unless you are explicitly asked to.
 - Do not touch `README.md` setup steps unless a prerequisite, command, or port actually changed.
-- Do not update `PRD.md` for implementation details — only for feature-level changes (new capability added, planned feature cancelled, user story revised).
+- Do not update `private/PRD.md` for implementation details — only for feature-level changes (new capability added, planned feature cancelled, user story revised).
 - Do not add aspirational features or roadmap items to `CLAUDE.md` — it describes what is implemented, not what is planned.
 - Do not edit `azure-infrastructure.md` based on local changes — only after confirmed Azure resource changes.
 
