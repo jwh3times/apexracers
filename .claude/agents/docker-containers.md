@@ -1,6 +1,6 @@
 ---
 name: docker-containers
-description: Use for changes to Dockerfile, Dockerfile.ingestion, docker-compose.yml, or local container development configuration for the API, ingestion worker, or frontend build.
+description: Use for changes to Dockerfile, ingestion.Dockerfile, docker-compose.yml, or local container development configuration for the API, ingestion worker, or frontend build.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
@@ -30,7 +30,7 @@ Three stages:
 
 The React SPA is served from `wwwroot` in production — same origin as the API, no CORS needed.
 
-### `Dockerfile.ingestion` — ingestion worker only
+### `ingestion.Dockerfile` — ingestion worker only
 
 Two stages:
 
@@ -50,7 +50,7 @@ Four services:
 | `postgres` | `postgres:16-alpine` | 5432 | Healthcheck: `pg_isready -U apexracers` |
 | `pgadmin` | `dpage/pgadmin4` | 5050→80 | admin@apexracers.local / admin |
 | `api` | built from `Dockerfile` | 8080 | Depends on postgres health |
-| `ingestion` | built from `Dockerfile.ingestion` | — | Profile: `ingestion` |
+| `ingestion` | built from `ingestion.Dockerfile` | — | Profile: `ingestion` |
 
 All services that depend on postgres use `condition: service_healthy` — the healthcheck must pass before they start.
 

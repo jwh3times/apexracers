@@ -49,7 +49,7 @@ services:
   ingestion:
     build:
       context: .
-      dockerfile: Dockerfile.ingestion
+      dockerfile: ingestion.Dockerfile
     environment:
       DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
       IRACING_USERNAME: ${IRACING_USERNAME}

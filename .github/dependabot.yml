@@ -1,0 +1,90 @@
+# Dependabot configuration — automated dependency version updates.
+# Minor/patch updates for each ecosystem are grouped into a single PR to cut
+# noise; MAJOR version bumps arrive as individual PRs so each can be reviewed
+# (and tested) on its own. Docs: https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  # ── .NET / NuGet ────────────────────────────────────────────────────────────
+  # Versions are centrally managed in Directory.Packages.props at the repo root;
+  # Dependabot discovers all projects under src/ from the root directory.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      nuget-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ── Frontend / npm ──────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/src/web"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+
+  # ── Dockerfiles (Dockerfile, ingestion.Dockerfile) ──────────────────────────
+  # Dependabot's docker manager detects files named `Dockerfile` or
+  # `*.Dockerfile`, so both `Dockerfile` and `ingestion.Dockerfile` are covered.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+
+  # ── docker-compose.yml (postgres, pgadmin) ──────────────────────────────────
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"

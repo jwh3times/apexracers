@@ -64,7 +64,7 @@ Migrations run automatically at API startup via `db.Database.MigrateAsync()` —
 
 ```bash
 # Build and push ingestion image
-docker build -t apexracersacr.azurecr.io/apexracers-ingestion:latest -f Dockerfile.ingestion .
+docker build -t apexracersacr.azurecr.io/apexracers-ingestion:latest -f ingestion.Dockerfile .
 docker push apexracersacr.azurecr.io/apexracers-ingestion:latest
 
 # Update Container App

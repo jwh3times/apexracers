@@ -125,7 +125,7 @@ jobs:
       - name: Build and push ingestion image
         run: |
           IMAGE=${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
-          docker build -f Dockerfile.ingestion -t "$IMAGE" .
+          docker build -f ingestion.Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Update Container App image

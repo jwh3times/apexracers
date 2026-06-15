@@ -104,7 +104,7 @@ All ports used across the project's config files (`docker-compose.yml`, `Dockerf
 | `5173` | Vite dev server | Vite default (not pinned in `vite.config.ts`) | Auto-increments if the port is taken |
 | `443` | API (Azure cloud) | `src/web/.env.cloud` | `https://apexracers-api.azurewebsites.net` |
 
-The ingestion worker (`Dockerfile.ingestion`) exposes no port — it is a background worker with no HTTP listener.
+The ingestion worker (`ingestion.Dockerfile`) exposes no port — it is a background worker with no HTTP listener.
 
 ### Running alongside other local projects
 
