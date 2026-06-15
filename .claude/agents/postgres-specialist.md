@@ -9,7 +9,7 @@ You are working with the ApexRacers PostgreSQL database. Know the schema, EF Cor
 
 ## Database
 
-PostgreSQL 16 (`postgres:16-alpine` in Docker; `apexracers-pg` flexible server in Azure westus3).
+PostgreSQL 18 (`postgres:18-alpine` in Docker; `apexracers-pg` flexible server in Azure westus3).
 
 Local connection: `postgresql://apexracers:devpassword@localhost:5432/apexracers`  
 pgAdmin: `http://localhost:5050` (admin@apexracers.gg / admin)
