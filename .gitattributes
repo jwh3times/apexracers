@@ -1,0 +1,9 @@
+# Enforce LF line endings in the repository and on checkout for all text files.
+# Without this, Windows checkouts (core.autocrlf=true) produce CRLF working
+# copies that trip tooling such as Prettier (which defaults to endOfLine: lf),
+# causing `prettier --check` to flag files that are actually clean in the repo.
+# Git auto-detects binary files and leaves them untouched.
+* text=auto eol=lf
+
+# Visual Studio writes solution files with CRLF; keep that on checkout.
+*.sln text eol=crlf
