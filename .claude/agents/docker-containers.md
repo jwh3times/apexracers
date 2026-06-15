@@ -47,7 +47,7 @@ Four services:
 
 | Service | Image | Port | Notes |
 |---|---|---|---|
-| `postgres` | `postgres:16-alpine` | 5432 | Healthcheck: `pg_isready -U apexracers` |
+| `postgres` | `postgres:18-alpine` | 5432 | Healthcheck: `pg_isready -U apexracers`. Volume mounts the parent dir `/var/lib/postgresql` (PG18 moved PGDATA to `…/18/docker`) |
 | `pgadmin` | `dpage/pgadmin4` | 5050→80 | admin@apexracers.gg / admin |
 | `api` | built from `Dockerfile` | 8080 | Depends on postgres health |
 | `ingestion` | built from `ingestion.Dockerfile` | — | Profile: `ingestion` |
@@ -109,6 +109,6 @@ Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose ex
 - .NET SDK: `10.0`
 - .NET ASP.NET runtime: `10.0`
 - .NET runtime (ingestion): `10.0`
-- PostgreSQL: `16-alpine`
+- PostgreSQL: `18-alpine`
 
 When updating .NET base images, update both Dockerfiles together. The SDK version must match the `<TargetFramework>net10.0</TargetFramework>` in the `.csproj` files.
