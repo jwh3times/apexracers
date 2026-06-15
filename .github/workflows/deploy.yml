@@ -19,6 +19,11 @@ env:
 # RESOURCE_GROUP          — Azure resource group containing both resources
 # ─────────────────────────────────────────────────────────────────────────────
 
+# GITHUB_TOKEN needs only read access to repo contents — Azure auth and ACR
+# pushes use dedicated secrets, not the workflow token.
+permissions:
+  contents: read
+
 jobs:
   # ── Test gate — both deploy jobs depend on this passing ──────────────────────
   test:
