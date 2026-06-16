@@ -81,8 +81,12 @@ describe('RecommendationsPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
-    // Ferrari GT3 Challenge (id 2) sorts before Porsche Cup alphabetically
-    expect(mockGetRecs).toHaveBeenCalledWith(2, 8, expect.any(Object));
+    // Ferrari GT3 Challenge (id 2) sorts before Porsche Cup alphabetically.
+    // The recommendations fetch fires in a follow-up effect after the series
+    // auto-selects, so poll for it rather than asserting synchronously.
+    await waitFor(() => {
+      expect(mockGetRecs).toHaveBeenCalledWith(2, 8, expect.any(Object));
+    });
   });
 
   it('uses seriesId from URL when present', async () => {
