@@ -245,6 +245,59 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task UpdateProfileAsync_EmptyDisplayName_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("   "), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_UnknownUser_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateProfileAsync(Guid.NewGuid(), new UpdateProfileRequest("Name"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_ValidThemePreference_SetsThemeClaim()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", ThemePreference: "dark"), TestContext.Current.CancellationToken);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "theme_preference" && c.Value == "dark");
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_InvalidThemePreference_LeavesDefaultTheme()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        // "neon" is not a valid theme — the second condition is false, so the default "auto" is preserved.
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", ThemePreference: "neon"), TestContext.Current.CancellationToken);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "theme_preference" && c.Value == "auto");
+    }
+
+    [Fact]
     public async Task UpdateProfileAsync_DoesNotClearIRacingCustomerId_WhenNotProvided()
     {
         await using var provider = BuildProvider();
@@ -338,6 +391,76 @@ public class AuthServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.UpdateRoleAsync(reg.UserId, "Standard", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateRoleAsync_UnknownUser_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        // "Beta" is a valid role, so the role-validation check passes and the
+        // failure must come from the missing user lookup.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateRoleAsync(Guid.NewGuid(), "Beta", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateRoleAsync_UnsupportedRole_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateRoleAsync(reg.UserId, "Superuser", TestContext.Current.CancellationToken));
+    }
+
+    // ── UpdateThemeAsync ──────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("auto")]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public async Task UpdateThemeAsync_ValidTheme_SetsThemePreferenceClaim(string theme)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateThemeAsync(reg.UserId, theme, TestContext.Current.CancellationToken);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == "theme_preference" && c.Value == theme);
+    }
+
+    [Fact]
+    public async Task UpdateThemeAsync_InvalidTheme_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateThemeAsync(reg.UserId, "neon", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateThemeAsync_UnknownUser_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        // "dark" is valid, so the failure must come from the missing user lookup.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.UpdateThemeAsync(Guid.NewGuid(), "dark", TestContext.Current.CancellationToken));
     }
 
     // ── HandleCallbackAsync ───────────────────────────────────────────────────
