@@ -45,11 +45,6 @@ Thumbs.db
 # Azure
 .azure/
 
-# Local planning/deployment notes (may contain secrets or private work items)
-TODO.md
-deployTODO.md
-PRD.md
-
 # Claude Code local settings
 .claude/settings.local.json
 
@@ -60,11 +55,5 @@ coverage-report/
 # Seed Screenshots
 src/ApexRacers.Data/Seeds/Screenshots/
 
-# API Response Objects
-/iracing-api-response-objects/
-
-# Design Files
-src/web/ApexRacers-Designs/
-
-# Repo Analysis
-repo-analysis.md
+# Private Files
+private/
