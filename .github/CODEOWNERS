@@ -1,0 +1,11 @@
+# Code owners — automatically requested for review on matching paths.
+# Docs: https://docs.github.com/articles/about-code-owners
+# TODO: Refine path-specific owners as the team grows.
+
+# Default owner for everything in the repo
+* @jwh3times
+
+# Examples of path-specific ownership (uncomment / adjust as needed):
+# /src/web/                @jwh3times   # [PLACEHOLDER — frontend owner]
+# /src/ApexRacers.Api/     @jwh3times   # [PLACEHOLDER — backend owner]
+# /.github/                @jwh3times   # [PLACEHOLDER — CI/infra owner]
