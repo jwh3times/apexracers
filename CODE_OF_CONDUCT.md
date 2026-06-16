@@ -1,6 +1,6 @@
 # Code of Conduct
 
-_Contributor Covenant 3.0_
+Adapted from the Contributor Covenant, version 3.0.
 
 ## Our Pledge
 
@@ -71,7 +71,7 @@ this Code of Conduct reinforces encouraged behaviors and norms that can help
 avoid conflicts and minimize harm.
 
 When an incident does occur, it is important to report it promptly. To report a
-possible violation, email **conduct@apexracers.gg** with the subject line
+possible violation, email **<conduct@apexracers.gg>** with the subject line
 `[CONDUCT] ApexRacers`. Include what happened, who was involved, any links, logs,
 or screenshots, and how you would like to be contacted. Reports are handled
 confidentially.

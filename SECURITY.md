@@ -26,7 +26,7 @@ Instead, use one of the following private channels:
    [**Security** tab](https://github.com/jwh3times/apexracers/security/advisories/new)
    of this repository and click **Report a vulnerability**. This opens a private
    advisory visible only to you and the maintainers.
-2. **Email.** If you cannot use GitHub, email **security@apexracers.gg** with the
+2. **Email.** If you cannot use GitHub, email **<security@apexracers.gg>** with the
    subject line `[SECURITY] ApexRacers`.
 
 To help us triage quickly, please include as much of the following as you can:
