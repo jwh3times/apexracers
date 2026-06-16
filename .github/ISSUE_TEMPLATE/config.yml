@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security vulnerability
+    url: https://github.com/jwh3times/apexracers/security/advisories/new
+    about: Report security issues privately — do not open a public issue.
+  - name: 💬 Questions & support
+    url: https://github.com/jwh3times/apexracers/blob/main/SUPPORT.md
+    about: Read SUPPORT.md for where to ask questions and get help.
+  - name: 🤝 Code of Conduct
+    url: https://github.com/jwh3times/apexracers/blob/main/CODE_OF_CONDUCT.md
+    about: Report Code of Conduct concerns privately (conduct@apexracers.gg).
