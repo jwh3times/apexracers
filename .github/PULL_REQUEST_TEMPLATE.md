@@ -1,4 +1,5 @@
-<!-- markdownlint-disable-file MD041 -->
+# Pull Request Template
+
 <!--
 Thanks for contributing to ApexRacers! Please fill out the sections below.
 Keep PRs focused — one logical change per PR is easier to review.
