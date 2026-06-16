@@ -243,4 +243,58 @@ describe('TopNav', () => {
     const seriesLink = screen.getByRole('link', { name: /browse series/i });
     expect(seriesLink).toHaveClass('text-on-surface');
   });
+
+  // -------------------------------------------------------------------------
+  // MobileNav — hamburger menu for small screens
+  // -------------------------------------------------------------------------
+
+  it('renders the mobile navigation menu button', () => {
+    renderTopNav();
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument();
+  });
+
+  it('mobile nav dropdown is closed by default', () => {
+    mockUser = { ...baseUser };
+    renderTopNav();
+    // Dashboard appears only in the mobile dropdown (inline links slice it off).
+    expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument();
+  });
+
+  it('opens the mobile nav dropdown with the full nav item list when clicked', async () => {
+    const user = userEvent.setup();
+    mockUser = { ...baseUser };
+    renderTopNav();
+    await user.click(screen.getByRole('button', { name: /open navigation menu/i }));
+    // Dashboard is unique to the mobile dropdown, confirming it opened.
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+  });
+
+  it('toggles aria-expanded on the mobile nav button', async () => {
+    const user = userEvent.setup();
+    renderTopNav();
+    const menuBtn = screen.getByRole('button', { name: /open navigation menu/i });
+    expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
+    await user.click(menuBtn);
+    expect(menuBtn).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('shows the Admin Panel link in the mobile nav for Admin users', async () => {
+    const user = userEvent.setup();
+    mockUser = { ...baseUser, role: 'Admin' };
+    renderTopNav();
+    await user.click(screen.getByRole('button', { name: /open navigation menu/i }));
+    expect(screen.getByRole('link', { name: /admin panel/i })).toBeInTheDocument();
+  });
+
+  it('closes the mobile nav when a nav item is clicked', async () => {
+    const user = userEvent.setup();
+    mockUser = { ...baseUser };
+    renderTopNav();
+    await user.click(screen.getByRole('button', { name: /open navigation menu/i }));
+    const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
+    await user.click(dashboardLink);
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument()
+    );
+  });
 });

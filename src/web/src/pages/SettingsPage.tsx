@@ -92,7 +92,7 @@ export default function SettingsPage() {
 
           {/* Avatar placeholder */}
           <div className="relative shrink-0">
-            <div className="w-24 h-24 rounded-full bg-surface-container-highest border-2 border-primary-fixed-dim shadow-[0_0_15px_rgba(0,228,121,0.3)] flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-surface-container-highest border-2 border-primary-fixed-dim shadow-[0_0_15px_rgba(0,224,255,0.3)] flex items-center justify-center">
               <span
                 className="material-symbols-outlined text-4xl text-primary-fixed-dim fill"
                 aria-hidden="true"

@@ -286,7 +286,7 @@ const scanTexture: React.CSSProperties = {
 
 ##### Color tokens
 
-The primary accent is cyan, not green. Use `text-primary-container` / `bg-primary-container` / `border-primary-container` for all accent text, icon, button, and border use cases. Do not hardcode old green values (`#00FF88`, `#00e479`, `text-primary-fixed-dim`).
+The primary accent is cyan, not green. Use `text-primary-container` / `bg-primary-container` / `border-primary-container` for all accent text, icon, button, and border use cases. `primary-fixed-dim` is the **dim accent** token — it is remapped to cyan `#00b8d4` in `index.css` and is allowed for muted accent text/borders. Do not hardcode old green values: the literal hexes `#00FF88` / `#00e479`, or raw green RGBA glows like `rgba(0,228,121,…)` and `rgba(0,255,136,…)`. For accent glows use a cyan RGBA such as `rgba(0,224,255,…)` or a `var(--color-primary-container)`-based shadow.
 
 #### Shared components
 
@@ -317,7 +317,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 #### Shared utilities
 
-`src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Pages that already import it correctly: `AnalyticsPage`, `ProfilePage`, `TelemetryPage`, `DashboardPage`. Always import from the shared module.
+`src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Pages that import it correctly: `AnalyticsPage`, `ProfilePage`, `TelemetryPage`, `DashboardPage`, `MyLapsPage`, `RecommendationsPage`. Always import from the shared module.
 
 ### EF Core design-time factory
 

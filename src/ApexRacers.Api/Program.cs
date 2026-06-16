@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
@@ -47,9 +48,32 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = true;
+
+    // Brute-force protection: lock an account for 15 minutes after 5 consecutive
+    // failed sign-in attempts. AuthService.LoginAsync drives the counter manually
+    // because UserManager.CheckPasswordAsync (unlike SignInManager) does not.
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddRoles<IdentityRole<Guid>>()
 .AddEntityFrameworkStores<AppDbContext>();
+
+// Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
+// layer of brute-force protection in front of the per-account lockout above.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            }));
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -129,6 +153,11 @@ using (var scope = app.Services.CreateScope())
         await userManager.RemoveFromRolesAsync(adminUser, currentRoles);
         await userManager.AddToRoleAsync(adminUser, "Admin");
     }
+
+    // Purge refresh tokens that expired more than 30 days ago so the table does not
+    // grow without bound (revoked/expired rows are otherwise never deleted).
+    var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
+    await authService.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30));
 }
 
 if (app.Environment.IsDevelopment())
@@ -140,6 +169,8 @@ if (app.Environment.IsDevelopment())
 
 // Serve the React SPA from wwwroot (populated by the Docker build).
 app.UseStaticFiles();
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

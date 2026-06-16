@@ -34,8 +34,19 @@ function AppShell() {
   );
 }
 
-function AdminGuard() {
-  const { user } = useAuth();
+// Gate for routes that require any authenticated user. Renders nothing while the
+// session is still being restored (silent refresh on startup) so a logged-in user
+// is not bounced to /login on a hard refresh.
+export function RequireAuth() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return <Outlet />;
+}
+
+export function AdminGuard() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   return <Outlet />;
@@ -45,26 +56,33 @@ function AppRoutes() {
   const { user } = useAuth();
   return (
     <Routes>
+      {/* Public routes with their own layout (no AppShell) */}
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+
       <Route element={<AppShell />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
+        {/* Series browsing is reachable by guests (see GUEST_NAV) */}
         <Route path="/series" element={<SeriesPage />} />
         <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
         <Route
           path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
           element={<PercentileCarPage />}
         />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/recommendations" element={<RecommendationsPage />} />
-        <Route path="/my-laps" element={<MyLapsPage />} />
-        <Route path="/telemetry" element={<TelemetryPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/settings" element={<SettingsPage key={user?.userId} />} />
-        <Route path="/terms" element={<TermsOfServicePage />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route element={<AdminGuard />}>
-          <Route path="/admin" element={<AdminPage />} />
+
+        {/* Everything below requires an authenticated user */}
+        <Route element={<RequireAuth />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
+          <Route path="/my-laps" element={<MyLapsPage />} />
+          <Route path="/telemetry" element={<TelemetryPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage key={user?.userId} />} />
+          <Route element={<AdminGuard />}>
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
         </Route>
       </Route>
     </Routes>

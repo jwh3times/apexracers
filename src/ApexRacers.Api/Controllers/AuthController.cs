@@ -4,11 +4,13 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ApexRacers.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("auth")]
 public class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
@@ -28,7 +30,10 @@ public class AuthController(AuthService auth) : ControllerBase
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await auth.LoginAsync(request, ct);
-        return result is null ? Unauthorized() : Ok(result);
+        if (result.LockedOut)
+            return StatusCode(StatusCodes.Status423Locked,
+                "Account temporarily locked due to repeated failed sign-in attempts. Try again later.");
+        return result.Auth is null ? Unauthorized() : Ok(result.Auth);
     }
 
     [HttpPut("profile")]
