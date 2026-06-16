@@ -341,7 +341,7 @@ cd src/web && npx vitest run --coverage
 
 ### Backend (.NET)
 
-Unit test coverage must also remain above **80%** (line coverage). Use `dotnet-coverage` + `reportgenerator` to measure:
+Unit test coverage must also remain above **80%** for both **line** and **branch** coverage. CI enforces both: `irongut/CodeCoverageSummary` gates line coverage, and a follow-up step reads `branch-rate` from the Cobertura report to gate branch coverage. Use `dotnet-coverage` + `reportgenerator` to measure:
 
 ```bash
 dotnet-coverage collect "dotnet test" -f xml -o coverage.xml
