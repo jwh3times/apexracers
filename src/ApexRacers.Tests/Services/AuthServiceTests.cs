@@ -28,6 +28,9 @@ public class AuthServiceTests
             o.Password.RequireNonAlphanumeric = false;
             o.Password.RequireUppercase      = false;
             o.User.RequireUniqueEmail        = true;
+            o.Lockout.AllowedForNewUsers      = true;
+            o.Lockout.MaxFailedAccessAttempts = 3;
+            o.Lockout.DefaultLockoutTimeSpan  = TimeSpan.FromMinutes(15);
         })
         .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<AppDbContext>();
@@ -114,6 +117,21 @@ public class AuthServiceTests
         Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
     }
 
+    [Fact]
+    public async Task RegisterAsync_WeakPassword_SurfacesIdentityErrorDescription()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        // "ab" is shorter than the configured RequiredLength of 4.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RegisterAsync(new RegisterRequest("weak@example.com", "ab"), TestContext.Current.CancellationToken));
+
+        // The message must carry Identity's descriptive reason, not a generic fallback.
+        Assert.Contains("least", ex.Message);
+    }
+
     // ── LoginAsync ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -127,12 +145,13 @@ public class AuthServiceTests
 
         var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        Assert.NotNull(result);
-        Assert.NotEmpty(result!.Token);
+        Assert.False(result.LockedOut);
+        Assert.NotNull(result.Auth);
+        Assert.NotEmpty(result.Auth!.Token);
     }
 
     [Fact]
-    public async Task LoginAsync_WrongPassword_ReturnsNull()
+    public async Task LoginAsync_WrongPassword_ReturnsInvalidNotLocked()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
@@ -142,18 +161,62 @@ public class AuthServiceTests
 
         var result = await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
 
-        Assert.Null(result);
+        Assert.Null(result.Auth);
+        Assert.False(result.LockedOut);
     }
 
     [Fact]
-    public async Task LoginAsync_UnknownEmail_ReturnsNull()
+    public async Task LoginAsync_UnknownEmail_ReturnsInvalid()
     {
         await using var provider = BuildProvider();
         var svc = BuildService(provider);
 
         var result = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        Assert.Null(result);
+        Assert.Null(result.Auth);
+        Assert.False(result.LockedOut);
+    }
+
+    [Fact]
+    public async Task LoginAsync_ExceedsMaxFailedAttempts_LocksOutEvenWithCorrectPassword()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("locked@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // MaxFailedAccessAttempts = 3 in the test provider.
+        for (var i = 0; i < 3; i++)
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
+
+        // Even the correct password is rejected while the account is locked.
+        var result = await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        Assert.True(result.LockedOut);
+        Assert.Null(result.Auth);
+    }
+
+    [Fact]
+    public async Task LoginAsync_SuccessAfterFailures_ResetsFailedCount()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // Two failures (below the threshold of 3), then a success that resets the counter.
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
+        var ok = await svc.LoginAsync(new LoginRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        Assert.NotNull(ok.Auth);
+
+        // Two more failures would have locked the account if the counter had not reset.
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
+        var second = await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
+
+        Assert.False(second.LockedOut);
     }
 
     // ── UpdateProfileAsync ────────────────────────────────────────────────────
@@ -197,10 +260,10 @@ public class AuthServiceTests
         await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"), TestContext.Current.CancellationToken);
 
         var canLoginWithNew = await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        Assert.NotNull(canLoginWithNew);
+        Assert.NotNull(canLoginWithNew.Auth);
 
         var canLoginWithOld = await svc.LoginAsync(new LoginRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        Assert.Null(canLoginWithOld);
+        Assert.Null(canLoginWithOld.Auth);
     }
 
     [Fact]
@@ -500,9 +563,9 @@ public class AuthServiceTests
         await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        Assert.NotNull(result);
-        Assert.NotNull(result!.RefreshToken);
-        Assert.NotEmpty(result.RefreshToken!);
+        Assert.NotNull(result.Auth);
+        Assert.NotNull(result.Auth!.RefreshToken);
+        Assert.NotEmpty(result.Auth.RefreshToken!);
     }
 
     [Fact]
@@ -567,7 +630,7 @@ public class AuthServiceTests
                 : throw new InvalidOperationException()),
             TestContext.Current.CancellationToken);
 
-        var refreshToken = login!.RefreshToken!;
+        var refreshToken = login.Auth!.RefreshToken!;
 
         await svc.RevokeAsync(refreshToken, TestContext.Current.CancellationToken);
 
@@ -584,5 +647,61 @@ public class AuthServiceTests
 
         // Should complete without throwing — unknown tokens are silently ignored
         await svc.RevokeAsync("garbage", TestContext.Current.CancellationToken);
+    }
+
+    // ── PurgeExpiredRefreshTokensAsync ────────────────────────────────────────
+
+    [Fact]
+    public async Task PurgeExpiredRefreshTokensAsync_RemovesTokensExpiredBeyondRetention()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // Age the issued token so it expired 40 days ago (> 30-day retention).
+        var token = db.RefreshTokens.Single();
+        token.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-40);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var removed = await svc.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, removed);
+        Assert.Empty(db.RefreshTokens);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredRefreshTokensAsync_KeepsTokensExpiredWithinRetention()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // Expired 10 days ago — within the 30-day retention window, so it stays.
+        var token = db.RefreshTokens.Single();
+        token.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-10);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var removed = await svc.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, removed);
+        Assert.Single(db.RefreshTokens);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredRefreshTokensAsync_NoTokens_ReturnsZero()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var removed = await svc.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, removed);
     }
 }

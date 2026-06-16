@@ -190,8 +190,8 @@ export default function TelemetryPage() {
             <div
               className={`h-20 w-20 rounded-full bg-surface-container-highest flex items-center justify-center mb-6 transition-all duration-300 ${
                 isUploading
-                  ? 'animate-pulse shadow-[0_0_25px_rgba(0,228,121,0.2)]'
-                  : 'group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(0,228,121,0.2)]'
+                  ? 'animate-pulse shadow-[0_0_25px_rgba(0,224,255,0.2)]'
+                  : 'group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(0,224,255,0.2)]'
               }`}
             >
               <span

@@ -41,21 +41,36 @@ public class TelemetryUploadService(AppDbContext db)
 
         var validLaps = session.Laps.Where(l => l.IsValid).ToList();
 
-        foreach (var lap in validLaps)
+        // Deduplicate at the session level: re-uploading the same .ibt must not insert
+        // its laps again. A session is identified by user + car + track + session start
+        // timestamp; if any lap from it is already persisted, skip the insert entirely.
+        // (Keying on individual lap times instead would collapse legitimately-repeated
+        // identical times within a single session.)
+        var recordedAt = session.SessionDate;
+        var alreadyImported = await db.PersonalLaps.AnyAsync(p =>
+            p.UserId == userId
+            && p.CarId == session.IracingCarId
+            && p.TrackId == session.IracingTrackId
+            && p.RecordedAt == recordedAt, ct);
+
+        if (!alreadyImported)
         {
-            db.PersonalLaps.Add(new PersonalLap
+            foreach (var lap in validLaps)
             {
-                UserId           = userId,
-                CarId            = session.IracingCarId,
-                TrackId          = session.IracingTrackId,
-                LapTimeSeconds   = lap.LapTimeSeconds,
-                IsValidLap       = true,
-                SessionType      = session.SessionType,
-                AirTempCelsius   = session.AirTempCelsius,
-                TrackTempCelsius = session.TrackTempCelsius,
-                TrackWetness     = session.TrackWetness,
-                RecordedAt       = session.SessionDate,
-            });
+                db.PersonalLaps.Add(new PersonalLap
+                {
+                    UserId           = userId,
+                    CarId            = session.IracingCarId,
+                    TrackId          = session.IracingTrackId,
+                    LapTimeSeconds   = lap.LapTimeSeconds,
+                    IsValidLap       = true,
+                    SessionType      = session.SessionType,
+                    AirTempCelsius   = session.AirTempCelsius,
+                    TrackTempCelsius = session.TrackTempCelsius,
+                    TrackWetness     = session.TrackWetness,
+                    RecordedAt       = recordedAt,
+                });
+            }
         }
 
         await db.SaveChangesAsync(ct);

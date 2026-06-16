@@ -10,13 +10,18 @@
               - EF Migrations    : auto-generated schema code
               - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
               - DesignTimeFactory: dotnet-ef dev tooling only
+              - Ingestion Worker : I/O orchestration shell; its pure decision logic
+                                   lives in SubsessionIndexer (which IS covered)
           -->
           <Exclude>
             [ApexRacers.Api]ApexRacers.Api.Controllers.*,
             [ApexRacers.Data]ApexRacers.Data.Migrations.*,
             [ApexRacers.Api]Program,
             [ApexRacers.Api]HyphenToUnderscoreSecretManager,
-            [ApexRacers.Data]ApexRacers.Data.DesignTimeDbContextFactory
+            [ApexRacers.Data]ApexRacers.Data.DesignTimeDbContextFactory,
+            [ApexRacers.Ingestion]ApexRacers.Ingestion.Worker,
+            [ApexRacers.Ingestion]Program,
+            [ApexRacers.Ingestion]HyphenToUnderscoreSecretManager
           </Exclude>
           <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
         </Configuration>

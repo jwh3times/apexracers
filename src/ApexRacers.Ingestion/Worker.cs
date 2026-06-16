@@ -85,8 +85,8 @@ public sealed class Worker(
         CancellationToken ct)
     {
         // Series name comes from the first schedule entry; SeriesId is on the root.
-        var seriesName = seasonSeries.Schedules.FirstOrDefault()?.SeriesName
-                         ?? $"Series {seasonSeries.SeriesId}";
+        var seriesName = SubsessionIndexer.ResolveSeriesName(
+            seasonSeries.Schedules.FirstOrDefault()?.SeriesName, seasonSeries.SeriesId);
 
         // ── Step 2: Upsert Series + Season ────────────────────────────────────────
 
@@ -234,9 +234,7 @@ public sealed class Worker(
             .Where(s => s.SeasonId == seasonSeries.SeasonId)
             .MaxAsync(s => (DateTimeOffset?)s.StartTime, ct);
 
-        DateTime? searchRangeBegin = lastIndexedStart.HasValue
-            ? lastIndexedStart.Value.UtcDateTime.AddHours(-1)
-            : null;
+        DateTime? searchRangeBegin = SubsessionIndexer.ComputeSearchRangeBegin(lastIndexedStart);
 
         var searchResponse = await client.SearchOfficialResultsAsync(new OfficialSearchParameters
         {
@@ -259,7 +257,7 @@ public sealed class Worker(
             .Select(s => s.Id)
             .ToHashSetAsync(ct);
 
-        var newIds = candidateIds.Except(existingIds).ToList();
+        var newIds = SubsessionIndexer.ComputeNewSubsessionIds(candidateIds, existingIds);
 
         int stored = 0;
         foreach (var subsessionId in newIds)
@@ -303,12 +301,8 @@ public sealed class Worker(
                 }
 
                 // Determine split number from session_splits order
-                var splitNum = 0;
-                if (data.SessionSplits is { Length: > 0 })
-                {
-                    var idx = Array.FindIndex(data.SessionSplits, s => s.SubSessionId == subsessionId);
-                    splitNum = idx >= 0 ? idx : 0;
-                }
+                var splitNum = SubsessionIndexer.ResolveSplitNumber(
+                    data.SessionSplits?.Select(s => s.SubSessionId).ToList(), subsessionId);
 
                 var subsession = new Subsession
                 {
@@ -329,10 +323,10 @@ public sealed class Worker(
                 foreach (var r in raceSession.Results)
                 {
                     // Skip AI drivers and team events (null CustomerId)
-                    if (r.AI || r.CustomerId is null) continue;
+                    if (SubsessionIndexer.ShouldSkipResult(r.AI, r.CustomerId)) continue;
 
-                    var bestLapSecs = r.BestLapTime?.TotalSeconds ?? -1;
-                    var avgLapSecs  = r.AverageLap?.TotalSeconds ?? -1;
+                    var bestLapSecs = SubsessionIndexer.LapSecondsOrSentinel(r.BestLapTime);
+                    var avgLapSecs  = SubsessionIndexer.LapSecondsOrSentinel(r.AverageLap);
 
                     // Upsert car
                     if (await db.Cars.FindAsync([r.CarId], ct) is null)

@@ -81,7 +81,7 @@ export default function LoginPage() {
               <span className="font-label-caps text-label-caps tracking-widest">System Online</span>
             </div>
             <div className="h-1 w-full bg-surface-container-low rounded-full overflow-hidden">
-              <div className="h-full bg-primary-fixed-dim w-3/4 shadow-[0_0_10px_rgba(0,228,121,0.5)]" />
+              <div className="h-full bg-primary-fixed-dim w-3/4 shadow-[0_0_10px_rgba(0,224,255,0.5)]" />
             </div>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary-fixed-dim text-on-primary-fixed font-headline-sm text-headline-sm py-4 rounded-lg hover:bg-primary-fixed transition-all hover:shadow-[0_0_20px_rgba(0,228,121,0.3)] active:scale-[0.98] mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-primary-fixed-dim text-on-primary-fixed font-headline-sm text-headline-sm py-4 rounded-lg hover:bg-primary-fixed transition-all hover:shadow-[0_0_20px_rgba(0,224,255,0.3)] active:scale-[0.98] mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading
                   ? 'Please wait…'

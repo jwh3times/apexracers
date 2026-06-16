@@ -113,4 +113,39 @@ public class TelemetryUploadServiceTests
 
         Assert.Empty(db.PersonalLaps);
     }
+
+    [Fact]
+    public async Task ProcessAsync_SameSessionUploadedTwice_DoesNotDuplicateLaps()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = Guid.NewGuid();
+        var svc = new TelemetryUploadService(db);
+
+        // Identical builds share the default sessionDate (0) → same RecordedAt, so the
+        // second upload is recognised as the same already-imported session.
+        using var first = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
+        await svc.ProcessAsync(first, userId, TestContext.Current.CancellationToken);
+
+        using var second = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
+        await svc.ProcessAsync(second, userId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, db.PersonalLaps.Count());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SameSessionDifferentUser_InsertsForEachUser()
+    {
+        await using var db = DbContextFactory.Create();
+        var svc = new TelemetryUploadService(db);
+
+        // Deduplication is scoped per user, so two different users uploading the same
+        // session each get their own laps.
+        using var a = FakeIbtBuilder.Build(laps: 2, lapTime: 90.0f, validLaps: true);
+        await svc.ProcessAsync(a, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        using var b = FakeIbtBuilder.Build(laps: 2, lapTime: 90.0f, validLaps: true);
+        await svc.ProcessAsync(b, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, db.PersonalLaps.Count());
+    }
 }

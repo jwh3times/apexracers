@@ -30,7 +30,10 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
 
         var result = await userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
-            throw new InvalidOperationException("Registration failed. Please check your input and try again.");
+            // Identity's error descriptions are user-facing by design (e.g. "Passwords must
+            // have at least one digit."); surface them so the caller knows what to fix.
+            throw new InvalidOperationException(
+                string.Join(" ", result.Errors.Select(e => e.Description)));
 
         await userManager.AddToRoleAsync(user, "Standard");
 
@@ -39,15 +42,31 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         return new AuthResultDto(jwt, user.Id, user.DisplayName, refresh);
     }
 
-    public async Task<AuthResultDto?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
-            return null;
+        if (user is null)
+            return LoginResult.Invalid;
+
+        // A locked-out account is denied before the password is even checked, so a
+        // correct guess during the lockout window still fails.
+        if (await userManager.IsLockedOutAsync(user))
+            return LoginResult.Locked;
+
+        if (!await userManager.CheckPasswordAsync(user, request.Password))
+        {
+            // UserManager.CheckPasswordAsync does not track failures the way SignInManager
+            // does, so increment the counter manually; it locks the account once the
+            // configured MaxFailedAccessAttempts threshold is reached.
+            await userManager.AccessFailedAsync(user);
+            return await userManager.IsLockedOutAsync(user) ? LoginResult.Locked : LoginResult.Invalid;
+        }
+
+        await userManager.ResetAccessFailedCountAsync(user);
 
         var jwt     = await GenerateJwtAsync(user);
         var refresh = await CreateRefreshTokenAsync(user.Id, ct);
-        return new AuthResultDto(jwt, user.Id, user.DisplayName, refresh);
+        return LoginResult.Success(new AuthResultDto(jwt, user.Id, user.DisplayName, refresh));
     }
 
     public async Task<AuthResultDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
@@ -167,6 +186,26 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         }
     }
 
+    /// <summary>
+    /// Deletes refresh tokens whose expiry is older than <paramref name="retention"/>.
+    /// Revoked and naturally-expired rows otherwise accumulate forever; this is invoked
+    /// once at API startup. Uses a tracked delete so it works on every EF provider.
+    /// </summary>
+    public async Task<int> PurgeExpiredRefreshTokensAsync(TimeSpan retention, CancellationToken ct = default)
+    {
+        var cutoff  = DateTimeOffset.UtcNow - retention;
+        var expired = await db.RefreshTokens
+            .Where(t => t.ExpiresAt < cutoff)
+            .ToListAsync(ct);
+
+        if (expired.Count == 0)
+            return 0;
+
+        db.RefreshTokens.RemoveRange(expired);
+        await db.SaveChangesAsync(ct);
+        return expired.Count;
+    }
+
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; update ApplicationUser.IRacingCustomerId;
@@ -235,4 +274,15 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+}
+
+/// <summary>
+/// Outcome of a login attempt. <see cref="Auth"/> is non-null only on success;
+/// <see cref="LockedOut"/> distinguishes a throttled account from bad credentials.
+/// </summary>
+public record LoginResult(AuthResultDto? Auth, bool LockedOut)
+{
+    public static LoginResult Success(AuthResultDto auth) => new(auth, false);
+    public static readonly LoginResult Invalid = new(null, false);
+    public static readonly LoginResult Locked  = new(null, true);
 }
