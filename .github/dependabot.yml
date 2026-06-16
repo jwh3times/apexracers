@@ -54,7 +54,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "07:00"
       timezone: "America/New_York"
     labels:
       - "dependencies"
@@ -69,7 +69,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "07:00"
       timezone: "America/New_York"
     labels:
       - "dependencies"
@@ -82,7 +82,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "07:00"
       timezone: "America/New_York"
     labels:
       - "dependencies"
