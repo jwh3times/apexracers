@@ -178,7 +178,7 @@ Commit the generated migration files. Do **not** add `Version="..."` to
 
 This repository follows [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>: <short summary>
 
 [optional body]
@@ -187,7 +187,7 @@ This repository follows [Conventional Commits](https://www.conventionalcommits.o
 Common types: `feat`, `fix`, `test`, `ci`, `docs`, `refactor`, `chore`. Examples
 from this project's history:
 
-```
+```text
 test: fix flaky RecommendationsPage auto-select assertion
 ci: gate backend branch coverage at 80% and add AuthService tests
 ```

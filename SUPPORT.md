@@ -43,12 +43,12 @@ the best fix.
 
 **Do not** report security vulnerabilities through issues, pull requests, or
 discussions. Follow the private disclosure process in [SECURITY.md](SECURITY.md)
-(GitHub private advisory or **security@apexracers.gg**).
+(GitHub private advisory or **<security@apexracers.gg>**).
 
 ## Code of Conduct concerns
 
 To report behavior that violates our [Code of Conduct](CODE_OF_CONDUCT.md), email
-**conduct@apexracers.gg** with the subject line `[CONDUCT] ApexRacers`.
+**<conduct@apexracers.gg>** with the subject line `[CONDUCT] ApexRacers`.
 
 ## What to expect
 
