@@ -14,17 +14,8 @@ namespace ApexRacers.Api.Controllers;
 public class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
-    {
-        try
-        {
-            return Ok(await auth.RegisterAsync(request, ct));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-    }
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct) =>
+        Ok(await auth.RegisterAsync(request, ct));
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
@@ -44,14 +35,7 @@ public class AuthController(AuthService auth) : ControllerBase
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        try
-        {
-            return Ok(await auth.UpdateProfileAsync(userId, request, ct));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return Ok(await auth.UpdateProfileAsync(userId, request, ct));
     }
 
     [HttpPut("role")]
@@ -62,14 +46,7 @@ public class AuthController(AuthService auth) : ControllerBase
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        try
-        {
-            return Ok(await auth.UpdateRoleAsync(userId, request.Role, ct));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return Ok(await auth.UpdateRoleAsync(userId, request.Role, ct));
     }
 
     [HttpPut("theme")]
@@ -80,14 +57,7 @@ public class AuthController(AuthService auth) : ControllerBase
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        try
-        {
-            return Ok(await auth.UpdateThemeAsync(userId, request.ThemePreference, ct));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return Ok(await auth.UpdateThemeAsync(userId, request.ThemePreference, ct));
     }
 
     [HttpPost("refresh")]

@@ -1,6 +1,7 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { FeatureFlagProvider, useFeatureFlag } from '../FeatureFlagContext';
+import { FeatureFlagProvider } from '../FeatureFlagProvider';
+import { useFeatureFlag } from '../FeatureFlagContext';
 import { api } from '../../services/api';
 import type { User } from '../AuthContext';
 

@@ -97,7 +97,7 @@ export default function TelemetryPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [recentLaps, setRecentLaps] = useState<PersonalLap[]>([]);
-  const [lapsLoading, setLapsLoading] = useState(false);
+  const [lapsLoading, setLapsLoading] = useState(true);
 
   const isUploading = queue.some(f => f.status === 'pending' || f.status === 'uploading');
   const hasQueue = queue.length > 0;
@@ -105,7 +105,8 @@ export default function TelemetryPage() {
   const doneCount = queue.filter(f => f.status === 'done').length;
   const currentlyUploading = queue.find(f => f.status === 'uploading');
 
-  function fetchLaps() {
+  // Re-fetch after an upload, showing the spinner again. Called from an event handler.
+  function refreshLaps() {
     setLapsLoading(true);
     api
       .getMyLaps()
@@ -116,8 +117,24 @@ export default function TelemetryPage() {
       .finally(() => setLapsLoading(false));
   }
 
+  // Initial load on mount. The loading flag already starts true, so the fetch only
+  // needs to populate state through the promise callbacks (never synchronously).
   useEffect(() => {
-    fetchLaps();
+    let cancelled = false;
+    api
+      .getMyLaps()
+      .then(laps => {
+        if (!cancelled) setRecentLaps(laps.slice(0, 5));
+      })
+      .catch(() => {
+        /* silently ignore — user may not be authenticated */
+      })
+      .finally(() => {
+        if (!cancelled) setLapsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -143,7 +160,7 @@ export default function TelemetryPage() {
       }
     }
 
-    fetchLaps();
+    refreshLaps();
     if (inputRef.current) inputRef.current.value = '';
   }
 

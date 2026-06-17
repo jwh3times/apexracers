@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { FeatureFlagProvider } from './context/FeatureFlagContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider';
+import { FeatureFlagProvider } from './context/FeatureFlagProvider';
+import { ThemeProvider } from './context/ThemeProvider';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import Footer from './components/Footer';

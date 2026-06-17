@@ -6,6 +6,7 @@ import {
   clearToken,
   onTokenRefreshed,
   onSessionExpired,
+  IRacingNotLinkedError,
 } from '../api';
 
 // ── Fetch mock helpers ────────────────────────────────────────────────────────
@@ -114,6 +115,22 @@ describe('api', () => {
         expect.objectContaining({})
       );
     });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getRecommendations(1, 4)).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+
+    it('throws a generic error on a 409 whose body is not the not-linked contract', async () => {
+      mockFetchError({ status: 409, statusText: 'Conflict', body: 'some other conflict' });
+      const promise = api.getRecommendations(1, 4);
+      await expect(promise).rejects.toThrow('some other conflict');
+      await expect(promise).rejects.not.toBeInstanceOf(IRacingNotLinkedError);
+    });
   });
 
   // ── login ───────────────────────────────────────────────────────────────────
@@ -161,6 +178,21 @@ describe('api', () => {
 
     it('throws with server error body on failure', async () => {
       mockFetchError({ body: 'Email already registered.' });
+      await expect(api.register('dup@example.com', 'pass')).rejects.toThrow(
+        'Email already registered.'
+      );
+    });
+
+    it('surfaces the RFC-7807 ProblemDetails detail as the error message', async () => {
+      mockFetchError({
+        status: 400,
+        statusText: 'Bad Request',
+        body: JSON.stringify({
+          status: 400,
+          title: 'Bad Request',
+          detail: 'Email already registered.',
+        }),
+      });
       await expect(api.register('dup@example.com', 'pass')).rejects.toThrow(
         'Email already registered.'
       );

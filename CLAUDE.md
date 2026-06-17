@@ -135,6 +135,8 @@ HTTP request → Controller (parameter binding only)
 
 Controllers contain no logic beyond binding HTTP inputs and returning `Ok(result)`. Services live in `src/ApexRacers.Api/Services/`. Response shapes are defined as `record` types in `src/ApexRacers.Api/Dtos/ResponseDtos.cs`.
 
+**Error handling:** `ExceptionHandlingMiddleware` (registered first in the pipeline) converts unhandled exceptions into RFC-7807 `application/problem+json` responses, with the status from the pure `ExceptionStatusMapper` (`ArgumentException`/`InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503, else 500; 500 hides its message). Services should just `throw` for these cases rather than catching to `BadRequest(string)`. Controllers still return explicit results for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, 404/501) — those bypass the middleware.
+
 ### Backend API design — controllers are use-case-oriented, NOT entity-CRUD
 
 Do not create generic CRUD controllers per entity. Each controller represents one user-facing capability:
@@ -162,6 +164,8 @@ Services in `src/ApexRacers.Api/Services/`:
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
 - `AdminService` — user role management and feature flag CRUD
+- `CachedIRacingClient` — get-or-fetch cache over the iRacing `IDataClient` (TTL per `ExternalDataCache`); throws `IRacingNotConfiguredException` when iRacing creds are absent
+- `MemberContext` — resolves the authenticated user's iRacing `cust_id` from the DB; returns null when unlinked, which controllers turn into a typed `409` `NotLinkedDto` (`IRACING_NOT_LINKED`) via `ControllerExtensions.IRacingNotLinked()`
 
 ### No over-abstraction
 
@@ -189,6 +193,7 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 | `CarPercentileResult` | Cached percentile rank (UserId, CarId, SeriesId, WeekId, PercentileRank, SampleSize, ComputedAt) |
 | `FeatureFlag` | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt) |
 | `RefreshToken` | Rotating refresh token (Id, UserId, TokenHash [SHA-256 hex], ExpiresAt, CreatedAt, RevokedAt?); stored in `identity` schema |
+| `ExternalDataCache` | Cached external (iRacing) API response (Id, CacheKey [unique], Payload [serialized JSON, `text`], FetchedAt, ExpiresAt); backs `CachedIRacingClient` get-or-fetch |
 
 ### iRacing data ingestion
 
@@ -197,6 +202,8 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 ### Frontend
 
 Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API). The typed API client is in `src/web/src/services/api.ts` — all fetch calls go through it. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in the API.
+
+Every method routes through one private `request<T>(path, init)` helper that attaches auth headers, retries once after a silent token refresh on 401, returns `undefined` for 204s, and maps errors via `throwForResponse`. Error messages prefer an RFC-7807 `detail`, then the raw body, then the status line. A typed `IRacingNotLinkedError` is thrown on a `409` carrying `code: "IRACING_NOT_LINKED"` so pages can show a "link your iRacing account" prompt instead of a generic error (see `RecommendationsPage`). Add new endpoints by calling `request` with `{ method, json }` (JSON body) or `{ method, body }` (raw/FormData) — do not reintroduce per-verb helpers.
 
 #### Routing architecture
 

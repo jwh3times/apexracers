@@ -32,30 +32,34 @@ var jsonOptions = new JsonSerializerOptions
 {
     PropertyNameCaseInsensitive = true,
     NumberHandling = JsonNumberHandling.AllowReadingFromString,
+    // Response files are .jsonc with a leading comment header describing the
+    // endpoint and parameters used to capture them — skip comments when parsing.
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
 };
 
 var trackCatalog = JsonSerializer
     .Deserialize<List<TrackApiEntry>>(
-        File.ReadAllText(Path.Combine(responseObjectsPath, "track", "get.json")), jsonOptions)!
+        File.ReadAllText(Path.Combine(responseObjectsPath, "track", "get.jsonc")), jsonOptions)!
     .ToDictionary(t => t.TrackId);
 
 var carCatalog = JsonSerializer
     .Deserialize<List<CarApiEntry>>(
-        File.ReadAllText(Path.Combine(responseObjectsPath, "car", "get.json")), jsonOptions)!
+        File.ReadAllText(Path.Combine(responseObjectsPath, "car", "get.jsonc")), jsonOptions)!
     .ToDictionary(c => c.CarId);
 
 var carClasses = JsonSerializer
     .Deserialize<List<CarClassApiEntry>>(
-        File.ReadAllText(Path.Combine(responseObjectsPath, "carclass", "get.json")), jsonOptions)!;
+        File.ReadAllText(Path.Combine(responseObjectsPath, "carclass", "get.jsonc")), jsonOptions)!;
 
 var seriesCatalog = JsonSerializer
     .Deserialize<List<SeriesApiEntry>>(
-        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "get.json")), jsonOptions)!
+        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "get.jsonc")), jsonOptions)!
     .ToDictionary(s => s.SeriesId);
 
 var seasonsCatalog = JsonSerializer
     .Deserialize<List<SeasonApiEntry>>(
-        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "seasons.json")), jsonOptions)!
+        File.ReadAllText(Path.Combine(responseObjectsPath, "series", "seasons.jsonc")), jsonOptions)!
     .ToDictionary(s => s.SeasonId);
 
 // Build car_id → estimated avg speed (mph) from relative_speed.
@@ -63,7 +67,7 @@ var seasonsCatalog = JsonSerializer
 var carSpeedMph = BuildCarSpeedLookup(carClasses);
 
 var scheduleFiles = Directory.GetFiles(
-    Path.Combine(responseObjectsPath, "series"), "season_schedule-*.json");
+    Path.Combine(responseObjectsPath, "series"), "season_schedule-*.jsonc");
 
 var schedules = scheduleFiles
     .Select(f => JsonSerializer.Deserialize<SeasonScheduleResponse>(File.ReadAllText(f), jsonOptions)!)

@@ -56,6 +56,9 @@ public record CarRecommendationDto(
 
 public record AuthResultDto(string Token, Guid UserId, string DisplayName, string? RefreshToken = null);
 
+/// <summary>Typed body for the 409 returned when the caller has no linked iRacing customer id.</summary>
+public record NotLinkedDto(string Code, string Message);
+
 public record AdminUserDto(Guid UserId, string Email, string DisplayName, string Role);
 
 public record FeatureFlagDto(

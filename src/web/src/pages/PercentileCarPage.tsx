@@ -127,7 +127,6 @@ export default function PercentileCarPage() {
         if (msg.includes('→ 404')) dispatch({ type: 'not_found' });
         else dispatch({ type: 'error', message: msg || 'Failed to load percentile.' });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveId, seriesId, weekNumber, carId, paceSource]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {

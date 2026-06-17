@@ -1,7 +1,8 @@
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { ThemeProvider, useTheme } from '../ThemeContext';
+import { ThemeProvider } from '../ThemeProvider';
+import { useTheme } from '../ThemeContext';
 
 const mockUpdateTheme = vi.fn();
 
