@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CarClassCar> CarClassCars => Set<CarClassCar>();
     public DbSet<SeasonCarClass> SeasonCarClasses => Set<SeasonCarClass>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ExternalDataCache> ExternalDataCaches => Set<ExternalDataCache>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

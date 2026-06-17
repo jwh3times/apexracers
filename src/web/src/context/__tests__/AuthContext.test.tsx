@@ -1,7 +1,8 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { AuthProvider, useAuth } from '../AuthContext';
+import { AuthProvider } from '../AuthProvider';
+import { useAuth } from '../AuthContext';
 import type { AuthResult } from '../../services/api';
 
 const mockDbGet = vi.fn();
@@ -37,9 +38,13 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-vi.mock('../ThemeContext', () => ({
-  useTheme: () => ({ theme: 'auto', setTheme: vi.fn(), syncFromJwt: vi.fn() }),
-}));
+vi.mock('../ThemeContext', () => {
+  // Stable references (created once) so AuthProvider's mount effect, which depends
+  // on syncFromJwt, runs a single time — mirroring the real useCallback-backed value.
+  const setTheme = vi.fn();
+  const syncFromJwt = vi.fn();
+  return { useTheme: () => ({ theme: 'auto', setTheme, syncFromJwt }) };
+});
 
 function makeJwt(claims: { sub: string; email: string; name: string }): string {
   return `header.${btoa(JSON.stringify(claims))}.signature`;

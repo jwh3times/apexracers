@@ -31,7 +31,7 @@ globalThis.ResizeObserver = class ResizeObserver {
   constructor(cb: ResizeObserverCallback) {
     this.cb = cb;
   }
-  observe(_target: Element) {
+  observe() {
     this.cb([{ contentRect: { width: 300 } } as ResizeObserverEntry], this);
   }
   unobserve() {}

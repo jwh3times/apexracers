@@ -2,14 +2,24 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RecommendationsPage from '../RecommendationsPage';
-import { api } from '../../services/api';
+import { api, IRacingNotLinkedError } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getSeries: vi.fn(),
-    getRecommendations: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', () => {
+  class IRacingNotLinkedError extends Error {
+    code = 'IRACING_NOT_LINKED';
+    constructor(message: string) {
+      super(message);
+      this.name = 'IRacingNotLinkedError';
+    }
+  }
+  return {
+    api: {
+      getSeries: vi.fn(),
+      getRecommendations: vi.fn(),
+    },
+    IRacingNotLinkedError,
+  };
+});
 
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetRecs = vi.mocked(api.getRecommendations);
@@ -148,6 +158,17 @@ describe('RecommendationsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument();
       expect(screen.getByText('#2')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the link-iRacing prompt pointing to Settings when the account is not linked', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    renderPage('?seriesId=1');
+    await waitFor(() => {
+      const link = screen.getByRole('link', { name: /settings/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/settings');
     });
   });
 

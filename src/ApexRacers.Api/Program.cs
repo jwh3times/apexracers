@@ -3,8 +3,10 @@ using System.Threading.RateLimiting;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using ApexRacers.Api.Middleware;
 using ApexRacers.Api.Services;
 using ApexRacers.Data;
+using Aydsko.iRacingData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +43,28 @@ var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
+
+// ── iRacing Data API — on-demand per-user member fetches ─────────────────────
+// Unlike the ingestion worker (which requires these), the API registers the client
+// only when all four credentials are present, so local dev / CI without iRacing
+// creds still boots. Services that need it check for the client's presence (see
+// CachedIRacingClient) and surface a 503 when it isn't configured.
+var irUsername = builder.Configuration["IRACING_USERNAME"];
+var irPassword = builder.Configuration["IRACING_PASSWORD"];
+var irClientId = builder.Configuration["IRACING_CLIENT_ID"];
+var irClientSecret = builder.Configuration["IRACING_CLIENT_SECRET"];
+if (!string.IsNullOrEmpty(irUsername) && !string.IsNullOrEmpty(irPassword)
+    && !string.IsNullOrEmpty(irClientId) && !string.IsNullOrEmpty(irClientSecret))
+{
+    builder.Services.AddIRacingDataApi(options =>
+        options.UsePasswordLimitedOAuth(
+            userName: irUsername,
+            password: irPassword,
+            clientId: irClientId,
+            clientSecret: irClientSecret,
+            passwordIsEncoded: false,
+            clientSecretIsEncoded: false));
+}
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
@@ -98,6 +122,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("BetaOrAbove",   policy => policy.RequireClaim("role", "Beta", "Alpha", "Admin"));
 });
 
+builder.Services.AddScoped<CachedIRacingClient>();
+builder.Services.AddScoped<MemberContext>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
@@ -159,6 +185,10 @@ using (var scope = app.Services.CreateScope())
     var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
     await authService.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30));
 }
+
+// First in the pipeline so it wraps every downstream component and turns any
+// unhandled exception into an RFC-7807 problem+json response.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

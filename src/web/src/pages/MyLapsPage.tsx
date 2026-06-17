@@ -65,12 +65,11 @@ function StatCard({
 
 export default function MyLapsPage() {
   const [laps, setLaps] = useState<PersonalLap[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    setLoading(true);
     api
       .getMyLaps()
       .then(setLaps)

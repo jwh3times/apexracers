@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +10,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/users/me/recommendations")]
-public class RecommendationsController(CarRecommendationService recommendations) : ControllerBase
+public class RecommendationsController(
+    CarRecommendationService recommendations,
+    MemberContext member) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetRecommendationsAsync(
@@ -18,11 +22,15 @@ public class RecommendationsController(CarRecommendationService recommendations)
         [FromQuery] List<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
-        var customerIdClaim = User.FindFirst("iracing_id")?.Value;
-        if (!long.TryParse(customerIdClaim, out var customerId))
-            return Ok(Array.Empty<object>());
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        var custId = await member.GetCustIdAsync(userId, ct);
+        if (custId is null or 0)
+            return this.IRacingNotLinked();
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, weekNumber, customerId, includePersonalLaps, personalLapTypes, ct));
+            seriesId, weekNumber, custId.Value, includePersonalLaps, personalLapTypes, ct));
     }
 }

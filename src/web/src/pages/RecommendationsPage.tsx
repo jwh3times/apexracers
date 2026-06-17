@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, type CarRecommendation, type Series } from '../services/api';
+import { api, IRacingNotLinkedError, type CarRecommendation, type Series } from '../services/api';
 import { formatLapTime } from '../utils/lapTime';
 import CalculationSource, { type PaceSourceValue } from '../components/CalculationSource';
 
@@ -8,11 +8,13 @@ type FetchState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'ok'; recs: CarRecommendation[] }
+  | { status: 'not-linked' }
   | { status: 'error'; message: string };
 
 type FetchAction =
   | { type: 'FETCH_START' }
   | { type: 'FETCH_OK'; recs: CarRecommendation[] }
+  | { type: 'FETCH_NOT_LINKED' }
   | { type: 'FETCH_ERROR'; message: string }
   | { type: 'RESET' };
 
@@ -22,6 +24,8 @@ function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
       return { status: 'loading' };
     case 'FETCH_OK':
       return { status: 'ok', recs: action.recs };
+    case 'FETCH_NOT_LINKED':
+      return { status: 'not-linked' };
     case 'FETCH_ERROR':
       return { status: 'error', message: action.message };
     case 'RESET':
@@ -223,12 +227,16 @@ export default function RecommendationsPage() {
           blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
       })
       .then(recs => dispatch({ type: 'FETCH_OK', recs }))
-      .catch((err: unknown) =>
+      .catch((err: unknown) => {
+        if (err instanceof IRacingNotLinkedError) {
+          dispatch({ type: 'FETCH_NOT_LINKED' });
+          return;
+        }
         dispatch({
           type: 'FETCH_ERROR',
           message: err instanceof Error ? err.message : 'Failed to load recommendations.',
-        })
-      );
+        });
+      });
   }, [selectedSeriesId, weekNumber, paceSource]);
 
   return (
@@ -302,6 +310,31 @@ export default function RecommendationsPage() {
             style={cardStyle}
           >
             {fetchState.message}
+          </div>
+        )}
+
+        {fetchState.status === 'not-linked' && (
+          <div
+            className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
+            style={cardStyle}
+          >
+            <span
+              className="material-symbols-outlined text-4xl text-primary-container"
+              aria-hidden="true"
+            >
+              link_off
+            </span>
+            <p className="text-body-fluid text-on-surface-variant">
+              Link your iRacing account to see personalized recommendations. Add your iRacing
+              customer ID in{' '}
+              <Link
+                to="/settings"
+                className="text-primary-container hover:opacity-80 transition-opacity"
+              >
+                Settings
+              </Link>
+              .
+            </p>
           </div>
         )}
 
