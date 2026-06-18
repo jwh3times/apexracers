@@ -124,6 +124,10 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<CachedIRacingClient>();
 builder.Services.AddScoped<MemberContext>();
+builder.Services.AddScoped<MemberStatsService>();
+builder.Services.AddScoped<RaceHistoryService>();
+builder.Services.AddScoped<SubsessionDetailService>();
+builder.Services.AddScoped<LapDataService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();

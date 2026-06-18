@@ -1,8 +1,202 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type PersonalLap, type Series } from '../services/api';
+import {
+  api,
+  IRacingNotLinkedError,
+  type DriverProfile,
+  type PersonalLap,
+  type Series,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatLapTime } from '../utils/lapTime';
+
+type StatsState =
+  | { status: 'loading' }
+  | { status: 'ok'; data: DriverProfile }
+  | { status: 'not-linked' }
+  | { status: 'error' };
+
+const cardStyle: React.CSSProperties = {
+  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+};
+
+const scanTexture: React.CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+};
+
+function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="kpi-p card-r border border-line-2 bg-surface-container">
+      <p className="text-th text-on-surface-variant mb-1">{label}</p>
+      <p className="text-kpi-value text-on-surface">{value}</p>
+    </div>
+  );
+}
+
+function DriverStats({ state }: { state: StatsState }) {
+  if (state.status === 'loading') {
+    return (
+      <p className="text-body-fluid text-on-surface-variant animate-pulse">
+        Loading driver stats&hellip;
+      </p>
+    );
+  }
+  if (state.status === 'error') return null;
+  if (state.status === 'not-linked') {
+    return (
+      <div
+        className="card-r border border-line-2 bg-surface card-p text-body-fluid text-on-surface-variant"
+        style={cardStyle}
+      >
+        Link your iRacing customer ID in{' '}
+        <Link to="/settings" className="text-primary-container hover:opacity-80 transition-opacity">
+          Settings
+        </Link>{' '}
+        to see your career stats, license badges, and favorites.
+      </div>
+    );
+  }
+
+  const d = state.data;
+  return (
+    <div className="flex flex-col gap-fluid">
+      {/* Licenses */}
+      <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+        <div
+          className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
+          style={scanTexture}
+        >
+          <h3 className="text-section-head text-on-surface">Licenses</h3>
+          <span className="text-small-fluid text-on-surface-variant">
+            {[d.country, d.memberSince ? `Member since ${d.memberSince}` : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </div>
+        <div className="card-p flex flex-wrap gap-fluid">
+          {d.licenses.length === 0 ? (
+            <p className="text-small-fluid text-on-surface-variant">No license data.</p>
+          ) : (
+            d.licenses.map(lic => (
+              <div
+                key={lic.categoryId}
+                className="flex flex-col gap-1 px-3 py-2 card-r border"
+                style={{ borderColor: `#${lic.color}55` }}
+              >
+                <span className="text-eyebrow" style={{ color: `#${lic.color}` }}>
+                  {lic.categoryName}
+                </span>
+                <span className="text-mono-fluid text-on-surface">
+                  {lic.groupName} · {lic.safetyRating.toFixed(2)} SR
+                </span>
+                <span className="text-small-fluid text-on-surface-variant">
+                  {lic.iRating.toLocaleString()} iR
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* This season */}
+      <div className="grid grid-kpi gap-fluid">
+        <StatTile
+          label="Official Sessions (Year)"
+          value={d.thisYear.officialSessions.toLocaleString()}
+        />
+        <StatTile label="Official Wins (Year)" value={d.thisYear.officialWins.toLocaleString()} />
+      </div>
+
+      {/* Favorites */}
+      {(d.favoriteCar || d.favoriteTrack) && (
+        <div className="flex flex-wrap gap-fluid">
+          {d.favoriteCar && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
+              style={cardStyle}
+            >
+              <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
+                directions_car
+              </span>
+              <div>
+                <p className="text-th text-on-surface-variant">Favorite Car</p>
+                <p className="text-body-fluid text-on-surface font-medium">
+                  {d.favoriteCar.carName}
+                </p>
+              </div>
+            </div>
+          )}
+          {d.favoriteTrack && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
+              style={cardStyle}
+            >
+              <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
+                stadium
+              </span>
+              <div>
+                <p className="text-th text-on-surface-variant">Favorite Track</p>
+                <p className="text-body-fluid text-on-surface font-medium">
+                  {d.favoriteTrack.trackName}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Career by category */}
+      {d.career.length > 0 && (
+        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+          <div className="card-hp border-b border-line-2" style={scanTexture}>
+            <h3 className="text-section-head text-on-surface">Career by Category</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-line-2" style={scanTexture}>
+                  <th className="th-p text-th text-on-surface-variant text-left">Category</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Starts</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Wins</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Top 5</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Poles</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Win %</th>
+                  <th className="th-p text-th text-on-surface-variant text-right">Laps Led</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.career.map(c => (
+                  <tr key={c.categoryId} className="border-b border-line-2 last:border-b-0">
+                    <td className="td-p text-body-fluid text-on-surface">{c.categoryName}</td>
+                    <td className="td-p text-mono-fluid text-on-surface text-right">
+                      {c.starts.toLocaleString()}
+                    </td>
+                    <td className="td-p text-mono-fluid text-primary-container text-right">
+                      {c.wins.toLocaleString()}
+                    </td>
+                    <td className="td-p text-mono-fluid text-on-surface text-right">
+                      {c.top5.toLocaleString()}
+                    </td>
+                    <td className="td-p text-mono-fluid text-on-surface text-right">
+                      {c.poles.toLocaleString()}
+                    </td>
+                    <td className="td-p text-mono-fluid text-on-surface text-right">
+                      {c.winPercentage.toFixed(1)}%
+                    </td>
+                    <td className="td-p text-mono-fluid text-on-surface-variant text-right">
+                      {c.lapsLed.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
@@ -71,6 +265,9 @@ export default function ProfilePage() {
   const [lapsLoading, setLapsLoading] = useState(true);
   const [seriesLoading, setSeriesLoading] = useState(true);
 
+  const linked = !!user?.iRacingCustomerId;
+  const [statsState, setStatsState] = useState<StatsState>({ status: 'loading' });
+
   useEffect(() => {
     api
       .getMyLaps()
@@ -84,6 +281,25 @@ export default function ProfilePage() {
       .catch(() => {})
       .finally(() => setSeriesLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!linked) return;
+    let active = true;
+    api
+      .getProfileStats()
+      .then(data => {
+        if (active) setStatsState({ status: 'ok', data });
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setStatsState(
+          err instanceof IRacingNotLinkedError ? { status: 'not-linked' } : { status: 'error' }
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [linked]);
 
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
@@ -164,6 +380,9 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Driver stats — career, licenses, favorites */}
+      <DriverStats state={linked ? statsState : { status: 'not-linked' }} />
 
       {/* Active series */}
       <section>

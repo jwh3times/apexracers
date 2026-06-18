@@ -61,4 +61,11 @@ public static class SubsessionIndexer
     /// </summary>
     public static double LapSecondsOrSentinel(TimeSpan? lap) =>
         lap?.TotalSeconds ?? NoLapSentinel;
+
+    /// <summary>
+    /// Event-level lap time in seconds. iRacing maps a "no valid lap" (-1) to a
+    /// non-positive <see cref="TimeSpan"/>; collapse anything &lt;= 0 to the sentinel.
+    /// </summary>
+    public static double EventLapSecondsOrSentinel(TimeSpan lap) =>
+        lap.TotalSeconds <= 0 ? NoLapSentinel : lap.TotalSeconds;
 }

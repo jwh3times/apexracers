@@ -27,6 +27,14 @@ public class SubsessionResult
     public bool DropRace { get; set; }
     public double Interval { get; set; }            // seconds gap to class leader; -1 = N/A
 
+    // Race-detail context (1.3).
+    public string? DisplayName { get; set; }        // driver display name
+    public double QualLapSeconds { get; set; }      // seconds; -1 = none
+    public int NewSubLevel { get; set; }            // safety rating × 100 after the race
+    public int OldSubLevel { get; set; }            // safety rating × 100 before the race
+    public int NewTtRating { get; set; }
+    public int OldTtRating { get; set; }
+
     public Subsession Subsession { get; set; } = null!;
     public Car Car { get; set; } = null!;
     public CarClass CarClass { get; set; } = null!;
