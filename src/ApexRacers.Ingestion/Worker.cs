@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
@@ -306,16 +307,25 @@ public sealed class Worker(
 
                 var subsession = new Subsession
                 {
-                    Id                   = subsessionId,
-                    SeasonId             = data.SeasonId,
-                    WeekNumber           = data.RaceWeekIndex,
-                    WeekId               = weekId,
-                    TrackId              = data.Track.TrackId,
-                    OfficialSession      = data.OfficialSession,
-                    EventStrengthOfField = data.EventStrengthOfField,
-                    StartTime            = data.StartTime,
-                    EndTime              = data.EndTime,   // DateTimeOffset, not nullable in SubSessionResult
-                    SplitNum             = splitNum,
+                    Id                     = subsessionId,
+                    SeasonId               = data.SeasonId,
+                    WeekNumber             = data.RaceWeekIndex,
+                    WeekId                 = weekId,
+                    TrackId                = data.Track.TrackId,
+                    OfficialSession        = data.OfficialSession,
+                    EventStrengthOfField   = data.EventStrengthOfField,
+                    StartTime              = data.StartTime,
+                    EndTime                = data.EndTime,   // DateTimeOffset, not nullable in SubSessionResult
+                    SplitNum               = splitNum,
+                    NumCautions            = data.NumberOfCautions,
+                    NumCautionLaps         = data.NumberOfCautionLaps,
+                    NumLeadChanges         = data.NumberOfLeadChanges,
+                    CornersPerLap          = data.CornersPerLap,
+                    EventAverageLapSeconds = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventAverageLap),
+                    EventBestLapSeconds    = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventBestLapTime),
+                    EventLapsComplete      = data.EventLapsComplete,
+                    WeatherJson            = data.Weather is null ? null : JsonSerializer.Serialize(data.Weather),
+                    TrackStateJson         = data.TrackState is null ? null : JsonSerializer.Serialize(data.TrackState),
                 };
                 db.Subsessions.Add(subsession);
                 await db.SaveChangesAsync(ct);
@@ -377,6 +387,12 @@ public sealed class Worker(
                         Division                  = r.Division,
                         DropRace                  = r.DropRace,
                         Interval                  = r.ClassInterval?.TotalSeconds ?? -1,
+                        DisplayName               = r.DisplayName,
+                        QualLapSeconds            = SubsessionIndexer.LapSecondsOrSentinel(r.QualifyingLapTime),
+                        NewSubLevel               = r.NewSubLevel,
+                        OldSubLevel               = r.OldSubLevel,
+                        NewTtRating               = r.NewTimeTrialRating,
+                        OldTtRating               = r.OldTimeTrialRating,
                     });
                 }
 

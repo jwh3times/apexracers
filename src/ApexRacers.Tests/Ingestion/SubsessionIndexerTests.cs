@@ -115,4 +115,26 @@ public class SubsessionIndexerTests
         var lap = TimeSpan.FromSeconds(92.345);
         Assert.Equal(92.345, SubsessionIndexer.LapSecondsOrSentinel(lap), tolerance: 0.0005);
     }
+
+    // ── EventLapSecondsOrSentinel ─────────────────────────────────────────────
+
+    [Fact]
+    public void EventLapSecondsOrSentinel_Positive_ReturnsTotalSeconds()
+    {
+        Assert.Equal(
+            66.295,
+            SubsessionIndexer.EventLapSecondsOrSentinel(TimeSpan.FromSeconds(66.295)),
+            tolerance: 0.0005);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-0.0001)]
+    [InlineData(-1)]
+    public void EventLapSecondsOrSentinel_NonPositive_ReturnsSentinel(double seconds)
+    {
+        Assert.Equal(
+            SubsessionIndexer.NoLapSentinel,
+            SubsessionIndexer.EventLapSecondsOrSentinel(TimeSpan.FromSeconds(seconds)));
+    }
 }

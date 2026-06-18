@@ -145,6 +145,160 @@ export interface FeatureFlag {
   updatedAt: string;
 }
 
+export interface TimeSeriesPoint {
+  when: string; // ISO date (yyyy-MM-dd)
+  value: number;
+}
+
+export interface CategoryProgression {
+  categoryId: number;
+  categoryName: string;
+  iRating: number;
+  safetyRating: number;
+  cpi: number;
+  licenseLevel: number;
+  groupName: string;
+  ttRating: number;
+  color: string; // hex without leading '#'
+  iRatingHistory: TimeSeriesPoint[];
+}
+
+export interface MemberProgression {
+  customerId: number;
+  categories: CategoryProgression[];
+}
+
+export interface LicenseBadge {
+  categoryId: number;
+  categoryName: string;
+  groupName: string;
+  licenseLevel: number;
+  safetyRating: number;
+  iRating: number;
+  color: string; // hex without leading '#'
+}
+
+export interface CategoryCareer {
+  categoryId: number;
+  categoryName: string;
+  starts: number;
+  wins: number;
+  top5: number;
+  poles: number;
+  avgStartPosition: number;
+  avgFinishPosition: number;
+  laps: number;
+  lapsLed: number;
+  winPercentage: number;
+  top5Percentage: number;
+}
+
+export interface ThisYearSummary {
+  officialSessions: number;
+  officialWins: number;
+  leagueSessions: number;
+  leagueWins: number;
+}
+
+export interface FavoriteCar {
+  carId: number;
+  carName: string;
+  imageUrl: string | null;
+}
+
+export interface FavoriteTrack {
+  trackId: number;
+  trackName: string;
+  configName: string | null;
+  logoUrl: string | null;
+}
+
+export interface DriverProfile {
+  customerId: number;
+  displayName: string;
+  country: string | null;
+  countryCode: string | null;
+  memberSince: string | null;
+  licenses: LicenseBadge[];
+  career: CategoryCareer[];
+  thisYear: ThisYearSummary;
+  favoriteCar: FavoriteCar | null;
+  favoriteTrack: FavoriteTrack | null;
+}
+
+export interface RaceHistoryRow {
+  subsessionId: number;
+  startTime: string; // ISO 8601
+  seriesName: string;
+  trackName: string;
+  carId: number;
+  carName: string;
+  startPosition: number;
+  finishPosition: number;
+  incidents: number;
+  iRatingDelta: number;
+  srDelta: number; // SR points (sub-level / 100)
+  strengthOfField: number;
+  points: number;
+}
+
+export interface Weather {
+  tempCelsius: number;
+  relHumidity: number;
+  windKph: number;
+  skies: number;
+  precipChance: number;
+}
+
+export interface SubsessionResultRow {
+  custId: number;
+  driverName: string;
+  finishPosition: number;
+  startPosition: number;
+  bestLapSeconds: number;
+  averageLapSeconds: number;
+  interval: number;
+  lapsLead: number;
+  incidents: number;
+  division: number;
+  iRatingDelta: number;
+  srDelta: number;
+}
+
+export interface SubsessionDetail {
+  subsessionId: number;
+  startTime: string; // ISO 8601
+  seriesName: string;
+  trackName: string;
+  trackConfigName: string | null;
+  strengthOfField: number;
+  numCautions: number;
+  numLeadChanges: number;
+  cornersPerLap: number;
+  eventBestLapSeconds: number;
+  eventAverageLapSeconds: number;
+  eventLapsComplete: number;
+  weather: Weather | null;
+  results: SubsessionResultRow[];
+}
+
+export interface Lap {
+  lapNumber: number;
+  lapTimeSeconds: number; // -1 when the lap has no time
+  incident: boolean;
+  valid: boolean;
+}
+
+export interface DriverLaps {
+  subsessionId: number;
+  custId: number;
+  meanSeconds: number;
+  stdDevSeconds: number;
+  fastestLapSeconds: number;
+  degSlopeSecondsPerLap: number;
+  laps: Lap[];
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -358,6 +512,32 @@ export const api = {
     const path =
       seriesId != null ? `/api/users/me/analytics?seriesId=${seriesId}` : '/api/users/me/analytics';
     return request(path);
+  },
+
+  /** GET /api/users/me/progression — per-category iRating / SR / CPI / TT with iRating history */
+  getProgression(): Promise<MemberProgression> {
+    return request('/api/users/me/progression');
+  },
+
+  /** GET /api/users/me/profile-stats — career stats, license badges, recap favorites */
+  getProfileStats(): Promise<DriverProfile> {
+    return request('/api/users/me/profile-stats');
+  },
+
+  /** GET /api/users/me/races — recent official race history (newest first) */
+  getRaceHistory(): Promise<RaceHistoryRow[]> {
+    return request('/api/users/me/races');
+  },
+
+  /** GET /api/subsessions/:id — full classified field + session context for one race */
+  getSubsession(id: number): Promise<SubsessionDetail> {
+    return request(`/api/subsessions/${id}`);
+  },
+
+  /** GET /api/subsessions/:id/laps?customerId= — a driver's per-lap pace (defaults to caller) */
+  getDriverLaps(subsessionId: number, customerId?: number): Promise<DriverLaps> {
+    const qs = customerId != null ? `?customerId=${customerId}` : '';
+    return request(`/api/subsessions/${subsessionId}/laps${qs}`);
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */

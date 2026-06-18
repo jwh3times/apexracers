@@ -333,6 +333,107 @@ describe('api', () => {
     });
   });
 
+  // ── getProgression ──────────────────────────────────────────────────────────
+
+  describe('getProgression', () => {
+    it('calls GET /api/users/me/progression and returns parsed data', async () => {
+      const data = { customerId: 691062, categories: [] };
+      mockFetchOk(data);
+      const result = await api.getProgression();
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/progression', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getProgression()).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
+  // ── getProfileStats ─────────────────────────────────────────────────────────
+
+  describe('getProfileStats', () => {
+    it('calls GET /api/users/me/profile-stats and returns parsed data', async () => {
+      const data = { customerId: 691062, displayName: 'Jerry', licenses: [], career: [] };
+      mockFetchOk(data);
+      const result = await api.getProfileStats();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/profile-stats',
+        expect.objectContaining({})
+      );
+      expect(result).toEqual(data);
+    });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getProfileStats()).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
+  // ── getRaceHistory ──────────────────────────────────────────────────────────
+
+  describe('getRaceHistory', () => {
+    it('calls GET /api/users/me/races and returns parsed rows', async () => {
+      mockFetchOk([]);
+      const result = await api.getRaceHistory();
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/races', expect.objectContaining({}));
+      expect(result).toEqual([]);
+    });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getRaceHistory()).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
+  // ── getSubsession ───────────────────────────────────────────────────────────
+
+  describe('getSubsession', () => {
+    it('calls GET /api/subsessions/:id and returns parsed data', async () => {
+      const data = { subsessionId: 100, seriesName: 'GT3 Cup', results: [] };
+      mockFetchOk(data);
+      const result = await api.getSubsession(100);
+      expect(fetch).toHaveBeenCalledWith('/api/subsessions/100', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws with status info on a 404 (unknown subsession)', async () => {
+      mockFetchError({ status: 404, statusText: 'Not Found' });
+      await expect(api.getSubsession(999)).rejects.toThrow('404');
+    });
+  });
+
+  // ── getDriverLaps ─────────────────────────────────────────────────────────
+
+  describe('getDriverLaps', () => {
+    it('calls GET with a customerId query param when provided', async () => {
+      mockFetchOk({ subsessionId: 100, custId: 111, laps: [] });
+      await api.getDriverLaps(100, 111);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/subsessions/100/laps?customerId=111',
+        expect.objectContaining({})
+      );
+    });
+
+    it('omits the query param when customerId is not provided', async () => {
+      mockFetchOk({ subsessionId: 100, custId: 0, laps: [] });
+      await api.getDriverLaps(100);
+      expect(fetch).toHaveBeenCalledWith('/api/subsessions/100/laps', expect.objectContaining({}));
+    });
+  });
+
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
   // ── updateRole ──────────────────────────────────────────────────────────────

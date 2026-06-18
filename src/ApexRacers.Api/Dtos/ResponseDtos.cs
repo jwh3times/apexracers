@@ -109,3 +109,139 @@ public record CarAnalyticsDto(
     double? MedianLapSeconds,
     int TotalWeeks,
     IReadOnlyList<WeeklyPercentileDto> PercentileHistory);
+
+/// <summary>A single point in a member chart time series (iRating/SR/TT over time).</summary>
+public record TimeSeriesPointDto(string When, int Value);
+
+/// <summary>Current standing plus iRating history for one license category.</summary>
+public record CategoryProgressionDto(
+    int CategoryId,
+    string CategoryName,
+    int IRating,
+    double SafetyRating,
+    double Cpi,
+    int LicenseLevel,
+    string GroupName,
+    int TtRating,
+    string Color,
+    IReadOnlyList<TimeSeriesPointDto> IRatingHistory);
+
+/// <summary>A driver's per-category progression (one card per license category).</summary>
+public record MemberProgressionDto(long CustomerId, IReadOnlyList<CategoryProgressionDto> Categories);
+
+/// <summary>Current license standing for one category (for the colored profile badges).</summary>
+public record LicenseBadgeDto(
+    int CategoryId,
+    string CategoryName,
+    string GroupName,
+    int LicenseLevel,
+    double SafetyRating,
+    int IRating,
+    string Color);
+
+/// <summary>Lifetime career stats for one license category.</summary>
+public record CategoryCareerDto(
+    int CategoryId,
+    string CategoryName,
+    int Starts,
+    int Wins,
+    int Top5,
+    int Poles,
+    int AvgStartPosition,
+    int AvgFinishPosition,
+    int Laps,
+    int LapsLed,
+    double WinPercentage,
+    double Top5Percentage);
+
+/// <summary>This-year activity summary (official + league sessions/wins).</summary>
+public record ThisYearSummaryDto(
+    int OfficialSessions,
+    int OfficialWins,
+    int LeagueSessions,
+    int LeagueWins);
+
+public record FavoriteCarDto(int CarId, string CarName, string? ImageUrl);
+
+public record FavoriteTrackDto(int TrackId, string TrackName, string? ConfigName, string? LogoUrl);
+
+/// <summary>Enriched driver profile: identity, license badges, career stats, recap favorites.</summary>
+public record DriverProfileDto(
+    long CustomerId,
+    string DisplayName,
+    string? Country,
+    string? CountryCode,
+    string? MemberSince,
+    IReadOnlyList<LicenseBadgeDto> Licenses,
+    IReadOnlyList<CategoryCareerDto> Career,
+    ThisYearSummaryDto ThisYear,
+    FavoriteCarDto? FavoriteCar,
+    FavoriteTrackDto? FavoriteTrack);
+
+/// <summary>One row in the driver's recent-race history. SrDelta is in SR points (sub-level / 100).</summary>
+public record RaceHistoryRowDto(
+    int SubsessionId,
+    DateTimeOffset StartTime,
+    string SeriesName,
+    string TrackName,
+    int CarId,
+    string CarName,
+    int StartPosition,
+    int FinishPosition,
+    int Incidents,
+    int IRatingDelta,
+    double SrDelta,
+    int StrengthOfField,
+    int Points);
+
+/// <summary>Session weather summary for a race-detail header.</summary>
+public record WeatherDto(double TempCelsius, int RelHumidity, double WindKph, int Skies, double PrecipChance);
+
+/// <summary>One classified driver in a subsession result. SrDelta is in SR points (sub-level / 100).</summary>
+public record SubsessionResultRowDto(
+    long CustId,
+    string DriverName,
+    int FinishPosition,
+    int StartPosition,
+    double BestLapSeconds,
+    double AverageLapSeconds,
+    double Interval,
+    int LapsLead,
+    int Incidents,
+    int Division,
+    int IRatingDelta,
+    double SrDelta);
+
+/// <summary>One lap in a driver's per-lap trace. LapTimeSeconds is -1 when the lap has no time.</summary>
+public record LapDto(int LapNumber, double LapTimeSeconds, bool Incident, bool Valid);
+
+/// <summary>
+/// A driver's per-lap pace for one subsession plus server-computed summary stats over
+/// the clean ("green", no-incident) laps. DegSlopeSecondsPerLap is the linear fit of lap
+/// time vs lap number — positive means the driver slowed over the run.
+/// </summary>
+public record DriverLapsDto(
+    int SubsessionId,
+    long CustId,
+    double MeanSeconds,
+    double StdDevSeconds,
+    double FastestLapSeconds,
+    double DegSlopeSecondsPerLap,
+    IReadOnlyList<LapDto> Laps);
+
+/// <summary>Full classified field plus session context for one ingested subsession.</summary>
+public record SubsessionDetailDto(
+    int SubsessionId,
+    DateTimeOffset StartTime,
+    string SeriesName,
+    string TrackName,
+    string? TrackConfigName,
+    int StrengthOfField,
+    int NumCautions,
+    int NumLeadChanges,
+    int CornersPerLap,
+    double EventBestLapSeconds,
+    double EventAverageLapSeconds,
+    int EventLapsComplete,
+    WeatherDto? Weather,
+    IReadOnlyList<SubsessionResultRowDto> Results);

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProfilePage from '../ProfilePage';
-import { api } from '../../services/api';
+import { api, IRacingNotLinkedError, type DriverProfile } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
 let mockUser: User | null = {
@@ -18,15 +18,87 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getMyLaps: vi.fn(),
-    getSeries: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', () => {
+  class IRacingNotLinkedError extends Error {
+    code = 'IRACING_NOT_LINKED';
+    constructor(message: string) {
+      super(message);
+      this.name = 'IRacingNotLinkedError';
+    }
+  }
+  return {
+    api: {
+      getMyLaps: vi.fn(),
+      getSeries: vi.fn(),
+      getProfileStats: vi.fn(),
+    },
+    IRacingNotLinkedError,
+  };
+});
 
 const mockGetMyLaps = vi.mocked(api.getMyLaps);
 const mockGetSeries = vi.mocked(api.getSeries);
+const mockGetProfileStats = vi.mocked(api.getProfileStats);
+
+const minimalProfile: DriverProfile = {
+  customerId: 100042,
+  displayName: 'Test Driver',
+  country: null,
+  countryCode: null,
+  memberSince: null,
+  licenses: [],
+  career: [],
+  thisYear: { officialSessions: 0, officialWins: 0, leagueSessions: 0, leagueWins: 0 },
+  favoriteCar: null,
+  favoriteTrack: null,
+};
+
+const sampleProfile: DriverProfile = {
+  customerId: 100042,
+  displayName: 'Test Driver',
+  country: 'United States',
+  countryCode: 'USA',
+  memberSince: '2021-11-05',
+  licenses: [
+    {
+      categoryId: 5,
+      categoryName: 'Sports Car',
+      groupName: 'Class A',
+      licenseLevel: 18,
+      safetyRating: 2.38,
+      iRating: 1854,
+      color: '0153db',
+    },
+  ],
+  career: [
+    {
+      categoryId: 2,
+      categoryName: 'Road',
+      starts: 576,
+      wins: 42,
+      top5: 180,
+      poles: 31,
+      avgStartPosition: 10,
+      avgFinishPosition: 10,
+      laps: 6401,
+      lapsLed: 351,
+      winPercentage: 7.29,
+      top5Percentage: 31.25,
+    },
+  ],
+  thisYear: { officialSessions: 75, officialWins: 1, leagueSessions: 0, leagueWins: 0 },
+  favoriteCar: {
+    carId: 119,
+    carName: 'Porsche 718 Cayman GT4 Clubsport MR',
+    imageUrl: 'https://x/car.jpg',
+  },
+  favoriteTrack: {
+    trackId: 249,
+    trackName: 'Nürburgring Nordschleife',
+    configName: 'Industriefahrten',
+    logoUrl: null,
+  },
+};
 
 const sampleLaps = [
   {
@@ -95,6 +167,7 @@ describe('ProfilePage', () => {
     };
     mockGetMyLaps.mockResolvedValue([]);
     mockGetSeries.mockResolvedValue([]);
+    mockGetProfileStats.mockResolvedValue(minimalProfile);
   });
 
   it('renders the driver display name', async () => {
@@ -188,5 +261,63 @@ describe('ProfilePage', () => {
       const cells = screen.getAllByText('2:00.015');
       expect(cells.length).toBeGreaterThan(0);
     });
+  });
+
+  // ── Enriched driver stats (1.5) ───────────────────────────────────────────
+
+  it('shows license badges with safety rating when stats load', async () => {
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Sports Car')).toBeInTheDocument());
+    expect(screen.getByText(/2\.38 SR/)).toBeInTheDocument();
+  });
+
+  it('shows this-year official sessions count', async () => {
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('75')).toBeInTheDocument());
+  });
+
+  it('shows favorite car and track from the recap', async () => {
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('Porsche 718 Cayman GT4 Clubsport MR')).toBeInTheDocument()
+    );
+    expect(screen.getByText('Nürburgring Nordschleife')).toBeInTheDocument();
+  });
+
+  it('renders a career-by-category row', async () => {
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Career by Category')).toBeInTheDocument());
+    expect(screen.getByText('Road')).toBeInTheDocument();
+    expect(screen.getByText('576')).toBeInTheDocument();
+  });
+
+  it('prompts to link iRacing when the user has no customer ID', async () => {
+    mockUser = { ...mockUser!, iRacingCustomerId: null };
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/settings')
+    );
+    expect(mockGetProfileStats).not.toHaveBeenCalled();
+  });
+
+  it('prompts to link iRacing when the API reports not linked', async () => {
+    mockGetProfileStats.mockRejectedValue(new IRacingNotLinkedError('nope'));
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/settings')
+    );
+  });
+
+  it('hides the stats section on a generic error', async () => {
+    mockGetProfileStats.mockRejectedValue(new Error('boom'));
+    renderPage();
+    await waitFor(() =>
+      expect(screen.queryByText(/loading driver stats/i)).not.toBeInTheDocument()
+    );
+    expect(screen.queryByText('Licenses')).not.toBeInTheDocument();
   });
 });

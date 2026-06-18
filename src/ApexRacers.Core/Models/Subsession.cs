@@ -13,6 +13,17 @@ public class Subsession
     public DateTimeOffset? EndTime { get; set; }
     public int SplitNum { get; set; }              // 0 = highest SOF split
 
+    // Race context (1.3) — populated by the ingestion worker.
+    public int NumCautions { get; set; }
+    public int NumCautionLaps { get; set; }
+    public int NumLeadChanges { get; set; }
+    public int CornersPerLap { get; set; }
+    public double EventAverageLapSeconds { get; set; }  // seconds; -1 = none
+    public double EventBestLapSeconds { get; set; }     // seconds; -1 = none
+    public int EventLapsComplete { get; set; }
+    public string? WeatherJson { get; set; }            // serialized iRacing weather block
+    public string? TrackStateJson { get; set; }         // serialized iRacing track-state block
+
     public Season Season { get; set; } = null!;
     public Week? Week { get; set; }
     public Track Track { get; set; } = null!;

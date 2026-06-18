@@ -12,7 +12,10 @@ import SeriesPage from './pages/SeriesPage';
 import WeekDetailPage from './pages/WeekDetailPage';
 import PercentileCarPage from './pages/PercentileCarPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import ProgressionPage from './pages/ProgressionPage';
 import RecommendationsPage from './pages/RecommendationsPage';
+import RacesPage from './pages/RacesPage';
+import RaceDetailPage from './pages/RaceDetailPage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
 import LoginPage from './pages/LoginPage';
@@ -71,12 +74,16 @@ function AppRoutes() {
           path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
           element={<PercentileCarPage />}
         />
+        {/* Public — official race results (shareable); reached from /races */}
+        <Route path="/races/:subsessionId" element={<RaceDetailPage />} />
 
         {/* Everything below requires an authenticated user */}
         <Route element={<RequireAuth />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/progression" element={<ProgressionPage />} />
           <Route path="/recommendations" element={<RecommendationsPage />} />
+          <Route path="/races" element={<RacesPage />} />
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
