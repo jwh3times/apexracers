@@ -2,6 +2,8 @@ using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
+using Aydsko.iRacingData;
+using NSubstitute;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -269,5 +271,56 @@ public class PercentileCalculationServiceTests
 
         Assert.NotNull(result);
         Assert.Equal(100.0, result.PercentileRank, tolerance: 1e-10); // 65s beats 70 and 80
+    }
+
+    // ── World-record overlay ──────────────────────────────────────────────────
+
+    private sealed class StubServiceProvider(object? service) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => service;
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_PopulatesWorldRecordLapAndGap()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var client = Substitute.For<IDataClient>();
+        client.GetWorldRecordsAsync(
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Aydsko.iRacingData.Common.DataResponse<(Aydsko.iRacingData.Stats.WorldRecordsHeader, Aydsko.iRacingData.Stats.WorldRecordEntry[])>
+            {
+                Data = (new Aydsko.iRacingData.Stats.WorldRecordsHeader(),
+                    [new Aydsko.iRacingData.Stats.WorldRecordEntry { QualifyLapTime = TimeSpan.FromSeconds(66) }]),
+            });
+        var worldRecords = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(client)));
+
+        var result = await new PercentileCalculationService(db, worldRecords)
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                ct: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Equal(66.0, result.WorldRecordLapSeconds);
+        Assert.Equal(4.0, result.WorldRecordGapSeconds!.Value, precision: 3); // 70 - 66
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_NoWorldRecordService_LeavesWorldRecordNull()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new PercentileCalculationService(db)
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                ct: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Null(result.WorldRecordLapSeconds);
+        Assert.Null(result.WorldRecordGapSeconds);
     }
 }

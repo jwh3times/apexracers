@@ -102,6 +102,8 @@ export interface PercentileResult {
   fieldBestLapSeconds: number;
   fieldMedianLapSeconds: number;
   distribution: DistributionBin[];
+  worldRecordLapSeconds: number | null;
+  worldRecordGapSeconds: number | null;
 }
 
 export interface CarRecommendation {
@@ -297,6 +299,53 @@ export interface DriverLaps {
   fastestLapSeconds: number;
   degSlopeSecondsPerLap: number;
   laps: Lap[];
+}
+
+export interface WeatherSummary {
+  tempHighC: number;
+  tempLowC: number;
+  precipChancePct: number;
+  windHighKph: number;
+  windLowKph: number;
+  skies: number;
+}
+
+export interface CarBop {
+  carId: number;
+  carName: string;
+  weightPenaltyKg: number;
+  powerAdjustPct: number;
+  maxPctFuelFill: number;
+  maxDryTireSets: number;
+}
+
+export interface ScheduleWeek {
+  weekNumber: number;
+  trackName: string;
+  configName: string;
+  startDate: string; // ISO date (yyyy-MM-dd)
+  weather: WeatherSummary | null;
+  bop: CarBop[];
+  hasPersonalBest: boolean;
+}
+
+export interface SeasonSchedule {
+  seriesId: number;
+  seriesName: string;
+  weeks: ScheduleWeek[];
+}
+
+export interface GlobalLeaderboardEntry {
+  categoryId: number;
+  rank: number;
+  custId: number;
+  driver: string;
+  location: string;
+  starts: number;
+  wins: number;
+  iRating: number;
+  ttRating: number;
+  champPoints: number;
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -538,6 +587,16 @@ export const api = {
   getDriverLaps(subsessionId: number, customerId?: number): Promise<DriverLaps> {
     const qs = customerId != null ? `?customerId=${customerId}` : '';
     return request(`/api/subsessions/${subsessionId}/laps${qs}`);
+  },
+
+  /** GET /api/series/:seriesId/schedule — active-season calendar with weather, BoP, PB overlay */
+  getSchedule(seriesId: number): Promise<SeasonSchedule> {
+    return request(`/api/series/${seriesId}/schedule`);
+  },
+
+  /** GET /api/leaderboards?categoryId= — global top-N drivers for a category (ranked by iRating) */
+  getLeaderboard(categoryId: number): Promise<GlobalLeaderboardEntry[]> {
+    return request(`/api/leaderboards?categoryId=${categoryId}`);
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */

@@ -434,6 +434,41 @@ describe('api', () => {
     });
   });
 
+  // ── getSchedule ─────────────────────────────────────────────────────────────
+
+  describe('getSchedule', () => {
+    it('calls GET /api/series/:id/schedule and returns parsed data', async () => {
+      const data = { seriesId: 444, seriesName: 'GT3 Cup', weeks: [] };
+      mockFetchOk(data);
+      const result = await api.getSchedule(444);
+      expect(fetch).toHaveBeenCalledWith('/api/series/444/schedule', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws with status info on a non-ok response', async () => {
+      mockFetchError({ status: 404, statusText: 'Not Found' });
+      await expect(api.getSchedule(999)).rejects.toThrow('404');
+    });
+  });
+
+  // ── getLeaderboard ────────────────────────────────────────────────────────
+
+  describe('getLeaderboard', () => {
+    it('calls GET /api/leaderboards with the categoryId query param', async () => {
+      mockFetchOk([]);
+      await api.getLeaderboard(5);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/leaderboards?categoryId=5',
+        expect.objectContaining({})
+      );
+    });
+
+    it('throws with status info on a non-ok response', async () => {
+      mockFetchError({ status: 401, statusText: 'Unauthorized' });
+      await expect(api.getLeaderboard(2)).rejects.toThrow('401');
+    });
+  });
+
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
   // ── updateRole ──────────────────────────────────────────────────────────────

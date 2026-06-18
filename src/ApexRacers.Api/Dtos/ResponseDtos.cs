@@ -43,7 +43,9 @@ public record PercentileResultDto(
     double YourBestLapSeconds,
     double FieldBestLapSeconds,
     double FieldMedianLapSeconds,
-    IReadOnlyList<DistributionBin> Distribution);
+    IReadOnlyList<DistributionBin> Distribution,
+    double? WorldRecordLapSeconds = null,
+    double? WorldRecordGapSeconds = null);
 
 public record CarRecommendationDto(
     int Rank,
@@ -228,6 +230,50 @@ public record DriverLapsDto(
     double FastestLapSeconds,
     double DegSlopeSecondsPerLap,
     IReadOnlyList<LapDto> Laps);
+
+/// <summary>Forecast summary for a schedule week. Temps in °C, winds in km/h, precip as a %.</summary>
+public record WeatherSummaryDto(
+    double TempHighC,
+    double TempLowC,
+    double PrecipChancePct,
+    double WindHighKph,
+    double WindLowKph,
+    int Skies);
+
+/// <summary>Per-car Balance of Performance for one schedule week.</summary>
+public record CarBopDto(
+    int CarId,
+    string CarName,
+    double WeightPenaltyKg,
+    double PowerAdjustPct,
+    double MaxPctFuelFill,
+    int MaxDryTireSets);
+
+/// <summary>One week of a season schedule with forecast, BoP, and the caller's PB overlay.</summary>
+public record ScheduleWeekDto(
+    int WeekNumber,
+    string TrackName,
+    string ConfigName,
+    DateOnly StartDate,
+    WeatherSummaryDto? Weather,
+    IReadOnlyList<CarBopDto> Bop,
+    bool HasPersonalBest);
+
+/// <summary>A series' active-season schedule (weeks ordered by week number).</summary>
+public record SeasonScheduleDto(int SeriesId, string SeriesName, IReadOnlyList<ScheduleWeekDto> Weeks);
+
+/// <summary>One driver row in a category's global leaderboard (ranked by iRating).</summary>
+public record GlobalLeaderboardEntryDto(
+    int CategoryId,
+    int Rank,
+    long CustId,
+    string Driver,
+    string Location,
+    int Starts,
+    int Wins,
+    int IRating,
+    int TtRating,
+    int ChampPoints);
 
 /// <summary>Full classified field plus session context for one ingested subsession.</summary>
 public record SubsessionDetailDto(

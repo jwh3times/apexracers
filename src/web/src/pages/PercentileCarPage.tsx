@@ -269,17 +269,30 @@ export default function PercentileCarPage() {
 
                   {/* 2×2 stat grid */}
                   <div className="w-full grid grid-cols-2 gap-px bg-line-2 border border-line-2 card-r overflow-hidden">
-                    {(
-                      [
-                        { label: 'Your best', value: formatLapTime(result.yourBestLapSeconds) },
-                        { label: 'Field best', value: formatLapTime(result.fieldBestLapSeconds) },
-                        {
-                          label: 'Field median',
-                          value: formatLapTime(result.fieldMedianLapSeconds),
-                        },
-                        { label: 'Gap to P1', value: gapToP1 },
-                      ] as const
-                    ).map(stat => (
+                    {[
+                      { label: 'Your best', value: formatLapTime(result.yourBestLapSeconds) },
+                      { label: 'Field best', value: formatLapTime(result.fieldBestLapSeconds) },
+                      {
+                        label: 'Field median',
+                        value: formatLapTime(result.fieldMedianLapSeconds),
+                      },
+                      { label: 'Gap to P1', value: gapToP1 },
+                      ...(result.worldRecordLapSeconds != null
+                        ? [
+                            {
+                              label: 'World record',
+                              value: formatLapTime(result.worldRecordLapSeconds),
+                            },
+                            {
+                              label: 'Gap to WR',
+                              value:
+                                result.worldRecordGapSeconds != null
+                                  ? `+${result.worldRecordGapSeconds.toFixed(3)}`
+                                  : '—',
+                            },
+                          ]
+                        : []),
+                    ].map(stat => (
                       <div key={stat.label} className="bg-surface p-4 flex flex-col gap-1">
                         <span className="text-th text-on-surface-variant">{stat.label}</span>
                         <span className="text-mono-fluid text-on-surface font-semibold">

@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CarClass> CarClasses => Set<CarClass>();
     public DbSet<CarClassCar> CarClassCars => Set<CarClassCar>();
     public DbSet<SeasonCarClass> SeasonCarClasses => Set<SeasonCarClass>();
+    public DbSet<SeasonCarBop> SeasonCarBops => Set<SeasonCarBop>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ExternalDataCache> ExternalDataCaches => Set<ExternalDataCache>();
 

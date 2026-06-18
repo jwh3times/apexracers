@@ -16,6 +16,8 @@ import ProgressionPage from './pages/ProgressionPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import RacesPage from './pages/RacesPage';
 import RaceDetailPage from './pages/RaceDetailPage';
+import SchedulePage from './pages/SchedulePage';
+import LeaderboardsPage from './pages/LeaderboardsPage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
 import LoginPage from './pages/LoginPage';
@@ -69,6 +71,7 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         {/* Series browsing is reachable by guests (see GUEST_NAV) */}
         <Route path="/series" element={<SeriesPage />} />
+        <Route path="/series/:seriesId/schedule" element={<SchedulePage />} />
         <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
         <Route
           path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
@@ -84,6 +87,7 @@ function AppRoutes() {
           <Route path="/progression" element={<ProgressionPage />} />
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/races" element={<RacesPage />} />
+          <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
