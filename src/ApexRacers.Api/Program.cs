@@ -131,6 +131,8 @@ builder.Services.AddScoped<LapDataService>();
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<WorldRecordService>();
 builder.Services.AddScoped<LeaderboardService>();
+builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<RaceGuideService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
