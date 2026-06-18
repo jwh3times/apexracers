@@ -469,6 +469,41 @@ describe('api', () => {
     });
   });
 
+  // ── getStandings ──────────────────────────────────────────────────────────
+
+  describe('getStandings', () => {
+    it('calls GET /api/series/:id/standings with a carClassId query param when provided', async () => {
+      mockFetchOk({ seriesId: 444, standings: [] });
+      await api.getStandings(444, 4091);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/standings?carClassId=4091',
+        expect.objectContaining({})
+      );
+    });
+
+    it('omits the query param when carClassId is not provided', async () => {
+      mockFetchOk({ seriesId: 444, standings: [] });
+      await api.getStandings(444);
+      expect(fetch).toHaveBeenCalledWith('/api/series/444/standings', expect.objectContaining({}));
+    });
+  });
+
+  // ── getRaceGuide ──────────────────────────────────────────────────────────
+
+  describe('getRaceGuide', () => {
+    it('calls GET /api/race-guide and returns parsed rows', async () => {
+      mockFetchOk([]);
+      const result = await api.getRaceGuide();
+      expect(fetch).toHaveBeenCalledWith('/api/race-guide', expect.objectContaining({}));
+      expect(result).toEqual([]);
+    });
+
+    it('throws with status info on a non-ok response', async () => {
+      mockFetchError({ status: 503, statusText: 'Service Unavailable' });
+      await expect(api.getRaceGuide()).rejects.toThrow('503');
+    });
+  });
+
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
   // ── updateRole ──────────────────────────────────────────────────────────────

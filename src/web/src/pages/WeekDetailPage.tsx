@@ -148,6 +148,14 @@ export default function WeekDetailPage() {
               Season schedule
             </Link>
           )}
+          {seriesId && (
+            <Link
+              to={`/series/${seriesId}/standings`}
+              className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Standings
+            </Link>
+          )}
           {weekNumber && (
             <Link
               to={`/recommendations?seriesId=${seriesId}&weekNumber=${weekNumber}`}

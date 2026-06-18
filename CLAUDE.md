@@ -156,6 +156,8 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `SubsessionController` — full classified field + session context for one ingested subsession (`GET /api/subsessions/{id}`, **public** — official race data; `404` on unknown id); also a driver's per-lap pace trace (`GET /api/subsessions/{id}/laps?customerId=`, Authorize; defaults to the caller's cust_id; typed `409` when unlinked)
 - `ScheduleController` — a series' active-season schedule with weather forecast, per-car BoP, and the caller's PB overlay (`GET /api/series/{id}/schedule`, **public**; personalizes the PB overlay when a token is present)
 - `LeaderboardController` — global top-200 drivers for a category, ranked by iRating (`GET /api/leaderboards?categoryId=`, Authorize; `categoryId` 1–6, defaults to 5/Sports Car)
+- `StandingsController` — championship driver standings for a series' active season + car class (`GET /api/series/{id}/standings?carClassId=`, **public**; defaults to the first car class)
+- `RaceGuideController` — official sessions starting in the next ~3 h across active series (`GET /api/race-guide`, **public**)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -173,6 +175,8 @@ Services in `src/ApexRacers.Api/Services/`:
 - `ScheduleService` — a series' active-season schedule (weeks + track + bulk-ingested weather/BoP) with a personal-best overlay; normalizes temp/wind units via pure `ToCelsius`/`ToKph`/`MapWeather` helpers
 - `WorldRecordService` — fastest car+track lap via `CachedIRacingClient` (24 h TTL); pure `FastestLapSeconds` reduction; returns null when iRacing isn't configured
 - `LeaderboardService` — a category's global top-200 (iRating) via `CachedIRacingClient` (24 h TTL); decodes the CSV file and parses it with the pure `LeaderboardCsvParser`
+- `StandingsService` — championship driver standings for a series' active season via `CachedIRacingClient` (24 h TTL; SDK auto-fetches the chunked standings); resolves season + car classes from the local catalog and keeps the top 100
+- `RaceGuideService` — "race now" board via `CachedIRacingClient` (60 s TTL); filters to sessions starting within ~3 h (plus in-progress) per request and joins `Series` names from the local catalog
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -239,12 +243,14 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/dashboard` | `DashboardPage` — recent laps, active series, welcome |
 | `/series` | `SeriesPage` — browse all series |
 | `/series/:seriesId/schedule` | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public) |
+| `/series/:seriesId/standings` | `StandingsPage` — championship driver standings per car class (public) |
 | `/series/:seriesId/weeks/:weekNumber` | `WeekDetailPage` — cars and lap stats for a week |
 | `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown |
 | `/analytics` | `AnalyticsPage` — per-car percentile history with sparklines |
 | `/progression` | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines |
 | `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
 | `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
+| `/live` | `LivePage` — "race now" board of sessions starting soon with live countdowns |
 | `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
 | `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
 | `/my-laps` | `MyLapsPage` — personal best per track+car |
@@ -318,7 +324,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race History, Leaderboards, My Laps, Telemetry, Settings, Profile, Admin)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, My Laps, Telemetry, Settings, Profile, Admin)
 - `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:

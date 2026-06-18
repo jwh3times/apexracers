@@ -348,6 +348,43 @@ export interface GlobalLeaderboardEntry {
   champPoints: number;
 }
 
+export interface RaceGuideEntry {
+  seriesId: number;
+  seriesName: string;
+  startTime: string; // ISO 8601
+  endTime: string; // ISO 8601
+  entryCount: number;
+  raceWeekNum: number;
+}
+
+export interface CarClassOption {
+  carClassId: number;
+  carClassName: string;
+}
+
+export interface SeasonStanding {
+  rank: number;
+  custId: number;
+  driverName: string;
+  division: number;
+  starts: number;
+  wins: number;
+  top5: number;
+  poles: number;
+  points: number;
+  avgFinishPosition: number;
+  incidents: number;
+}
+
+export interface SeasonStandings {
+  seriesId: number;
+  seriesName: string;
+  carClassId: number;
+  carClassName: string;
+  carClasses: CarClassOption[];
+  standings: SeasonStanding[];
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -597,6 +634,17 @@ export const api = {
   /** GET /api/leaderboards?categoryId= — global top-N drivers for a category (ranked by iRating) */
   getLeaderboard(categoryId: number): Promise<GlobalLeaderboardEntry[]> {
     return request(`/api/leaderboards?categoryId=${categoryId}`);
+  },
+
+  /** GET /api/series/:seriesId/standings?carClassId= — active-season championship standings */
+  getStandings(seriesId: number, carClassId?: number): Promise<SeasonStandings> {
+    const qs = carClassId != null ? `?carClassId=${carClassId}` : '';
+    return request(`/api/series/${seriesId}/standings${qs}`);
+  },
+
+  /** GET /api/race-guide — official sessions starting in the next ~3h (race-now board) */
+  getRaceGuide(): Promise<RaceGuideEntry[]> {
+    return request('/api/race-guide');
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */

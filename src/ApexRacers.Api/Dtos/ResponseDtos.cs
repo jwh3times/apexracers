@@ -262,6 +262,41 @@ public record ScheduleWeekDto(
 /// <summary>A series' active-season schedule (weeks ordered by week number).</summary>
 public record SeasonScheduleDto(int SeriesId, string SeriesName, IReadOnlyList<ScheduleWeekDto> Weeks);
 
+/// <summary>A car class available for a season's standings (for the class selector).</summary>
+public record CarClassOptionDto(int CarClassId, string CarClassName);
+
+/// <summary>One driver row in a season's championship standings.</summary>
+public record SeasonStandingDto(
+    int Rank,
+    long CustId,
+    string DriverName,
+    int Division,
+    int Starts,
+    int Wins,
+    int Top5,
+    int Poles,
+    int Points,
+    double AvgFinishPosition,
+    int Incidents);
+
+/// <summary>Championship driver standings for a series' active season + chosen car class.</summary>
+public record SeasonStandingsDto(
+    int SeriesId,
+    string SeriesName,
+    int CarClassId,
+    string CarClassName,
+    IReadOnlyList<CarClassOptionDto> CarClasses,
+    IReadOnlyList<SeasonStandingDto> Standings);
+
+/// <summary>An official session starting soon (race-now live guide), newest start first.</summary>
+public record RaceGuideEntryDto(
+    int SeriesId,
+    string SeriesName,
+    DateTimeOffset StartTime,
+    DateTimeOffset EndTime,
+    int EntryCount,
+    int RaceWeekNum);
+
 /// <summary>One driver row in a category's global leaderboard (ranked by iRating).</summary>
 public record GlobalLeaderboardEntryDto(
     int CategoryId,
