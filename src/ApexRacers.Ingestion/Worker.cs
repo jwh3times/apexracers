@@ -156,6 +156,11 @@ public sealed class Worker(
                 track.ConfigName = item.Track.ConfigName ?? "";
             }
 
+            // Weather forecast summary for the week (serialized as-is; normalized on read).
+            var weatherJson = item.Weather?.WeatherSummary is null
+                ? null
+                : JsonSerializer.Serialize(item.Weather.WeatherSummary);
+
             var week = await db.Weeks
                 .FirstOrDefaultAsync(
                     w => w.SeasonId == seasonSeries.SeasonId && w.WeekNumber == item.RaceWeekNum, ct);
@@ -164,18 +169,47 @@ public sealed class Worker(
             {
                 week = new Week
                 {
-                    SeasonId   = seasonSeries.SeasonId,
-                    WeekNumber = item.RaceWeekNum,
-                    TrackId    = item.Track.TrackId,
-                    StartDate  = item.StartDate,
+                    SeasonId          = seasonSeries.SeasonId,
+                    WeekNumber        = item.RaceWeekNum,
+                    TrackId           = item.Track.TrackId,
+                    StartDate         = item.StartDate,
+                    WeatherSummaryJson = weatherJson,
                 };
                 db.Weeks.Add(week);
                 await db.SaveChangesAsync(ct); // flush to get DB-generated Week.Id
             }
             else
             {
-                week.TrackId   = item.Track.TrackId;
-                week.StartDate = item.StartDate;
+                week.TrackId            = item.Track.TrackId;
+                week.StartDate          = item.StartDate;
+                week.WeatherSummaryJson = weatherJson;
+            }
+
+            // Per-car Balance of Performance for this week.
+            foreach (var cr in item.CarRestrictions ?? [])
+            {
+                var bop = await db.SeasonCarBops
+                    .FindAsync([seasonSeries.SeasonId, item.RaceWeekNum, cr.CarId], ct);
+                if (bop is null)
+                {
+                    db.SeasonCarBops.Add(new SeasonCarBop
+                    {
+                        SeasonId        = seasonSeries.SeasonId,
+                        WeekNumber      = item.RaceWeekNum,
+                        CarId           = cr.CarId,
+                        WeightPenaltyKg = (double)cr.WeightPenaltyKg,
+                        PowerAdjustPct  = (double)cr.PowerAdjustPercent,
+                        MaxPctFuelFill  = (double)cr.MaxPercentFuelFill,
+                        MaxDryTireSets  = cr.MaxDryTireSets,
+                    });
+                }
+                else
+                {
+                    bop.WeightPenaltyKg = (double)cr.WeightPenaltyKg;
+                    bop.PowerAdjustPct  = (double)cr.PowerAdjustPercent;
+                    bop.MaxPctFuelFill  = (double)cr.MaxPercentFuelFill;
+                    bop.MaxDryTireSets  = cr.MaxDryTireSets;
+                }
             }
 
             foreach (var car in item.RaceWeekCars)

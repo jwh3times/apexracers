@@ -154,6 +154,8 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `ProfileStatsController` — enriched driver profile (identity, license badges, lifetime career stats, recap favorites) for the authenticated user (`/api/users/me/profile-stats`); typed `409` when iRacing is unlinked
 - `RaceHistoryController` — the authenticated driver's recent official races (`/api/users/me/races`); typed `409` when iRacing is unlinked
 - `SubsessionController` — full classified field + session context for one ingested subsession (`GET /api/subsessions/{id}`, **public** — official race data; `404` on unknown id); also a driver's per-lap pace trace (`GET /api/subsessions/{id}/laps?customerId=`, Authorize; defaults to the caller's cust_id; typed `409` when unlinked)
+- `ScheduleController` — a series' active-season schedule with weather forecast, per-car BoP, and the caller's PB overlay (`GET /api/series/{id}/schedule`, **public**; personalizes the PB overlay when a token is present)
+- `LeaderboardController` — global top-200 drivers for a category, ranked by iRating (`GET /api/leaderboards?categoryId=`, Authorize; `categoryId` 1–6, defaults to 5/Sports Car)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -161,13 +163,16 @@ Services in `src/ApexRacers.Api/Services/`:
 
 - `SeriesService` — active series list
 - `WeekCarStatsService` — aggregate lap stats per car for a series week
-- `PercentileCalculationService` — compute and cache driver percentile rank
+- `PercentileCalculationService` — compute and cache driver percentile rank; optionally overlays the world-record lap + gap via `WorldRecordService` (null when iRacing isn't configured)
 - `CarRecommendationService` — ranked car recommendations based on personal percentile data
 - `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
 - `MemberStatsService` — on-demand iRacing member stats via `CachedIRacingClient` (6 h TTL). `GetProgressionAsync` returns one card per license category (iRating/SR/CPI/TT + iRating history); `GetDriverProfileAsync` returns the enriched profile (identity, license badges, career stats, this-year summary, recap favorites). Reuses the shared `profile:{custId}` cache entry
 - `RaceHistoryService` — the authenticated driver's recent official races via `CachedIRacingClient` (10 min TTL); maps iRating/SR deltas and resolves car names from the local `Car` catalog
 - `SubsessionDetailService` — reads one ingested subsession (header context + classified field) from the DB; deserializes the stored weather block and normalizes temp/wind units (pure `TempToCelsius`/`WindToKph`/`MapWeather` helpers)
 - `LapDataService` — a driver's per-lap pace for one race via `CachedIRacingClient` (24 h TTL; SDK auto-fetches the chunked lap rows); maps laps and computes pace stats via the pure `LapAnalysis` helper (mean/σ/fastest/degradation slope over green laps)
+- `ScheduleService` — a series' active-season schedule (weeks + track + bulk-ingested weather/BoP) with a personal-best overlay; normalizes temp/wind units via pure `ToCelsius`/`ToKph`/`MapWeather` helpers
+- `WorldRecordService` — fastest car+track lap via `CachedIRacingClient` (24 h TTL); pure `FastestLapSeconds` reduction; returns null when iRacing isn't configured
+- `LeaderboardService` — a category's global top-200 (iRating) via `CachedIRacingClient` (24 h TTL); decodes the CSV file and parses it with the pure `LeaderboardCsvParser`
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -188,12 +193,13 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 | `ApplicationUser` | Extends `IdentityUser<Guid>`; adds `DisplayName`, `IRacingCustomerId`, `ThemePreference` |
 | `Series` | iRacing series (Id, Name, SeasonId, CurrentWeekNumber) |
 | `Season` | Season for a series (SeasonId, Year) |
-| `Week` | Race week (SeasonId, WeekNumber, TrackId, StartDate) |
+| `Week` | Race week (SeasonId, WeekNumber, TrackId, StartDate, WeatherSummaryJson) |
 | `Track` | Full iRacing track catalog (Id, Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired) |
 | `Car` | iRacing car (Id, Name, RelativeSpeed) |
 | `CarClass` | iRacing car class grouping |
 | `CarClassCar` | Many-to-many join between CarClass and Car |
 | `SeasonCar` | Cars available in a season |
+| `SeasonCarBop` | Per-week Balance of Performance per car (SeasonId, WeekNumber, CarId, WeightPenaltyKg, PowerAdjustPct, MaxPctFuelFill, MaxDryTireSets); composite PK |
 | `SeasonCarClass` | Car classes available in a season |
 | `Subsession` | iRacing race session (Id, SeasonId, WeekNumber, TrackId, OfficialSession, EventStrengthOfField, StartTime, EndTime, SplitNum) + race context (NumCautions, NumCautionLaps, NumLeadChanges, CornersPerLap, EventAverageLapSeconds, EventBestLapSeconds, EventLapsComplete, WeatherJson, TrackStateJson) |
 | `SubsessionResult` | One driver's result in a subsession (CarId, CarClassId, FinishPosition, BestLapSeconds, Incidents, …) + DisplayName, QualLapSeconds, New/OldSubLevel, New/OldTtRating |
@@ -232,11 +238,13 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | --- | --- |
 | `/dashboard` | `DashboardPage` — recent laps, active series, welcome |
 | `/series` | `SeriesPage` — browse all series |
+| `/series/:seriesId/schedule` | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public) |
 | `/series/:seriesId/weeks/:weekNumber` | `WeekDetailPage` — cars and lap stats for a week |
 | `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown |
 | `/analytics` | `AnalyticsPage` — per-car percentile history with sparklines |
 | `/progression` | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines |
 | `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
+| `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
 | `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
 | `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
 | `/my-laps` | `MyLapsPage` — personal best per track+car |
@@ -310,7 +318,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race History, My Laps, Telemetry, Settings, Profile, Admin)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race History, Leaderboards, My Laps, Telemetry, Settings, Profile, Admin)
 - `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:

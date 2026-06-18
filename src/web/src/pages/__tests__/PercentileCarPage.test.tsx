@@ -39,6 +39,8 @@ const MOCK_RESULT: PercentileResult = {
   fieldBestLapSeconds: 130.0,
   fieldMedianLapSeconds: 136.0,
   distribution: Array.from({ length: 20 }, (_, i) => makeBin(i, i === 10)),
+  worldRecordLapSeconds: null,
+  worldRecordGapSeconds: null,
 };
 
 function renderPage(
@@ -177,6 +179,29 @@ describe('PercentileCarPage', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText(/lap time distribution/i)).toBeInTheDocument());
+  });
+
+  it('shows world-record stats when a WR is available', async () => {
+    mockGetPercentile.mockResolvedValue({
+      ...MOCK_RESULT,
+      worldRecordLapSeconds: 129.0,
+      worldRecordGapSeconds: 3.5,
+    });
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('World record')).toBeInTheDocument());
+    expect(screen.getByText('Gap to WR')).toBeInTheDocument();
+    expect(screen.getByText('+3.500')).toBeInTheDocument();
+  });
+
+  it('omits world-record stats when no WR is available', async () => {
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT); // WR fields null
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Field best')).toBeInTheDocument());
+    expect(screen.queryByText('World record')).not.toBeInTheDocument();
   });
 
   it('shows not-found message on 404 after manual submit', async () => {

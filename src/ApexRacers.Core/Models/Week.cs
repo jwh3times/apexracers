@@ -7,6 +7,7 @@ public class Week
     public int WeekNumber { get; set; }
     public int TrackId { get; set; }
     public DateOnly StartDate { get; set; }
+    public string? WeatherSummaryJson { get; set; }   // serialized schedule weather_summary (2.1)
 
     public Season Season { get; set; } = null!;
     public Track Track { get; set; } = null!;

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
-public class PercentileCalculationService(AppDbContext db)
+public class PercentileCalculationService(AppDbContext db, WorldRecordService? worldRecords = null)
 {
     public async Task<PercentileResultDto?> ComputeAndCacheAsync(
         int seriesId,
@@ -119,12 +119,18 @@ public class PercentileCalculationService(AppDbContext db)
             : sortedLaps[mid];
         var distribution = BuildDistribution(sortedLaps, driverBest.Value);
 
+        // World-record overlay (best-effort; null when iRacing isn't configured).
+        double? wrLap = worldRecords is null
+            ? null
+            : await worldRecords.GetWorldRecordLapSecondsAsync(carId, week.TrackId, ct);
+        double? wrGap = wrLap is null ? null : Math.Round(driverBest.Value - wrLap.Value, 4);
+
         return new PercentileResultDto(
             seriesId, weekNumber, carId, customerId,
             percentileRank, total, computedAt,
             week.SeriesName, week.TrackName, week.TrackConfigName,
             driverBest.Value, fieldBest, fieldMedian,
-            distribution);
+            distribution, wrLap, wrGap);
     }
 
     private static IReadOnlyList<DistributionBin> BuildDistribution(List<double> sortedLaps, double userBest)

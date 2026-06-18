@@ -140,6 +140,14 @@ export default function WeekDetailPage() {
         </div>
 
         <div className="flex items-center gap-3 mt-8">
+          {seriesId && (
+            <Link
+              to={`/series/${seriesId}/schedule`}
+              className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Season schedule
+            </Link>
+          )}
           {weekNumber && (
             <Link
               to={`/recommendations?seriesId=${seriesId}&weekNumber=${weekNumber}`}
