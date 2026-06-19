@@ -557,6 +557,83 @@ describe('api', () => {
     });
   });
 
+  // ── rivals & compare (3.1) ──────────────────────────────────────────────────
+
+  describe('rivals', () => {
+    it('getRivals calls GET /api/users/me/rivals', async () => {
+      mockFetchOk([]);
+      await api.getRivals();
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/rivals', expect.objectContaining({}));
+    });
+
+    it('addRival POSTs the cust id and display name', async () => {
+      mockFetchOk({ custId: 200, displayName: 'Max Power', createdAt: '2026-01-01T00:00:00Z' });
+      const result = await api.addRival(200, 'Max Power');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/rivals',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ custId: 200, displayName: 'Max Power' }),
+        })
+      );
+      expect(result.custId).toBe(200);
+    });
+
+    it('removeRival DELETEs the cust id and resolves on 204', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await expect(api.removeRival(200)).resolves.toBeUndefined();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/rivals/200',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('searchDrivers encodes the term in the query string', async () => {
+      mockFetchOk([]);
+      await api.searchDrivers('max power');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/rivals/search?term=max%20power',
+        expect.objectContaining({})
+      );
+    });
+
+    it('getRivalSuggestions calls GET /api/users/me/rivals/suggestions', async () => {
+      mockFetchOk([]);
+      await api.getRivalSuggestions();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/rivals/suggestions',
+        expect.objectContaining({})
+      );
+    });
+
+    it('getRivalSuggestions throws a typed error when not linked (409)', async () => {
+      mockFetchError({ status: 409, body: JSON.stringify({ code: 'IRACING_NOT_LINKED' }) });
+      await expect(api.getRivalSuggestions()).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
+  describe('compareRival', () => {
+    it('calls GET /api/users/me/compare with the rival cust id', async () => {
+      mockFetchOk({ you: {}, rival: {}, shared: {} });
+      await api.compareRival(200);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/compare?rivalCustId=200',
+        expect.objectContaining({})
+      );
+    });
+
+    it('throws a typed error when not linked (409)', async () => {
+      mockFetchError({ status: 409, body: JSON.stringify({ code: 'IRACING_NOT_LINKED' }) });
+      await expect(api.compareRival(200)).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
   // ── updateRole ──────────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ import RaceDetailPage from './pages/RaceDetailPage';
 import SchedulePage from './pages/SchedulePage';
 import StandingsPage from './pages/StandingsPage';
 import LeaderboardsPage from './pages/LeaderboardsPage';
+import ComparePage from './pages/ComparePage';
 import LivePage from './pages/LivePage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
@@ -91,6 +92,7 @@ function AppRoutes() {
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/races" element={<RacesPage />} />
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/live" element={<LivePage />} />
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />

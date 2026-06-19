@@ -134,6 +134,8 @@ builder.Services.AddScoped<LeaderboardService>();
 builder.Services.AddScoped<StandingsService>();
 builder.Services.AddHttpClient<IChunkDownloader, HttpChunkDownloader>();
 builder.Services.AddScoped<RaceGuideService>();
+builder.Services.AddScoped<RivalService>();
+builder.Services.AddScoped<RivalComparisonService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();

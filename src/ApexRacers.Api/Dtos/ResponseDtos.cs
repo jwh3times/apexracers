@@ -359,6 +359,66 @@ public record GlobalLeaderboardEntryDto(
     int TtRating,
     int ChampPoints);
 
+// ── Rival comparison (3.1) ────────────────────────────────────────────────────
+
+/// <summary>A driver the caller follows for head-to-head comparison.</summary>
+public record RivalDto(long CustId, string DisplayName, DateTimeOffset CreatedAt);
+
+/// <summary>A driver-name search hit (for adding a rival).</summary>
+public record DriverSearchResultDto(long CustId, string DisplayName);
+
+/// <summary>A suggested rival, drawn from drivers the caller has actually raced.</summary>
+public record RivalSuggestionDto(long CustId, string DisplayName, int SharedRaces);
+
+/// <summary>iRating history for one license category (for the comparison overlay chart).</summary>
+public record CategoryHistoryDto(
+    int CategoryId,
+    string CategoryName,
+    IReadOnlyList<TimeSeriesPointDto> Points);
+
+/// <summary>One driver's side of a head-to-head comparison.</summary>
+public record ComparisonSideDto(
+    long CustId,
+    string DisplayName,
+    string? Country,
+    string? CountryCode,
+    string? MemberSince,
+    IReadOnlyList<LicenseBadgeDto> Licenses,
+    IReadOnlyList<CategoryCareerDto> Career,
+    IReadOnlyList<CategoryHistoryDto> IRatingHistory);
+
+/// <summary>One race both drivers ran. Finish positions are overall; lower is better.</summary>
+public record SharedRaceRowDto(
+    int SubsessionId,
+    DateTimeOffset StartTime,
+    string TrackName,
+    int YourFinish,
+    int RivalFinish,
+    int YourIRatingDelta,
+    int RivalIRatingDelta,
+    int YourIncidents,
+    int RivalIncidents);
+
+/// <summary>Best lap each driver set at a track they both raced. -1 = no valid lap.</summary>
+public record SharedTrackPaceDto(string TrackName, double YourBestLapSeconds, double RivalBestLapSeconds);
+
+/// <summary>
+/// Head-to-head record over races both drivers ran: totals, who finished ahead more often,
+/// the race rows (newest first) and best-lap-per-shared-track pace.
+/// </summary>
+public record SharedRaceSummaryDto(
+    int TotalShared,
+    int YouAhead,
+    int RivalAhead,
+    IReadOnlyList<SharedRaceRowDto> Races,
+    IReadOnlyList<SharedTrackPaceDto> TrackPace);
+
+/// <summary>A full driver-vs-driver comparison: both sides plus their shared-race head-to-head.</summary>
+public record DriverComparisonDto(
+    ComparisonSideDto You,
+    ComparisonSideDto Rival,
+    SharedRaceSummaryDto Shared);
+
 /// <summary>Full classified field plus session context for one ingested subsession.</summary>
 public record SubsessionDetailDto(
     int SubsessionId,

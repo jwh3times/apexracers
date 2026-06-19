@@ -430,6 +430,74 @@ export interface SeasonQualifyResults {
   results: SeasonQualifyResult[];
 }
 
+// ── Rival comparison (3.1) ──────────────────────────────────────────────────
+
+export interface Rival {
+  custId: number;
+  displayName: string;
+  createdAt: string; // ISO 8601
+}
+
+export interface DriverSearchResult {
+  custId: number;
+  displayName: string;
+}
+
+export interface RivalSuggestion {
+  custId: number;
+  displayName: string;
+  sharedRaces: number;
+}
+
+export interface CategoryHistory {
+  categoryId: number;
+  categoryName: string;
+  points: TimeSeriesPoint[];
+}
+
+export interface ComparisonSide {
+  custId: number;
+  displayName: string;
+  country: string | null;
+  countryCode: string | null;
+  memberSince: string | null;
+  licenses: LicenseBadge[];
+  career: CategoryCareer[];
+  iRatingHistory: CategoryHistory[];
+}
+
+export interface SharedRaceRow {
+  subsessionId: number;
+  startTime: string; // ISO 8601
+  trackName: string;
+  yourFinish: number;
+  rivalFinish: number;
+  yourIRatingDelta: number;
+  rivalIRatingDelta: number;
+  yourIncidents: number;
+  rivalIncidents: number;
+}
+
+export interface SharedTrackPace {
+  trackName: string;
+  yourBestLapSeconds: number; // -1 = no valid lap
+  rivalBestLapSeconds: number;
+}
+
+export interface SharedRaceSummary {
+  totalShared: number;
+  youAhead: number;
+  rivalAhead: number;
+  races: SharedRaceRow[];
+  trackPace: SharedTrackPace[];
+}
+
+export interface DriverComparison {
+  you: ComparisonSide;
+  rival: ComparisonSide;
+  shared: SharedRaceSummary;
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -709,6 +777,36 @@ export const api = {
   /** GET /api/race-guide — official sessions starting in the next ~3h (race-now board) */
   getRaceGuide(): Promise<RaceGuideEntry[]> {
     return request('/api/race-guide');
+  },
+
+  /** GET /api/users/me/rivals — drivers the caller follows for comparison (newest first) */
+  getRivals(): Promise<Rival[]> {
+    return request('/api/users/me/rivals');
+  },
+
+  /** POST /api/users/me/rivals — follow a driver (idempotent) */
+  addRival(custId: number, displayName?: string): Promise<Rival> {
+    return request('/api/users/me/rivals', { method: 'POST', json: { custId, displayName } });
+  },
+
+  /** DELETE /api/users/me/rivals/:custId — unfollow a driver */
+  removeRival(custId: number): Promise<void> {
+    return request(`/api/users/me/rivals/${custId}`, { method: 'DELETE' });
+  },
+
+  /** GET /api/users/me/rivals/search?term= — driver name search */
+  searchDrivers(term: string): Promise<DriverSearchResult[]> {
+    return request(`/api/users/me/rivals/search?term=${encodeURIComponent(term)}`);
+  },
+
+  /** GET /api/users/me/rivals/suggestions — drivers the caller has raced (409 if unlinked) */
+  getRivalSuggestions(): Promise<RivalSuggestion[]> {
+    return request('/api/users/me/rivals/suggestions');
+  },
+
+  /** GET /api/users/me/compare?rivalCustId= — head-to-head comparison (409 if unlinked) */
+  compareRival(rivalCustId: number): Promise<DriverComparison> {
+    return request(`/api/users/me/compare?rivalCustId=${rivalCustId}`);
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */
