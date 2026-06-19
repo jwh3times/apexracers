@@ -1,35 +1,29 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Data;
-using Aydsko.iRacingData.Cars;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Browsable car catalog over the live iRacing API via <see cref="CachedIRacingClient"/> (24 h TTL).
-/// Detail joins car-class membership from the local catalog and overlays the caller's personal best
-/// laps in that car when a user id is supplied.
+/// Browsable car catalog, read from the persisted <see cref="Core.Models.Car"/> catalog (populated
+/// by the ingestion worker + seeder). Detail joins car-class membership and overlays the caller's
+/// personal best laps in that car when a user id is supplied.
 /// </summary>
-public class CarCatalogService(CachedIRacingClient cached, AppDbContext db)
+public class CarCatalogService(AppDbContext db)
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
-
     public async Task<IReadOnlyList<CarCatalogItemDto>> ListAsync(CancellationToken ct)
     {
-        var cars = await CarsAsync(ct);
-        var assets = await AssetsAsync(ct);
-        return cars
-            .Select(c => CarCatalogMapper.ToItem(c, assets.GetValueOrDefault(c.CarId.ToString())))
-            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var cars = await db.Cars
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .ToListAsync(ct);
+        return cars.Select(CarCatalogMapper.ToItem).ToList();
     }
 
     public async Task<CarCatalogDetailDto> GetAsync(int carId, Guid? userId, CancellationToken ct)
     {
-        var cars = await CarsAsync(ct);
-        var car = cars.FirstOrDefault(c => c.CarId == carId)
+        var car = await db.Cars.AsNoTracking().FirstOrDefaultAsync(c => c.Id == carId, ct)
             ?? throw new KeyNotFoundException($"Car {carId} was not found in the catalog.");
-        var assets = await AssetsAsync(ct);
 
         var carClasses = await db.CarClassCars
             .Where(x => x.CarId == carId)
@@ -40,16 +34,8 @@ public class CarCatalogService(CachedIRacingClient cached, AppDbContext db)
             ? await PersonalBestsForCarAsync(uid, carId, ct)
             : [];
 
-        return CarCatalogMapper.ToDetail(car, assets.GetValueOrDefault(carId.ToString()), carClasses, bests);
+        return CarCatalogMapper.ToDetail(car, carClasses, bests);
     }
-
-    private Task<List<CarInfo>> CarsAsync(CancellationToken ct) =>
-        cached.GetOrFetchAsync("catalog:cars", Ttl,
-            async c => (await c.GetCarsAsync(ct)).Data.ToList(), ct);
-
-    private Task<Dictionary<string, CarAssetDetail>> AssetsAsync(CancellationToken ct) =>
-        cached.GetOrFetchAsync("catalog:car-assets", Ttl,
-            async c => (await c.GetCarAssetDetailsAsync(ct)).Data.ToDictionary(k => k.Key, v => v.Value), ct);
 
     private async Task<List<PersonalLapDto>> PersonalBestsForCarAsync(
         Guid userId, int carId, CancellationToken ct)

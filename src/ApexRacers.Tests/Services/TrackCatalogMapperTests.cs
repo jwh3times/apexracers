@@ -1,42 +1,37 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
-using Aydsko.iRacingData.Tracks;
+using ApexRacers.Core.Models;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
 public class TrackCatalogMapperTests
 {
-    private static Track Track() => new()
+    private static Track SampleTrack() => new()
     {
-        TrackId = 18,
-        TrackName = "Lime Rock Park",
+        Id = 18,
+        Name = "Lime Rock Park",
         ConfigName = "Grand Prix",
         Category = "road",
-        TrackConfigLength = 1.53m,
+        TrackConfigLength = 1.53,
         CornersPerLap = 7,
         Location = "Lakeville, Connecticut, USA",
         NightLighting = false,
-        Latitude = 41.9298m,
-        Longitude = -73.3839m,
+        Latitude = 41.9298,
+        Longitude = -73.3839,
         PitRoadSpeedLimit = 45,
         NumberPitstalls = 30,
         HasSvgMap = true,
-    };
-
-    private static TrackAssets Asset() => new()
-    {
-        TrackId = 18,
-        Folder = "/img/tracks/limerockpark",
-        SmallImage = "limerockpark-small.jpg",
-        LargeImage = "limerockpark-large.jpg",
-        TrackMap = "https://members-assets.iracing.com/public/track-maps/tracks_limerock/1-limerock-full/",
+        AssetFolder = "/img/tracks/limerockpark",
+        SmallImageFile = "limerockpark-small.jpg",
+        LargeImageFile = "limerockpark-large.jpg",
+        TrackMapUrl = "https://members-assets.iracing.com/public/track-maps/tracks_limerock/1-limerock-full/",
     };
 
     [Fact]
-    public void ToItem_MapsCoreFieldsAndLength()
+    public void ToItem_MapsCoreFieldsAndImage()
     {
-        var item = TrackCatalogMapper.ToItem(Track(), Asset());
+        var item = TrackCatalogMapper.ToItem(SampleTrack());
 
         Assert.Equal(18, item.TrackId);
         Assert.Equal("Lime Rock Park", item.Name);
@@ -52,9 +47,14 @@ public class TrackCatalogMapperTests
     }
 
     [Fact]
-    public void ToItem_NullAsset_NullImage()
+    public void ToItem_NoAssetFolder_NullImage()
     {
-        var item = TrackCatalogMapper.ToItem(Track(), null);
+        var track = SampleTrack();
+        track.AssetFolder = null;
+        track.SmallImageFile = null;
+
+        var item = TrackCatalogMapper.ToItem(track);
+
         Assert.Null(item.SmallImageUrl);
         Assert.Equal("Lime Rock Park", item.Name);
     }
@@ -67,7 +67,7 @@ public class TrackCatalogMapperTests
             new(132, "Merc GT3", "Lime Rock Park", "Grand Prix", 48.9, 5, DateTimeOffset.UtcNow),
         };
 
-        var detail = TrackCatalogMapper.ToDetail(Track(), Asset(), bests);
+        var detail = TrackCatalogMapper.ToDetail(SampleTrack(), bests);
 
         Assert.Equal(41.9298, detail.Latitude!.Value, precision: 4);
         Assert.Equal(-73.3839, detail.Longitude!.Value, precision: 4);
@@ -81,13 +81,5 @@ public class TrackCatalogMapperTests
             "https://members-assets.iracing.com/public/track-maps/tracks_limerock/1-limerock-full/",
             detail.TrackMapUrl);
         Assert.Equal("Lime Rock Park", Assert.Single(detail.YourBestLaps).TrackName);
-    }
-
-    [Fact]
-    public void ToDetail_NullAsset_NullImagesAndMap()
-    {
-        var detail = TrackCatalogMapper.ToDetail(Track(), null, []);
-        Assert.Null(detail.LargeImageUrl);
-        Assert.Null(detail.TrackMapUrl);
     }
 }

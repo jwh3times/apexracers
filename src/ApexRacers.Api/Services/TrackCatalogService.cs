@@ -1,50 +1,37 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Data;
-using Aydsko.iRacingData.Tracks;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Browsable track catalog over the live iRacing API via <see cref="CachedIRacingClient"/> (24 h TTL).
-/// Detail overlays the caller's personal best laps at that track when a user id is supplied.
+/// Browsable track catalog, read from the persisted <see cref="Core.Models.Track"/> catalog
+/// (populated by the ingestion worker + seeder). Detail overlays the caller's personal best laps
+/// at that track when a user id is supplied.
 /// </summary>
-public class TrackCatalogService(CachedIRacingClient cached, AppDbContext db)
+public class TrackCatalogService(AppDbContext db)
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
-
     public async Task<IReadOnlyList<TrackCatalogItemDto>> ListAsync(CancellationToken ct)
     {
-        var tracks = await TracksAsync(ct);
-        var assets = await AssetsAsync(ct);
-        return tracks
-            .Select(t => TrackCatalogMapper.ToItem(t, assets.GetValueOrDefault(t.TrackId.ToString())))
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(t => t.ConfigName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var tracks = await db.Tracks
+            .AsNoTracking()
+            .OrderBy(t => t.Name)
+            .ThenBy(t => t.ConfigName)
+            .ToListAsync(ct);
+        return tracks.Select(TrackCatalogMapper.ToItem).ToList();
     }
 
     public async Task<TrackCatalogDetailDto> GetAsync(int trackId, Guid? userId, CancellationToken ct)
     {
-        var tracks = await TracksAsync(ct);
-        var track = tracks.FirstOrDefault(t => t.TrackId == trackId)
+        var track = await db.Tracks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == trackId, ct)
             ?? throw new KeyNotFoundException($"Track {trackId} was not found in the catalog.");
-        var assets = await AssetsAsync(ct);
 
         IReadOnlyList<PersonalLapDto> bests = userId is { } uid
             ? await PersonalBestsForTrackAsync(uid, trackId, ct)
             : [];
 
-        return TrackCatalogMapper.ToDetail(track, assets.GetValueOrDefault(trackId.ToString()), bests);
+        return TrackCatalogMapper.ToDetail(track, bests);
     }
-
-    private Task<List<Track>> TracksAsync(CancellationToken ct) =>
-        cached.GetOrFetchAsync("catalog:tracks", Ttl,
-            async c => (await c.GetTracksAsync(ct)).Data.ToList(), ct);
-
-    private Task<Dictionary<string, TrackAssets>> AssetsAsync(CancellationToken ct) =>
-        cached.GetOrFetchAsync("catalog:track-assets", Ttl,
-            async c => (await c.GetTrackAssetsAsync(ct)).Data.ToDictionary(k => k.Key, v => v.Value), ct);
 
     private async Task<List<PersonalLapDto>> PersonalBestsForTrackAsync(
         Guid userId, int trackId, CancellationToken ct)

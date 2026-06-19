@@ -1,52 +1,51 @@
+using System.Text.Json;
 using ApexRacers.Api.Dtos;
-using Aydsko.iRacingData.Cars;
+using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Pure mapping from the iRacing car catalog (<see cref="CarInfo"/> + <see cref="CarAssetDetail"/>)
-/// to the catalog DTOs, including image-URL construction. Extracted as a pure helper so the mapping
-/// and URL building are unit-tested directly (mirrors <c>LeaderboardCsvParser</c>).
+/// Pure mapping from the persisted <see cref="Car"/> entity to the catalog DTOs, including
+/// image-URL construction from the stored iRacing path bits. Unit-tested directly.
 /// </summary>
 public static class CarCatalogMapper
 {
-    public static CarCatalogItemDto ToItem(CarInfo car, CarAssetDetail? asset) =>
+    public static CarCatalogItemDto ToItem(Car car) =>
         new(
-            car.CarId,
-            car.CarName,
-            car.CarNameAbbreviated,
+            car.Id,
+            car.Name,
+            car.NameAbbreviated,
             car.CarMake,
             car.CarModel,
             car.Hp,
             car.CarWeight,
             car.RainEnabled,
-            car.FreeWithSubscription,
-            car.Categories?.ToList() ?? [],
-            CatalogImage.FromFolder(asset?.Folder, asset?.SmallImage));
+            car.FreeWithSubscription ?? false,
+            ParseList(car.CategoriesJson),
+            CatalogImage.FromFolder(car.AssetFolder, car.SmallImageFile));
 
     public static CarCatalogDetailDto ToDetail(
-        CarInfo car,
-        CarAssetDetail? asset,
+        Car car,
         IReadOnlyList<CarClassRefDto> carClasses,
         IReadOnlyList<PersonalLapDto> yourBestLaps) =>
         new(
-            car.CarId,
-            car.CarName,
-            car.CarNameAbbreviated,
+            car.Id,
+            car.Name,
+            car.NameAbbreviated,
             car.CarMake,
             car.CarModel,
             car.Hp,
             car.CarWeight,
             car.RainEnabled,
-            car.FreeWithSubscription,
-            car.Categories?.ToList() ?? [],
-            (car.CarTypes ?? [])
-                .Select(t => t.CarType)
-                .Where(t => !string.IsNullOrEmpty(t))
-                .ToList(),
-            CatalogImage.FromFolder(asset?.Folder, asset?.SmallImage),
-            CatalogImage.FromFolder(asset?.Folder, asset?.LargeImage),
-            CatalogImage.FromPath(asset?.Logo),
+            car.FreeWithSubscription ?? false,
+            ParseList(car.CategoriesJson),
+            ParseList(car.CarTypesJson),
+            CatalogImage.FromFolder(car.AssetFolder, car.SmallImageFile),
+            CatalogImage.FromFolder(car.AssetFolder, car.LargeImageFile),
+            CatalogImage.FromPath(car.LogoPath),
             carClasses,
             yourBestLaps);
+
+    private static List<string> ParseList(string? json) =>
+        string.IsNullOrEmpty(json) ? [] : JsonSerializer.Deserialize<List<string>>(json) ?? [];
 }

@@ -15,7 +15,14 @@ public record TrackApiEntry(
     [property: JsonPropertyName("is_oval")]            bool IsOval,
     [property: JsonPropertyName("location")]           string? Location,
     [property: JsonPropertyName("time_zone")]          string? TimeZone,
-    [property: JsonPropertyName("retired")]            bool Retired
+    [property: JsonPropertyName("retired")]            bool Retired,
+    [property: JsonPropertyName("corners_per_lap")]       int? CornersPerLap = null,
+    [property: JsonPropertyName("latitude")]              double? Latitude = null,
+    [property: JsonPropertyName("longitude")]             double? Longitude = null,
+    [property: JsonPropertyName("pit_road_speed_limit")]  int? PitRoadSpeedLimit = null,
+    [property: JsonPropertyName("number_pitstalls")]      int? NumberPitstalls = null,
+    [property: JsonPropertyName("night_lighting")]        bool NightLighting = false,
+    [property: JsonPropertyName("has_svg_map")]           bool HasSvgMap = false
 );
 
 public record CarApiEntry(
@@ -26,7 +33,31 @@ public record CarApiEntry(
     [property: JsonPropertyName("free_with_subscription")] bool FreeWithSubscription,
     [property: JsonPropertyName("package_id")]           int? PackageId,
     [property: JsonPropertyName("hp")]                   int? Hp,
-    [property: JsonPropertyName("car_weight")]           int? CarWeight
+    [property: JsonPropertyName("car_weight")]           int? CarWeight,
+    [property: JsonPropertyName("car_make")]             string? CarMake = null,
+    [property: JsonPropertyName("car_model")]            string? CarModel = null,
+    [property: JsonPropertyName("rain_enabled")]         bool RainEnabled = false,
+    [property: JsonPropertyName("categories")]           List<string>? Categories = null,
+    [property: JsonPropertyName("car_types")]            List<CarTypeEntry>? CarTypes = null
+);
+
+public record CarTypeEntry(
+    [property: JsonPropertyName("car_type")] string CarType
+);
+
+// Asset files (car/assets, track/assets) are objects keyed by id string → these entries.
+public record CarAssetEntry(
+    [property: JsonPropertyName("folder")]      string? Folder,
+    [property: JsonPropertyName("small_image")] string? SmallImage,
+    [property: JsonPropertyName("large_image")] string? LargeImage,
+    [property: JsonPropertyName("logo")]        string? Logo
+);
+
+public record TrackAssetEntry(
+    [property: JsonPropertyName("folder")]      string? Folder,
+    [property: JsonPropertyName("small_image")] string? SmallImage,
+    [property: JsonPropertyName("large_image")] string? LargeImage,
+    [property: JsonPropertyName("track_map")]   string? TrackMap
 );
 
 public record SeasonScheduleResponse(

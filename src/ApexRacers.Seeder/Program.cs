@@ -48,6 +48,12 @@ var carCatalog = JsonSerializer
         File.ReadAllText(Path.Combine(responseObjectsPath, "car", "get.jsonc")), jsonOptions)!
     .ToDictionary(c => c.CarId);
 
+// Asset files (folder + image names) keyed by id string — used to enrich the catalog.
+var trackAssets = JsonSerializer.Deserialize<Dictionary<string, TrackAssetEntry>>(
+    File.ReadAllText(Path.Combine(responseObjectsPath, "track", "assets.jsonc")), jsonOptions)!;
+var carAssets = JsonSerializer.Deserialize<Dictionary<string, CarAssetEntry>>(
+    File.ReadAllText(Path.Combine(responseObjectsPath, "car", "assets.jsonc")), jsonOptions)!;
+
 var carClasses = JsonSerializer
     .Deserialize<List<CarClassApiEntry>>(
         File.ReadAllText(Path.Combine(responseObjectsPath, "carclass", "get.jsonc")), jsonOptions)!;
@@ -82,19 +88,34 @@ var existingTrackIds = await db.Tracks.Select(t => t.Id).ToHashSetAsync();
 
 var newTracks = trackCatalog.Values
     .Where(t => !existingTrackIds.Contains(t.TrackId))
-    .Select(t => new Track
+    .Select(t =>
     {
-        Id                = t.TrackId,
-        Name              = t.TrackName,
-        ConfigName        = t.ConfigName ?? "",
-        CategoryId        = t.CategoryId,
-        Category          = t.Category,
-        TrackConfigLength = t.TrackConfigLength,
-        IsDirt            = t.IsDirt,
-        IsOval            = t.IsOval,
-        Location          = t.Location,
-        TimeZone          = t.TimeZone,
-        Retired           = t.Retired,
+        trackAssets.TryGetValue(t.TrackId.ToString(), out var a);
+        return new Track
+        {
+            Id                = t.TrackId,
+            Name              = t.TrackName,
+            ConfigName        = t.ConfigName ?? "",
+            CategoryId        = t.CategoryId,
+            Category          = t.Category,
+            TrackConfigLength = t.TrackConfigLength,
+            IsDirt            = t.IsDirt,
+            IsOval            = t.IsOval,
+            Location          = t.Location,
+            TimeZone          = t.TimeZone,
+            Retired           = t.Retired,
+            CornersPerLap     = t.CornersPerLap,
+            Latitude          = t.Latitude,
+            Longitude         = t.Longitude,
+            PitRoadSpeedLimit = t.PitRoadSpeedLimit,
+            NumberPitstalls   = t.NumberPitstalls,
+            NightLighting     = t.NightLighting,
+            HasSvgMap         = t.HasSvgMap,
+            AssetFolder       = a?.Folder,
+            SmallImageFile    = a?.SmallImage,
+            LargeImageFile    = a?.LargeImage,
+            TrackMapUrl       = string.IsNullOrEmpty(a?.TrackMap) ? null : a.TrackMap,
+        };
     })
     .ToList();
 
@@ -108,16 +129,29 @@ var existingCarIds = await db.Cars.Select(c => c.Id).ToHashSetAsync();
 
 var newCars = carCatalog.Values
     .Where(c => !existingCarIds.Contains(c.CarId))
-    .Select(c => new Car
+    .Select(c =>
     {
-        Id                   = c.CarId,
-        Name                 = c.CarName,
-        NameAbbreviated      = c.CarNameAbbreviated,
-        Retired              = c.Retired,
-        FreeWithSubscription = c.FreeWithSubscription,
-        PackageId            = c.PackageId,
-        Hp                   = c.Hp,
-        CarWeight            = c.CarWeight,
+        carAssets.TryGetValue(c.CarId.ToString(), out var a);
+        return new Car
+        {
+            Id                   = c.CarId,
+            Name                 = c.CarName,
+            NameAbbreviated      = c.CarNameAbbreviated,
+            Retired              = c.Retired,
+            FreeWithSubscription = c.FreeWithSubscription,
+            PackageId            = c.PackageId,
+            Hp                   = c.Hp,
+            CarWeight            = c.CarWeight,
+            CarMake              = c.CarMake,
+            CarModel             = c.CarModel,
+            RainEnabled          = c.RainEnabled,
+            CategoriesJson       = SerializeList(c.Categories),
+            CarTypesJson         = SerializeList(c.CarTypes?.Select(t => t.CarType)),
+            AssetFolder          = a?.Folder,
+            SmallImageFile       = a?.SmallImage,
+            LargeImageFile       = a?.LargeImage,
+            LogoPath             = a?.Logo,
+        };
     })
     .ToList();
 
@@ -552,6 +586,14 @@ else
 Console.WriteLine("\nSeeding complete.");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Serialize a slug list to a JSON array string for the catalog's CategoriesJson/CarTypesJson
+// columns; null when empty (mirrors CatalogIngest in the ingestion worker).
+static string? SerializeList(IEnumerable<string?>? items)
+{
+    var list = items?.Where(s => !string.IsNullOrEmpty(s)).ToList();
+    return list is { Count: > 0 } ? JsonSerializer.Serialize(list) : null;
+}
 
 static string FindResponseObjectsPath()
 {
