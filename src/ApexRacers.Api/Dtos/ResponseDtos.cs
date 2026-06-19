@@ -288,6 +288,55 @@ public record SeasonStandingsDto(
     IReadOnlyList<CarClassOptionDto> CarClasses,
     IReadOnlyList<SeasonStandingDto> Standings);
 
+/// <summary>One driver row in a season's Time Trial standings.</summary>
+public record SeasonTtStandingDto(
+    int Rank,
+    long CustId,
+    string DriverName,
+    int Division,
+    int? TtRating,
+    int Starts,
+    int Wins,
+    int Top5,
+    int Poles,
+    int Points,
+    double AvgFinishPosition,
+    int Incidents);
+
+/// <summary>Time Trial standings for a series' active season + chosen car class.</summary>
+public record SeasonTtStandingsDto(
+    int SeriesId,
+    string SeriesName,
+    int CarClassId,
+    string CarClassName,
+    IReadOnlyList<CarClassOptionDto> CarClasses,
+    IReadOnlyList<SeasonTtStandingDto> Standings);
+
+/// <summary>One driver row in a race week's season qualifying results (best qualifying lap).</summary>
+public record SeasonQualifyResultDto(
+    int Rank,
+    long CustId,
+    string DriverName,
+    int Division,
+    int? IRating,
+    double BestQualLapSeconds,
+    int Week);
+
+/// <summary>
+/// Season qualifying results for a series' active season, chosen car class + race week.
+/// <see cref="RaceWeekNum"/> is the 0-based iRacing week; <see cref="AvailableWeeks"/> lists
+/// the season's known weeks for the selector.
+/// </summary>
+public record SeasonQualifyResultsDto(
+    int SeriesId,
+    string SeriesName,
+    int CarClassId,
+    string CarClassName,
+    IReadOnlyList<CarClassOptionDto> CarClasses,
+    int RaceWeekNum,
+    IReadOnlyList<int> AvailableWeeks,
+    IReadOnlyList<SeasonQualifyResultDto> Results);
+
 /// <summary>An official session starting soon (race-now live guide), newest start first.</summary>
 public record RaceGuideEntryDto(
     int SeriesId,
