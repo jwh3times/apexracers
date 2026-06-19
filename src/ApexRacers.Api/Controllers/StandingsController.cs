@@ -12,4 +12,14 @@ public class StandingsController(StandingsService standings) : ControllerBase
     public async Task<IActionResult> GetAsync(
         int id, [FromQuery] int? carClassId, CancellationToken ct) =>
         Ok(await standings.GetDriverStandingsAsync(id, carClassId, ct));
+
+    [HttpGet("{id:int}/tt-standings")]
+    public async Task<IActionResult> GetTimeTrialAsync(
+        int id, [FromQuery] int? carClassId, CancellationToken ct) =>
+        Ok(await standings.GetTimeTrialStandingsAsync(id, carClassId, ct));
+
+    [HttpGet("{id:int}/qualify-results")]
+    public async Task<IActionResult> GetQualifyAsync(
+        int id, [FromQuery] int? carClassId, [FromQuery] int? weekNumber, CancellationToken ct) =>
+        Ok(await standings.GetQualifyResultsAsync(id, carClassId, weekNumber, ct));
 }

@@ -385,6 +385,51 @@ export interface SeasonStandings {
   standings: SeasonStanding[];
 }
 
+export interface SeasonTtStanding {
+  rank: number;
+  custId: number;
+  driverName: string;
+  division: number;
+  ttRating: number | null;
+  starts: number;
+  wins: number;
+  top5: number;
+  poles: number;
+  points: number;
+  avgFinishPosition: number;
+  incidents: number;
+}
+
+export interface SeasonTtStandings {
+  seriesId: number;
+  seriesName: string;
+  carClassId: number;
+  carClassName: string;
+  carClasses: CarClassOption[];
+  standings: SeasonTtStanding[];
+}
+
+export interface SeasonQualifyResult {
+  rank: number;
+  custId: number;
+  driverName: string;
+  division: number;
+  iRating: number | null;
+  bestQualLapSeconds: number;
+  week: number;
+}
+
+export interface SeasonQualifyResults {
+  seriesId: number;
+  seriesName: string;
+  carClassId: number;
+  carClassName: string;
+  carClasses: CarClassOption[];
+  raceWeekNum: number;
+  availableWeeks: number[];
+  results: SeasonQualifyResult[];
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -640,6 +685,25 @@ export const api = {
   getStandings(seriesId: number, carClassId?: number): Promise<SeasonStandings> {
     const qs = carClassId != null ? `?carClassId=${carClassId}` : '';
     return request(`/api/series/${seriesId}/standings${qs}`);
+  },
+
+  /** GET /api/series/:seriesId/tt-standings?carClassId= — active-season Time Trial standings */
+  getTtStandings(seriesId: number, carClassId?: number): Promise<SeasonTtStandings> {
+    const qs = carClassId != null ? `?carClassId=${carClassId}` : '';
+    return request(`/api/series/${seriesId}/tt-standings${qs}`);
+  },
+
+  /** GET /api/series/:seriesId/qualify-results?carClassId=&weekNumber= — weekly qualifying results */
+  getQualifyResults(
+    seriesId: number,
+    carClassId?: number,
+    weekNumber?: number
+  ): Promise<SeasonQualifyResults> {
+    const params = new URLSearchParams();
+    if (carClassId != null) params.set('carClassId', String(carClassId));
+    if (weekNumber != null) params.set('weekNumber', String(weekNumber));
+    const qs = params.toString();
+    return request(`/api/series/${seriesId}/qualify-results${qs ? `?${qs}` : ''}`);
   },
 
   /** GET /api/race-guide — official sessions starting in the next ~3h (race-now board) */

@@ -488,6 +488,59 @@ describe('api', () => {
     });
   });
 
+  // ── getTtStandings ────────────────────────────────────────────────────────
+
+  describe('getTtStandings', () => {
+    it('calls GET /api/series/:id/tt-standings with a carClassId query param when provided', async () => {
+      mockFetchOk({ seriesId: 444, standings: [] });
+      await api.getTtStandings(444, 4091);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/tt-standings?carClassId=4091',
+        expect.objectContaining({})
+      );
+    });
+
+    it('omits the query param when carClassId is not provided', async () => {
+      mockFetchOk({ seriesId: 444, standings: [] });
+      await api.getTtStandings(444);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/tt-standings',
+        expect.objectContaining({})
+      );
+    });
+  });
+
+  // ── getQualifyResults ─────────────────────────────────────────────────────
+
+  describe('getQualifyResults', () => {
+    it('includes carClassId and weekNumber query params when both provided', async () => {
+      mockFetchOk({ seriesId: 444, results: [] });
+      await api.getQualifyResults(444, 4091, 2);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/qualify-results?carClassId=4091&weekNumber=2',
+        expect.objectContaining({})
+      );
+    });
+
+    it('includes only weekNumber when carClassId is omitted', async () => {
+      mockFetchOk({ seriesId: 444, results: [] });
+      await api.getQualifyResults(444, undefined, 0);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/qualify-results?weekNumber=0',
+        expect.objectContaining({})
+      );
+    });
+
+    it('omits the query string entirely when no optional args are provided', async () => {
+      mockFetchOk({ seriesId: 444, results: [] });
+      await api.getQualifyResults(444);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/qualify-results',
+        expect.objectContaining({})
+      );
+    });
+  });
+
   // ── getRaceGuide ──────────────────────────────────────────────────────────
 
   describe('getRaceGuide', () => {

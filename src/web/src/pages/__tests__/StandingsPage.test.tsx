@@ -2,10 +2,19 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import StandingsPage from '../StandingsPage';
-import { api, type SeasonStandings } from '../../services/api';
+import {
+  api,
+  type SeasonStandings,
+  type SeasonTtStandings,
+  type SeasonQualifyResults,
+} from '../../services/api';
 
 vi.mock('../../services/api', () => ({
-  api: { getStandings: vi.fn() },
+  api: {
+    getStandings: vi.fn(),
+    getTtStandings: vi.fn(),
+    getQualifyResults: vi.fn(),
+  },
 }));
 
 let mockIRacingCustomerId: number | null = null;
@@ -14,16 +23,20 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 const mockGetStandings = vi.mocked(api.getStandings);
+const mockGetTtStandings = vi.mocked(api.getTtStandings);
+const mockGetQualifyResults = vi.mocked(api.getQualifyResults);
+
+const CAR_CLASSES = [
+  { carClassId: 4091, carClassName: 'GT3 Class' },
+  { carClassId: 2000, carClassName: 'GT4 Class' },
+];
 
 const STANDINGS: SeasonStandings = {
   seriesId: 444,
   seriesName: 'GT3 Cup',
   carClassId: 4091,
   carClassName: 'GT3 Class',
-  carClasses: [
-    { carClassId: 4091, carClassName: 'GT3 Class' },
-    { carClassId: 2000, carClassName: 'GT4 Class' },
-  ],
+  carClasses: CAR_CLASSES,
   standings: [
     {
       rank: 1,
@@ -42,7 +55,7 @@ const STANDINGS: SeasonStandings = {
       rank: 2,
       custId: 222,
       driverName: 'Me Driver',
-      division: 1,
+      division: 4,
       starts: 12,
       wins: 3,
       top5: 7,
@@ -50,6 +63,74 @@ const STANDINGS: SeasonStandings = {
       points: 880,
       avgFinishPosition: 5.4,
       incidents: 30,
+    },
+  ],
+};
+
+const TT_STANDINGS: SeasonTtStandings = {
+  seriesId: 444,
+  seriesName: 'GT3 Cup',
+  carClassId: 4091,
+  carClassName: 'GT3 Class',
+  carClasses: CAR_CLASSES,
+  standings: [
+    {
+      rank: 1,
+      custId: 111,
+      driverName: 'TT Leader',
+      division: 2,
+      ttRating: 2500,
+      starts: 12,
+      wins: 4,
+      top5: 7,
+      poles: 1,
+      points: 800,
+      avgFinishPosition: 5.5,
+      incidents: 20,
+    },
+    {
+      rank: 2,
+      custId: 333,
+      driverName: 'No Rating',
+      division: 3,
+      ttRating: null,
+      starts: 5,
+      wins: 0,
+      top5: 1,
+      poles: 0,
+      points: 200,
+      avgFinishPosition: 9.1,
+      incidents: 12,
+    },
+  ],
+};
+
+const QUAL_RESULTS: SeasonQualifyResults = {
+  seriesId: 444,
+  seriesName: 'GT3 Cup',
+  carClassId: 4091,
+  carClassName: 'GT3 Class',
+  carClasses: CAR_CLASSES,
+  raceWeekNum: 2,
+  availableWeeks: [0, 1, 2],
+  results: [
+    {
+      rank: 1,
+      custId: 111,
+      driverName: 'Pole Sitter',
+      division: 2,
+      iRating: 7000,
+      bestQualLapSeconds: 375.0,
+      week: 2,
+    },
+    {
+      rank: 2,
+      custId: 444,
+      driverName: 'No Time',
+      division: 5,
+      iRating: null,
+      bestQualLapSeconds: -1,
+      week: 2,
     },
   ],
 };
@@ -68,6 +149,9 @@ describe('StandingsPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockIRacingCustomerId = null;
+    mockGetStandings.mockResolvedValue(STANDINGS);
+    mockGetTtStandings.mockResolvedValue(TT_STANDINGS);
+    mockGetQualifyResults.mockResolvedValue(QUAL_RESULTS);
   });
 
   it('shows a loading state while fetching', () => {
@@ -76,34 +160,37 @@ describe('StandingsPage', () => {
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
-  it('fetches standings for the route series id', async () => {
-    mockGetStandings.mockResolvedValue(STANDINGS);
+  it('fetches championship standings for the route series id by default', async () => {
     renderPage();
     await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, undefined));
   });
 
-  it('renders the standings rows and series name', async () => {
-    mockGetStandings.mockResolvedValue(STANDINGS);
+  it('renders championship rows and series name', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('GT3 Cup')).toBeInTheDocument());
     expect(screen.getByText('Leader')).toBeInTheDocument();
-    expect(screen.getByText('950')).toBeInTheDocument(); // points
+    expect(screen.getByText('950')).toBeInTheDocument();
   });
 
   it('refetches when a different car class chip is selected', async () => {
-    mockGetStandings.mockResolvedValue(STANDINGS);
     renderPage();
     await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, undefined));
-
     fireEvent.click(screen.getByRole('button', { name: 'GT4 Class' }));
     await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, 2000));
   });
 
-  it("highlights the logged-in driver's row", async () => {
+  it("highlights the logged-in driver's row and shows their division", async () => {
     mockIRacingCustomerId = 222;
-    mockGetStandings.mockResolvedValue(STANDINGS);
     renderPage();
     await waitFor(() => expect(screen.getByText('(you)')).toBeInTheDocument());
+    expect(screen.getByTestId('your-division')).toHaveTextContent('Your division: 4');
+  });
+
+  it('does not show a division badge when the user is not in the standings', async () => {
+    mockIRacingCustomerId = 999;
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Leader')).toBeInTheDocument());
+    expect(screen.queryByTestId('your-division')).not.toBeInTheDocument();
   });
 
   it('shows an empty-state message when there are no standings', async () => {
@@ -116,5 +203,44 @@ describe('StandingsPage', () => {
     mockGetStandings.mockRejectedValue(new Error('Boom'));
     renderPage();
     await waitFor(() => expect(screen.getByText(/boom/i)).toBeInTheDocument());
+  });
+
+  it('switches to the Time Trial tab and renders TT rating (with — for missing)', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Leader')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Time Trial' }));
+    await waitFor(() => expect(mockGetTtStandings).toHaveBeenCalledWith(444, undefined));
+    expect(screen.getByText('TT Leader')).toBeInTheDocument();
+    expect(screen.getByText('2,500')).toBeInTheDocument(); // tt rating
+    expect(screen.getByText('No Rating')).toBeInTheDocument();
+    expect(screen.getByText('TT Rating')).toBeInTheDocument(); // column header
+  });
+
+  it('switches to the Qualifying tab, formats lap times, and offers a week selector', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Leader')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Qualifying' }));
+    await waitFor(() =>
+      expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, undefined)
+    );
+    expect(screen.getByText('Pole Sitter')).toBeInTheDocument();
+    expect(screen.getByText('6:15.000')).toBeInTheDocument(); // 375.0s formatted
+    expect(screen.getByText('No Time')).toBeInTheDocument(); // sentinel row still renders
+
+    // Week selector reflects availableWeeks (1-based labels) and refetches on click.
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
+    await waitFor(() => expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, 0));
+  });
+
+  it('shows an empty-state for qualifying when there are no results', async () => {
+    mockGetQualifyResults.mockResolvedValue({ ...QUAL_RESULTS, results: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Leader')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Qualifying' }));
+    await waitFor(() =>
+      expect(screen.getByText(/no qualifying results available/i)).toBeInTheDocument()
+    );
   });
 });
