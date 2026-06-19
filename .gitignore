@@ -51,6 +51,7 @@ Thumbs.db
 # Test coverage output (ephemeral — never commit)
 coverage*/
 coverage-report/
+TestResults/
 
 # Seed Screenshots
 src/ApexRacers.Data/Seeds/Screenshots/
