@@ -2,6 +2,7 @@ using System.Globalization;
 using ApexRacers.Api.Dtos;
 using Aydsko.iRacingData;
 using Aydsko.iRacingData.Member;
+using Aydsko.iRacingData.Stats;
 
 namespace ApexRacers.Api.Services;
 
@@ -33,10 +34,7 @@ public class MemberStatsService(CachedIRacingClient cached)
                 async c => (await c.GetMemberChartDataAsync(
                     (int)custId, lic.CategoryId, MemberChartType.IRating, ct)).Data, ct);
 
-            var history = (chart.Points ?? [])
-                .Select(p => new TimeSeriesPointDto(
-                    p.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), p.Value))
-                .ToList();
+            var history = MapPoints(chart);
 
             categories.Add(new CategoryProgressionDto(
                 lic.CategoryId,
@@ -75,19 +73,8 @@ public class MemberStatsService(CachedIRacingClient cached)
             $"recap:{custId}", Ttl,
             async c => (await c.GetMemberRecapAsync((int)custId, null, null, ct)).Data, ct);
 
-        var licenses = (profile.LicenseHistory ?? [])
-            .Select(l => new LicenseBadgeDto(
-                l.CategoryId, PrettifyCategory(l.Category), l.GroupName, l.LicenseLevel,
-                l.SafetyRating, l.Irating, l.Color))
-            .ToList();
-
-        // Career "Category" is already a display name (e.g. "Sports Car") — no prettify.
-        var careerCards = (career.Statistics ?? [])
-            .Select(s => new CategoryCareerDto(
-                s.CategoryId, s.Category, s.Starts, s.Wins, s.Top5, s.Poles,
-                s.AvgStartPosition, s.AvgFinishPosition, s.Laps, s.LapsLed,
-                s.WinPercentage, s.Top5Percentage))
-            .ToList();
+        var licenses = MapLicenses(profile);
+        var careerCards = MapCareer(career);
 
         var y = summary.YearStatistics;
         var thisYear = new ThisYearSummaryDto(
@@ -117,6 +104,43 @@ public class MemberStatsService(CachedIRacingClient cached)
     }
 
     /// <summary>
+    /// One side of a head-to-head comparison: identity, license badges, lifetime career stats,
+    /// and per-category iRating history. Lighter than <see cref="GetDriverProfileAsync"/> (no
+    /// summary/recap) but reuses the same cache entries, so the two views warm each other.
+    /// </summary>
+    public async Task<ComparisonSideDto> GetComparisonSideAsync(long custId, CancellationToken ct)
+    {
+        var profile = await cached.GetOrFetchAsync(
+            $"profile:{custId}", Ttl,
+            async c => (await c.GetMemberProfileAsync((int)custId, ct)).Data, ct);
+        var career = await cached.GetOrFetchAsync(
+            $"career:{custId}", Ttl,
+            async c => (await c.GetCareerStatisticsAsync((int)custId, ct)).Data, ct);
+
+        var history = new List<CategoryHistoryDto>();
+        foreach (var lic in profile.LicenseHistory ?? [])
+        {
+            var chart = await cached.GetOrFetchAsync(
+                $"chart:{custId}:{lic.CategoryId}:{(int)MemberChartType.IRating}", Ttl,
+                async c => (await c.GetMemberChartDataAsync(
+                    (int)custId, lic.CategoryId, MemberChartType.IRating, ct)).Data, ct);
+            history.Add(new CategoryHistoryDto(
+                lic.CategoryId, PrettifyCategory(lic.Category), MapPoints(chart)));
+        }
+
+        var info = profile.Info;
+        return new ComparisonSideDto(
+            custId,
+            info?.DisplayName ?? string.Empty,
+            info?.FlairName,
+            info?.FlairShortName,
+            info?.MemberSince,
+            MapLicenses(profile),
+            MapCareer(career),
+            history);
+    }
+
+    /// <summary>
     /// iRacing exposes the category as a slug (e.g. "sports_car"); turn it into a display
     /// name ("Sports Car"). Pure + public so it can be unit-tested directly.
     /// </summary>
@@ -129,4 +153,26 @@ public class MemberStatsService(CachedIRacingClient cached)
             .Select(w => char.ToUpperInvariant(w[0]) + w[1..]);
         return string.Join(' ', words);
     }
+
+    private static List<TimeSeriesPointDto> MapPoints(MemberChart chart) =>
+        (chart.Points ?? [])
+            .Select(p => new TimeSeriesPointDto(
+                p.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), p.Value))
+            .ToList();
+
+    private static List<LicenseBadgeDto> MapLicenses(MemberProfile profile) =>
+        (profile.LicenseHistory ?? [])
+            .Select(l => new LicenseBadgeDto(
+                l.CategoryId, PrettifyCategory(l.Category), l.GroupName, l.LicenseLevel,
+                l.SafetyRating, l.Irating, l.Color))
+            .ToList();
+
+    // Career "Category" is already a display name (e.g. "Sports Car") — no prettify.
+    private static List<CategoryCareerDto> MapCareer(MemberCareer career) =>
+        (career.Statistics ?? [])
+            .Select(s => new CategoryCareerDto(
+                s.CategoryId, s.Category, s.Starts, s.Wins, s.Top5, s.Poles,
+                s.AvgStartPosition, s.AvgFinishPosition, s.Laps, s.LapsLed,
+                s.WinPercentage, s.Top5Percentage))
+            .ToList();
 }

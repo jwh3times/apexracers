@@ -329,4 +329,90 @@ public class MemberStatsServiceTests
         await client.Received(1).GetMemberRecapAsync(
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
+
+    // ── GetComparisonSideAsync ────────────────────────────────────────────────
+
+    private static (MemberStatsService Service, IDataClient Client, AppDbContext Db) BuildSide(
+        MemberProfile profile, MemberCareer career, params MemberChart[] charts)
+    {
+        var client = Substitute.For<IDataClient>();
+        client.GetMemberProfileAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new DataResponse<MemberProfile> { Data = profile });
+        client.GetCareerStatisticsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new DataResponse<MemberCareer> { Data = career });
+        foreach (var chart in charts)
+        {
+            client.GetMemberChartDataAsync(
+                    Arg.Any<int?>(), chart.CategoryId, MemberChartType.IRating, Arg.Any<CancellationToken>())
+                .Returns(new DataResponse<MemberChart> { Data = chart });
+        }
+
+        var db = DbContextFactory.Create();
+        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        return (new MemberStatsService(cached), client, db);
+    }
+
+    [Fact]
+    public async Task GetComparisonSideAsync_MapsIdentityLicensesCareerAndIRatingHistory()
+    {
+        var (service, _, db) = BuildSide(
+            ProfileWithInfo(),
+            CareerWith((5, "Sports Car", 94, 4)),
+            Chart(5, (2024, 1, 1, 1700), (2024, 2, 24, 1854)));
+        await using var _db = db;
+
+        var side = await service.GetComparisonSideAsync(CustId, Ct);
+
+        Assert.Equal(CustId, side.CustId);
+        Assert.Equal("Jerry Holland", side.DisplayName);
+        Assert.Equal("United States", side.Country);
+        Assert.Equal("USA", side.CountryCode);
+        Assert.Equal("2021-11-05", side.MemberSince);
+
+        var badge = Assert.Single(side.Licenses);
+        Assert.Equal("Sports Car", badge.CategoryName); // slug prettified
+
+        var careerCard = Assert.Single(side.Career);
+        Assert.Equal(94, careerCard.Starts);
+        Assert.Equal(4, careerCard.Wins);
+
+        var hist = Assert.Single(side.IRatingHistory);
+        Assert.Equal(5, hist.CategoryId);
+        Assert.Equal("Sports Car", hist.CategoryName);
+        Assert.Equal(2, hist.Points.Count);
+        Assert.Equal("2024-02-24", hist.Points[1].When);
+        Assert.Equal(1854, hist.Points[1].Value);
+    }
+
+    [Fact]
+    public async Task GetComparisonSideAsync_NoLicenses_EmptyHistory_WithoutChartFetch()
+    {
+        var (service, client, db) = BuildSide(
+            new MemberProfile { CustomerId = (int)CustId, LicenseHistory = [], Info = new MemberProfileInfo { DisplayName = "X" } },
+            CareerWith((5, "Sports Car", 1, 0)));
+        await using var _db = db;
+
+        var side = await service.GetComparisonSideAsync(CustId, Ct);
+
+        Assert.Empty(side.Licenses);
+        Assert.Empty(side.IRatingHistory);
+        await client.DidNotReceive().GetMemberChartDataAsync(
+            Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<MemberChartType>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetComparisonSideAsync_SecondCall_ServedFromCache_FetchesEachOnce()
+    {
+        var (service, client, db) = BuildSide(
+            ProfileWithInfo(), CareerWith((5, "Sports Car", 94, 4)), Chart(5, (2024, 1, 1, 1700)));
+        await using var _db = db;
+
+        await service.GetComparisonSideAsync(CustId, Ct);
+        await service.GetComparisonSideAsync(CustId, Ct);
+
+        await client.Received(1).GetMemberProfileAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await client.Received(1).GetCareerStatisticsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await client.Received(1).GetMemberChartDataAsync(
+            Arg.Any<int?>(), 5, MemberChartType.IRating, Arg.Any<CancellationToken>());
+    }
 }

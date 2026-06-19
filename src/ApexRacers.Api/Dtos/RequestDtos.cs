@@ -10,3 +10,4 @@ public record CreateFeatureFlagRequest(string Key, string Name, string? Descript
 public record UpdateFeatureFlagRequest(string Name, string? Description, bool IsEnabled, string MinimumRole);
 public record RefreshRequest(string RefreshToken);
 public record RevokeRequest(string RefreshToken);
+public record AddRivalRequest(long CustId, string? DisplayName = null);

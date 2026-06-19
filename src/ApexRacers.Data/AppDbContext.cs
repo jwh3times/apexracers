@@ -25,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SeasonCarBop> SeasonCarBops => Set<SeasonCarBop>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ExternalDataCache> ExternalDataCaches => Set<ExternalDataCache>();
+    public DbSet<Rival> Rivals => Set<Rival>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
