@@ -158,6 +158,8 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `LeaderboardController` — global top-200 drivers for a category, ranked by iRating (`GET /api/leaderboards?categoryId=`, Authorize; `categoryId` 1–6, defaults to 5/Sports Car)
 - `StandingsController` — championship driver standings, Time Trial standings, and weekly qualifying results for a series' active season + car class (`GET /api/series/{id}/standings?carClassId=`, `GET /api/series/{id}/tt-standings?carClassId=`, `GET /api/series/{id}/qualify-results?carClassId=&weekNumber=`, all **public**; default to the first car class, qualifying defaults to the current race week)
 - `RaceGuideController` — official sessions starting in the next ~3 h across active series (`GET /api/race-guide`, **public**)
+- `RivalsController` — the rivals a user follows for comparison (`GET/POST /api/users/me/rivals`, `DELETE /api/users/me/rivals/{custId}`, `GET /api/users/me/rivals/search?term=`, `GET /api/users/me/rivals/suggestions`; Authorize). Add is idempotent; suggestions need a linked account (typed `409`)
+- `CompareController` — head-to-head comparison between the caller and a rival (`GET /api/users/me/compare?rivalCustId=`, Authorize; typed `409` when the caller isn't iRacing-linked)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -168,7 +170,7 @@ Services in `src/ApexRacers.Api/Services/`:
 - `PercentileCalculationService` — compute and cache driver percentile rank; optionally overlays the world-record lap + gap via `WorldRecordService` (null when iRacing isn't configured)
 - `CarRecommendationService` — ranked car recommendations based on personal percentile data
 - `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
-- `MemberStatsService` — on-demand iRacing member stats via `CachedIRacingClient` (6 h TTL). `GetProgressionAsync` returns one card per license category (iRating/SR/CPI/TT + iRating history); `GetDriverProfileAsync` returns the enriched profile (identity, license badges, career stats, this-year summary, recap favorites). Reuses the shared `profile:{custId}` cache entry
+- `MemberStatsService` — on-demand iRacing member stats via `CachedIRacingClient` (6 h TTL). `GetProgressionAsync` returns one card per license category (iRating/SR/CPI/TT + iRating history); `GetDriverProfileAsync` returns the enriched profile (identity, license badges, career stats, this-year summary, recap favorites); `GetComparisonSideAsync` returns one side of a head-to-head (identity + license badges + career + per-category iRating history — lighter than the full profile, no summary/recap). Reuses the shared `profile:{custId}`/`career:{custId}`/`chart:…` cache entries via the pure `MapPoints`/`MapLicenses`/`MapCareer` helpers
 - `RaceHistoryService` — the authenticated driver's recent official races via `CachedIRacingClient` (10 min TTL); maps iRating/SR deltas and resolves car names from the local `Car` catalog
 - `SubsessionDetailService` — reads one ingested subsession (header context + classified field) from the DB; deserializes the stored weather block and normalizes temp/wind units (pure `TempToCelsius`/`WindToKph`/`MapWeather` helpers)
 - `LapDataService` — a driver's per-lap pace for one race via `CachedIRacingClient` (24 h TTL; SDK auto-fetches the chunked lap rows); maps laps and computes pace stats via the pure `LapAnalysis` helper (mean/σ/fastest/degradation slope over green laps)
@@ -179,6 +181,9 @@ Services in `src/ApexRacers.Api/Services/`:
 - `QualifyResultsParser` — pure parser for iRacing's season-qualify-results chunk JSON (rank/cust_id/display_name/division/license.irating/best_qual_lap_time ÷10000/week); unit-tested directly, mirrors `LeaderboardCsvParser`
 - `IChunkDownloader` / `HttpChunkDownloader` — downloads iRacing standings "chunk" files (pre-signed S3 URLs) over a typed `HttpClient`; abstracted so services can be unit-tested without HTTP
 - `RaceGuideService` — "race now" board via `CachedIRacingClient` (60 s TTL); filters to sessions starting within ~3 h (plus in-progress) per request and joins `Series` names from the local catalog
+- `RivalService` — the rivals a user follows: list/add (idempotent)/remove against the `Rival` table, driver name-search via `CachedIRacingClient` (`SearchDriversAsync`, 30 min TTL per term; short terms skip the API), and suggestions drawn from drivers the caller shares ingested `SubsessionResult` rows with (ranked by shared count, excludes self + followed)
+- `RivalComparisonService` — assembles the head-to-head `DriverComparisonDto`: each side via `MemberStatsService.GetComparisonSideAsync`, plus the shared-race record joined from local `SubsessionResult` + `Subsession`/`Track`, summarized by the pure `SharedRaceAnalysis`
+- `SharedRaceAnalysis` — pure helper: "finished ahead" tally + best-lap-per-shared-track from both drivers' shared races; unit-tested directly (mirrors `LapAnalysis`)
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -214,6 +219,7 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 | `FeatureFlag` | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt) |
 | `RefreshToken` | Rotating refresh token (Id, UserId, TokenHash [SHA-256 hex], ExpiresAt, CreatedAt, RevokedAt?); stored in `identity` schema |
 | `ExternalDataCache` | Cached external (iRacing) API response (Id, CacheKey [unique], Payload [serialized JSON, `text`], FetchedAt, ExpiresAt); backs `CachedIRacingClient` get-or-fetch |
+| `Rival` | A driver a user follows for comparison (Id, UserId, RivalCustId, DisplayName, CreatedAt); unique index on (UserId, RivalCustId); cascade FK to `identity.Users` |
 
 ### iRacing data ingestion
 
@@ -252,6 +258,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/progression` | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines |
 | `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
 | `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
+| `/compare` | `ComparePage` — driver-vs-driver head-to-head: rival manager (name search + shared-race suggestions + follow) and four panels (identity/licenses, iRating overlay, career, shared-race record) |
 | `/live` | `LivePage` — "race now" board of sessions starting soon with live countdowns |
 | `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
 | `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
@@ -326,7 +333,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, My Laps, Telemetry, Settings, Profile, Admin)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, My Laps, Telemetry, Settings, Profile, Admin)
 - `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
@@ -341,6 +348,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 - `PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
 - `LapTraceChart.tsx` — SVG per-lap pace trace (line + mean ± 1σ band + red incident markers). Accepts `laps: Lap[]`, `meanSeconds`, `stdDevSeconds`, optional `h`. Returns `null` when fewer than two timed laps. Used by the "Your Race Pace" card on `RaceDetailPage`.
+- `IRatingCompareChart.tsx` — SVG overlay of two drivers' iRating trajectories on a shared scale (cyan "you" line + amber rival line). Accepts `you: number[]`, `rival: number[]`, optional `h`. Uses a fixed viewBox stretched to width (scales fluidly without measuring layout); returns `null` when neither series has ≥2 points. Used by the iRating panel on `ComparePage`.
 
 #### Contexts
 
@@ -396,6 +404,8 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `TelemetryUploadServiceTests`
 - `PersonalLapServiceTests`
 - `IbtParserTests` (telemetry `.ibt` file parsing)
+- `SharedRaceAnalysisTests` (pure head-to-head tally + best-lap-per-track)
+- `RivalServiceTests` / `RivalComparisonServiceTests` (rival follow/search/suggestions + comparison assembly)
 
 ---
 
