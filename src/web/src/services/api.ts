@@ -498,6 +498,58 @@ export interface DriverComparison {
   shared: SharedRaceSummary;
 }
 
+// ── Catalog explorer (3.5) ──────────────────────────────────────────────────
+
+export interface CarClassRef {
+  carClassId: number;
+  name: string;
+}
+
+export interface CarCatalogItem {
+  carId: number;
+  name: string;
+  nameAbbreviated: string;
+  make: string | null;
+  model: string | null;
+  hp: number | null;
+  weight: number | null;
+  rainEnabled: boolean;
+  freeWithSubscription: boolean;
+  categories: string[];
+  smallImageUrl: string | null;
+}
+
+export interface CarCatalogDetail extends CarCatalogItem {
+  carTypes: string[];
+  largeImageUrl: string | null;
+  logoUrl: string | null;
+  carClasses: CarClassRef[];
+  yourBestLaps: PersonalLap[];
+}
+
+export interface TrackCatalogItem {
+  trackId: number;
+  name: string;
+  configName: string;
+  category: string | null;
+  lengthMiles: number | null;
+  cornersPerLap: number | null;
+  location: string | null;
+  nightLighting: boolean;
+  smallImageUrl: string | null;
+}
+
+export interface TrackCatalogDetail extends TrackCatalogItem {
+  latitude: number | null;
+  longitude: number | null;
+  pitRoadSpeedLimit: number | null;
+  numberPitstalls: number | null;
+  hasSvgMap: boolean;
+  largeImageUrl: string | null;
+  trackMapUrl: string | null;
+  yourBestLaps: PersonalLap[];
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 let _token: string | null = null;
@@ -807,6 +859,26 @@ export const api = {
   /** GET /api/users/me/compare?rivalCustId= — head-to-head comparison (409 if unlinked) */
   compareRival(rivalCustId: number): Promise<DriverComparison> {
     return request(`/api/users/me/compare?rivalCustId=${rivalCustId}`);
+  },
+
+  /** GET /api/cars — full car catalog (browse grid) */
+  getCars(): Promise<CarCatalogItem[]> {
+    return request('/api/cars');
+  },
+
+  /** GET /api/cars/:id — car detail (specs, classes, your best laps when signed in) */
+  getCar(carId: number): Promise<CarCatalogDetail> {
+    return request(`/api/cars/${carId}`);
+  },
+
+  /** GET /api/tracks — full track catalog (browse grid) */
+  getTracks(): Promise<TrackCatalogItem[]> {
+    return request('/api/tracks');
+  },
+
+  /** GET /api/tracks/:id — track detail (specs, map, your best laps when signed in) */
+  getTrack(trackId: number): Promise<TrackCatalogDetail> {
+    return request(`/api/tracks/${trackId}`);
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */

@@ -1,7 +1,6 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
-using Aydsko.iRacingData.Series;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
@@ -17,25 +16,30 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
 {
     private static readonly TimeSpan Horizon = TimeSpan.FromHours(3);
 
+    // SDK-decoupled cache row: the session normalized to UTC instants before caching, so the
+    // cached JSON doesn't depend on the Aydsko wire shape. The time-window filter and series-name
+    // join still run per request (off the cached rows) so a cached payload reflects the current clock.
+    private sealed record RaceGuideCacheRow(
+        int SeriesId, DateTimeOffset Start, DateTimeOffset End, int EntryCount, int RaceWeekNumber);
+
     public async Task<IReadOnlyList<RaceGuideEntryDto>> GetGuideAsync(CancellationToken ct)
     {
-        var sessions = await cached.GetOrFetchAsync<RaceGuideSession[]>(
+        var sessions = await cached.GetOrFetchAsync(
             "race-guide", TimeSpan.FromSeconds(60),
-            async c => (await c.GetRaceGuideAsync(DateTimeOffset.UtcNow, true, ct)).Data.Sessions ?? [],
+            async c =>
+            {
+                var raw = (await c.GetRaceGuideAsync(DateTimeOffset.UtcNow, true, ct)).Data.Sessions ?? [];
+                return raw
+                    .Select(s => new RaceGuideCacheRow(
+                        s.SeriesId, Utc(s.StartTime), Utc(s.EndTime), s.EntryCount, s.RaceWeekNumber))
+                    .ToList();
+            },
             ct);
 
         var now = DateTimeOffset.UtcNow;
         var horizon = now + Horizon;
 
         var upcoming = sessions
-            .Select(s => new
-            {
-                s.SeriesId,
-                Start = Utc(s.StartTime),
-                End = Utc(s.EndTime),
-                s.EntryCount,
-                s.RaceWeekNumber,
-            })
             .Where(s => s.End > now && s.Start <= horizon)
             .OrderBy(s => s.Start)
             .ToList();

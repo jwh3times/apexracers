@@ -435,3 +435,73 @@ public record SubsessionDetailDto(
     int EventLapsComplete,
     WeatherDto? Weather,
     IReadOnlyList<SubsessionResultRowDto> Results);
+
+// ── Catalog explorer (3.5) ──────────────────────────────────────────────────────
+
+/// <summary>A car class a car belongs to (for the car detail page).</summary>
+public record CarClassRefDto(int CarClassId, string Name);
+
+/// <summary>One car in the catalog browse grid.</summary>
+public record CarCatalogItemDto(
+    int CarId,
+    string Name,
+    string NameAbbreviated,
+    string? Make,
+    string? Model,
+    int? Hp,
+    int? Weight,
+    bool RainEnabled,
+    bool FreeWithSubscription,
+    IReadOnlyList<string> Categories,
+    string? SmallImageUrl);
+
+/// <summary>Full car detail: specs, images, car classes, and the caller's personal bests.</summary>
+public record CarCatalogDetailDto(
+    int CarId,
+    string Name,
+    string NameAbbreviated,
+    string? Make,
+    string? Model,
+    int? Hp,
+    int? Weight,
+    bool RainEnabled,
+    bool FreeWithSubscription,
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<string> CarTypes,
+    string? SmallImageUrl,
+    string? LargeImageUrl,
+    string? LogoUrl,
+    IReadOnlyList<CarClassRefDto> CarClasses,
+    IReadOnlyList<PersonalLapDto> YourBestLaps);
+
+/// <summary>One track configuration in the catalog browse grid.</summary>
+public record TrackCatalogItemDto(
+    int TrackId,
+    string Name,
+    string ConfigName,
+    string? Category,
+    double? LengthMiles,
+    int? CornersPerLap,
+    string? Location,
+    bool NightLighting,
+    string? SmallImageUrl);
+
+/// <summary>Full track detail: specs, images, map, and the caller's personal bests.</summary>
+public record TrackCatalogDetailDto(
+    int TrackId,
+    string Name,
+    string ConfigName,
+    string? Category,
+    double? LengthMiles,
+    int? CornersPerLap,
+    string? Location,
+    bool NightLighting,
+    double? Latitude,
+    double? Longitude,
+    int? PitRoadSpeedLimit,
+    int? NumberPitstalls,
+    bool HasSvgMap,
+    string? SmallImageUrl,
+    string? LargeImageUrl,
+    string? TrackMapUrl,
+    IReadOnlyList<PersonalLapDto> YourBestLaps);

@@ -2,7 +2,6 @@ using System.Globalization;
 using ApexRacers.Api.Dtos;
 using Aydsko.iRacingData;
 using Aydsko.iRacingData.Member;
-using Aydsko.iRacingData.Stats;
 
 namespace ApexRacers.Api.Services;
 
@@ -11,10 +10,25 @@ namespace ApexRacers.Api.Services;
 /// so repeated views stay within rate limits). Shared by the progression tracker and the
 /// enriched driver profile. All fetches use a 6-hour TTL — these stats only move after a
 /// race, so an hours-old view is acceptable and keeps us well under iRacing's limits.
+///
+/// Each cache entry stores a mapped, SDK-decoupled snapshot/DTO (never a raw Aydsko type),
+/// so the cached JSON doesn't depend on the SDK wire shape. The <c>profile:{custId}</c>,
+/// <c>career:{custId}</c> and <c>chart:…</c> entries are shared across all three read methods.
 /// </summary>
 public class MemberStatsService(CachedIRacingClient cached)
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(6);
+
+    // ── SDK-decoupled cache snapshots ─────────────────────────────────────────
+    private sealed record ProfileSnapshot(
+        string DisplayName, string? FlairName, string? FlairShortName, string? MemberSince,
+        IReadOnlyList<LicenseSnapshot> Licenses);
+
+    private sealed record LicenseSnapshot(
+        int CategoryId, string? Category, int Irating, double SafetyRating, double Cpi,
+        int LicenseLevel, string GroupName, int TtRating, string Color);
+
+    private sealed record RecapSnapshot(FavoriteCarDto? FavoriteCar, FavoriteTrackDto? FavoriteTrack);
 
     /// <summary>
     /// One progression card per license category the member holds: current iRating, safety
@@ -22,20 +36,12 @@ public class MemberStatsService(CachedIRacingClient cached)
     /// </summary>
     public async Task<MemberProgressionDto> GetProgressionAsync(long custId, CancellationToken ct)
     {
-        var profile = await cached.GetOrFetchAsync(
-            $"profile:{custId}", Ttl,
-            async c => (await c.GetMemberProfileAsync((int)custId, ct)).Data, ct);
+        var profile = await GetProfileAsync(custId, ct);
 
         var categories = new List<CategoryProgressionDto>();
-        foreach (var lic in profile.LicenseHistory ?? [])
+        foreach (var lic in profile.Licenses)
         {
-            var chart = await cached.GetOrFetchAsync(
-                $"chart:{custId}:{lic.CategoryId}:{(int)MemberChartType.IRating}", Ttl,
-                async c => (await c.GetMemberChartDataAsync(
-                    (int)custId, lic.CategoryId, MemberChartType.IRating, ct)).Data, ct);
-
-            var history = MapPoints(chart);
-
+            var history = await GetIRatingHistoryAsync(custId, lic.CategoryId, ct);
             categories.Add(new CategoryProgressionDto(
                 lic.CategoryId,
                 PrettifyCategory(lic.Category),
@@ -60,47 +66,44 @@ public class MemberStatsService(CachedIRacingClient cached)
     /// </summary>
     public async Task<DriverProfileDto> GetDriverProfileAsync(long custId, CancellationToken ct)
     {
-        var profile = await cached.GetOrFetchAsync(
-            $"profile:{custId}", Ttl,
-            async c => (await c.GetMemberProfileAsync((int)custId, ct)).Data, ct);
-        var career = await cached.GetOrFetchAsync(
-            $"career:{custId}", Ttl,
-            async c => (await c.GetCareerStatisticsAsync((int)custId, ct)).Data, ct);
-        var summary = await cached.GetOrFetchAsync(
+        var profile = await GetProfileAsync(custId, ct);
+        var career = await GetCareerAsync(custId, ct);
+
+        var thisYear = await cached.GetOrFetchAsync(
             $"summary:{custId}", Ttl,
-            async c => (await c.GetMemberSummaryAsync((int)custId, ct)).Data, ct);
+            async c =>
+            {
+                var y = (await c.GetMemberSummaryAsync((int)custId, ct)).Data.YearStatistics;
+                return new ThisYearSummaryDto(
+                    y?.NumberOfOfficialSessions ?? 0, y?.NumberOfOfficialWins ?? 0,
+                    y?.NumberOfLeagueSessions ?? 0, y?.NumberOfLeagueWins ?? 0);
+            }, ct);
+
         var recap = await cached.GetOrFetchAsync(
             $"recap:{custId}", Ttl,
-            async c => (await c.GetMemberRecapAsync((int)custId, null, null, ct)).Data, ct);
+            async c =>
+            {
+                var stats = (await c.GetMemberRecapAsync((int)custId, null, null, ct)).Data.Statistics;
+                var favCar = stats?.FavoriteCar is { } fc
+                    ? new FavoriteCarDto(fc.CarId, fc.CarName, fc.CarImageUrl?.ToString())
+                    : null;
+                var favTrack = stats?.FavoriteTrack is { } ft
+                    ? new FavoriteTrackDto(ft.TrackId, ft.TrackName, ft.ConfigName, ft.TrackLogoUrl?.ToString())
+                    : null;
+                return new RecapSnapshot(favCar, favTrack);
+            }, ct);
 
-        var licenses = MapLicenses(profile);
-        var careerCards = MapCareer(career);
-
-        var y = summary.YearStatistics;
-        var thisYear = new ThisYearSummaryDto(
-            y?.NumberOfOfficialSessions ?? 0, y?.NumberOfOfficialWins ?? 0,
-            y?.NumberOfLeagueSessions ?? 0, y?.NumberOfLeagueWins ?? 0);
-
-        var stats = recap.Statistics;
-        var favCar = stats?.FavoriteCar is { } fc
-            ? new FavoriteCarDto(fc.CarId, fc.CarName, fc.CarImageUrl?.ToString())
-            : null;
-        var favTrack = stats?.FavoriteTrack is { } ft
-            ? new FavoriteTrackDto(ft.TrackId, ft.TrackName, ft.ConfigName, ft.TrackLogoUrl?.ToString())
-            : null;
-
-        var info = profile.Info;
         return new DriverProfileDto(
             custId,
-            info?.DisplayName ?? string.Empty,
-            info?.FlairName,
-            info?.FlairShortName,
-            info?.MemberSince,
-            licenses,
-            careerCards,
+            profile.DisplayName,
+            profile.FlairName,
+            profile.FlairShortName,
+            profile.MemberSince,
+            MapLicenses(profile),
+            career,
             thisYear,
-            favCar,
-            favTrack);
+            recap.FavoriteCar,
+            recap.FavoriteTrack);
     }
 
     /// <summary>
@@ -110,35 +113,74 @@ public class MemberStatsService(CachedIRacingClient cached)
     /// </summary>
     public async Task<ComparisonSideDto> GetComparisonSideAsync(long custId, CancellationToken ct)
     {
-        var profile = await cached.GetOrFetchAsync(
-            $"profile:{custId}", Ttl,
-            async c => (await c.GetMemberProfileAsync((int)custId, ct)).Data, ct);
-        var career = await cached.GetOrFetchAsync(
-            $"career:{custId}", Ttl,
-            async c => (await c.GetCareerStatisticsAsync((int)custId, ct)).Data, ct);
+        var profile = await GetProfileAsync(custId, ct);
+        var career = await GetCareerAsync(custId, ct);
 
         var history = new List<CategoryHistoryDto>();
-        foreach (var lic in profile.LicenseHistory ?? [])
+        foreach (var lic in profile.Licenses)
         {
-            var chart = await cached.GetOrFetchAsync(
-                $"chart:{custId}:{lic.CategoryId}:{(int)MemberChartType.IRating}", Ttl,
-                async c => (await c.GetMemberChartDataAsync(
-                    (int)custId, lic.CategoryId, MemberChartType.IRating, ct)).Data, ct);
             history.Add(new CategoryHistoryDto(
-                lic.CategoryId, PrettifyCategory(lic.Category), MapPoints(chart)));
+                lic.CategoryId, PrettifyCategory(lic.Category),
+                await GetIRatingHistoryAsync(custId, lic.CategoryId, ct)));
         }
 
-        var info = profile.Info;
         return new ComparisonSideDto(
             custId,
-            info?.DisplayName ?? string.Empty,
-            info?.FlairName,
-            info?.FlairShortName,
-            info?.MemberSince,
+            profile.DisplayName,
+            profile.FlairName,
+            profile.FlairShortName,
+            profile.MemberSince,
             MapLicenses(profile),
-            MapCareer(career),
+            career,
             history);
     }
+
+    // ── Shared cached fetches (one entry, many consumers) ──────────────────────
+
+    private Task<ProfileSnapshot> GetProfileAsync(long custId, CancellationToken ct) =>
+        cached.GetOrFetchAsync(
+            $"profile:{custId}", Ttl,
+            async c =>
+            {
+                var p = (await c.GetMemberProfileAsync((int)custId, ct)).Data;
+                var info = p.Info;
+                return new ProfileSnapshot(
+                    info?.DisplayName ?? string.Empty, info?.FlairName, info?.FlairShortName,
+                    info?.MemberSince,
+                    (p.LicenseHistory ?? [])
+                        .Select(l => new LicenseSnapshot(
+                            l.CategoryId, l.Category, l.Irating, l.SafetyRating, l.Cpi,
+                            l.LicenseLevel, l.GroupName, l.TtRating, l.Color))
+                        .ToList());
+            }, ct);
+
+    private Task<List<CategoryCareerDto>> GetCareerAsync(long custId, CancellationToken ct) =>
+        cached.GetOrFetchAsync(
+            $"career:{custId}", Ttl,
+            // Career "Category" is already a display name (e.g. "Sports Car") — no prettify.
+            async c => ((await c.GetCareerStatisticsAsync((int)custId, ct)).Data.Statistics ?? [])
+                .Select(s => new CategoryCareerDto(
+                    s.CategoryId, s.Category, s.Starts, s.Wins, s.Top5, s.Poles,
+                    s.AvgStartPosition, s.AvgFinishPosition, s.Laps, s.LapsLed,
+                    s.WinPercentage, s.Top5Percentage))
+                .ToList(), ct);
+
+    private Task<List<TimeSeriesPointDto>> GetIRatingHistoryAsync(
+        long custId, int categoryId, CancellationToken ct) =>
+        cached.GetOrFetchAsync(
+            $"chart:{custId}:{categoryId}:{(int)MemberChartType.IRating}", Ttl,
+            async c => ((await c.GetMemberChartDataAsync(
+                    (int)custId, categoryId, MemberChartType.IRating, ct)).Data.Points ?? [])
+                .Select(p => new TimeSeriesPointDto(
+                    p.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), p.Value))
+                .ToList(), ct);
+
+    private static List<LicenseBadgeDto> MapLicenses(ProfileSnapshot profile) =>
+        profile.Licenses
+            .Select(l => new LicenseBadgeDto(
+                l.CategoryId, PrettifyCategory(l.Category), l.GroupName, l.LicenseLevel,
+                l.SafetyRating, l.Irating, l.Color))
+            .ToList();
 
     /// <summary>
     /// iRacing exposes the category as a slug (e.g. "sports_car"); turn it into a display
@@ -153,26 +195,4 @@ public class MemberStatsService(CachedIRacingClient cached)
             .Select(w => char.ToUpperInvariant(w[0]) + w[1..]);
         return string.Join(' ', words);
     }
-
-    private static List<TimeSeriesPointDto> MapPoints(MemberChart chart) =>
-        (chart.Points ?? [])
-            .Select(p => new TimeSeriesPointDto(
-                p.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), p.Value))
-            .ToList();
-
-    private static List<LicenseBadgeDto> MapLicenses(MemberProfile profile) =>
-        (profile.LicenseHistory ?? [])
-            .Select(l => new LicenseBadgeDto(
-                l.CategoryId, PrettifyCategory(l.Category), l.GroupName, l.LicenseLevel,
-                l.SafetyRating, l.Irating, l.Color))
-            .ToList();
-
-    // Career "Category" is already a display name (e.g. "Sports Car") — no prettify.
-    private static List<CategoryCareerDto> MapCareer(MemberCareer career) =>
-        (career.Statistics ?? [])
-            .Select(s => new CategoryCareerDto(
-                s.CategoryId, s.Category, s.Starts, s.Wins, s.Top5, s.Poles,
-                s.AvgStartPosition, s.AvgFinishPosition, s.Laps, s.LapsLed,
-                s.WinPercentage, s.Top5Percentage))
-            .ToList();
 }

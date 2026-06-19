@@ -52,6 +52,17 @@ public sealed class Worker(
         var activeSeries = seasonsResponse.Data.Where(s => s.Active).ToList();
         logger.LogDebug("Found {Count} active series", activeSeries.Count);
 
+        // Step 1b — Refresh the full car/track catalog (specs + assets) for the catalog explorer.
+        try
+        {
+            var (cars, tracks) = await RefreshCatalogAsync(db, client, ct);
+            logger.LogDebug("Catalog refreshed: {Cars} cars, {Tracks} tracks", cars, tracks);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Catalog refresh failed — skipping");
+        }
+
         var seriesProcessed       = 0;
         var subsessionsIndexed    = 0;
 
@@ -77,6 +88,43 @@ public sealed class Worker(
         logger.LogInformation(
             "Ingestion run complete at {Time} — series processed: {SeriesProcessed}, subsessions indexed: {SubsessionsIndexed}",
             DateTimeOffset.UtcNow, seriesProcessed, subsessionsIndexed);
+    }
+
+    // Upsert the full car & track catalog (+ asset image bits) so the catalog explorer reads it
+    // from the DB. Pure mapping lives in CatalogIngest (tested); this is just fetch + upsert.
+    private static async Task<(int cars, int tracks)> RefreshCatalogAsync(
+        AppDbContext db, IDataClient client, CancellationToken ct)
+    {
+        var cars = (await client.GetCarsAsync(ct)).Data;
+        var carAssets = (await client.GetCarAssetDetailsAsync(ct)).Data;
+        foreach (var info in cars)
+        {
+            var car = await db.Cars.FindAsync([info.CarId], ct);
+            if (car is null)
+            {
+                car = new Car { Id = info.CarId, Name = info.CarName, NameAbbreviated = info.CarNameAbbreviated };
+                db.Cars.Add(car);
+            }
+            carAssets.TryGetValue(info.CarId.ToString(), out var asset);
+            CatalogIngest.PopulateCar(car, info, asset);
+        }
+
+        var tracks = (await client.GetTracksAsync(ct)).Data;
+        var trackAssets = (await client.GetTrackAssetsAsync(ct)).Data;
+        foreach (var info in tracks)
+        {
+            var track = await db.Tracks.FindAsync([info.TrackId], ct);
+            if (track is null)
+            {
+                track = new Track { Id = info.TrackId, Name = info.TrackName };
+                db.Tracks.Add(track);
+            }
+            trackAssets.TryGetValue(info.TrackId.ToString(), out var asset);
+            CatalogIngest.PopulateTrack(track, info, asset);
+        }
+
+        await db.SaveChangesAsync(ct);
+        return (cars.Length, tracks.Length);
     }
 
     private async Task<(int seriesProcessed, int subsessionsIndexed)> ProcessSeasonAsync(

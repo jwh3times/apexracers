@@ -160,6 +160,8 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `RaceGuideController` — official sessions starting in the next ~3 h across active series (`GET /api/race-guide`, **public**)
 - `RivalsController` — the rivals a user follows for comparison (`GET/POST /api/users/me/rivals`, `DELETE /api/users/me/rivals/{custId}`, `GET /api/users/me/rivals/search?term=`, `GET /api/users/me/rivals/suggestions`; Authorize). Add is idempotent; suggestions need a linked account (typed `409`)
 - `CompareController` — head-to-head comparison between the caller and a rival (`GET /api/users/me/compare?rivalCustId=`, Authorize; typed `409` when the caller isn't iRacing-linked)
+- `CarsController` — browsable car catalog (`GET /api/cars`, `GET /api/cars/{id}`, **public**; personalizes the "your best laps" overlay when a token is present; `404` on unknown id)
+- `TracksController` — browsable track catalog (`GET /api/tracks`, `GET /api/tracks/{id}`, **public**; same personalization + `404` as `CarsController`)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -184,6 +186,9 @@ Services in `src/ApexRacers.Api/Services/`:
 - `RivalService` — the rivals a user follows: list/add (idempotent)/remove against the `Rival` table, driver name-search via `CachedIRacingClient` (`SearchDriversAsync`, 30 min TTL per term; short terms skip the API), and suggestions drawn from drivers the caller shares ingested `SubsessionResult` rows with (ranked by shared count, excludes self + followed)
 - `RivalComparisonService` — assembles the head-to-head `DriverComparisonDto`: each side via `MemberStatsService.GetComparisonSideAsync`, plus the shared-race record joined from local `SubsessionResult` + `Subsession`/`Track`, summarized by the pure `SharedRaceAnalysis`
 - `SharedRaceAnalysis` — pure helper: "finished ahead" tally + best-lap-per-shared-track from both drivers' shared races; unit-tested directly (mirrors `LapAnalysis`)
+- `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog read from the **persisted** `Car`/`Track` tables (populated by the ingestion worker's catalog-refresh step + the seeder). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404). No iRacing creds needed at read time
+- `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of the `Car`/`Track` **entity** → catalog DTOs (composing image URLs from the stored path bits via `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
+- `ExternalDataCacheCleanupService` — hosted `BackgroundService` that purges `ExternalDataCache` rows expired beyond a 2-day grace every 6 h (the cache otherwise only evicts lazily, on overwrite); pure `PurgeExpiredAsync` is unit-tested, the loop is `[ExcludeFromCodeCoverage]`
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -223,7 +228,28 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 
 ### iRacing data ingestion
 
-`ApexRacers.Ingestion` is a standalone `BackgroundService` worker. It uses `Aydsko.iRacingData` registered with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). The `IDataClient` is resolved per ingestion cycle through `IServiceScopeFactory` to safely use a scoped `AppDbContext` from a singleton service.
+`ApexRacers.Ingestion` is a standalone `BackgroundService` worker. It uses `Aydsko.iRacingData` registered with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). The `IDataClient` is resolved per ingestion cycle through `IServiceScopeFactory` to safely use a scoped `AppDbContext` from a singleton service. Each run also refreshes the full car/track catalog (`GetCars`/`GetTracks` + asset details) into the `Car`/`Track` tables via the pure, unit-tested `CatalogIngest` helper (mirrors `SubsessionIndexer`).
+
+### Data source strategy — persist vs cache (read this before adding an iRacing-backed feature)
+
+There are **three** ways iRacing data reaches a read path. Pick deliberately; do not default to whichever is least typing.
+
+1. **Persist into typed entities (worker/seeder → Postgres).** The ingestion worker (and the seeder, for local dev) fetches from iRacing and writes domain rows (`Series`, `Season`, `Week`, `Track`, `Car`, `Subsession`, `SubsessionResult`, `SeasonCarBop`, …). Read paths query those tables with SQL/joins. Pure SDK→entity mapping is extracted into a tested helper (mirror `SubsessionIndexer` / `CarCatalogIngest`).
+2. **On-demand cache (`CachedIRacingClient` → `ExternalDataCache`).** Fetch live per request, memoize **mapped DTOs** as JSON in one generic table with a per-call TTL. Backs progression, profile, race history, lap data, world records, leaderboards, standings, race guide, driver search.
+3. **Persisted user-owned data** (not from iRacing): `PersonalLap`, `Rival`, `CarPercentileResult`, Identity.
+
+**Choosing between #1 and #2** — ask:
+
+- **Do you need to query / filter / aggregate / join it in SQL?** Yes → **persist**. (A cached JSON payload is opaque — you can only round-trip it whole.)
+- **Is it canonical / shared by multiple features?** Yes → **persist** once (one source of truth). Reference data like the car & track catalog lives in `Car`/`Track` and is persisted — do **not** keep a second cached copy of something that already has an entity.
+- **Do you need point-in-time history / snapshots?** Yes → **persist**.
+- **Is it a read-mostly, staleness-tolerant, per-user or per-query stat lookup that you display roughly as-is?** Yes → **cache** (#2). This is the common case for member/season stat endpoints.
+
+**Cache rules (when you do use #2):**
+
+- **Cache mapped DTOs, never raw Aydsko SDK types.** The SDK's wire shape changes across versions and carries `[Obsolete]` fields; serializing your own DTOs keeps the cache small and decoupled. (Map first, then `GetOrFetchAsync<List<MyDto>>(...)`.)
+- TTL guidance: race guide 60 s; recent races 10 min; driver search 30 min; member profile/career/chart 6 h; world records / leaderboards / standings 24 h.
+- The cache has **no eviction except TTL** (lazy, overwrite-on-miss). `ExternalDataCacheCleanupService` (a hosted service in the API) periodically deletes long-expired rows so the table can't grow unbounded.
 
 ### Frontend
 
@@ -259,6 +285,8 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
 | `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
 | `/compare` | `ComparePage` — driver-vs-driver head-to-head: rival manager (name search + shared-race suggestions + follow) and four panels (identity/licenses, iRating overlay, career, shared-race record) |
+| `/cars` · `/cars/:carId` | `CarsPage` / `CarDetailPage` — car catalog grid (search + category filter) and detail (specs, classes, "your best laps") (public) |
+| `/tracks` · `/tracks/:trackId` | `TracksPage` / `TrackDetailPage` — track catalog grid and detail (specs, interactive map, "your best laps") (public) |
 | `/live` | `LivePage` — "race now" board of sessions starting soon with live countdowns |
 | `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
 | `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
@@ -333,7 +361,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, My Laps, Telemetry, Settings, Profile, Admin)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Admin)
 - `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
@@ -406,6 +434,10 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `IbtParserTests` (telemetry `.ibt` file parsing)
 - `SharedRaceAnalysisTests` (pure head-to-head tally + best-lap-per-track)
 - `RivalServiceTests` / `RivalComparisonServiceTests` (rival follow/search/suggestions + comparison assembly)
+- `CarCatalogMapperTests` / `TrackCatalogMapperTests` (pure entity→DTO catalog mapping + image URLs)
+- `CarCatalogServiceTests` / `TrackCatalogServiceTests` (DB-backed catalog list/detail + PersonalLap overlay)
+- `CatalogIngestTests` (pure SDK→entity catalog mapping, in `Tests/Ingestion`)
+- `ExternalDataCacheCleanupServiceTests` (expired-row purge)
 
 ---
 

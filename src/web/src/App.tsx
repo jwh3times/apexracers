@@ -20,6 +20,10 @@ import SchedulePage from './pages/SchedulePage';
 import StandingsPage from './pages/StandingsPage';
 import LeaderboardsPage from './pages/LeaderboardsPage';
 import ComparePage from './pages/ComparePage';
+import CarsPage from './pages/CarsPage';
+import CarDetailPage from './pages/CarDetailPage';
+import TracksPage from './pages/TracksPage';
+import TrackDetailPage from './pages/TrackDetailPage';
 import LivePage from './pages/LivePage';
 import TelemetryPage from './pages/TelemetryPage';
 import MyLapsPage from './pages/MyLapsPage';
@@ -83,6 +87,12 @@ function AppRoutes() {
         />
         {/* Public — official race results (shareable); reached from /races */}
         <Route path="/races/:subsessionId" element={<RaceDetailPage />} />
+
+        {/* Public — car & track reference catalog (personalized when signed in) */}
+        <Route path="/cars" element={<CarsPage />} />
+        <Route path="/cars/:carId" element={<CarDetailPage />} />
+        <Route path="/tracks" element={<TracksPage />} />
+        <Route path="/tracks/:trackId" element={<TrackDetailPage />} />
 
         {/* Everything below requires an authenticated user */}
         <Route element={<RequireAuth />}>
