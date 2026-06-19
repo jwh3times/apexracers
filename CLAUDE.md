@@ -186,8 +186,9 @@ Services in `src/ApexRacers.Api/Services/`:
 - `RivalService` — the rivals a user follows: list/add (idempotent)/remove against the `Rival` table, driver name-search via `CachedIRacingClient` (`SearchDriversAsync`, 30 min TTL per term; short terms skip the API), and suggestions drawn from drivers the caller shares ingested `SubsessionResult` rows with (ranked by shared count, excludes self + followed)
 - `RivalComparisonService` — assembles the head-to-head `DriverComparisonDto`: each side via `MemberStatsService.GetComparisonSideAsync`, plus the shared-race record joined from local `SubsessionResult` + `Subsession`/`Track`, summarized by the pure `SharedRaceAnalysis`
 - `SharedRaceAnalysis` — pure helper: "finished ahead" tally + best-lap-per-shared-track from both drivers' shared races; unit-tested directly (mirrors `LapAnalysis`)
-- `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog over the live iRacing API via `CachedIRacingClient` (24 h TTL over `GetCars`/`GetTracks` + asset details; cache-only, no persisted entity). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404)
-- `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of `CarInfo`/`Track` + asset detail → catalog DTOs (incl. image-URL construction via shared `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
+- `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog read from the **persisted** `Car`/`Track` tables (populated by the ingestion worker's catalog-refresh step + the seeder). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404). No iRacing creds needed at read time
+- `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of the `Car`/`Track` **entity** → catalog DTOs (composing image URLs from the stored path bits via `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
+- `ExternalDataCacheCleanupService` — hosted `BackgroundService` that purges `ExternalDataCache` rows expired beyond a 2-day grace every 6 h (the cache otherwise only evicts lazily, on overwrite); pure `PurgeExpiredAsync` is unit-tested, the loop is `[ExcludeFromCodeCoverage]`
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -227,7 +228,7 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 
 ### iRacing data ingestion
 
-`ApexRacers.Ingestion` is a standalone `BackgroundService` worker. It uses `Aydsko.iRacingData` registered with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). The `IDataClient` is resolved per ingestion cycle through `IServiceScopeFactory` to safely use a scoped `AppDbContext` from a singleton service.
+`ApexRacers.Ingestion` is a standalone `BackgroundService` worker. It uses `Aydsko.iRacingData` registered with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). The `IDataClient` is resolved per ingestion cycle through `IServiceScopeFactory` to safely use a scoped `AppDbContext` from a singleton service. Each run also refreshes the full car/track catalog (`GetCars`/`GetTracks` + asset details) into the `Car`/`Track` tables via the pure, unit-tested `CatalogIngest` helper (mirrors `SubsessionIndexer`).
 
 ### Data source strategy — persist vs cache (read this before adding an iRacing-backed feature)
 
@@ -433,8 +434,10 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `IbtParserTests` (telemetry `.ibt` file parsing)
 - `SharedRaceAnalysisTests` (pure head-to-head tally + best-lap-per-track)
 - `RivalServiceTests` / `RivalComparisonServiceTests` (rival follow/search/suggestions + comparison assembly)
-- `CarCatalogMapperTests` / `TrackCatalogMapperTests` (pure catalog mapping + image URLs)
-- `CarCatalogServiceTests` / `TrackCatalogServiceTests` (catalog list/detail, cache, PersonalLap overlay)
+- `CarCatalogMapperTests` / `TrackCatalogMapperTests` (pure entity→DTO catalog mapping + image URLs)
+- `CarCatalogServiceTests` / `TrackCatalogServiceTests` (DB-backed catalog list/detail + PersonalLap overlay)
+- `CatalogIngestTests` (pure SDK→entity catalog mapping, in `Tests/Ingestion`)
+- `ExternalDataCacheCleanupServiceTests` (expired-row purge)
 
 ---
 
