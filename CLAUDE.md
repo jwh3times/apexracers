@@ -229,6 +229,27 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 
 `ApexRacers.Ingestion` is a standalone `BackgroundService` worker. It uses `Aydsko.iRacingData` registered with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). The `IDataClient` is resolved per ingestion cycle through `IServiceScopeFactory` to safely use a scoped `AppDbContext` from a singleton service.
 
+### Data source strategy — persist vs cache (read this before adding an iRacing-backed feature)
+
+There are **three** ways iRacing data reaches a read path. Pick deliberately; do not default to whichever is least typing.
+
+1. **Persist into typed entities (worker/seeder → Postgres).** The ingestion worker (and the seeder, for local dev) fetches from iRacing and writes domain rows (`Series`, `Season`, `Week`, `Track`, `Car`, `Subsession`, `SubsessionResult`, `SeasonCarBop`, …). Read paths query those tables with SQL/joins. Pure SDK→entity mapping is extracted into a tested helper (mirror `SubsessionIndexer` / `CarCatalogIngest`).
+2. **On-demand cache (`CachedIRacingClient` → `ExternalDataCache`).** Fetch live per request, memoize **mapped DTOs** as JSON in one generic table with a per-call TTL. Backs progression, profile, race history, lap data, world records, leaderboards, standings, race guide, driver search.
+3. **Persisted user-owned data** (not from iRacing): `PersonalLap`, `Rival`, `CarPercentileResult`, Identity.
+
+**Choosing between #1 and #2** — ask:
+
+- **Do you need to query / filter / aggregate / join it in SQL?** Yes → **persist**. (A cached JSON payload is opaque — you can only round-trip it whole.)
+- **Is it canonical / shared by multiple features?** Yes → **persist** once (one source of truth). Reference data like the car & track catalog lives in `Car`/`Track` and is persisted — do **not** keep a second cached copy of something that already has an entity.
+- **Do you need point-in-time history / snapshots?** Yes → **persist**.
+- **Is it a read-mostly, staleness-tolerant, per-user or per-query stat lookup that you display roughly as-is?** Yes → **cache** (#2). This is the common case for member/season stat endpoints.
+
+**Cache rules (when you do use #2):**
+
+- **Cache mapped DTOs, never raw Aydsko SDK types.** The SDK's wire shape changes across versions and carries `[Obsolete]` fields; serializing your own DTOs keeps the cache small and decoupled. (Map first, then `GetOrFetchAsync<List<MyDto>>(...)`.)
+- TTL guidance: race guide 60 s; recent races 10 min; driver search 30 min; member profile/career/chart 6 h; world records / leaderboards / standings 24 h.
+- The cache has **no eviction except TTL** (lazy, overwrite-on-miss). `ExternalDataCacheCleanupService` (a hosted service in the API) periodically deletes long-expired rows so the table can't grow unbounded.
+
 ### Frontend
 
 Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API). The typed API client is in `src/web/src/services/api.ts` — all fetch calls go through it. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in the API.
