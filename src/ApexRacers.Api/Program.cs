@@ -138,6 +138,7 @@ builder.Services.AddScoped<RivalService>();
 builder.Services.AddScoped<RivalComparisonService>();
 builder.Services.AddScoped<CarCatalogService>();
 builder.Services.AddScoped<TrackCatalogService>();
+builder.Services.AddHostedService<ExternalDataCacheCleanupService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
