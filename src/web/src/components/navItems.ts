@@ -19,6 +19,7 @@ export const AUTH_NAV: readonly NavItem[] = [
   { to: '/live', label: 'Race Now', icon: 'live_tv' },
   { to: '/races', label: 'Race History', icon: 'history' },
   { to: '/leaderboards', label: 'Leaderboards', icon: 'leaderboard' },
+  { to: '/compare', label: 'Compare', icon: 'group' },
   { to: '/my-laps', label: 'My Laps', icon: 'timer' },
   { to: '/telemetry', label: 'Telemetry', icon: 'sensors' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
