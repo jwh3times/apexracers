@@ -160,6 +160,8 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `RaceGuideController` — official sessions starting in the next ~3 h across active series (`GET /api/race-guide`, **public**)
 - `RivalsController` — the rivals a user follows for comparison (`GET/POST /api/users/me/rivals`, `DELETE /api/users/me/rivals/{custId}`, `GET /api/users/me/rivals/search?term=`, `GET /api/users/me/rivals/suggestions`; Authorize). Add is idempotent; suggestions need a linked account (typed `409`)
 - `CompareController` — head-to-head comparison between the caller and a rival (`GET /api/users/me/compare?rivalCustId=`, Authorize; typed `409` when the caller isn't iRacing-linked)
+- `CarsController` — browsable car catalog (`GET /api/cars`, `GET /api/cars/{id}`, **public**; personalizes the "your best laps" overlay when a token is present; `404` on unknown id)
+- `TracksController` — browsable track catalog (`GET /api/tracks`, `GET /api/tracks/{id}`, **public**; same personalization + `404` as `CarsController`)
 
 If an action requires multiple steps, extract the logic into a focused service class injected via DI (e.g. `PercentileCalculationService`, `CarRecommendationService`). Do not use MediatR, command handlers, or query handlers.
 
@@ -184,6 +186,8 @@ Services in `src/ApexRacers.Api/Services/`:
 - `RivalService` — the rivals a user follows: list/add (idempotent)/remove against the `Rival` table, driver name-search via `CachedIRacingClient` (`SearchDriversAsync`, 30 min TTL per term; short terms skip the API), and suggestions drawn from drivers the caller shares ingested `SubsessionResult` rows with (ranked by shared count, excludes self + followed)
 - `RivalComparisonService` — assembles the head-to-head `DriverComparisonDto`: each side via `MemberStatsService.GetComparisonSideAsync`, plus the shared-race record joined from local `SubsessionResult` + `Subsession`/`Track`, summarized by the pure `SharedRaceAnalysis`
 - `SharedRaceAnalysis` — pure helper: "finished ahead" tally + best-lap-per-shared-track from both drivers' shared races; unit-tested directly (mirrors `LapAnalysis`)
+- `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog over the live iRacing API via `CachedIRacingClient` (24 h TTL over `GetCars`/`GetTracks` + asset details; cache-only, no persisted entity). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404)
+- `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of `CarInfo`/`Track` + asset detail → catalog DTOs (incl. image-URL construction via shared `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
@@ -259,6 +263,8 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
 | `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
 | `/compare` | `ComparePage` — driver-vs-driver head-to-head: rival manager (name search + shared-race suggestions + follow) and four panels (identity/licenses, iRating overlay, career, shared-race record) |
+| `/cars` · `/cars/:carId` | `CarsPage` / `CarDetailPage` — car catalog grid (search + category filter) and detail (specs, classes, "your best laps") (public) |
+| `/tracks` · `/tracks/:trackId` | `TracksPage` / `TrackDetailPage` — track catalog grid and detail (specs, interactive map, "your best laps") (public) |
 | `/live` | `LivePage` — "race now" board of sessions starting soon with live countdowns |
 | `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
 | `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
@@ -333,7 +339,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, My Laps, Telemetry, Settings, Profile, Admin)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Admin)
 - `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
@@ -406,6 +412,8 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `IbtParserTests` (telemetry `.ibt` file parsing)
 - `SharedRaceAnalysisTests` (pure head-to-head tally + best-lap-per-track)
 - `RivalServiceTests` / `RivalComparisonServiceTests` (rival follow/search/suggestions + comparison assembly)
+- `CarCatalogMapperTests` / `TrackCatalogMapperTests` (pure catalog mapping + image URLs)
+- `CarCatalogServiceTests` / `TrackCatalogServiceTests` (catalog list/detail, cache, PersonalLap overlay)
 
 ---
 
