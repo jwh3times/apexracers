@@ -13,34 +13,58 @@ namespace ApexRacers.Api.Services;
 /// </summary>
 public class RaceHistoryService(CachedIRacingClient cached, AppDbContext db)
 {
+    // SDK-decoupled cache row: exactly the fields we read from iRacing's Race, mapped before
+    // caching so the cached JSON never depends on the Aydsko wire shape. Car names are resolved
+    // from the local catalog afterwards (not part of the cached payload).
+    private sealed record RecentRaceCacheRow(
+        int SubsessionId, DateTimeOffset SessionStartTime, string SeriesName, string TrackName,
+        int CarId, int StartPosition, int FinishPosition, int Incidents,
+        int IRatingDelta, double SrDelta, int StrengthOfField, int Points);
+
     public async Task<IReadOnlyList<RaceHistoryRowDto>> GetRecentRacesAsync(
         long custId, CancellationToken ct)
     {
-        var recent = await cached.GetOrFetchAsync(
+        var rows = await cached.GetOrFetchAsync(
             $"recent:{custId}", TimeSpan.FromMinutes(10),
-            async c => (await c.GetMemberRecentRacesAsync((int)custId, ct)).Data, ct);
+            async c =>
+            {
+                var data = (await c.GetMemberRecentRacesAsync((int)custId, ct)).Data;
+                return (data.Races ?? [])
+                    .Select(r => new RecentRaceCacheRow(
+                        r.SubsessionId,
+                        r.SessionStartTime,
+                        r.SeriesName,
+                        r.Track?.TrackName ?? string.Empty,
+                        r.CarId,
+                        r.StartPosition,
+                        r.FinishPosition,
+                        r.Incidents,
+                        r.NewiRating - r.OldiRating,
+                        (r.NewSubLevel - r.OldSubLevel) / 100.0,
+                        r.StrengthOfField,
+                        r.Points))
+                    .ToList();
+            }, ct);
 
-        var races = recent.Races ?? [];
-
-        var carIds = races.Select(r => r.CarId).Distinct().ToList();
+        var carIds = rows.Select(r => r.CarId).Distinct().ToList();
         var carNames = await db.Cars
             .Where(c => carIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
 
-        return races
+        return rows
             .OrderByDescending(r => r.SessionStartTime)
             .Select(r => new RaceHistoryRowDto(
                 r.SubsessionId,
                 r.SessionStartTime,
                 r.SeriesName,
-                r.Track?.TrackName ?? string.Empty,
+                r.TrackName,
                 r.CarId,
                 carNames.TryGetValue(r.CarId, out var name) ? name : $"Car {r.CarId}",
                 r.StartPosition,
                 r.FinishPosition,
                 r.Incidents,
-                r.NewiRating - r.OldiRating,
-                (r.NewSubLevel - r.OldSubLevel) / 100.0,
+                r.IRatingDelta,
+                r.SrDelta,
                 r.StrengthOfField,
                 r.Points))
             .ToList();
