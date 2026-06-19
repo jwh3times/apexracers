@@ -634,6 +634,39 @@ describe('api', () => {
     });
   });
 
+  // ── catalog (3.5) ───────────────────────────────────────────────────────────
+
+  describe('catalog', () => {
+    it('getCars calls GET /api/cars', async () => {
+      mockFetchOk([]);
+      await api.getCars();
+      expect(fetch).toHaveBeenCalledWith('/api/cars', expect.objectContaining({}));
+    });
+
+    it('getCar calls GET /api/cars/:id', async () => {
+      mockFetchOk({ carId: 132 });
+      await api.getCar(132);
+      expect(fetch).toHaveBeenCalledWith('/api/cars/132', expect.objectContaining({}));
+    });
+
+    it('getTracks calls GET /api/tracks', async () => {
+      mockFetchOk([]);
+      await api.getTracks();
+      expect(fetch).toHaveBeenCalledWith('/api/tracks', expect.objectContaining({}));
+    });
+
+    it('getTrack calls GET /api/tracks/:id', async () => {
+      mockFetchOk({ trackId: 18 });
+      await api.getTrack(18);
+      expect(fetch).toHaveBeenCalledWith('/api/tracks/18', expect.objectContaining({}));
+    });
+
+    it('getCars throws with status info when the catalog is unavailable (503)', async () => {
+      mockFetchError({ status: 503, statusText: 'Service Unavailable' });
+      await expect(api.getCars()).rejects.toThrow('503');
+    });
+  });
+
   // ── setToken / clearToken ───────────────────────────────────────────────────
 
   // ── updateRole ──────────────────────────────────────────────────────────────
