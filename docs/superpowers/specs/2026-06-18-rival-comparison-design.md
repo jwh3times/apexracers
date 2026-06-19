@@ -117,7 +117,8 @@ degrade gracefully to "no shared races yet."
 
 ## Notes
 
-- Aydsko: `SearchDriversAsync(searchTerm)` → `Lookups.DriverSearchResult[]`. Installed SDK is
-  2601.3.0 (CLAUDE.md references 2603.0.0 — pre-existing discrepancy; methods present).
+- Aydsko: `SearchDriversAsync(searchTerm, leagueId?, ct)` → `DataResponse<Lookups.DriverSearchResult[]>`,
+  verified against the pinned `Aydsko.iRacingData 2603.0.0` assembly. `DriverSearchResult` exposes
+  `CustomerId`, `DisplayName`, `Helmet`.
 - `SubsessionResult` already stores the **full field** per subsession (`CustId` + `DisplayName`),
   enabling shared-race intersection without new ingestion.
