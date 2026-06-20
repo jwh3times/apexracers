@@ -451,6 +451,27 @@ describe('api', () => {
     });
   });
 
+  // ── getAchievements ───────────────────────────────────────────────────────
+
+  describe('getAchievements', () => {
+    it('calls GET /api/users/me/achievements and returns parsed data', async () => {
+      const data = { customerId: 691062, awardCount: 1, awards: [] };
+      mockFetchOk(data);
+      const result = await api.getAchievements();
+      expect(fetch).toHaveBeenCalledWith('/api/users/me/achievements', expect.objectContaining({}));
+      expect(result).toEqual(data);
+    });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getAchievements()).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
   // ── getRaceHistory ──────────────────────────────────────────────────────────
 
   describe('getRaceHistory', () => {
