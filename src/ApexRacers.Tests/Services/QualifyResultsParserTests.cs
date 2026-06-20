@@ -98,4 +98,22 @@ public class QualifyResultsParserTests
     {
         Assert.Empty(QualifyResultsParser.Parse([]));
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Parse_BlankChunk_IsSkipped(string blank)
+    {
+        // A blank/whitespace chunk is skipped without throwing; valid chunks still parse.
+        var rows = QualifyResultsParser.Parse([blank, Chunk]);
+        Assert.Equal(2, rows.Count);
+    }
+
+    [Fact]
+    public void Parse_NonArrayJson_IsSkipped()
+    {
+        // iRacing occasionally returns an object (e.g. an error envelope) instead of an array.
+        var rows = QualifyResultsParser.Parse(["""{ "error": "no data" }""", Chunk]);
+        Assert.Equal(2, rows.Count);
+    }
 }

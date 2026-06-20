@@ -53,6 +53,37 @@ public class UserAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task GetAnalyticsAsync_PersonalLapBeatsRaceBest_OverridesPersonalBest()
+    {
+        // A telemetry PersonalLap at the same car+track is faster than the race best, so the
+        // analytics personal-best is overlaid from it (UserAnalyticsService lines 95-99).
+        await using var db = DbContextFactory.Create();
+        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var carClass = AddCarClass(db, id: 1);
+        var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
+        var userId = Guid.NewGuid();
+        db.Users.Add(MakeUser(userId, iracingId: 42));
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
+            PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
+            Car = car, Week = week,
+        });
+        AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5); // race best
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
+            IsValidLap = true, SessionType = LapSessionType.Race, RecordedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(60.0, result[0].PersonalBestLapSeconds); // telemetry lap beats the 62.5 race best
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_MultipleWeeks_BuildsOrderedTrendHistory()
     {
         await using var db = DbContextFactory.Create();

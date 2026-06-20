@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import WeekDetailPage from '../WeekDetailPage';
@@ -115,5 +115,108 @@ describe('WeekDetailPage', () => {
       const link = screen.getByRole('link', { name: /deep dive/i });
       expect(link).toHaveAttribute('href', '/analytics');
     });
+  });
+
+  // ── Sort modes, row navigation, null laps, cross-links (T8) ────────────────
+
+  function rowOrder(): string[] {
+    return screen
+      .getAllByRole('row')
+      .map(r => r.textContent ?? '')
+      .filter(t => t.includes('Alpha') || t.includes('Bravo'));
+  }
+
+  it('re-sorts the car table by consistency and by volume', async () => {
+    mockGetWeekDetail.mockResolvedValue({
+      ...emptyDetail,
+      cars: [
+        makeCar({
+          carId: 1,
+          carName: 'Alpha',
+          fastestLapSeconds: 131.0,
+          medianLapSeconds: 140.0,
+          entryCount: 10,
+        }),
+        makeCar({
+          carId: 2,
+          carName: 'Bravo',
+          fastestLapSeconds: 132.0,
+          medianLapSeconds: 132.5,
+          entryCount: 500,
+        }),
+      ],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0));
+
+    // Best lap (default): Alpha (131.0) before Bravo (132.0).
+    expect(rowOrder()[0]).toContain('Alpha');
+
+    // Consistency: Bravo's tight best↔median gap wins → first.
+    fireEvent.click(screen.getByRole('button', { name: /consistency/i }));
+    expect(rowOrder()[0]).toContain('Bravo');
+
+    // Volume: Bravo's 500 entries win → first.
+    fireEvent.click(screen.getByRole('button', { name: /^volume$/i }));
+    expect(rowOrder()[0]).toContain('Bravo');
+  });
+
+  it('navigates to the car percentile page when a row is clicked', async () => {
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carName: 'Alpha' })] });
+    render(
+      <MemoryRouter initialEntries={['/series/1/weeks/10']}>
+        <Routes>
+          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+          <Route
+            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+            element={<div>Percentile Detail</div>}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0));
+    // Click the table-row occurrence (not the KPI strip), which carries the row onClick.
+    const cell = screen.getAllByText('Alpha').find(el => el.closest('tr'));
+    fireEvent.click(cell!);
+    await waitFor(() => expect(screen.getByText('Percentile Detail')).toBeInTheDocument());
+  });
+
+  it('renders dashes for cars with no lap data and sorts them last', async () => {
+    mockGetWeekDetail.mockResolvedValue({
+      ...emptyDetail,
+      cars: [
+        makeCar({ carId: 1, carName: 'Alpha', fastestLapSeconds: 131.0, medianLapSeconds: 135.0 }),
+        makeCar({
+          carId: 2,
+          carName: 'Bravo',
+          fastestLapSeconds: null,
+          medianLapSeconds: null,
+          className: null,
+        }),
+      ],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Bravo')).toBeInTheDocument());
+    expect(rowOrder()[0]).toContain('Alpha'); // the timed car sorts ahead of the null one
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0); // dash cells for the null car
+  });
+
+  it('renders Strategy, Standings, and Season schedule cross-links', async () => {
+    mockGetWeekDetail.mockResolvedValue(emptyDetail);
+    renderPage('1', '10');
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /^strategy$/i })).toHaveAttribute(
+        'href',
+        '/series/1/weeks/10/strategy'
+      );
+    });
+    expect(screen.getByRole('link', { name: /standings/i })).toHaveAttribute(
+      'href',
+      '/series/1/standings'
+    );
+    expect(screen.getByRole('link', { name: /season schedule/i })).toHaveAttribute(
+      'href',
+      '/series/1/schedule'
+    );
   });
 });

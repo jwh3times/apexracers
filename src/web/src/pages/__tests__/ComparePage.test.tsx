@@ -284,5 +284,47 @@ describe('ComparePage', () => {
     expect(region).toBeInTheDocument();
     // Only one shared category here, but the selector should render it.
     expect(within(document.body).getAllByText('Sports Car').length).toBeGreaterThan(0);
+    // Clicking the category chip drives the selector's onClick.
+    fireEvent.click(screen.getByRole('button', { name: /^sports car$/i }));
+    expect(screen.getByText(/3 shared races/i)).toBeInTheDocument();
+  });
+
+  it('clears search results when the term is shortened below 2 characters', async () => {
+    renderPage();
+    await screen.findByText('Max Power');
+    const box = screen.getByPlaceholderText(/search drivers/i);
+
+    fireEvent.change(box, { target: { value: 'apex' } });
+    expect(await screen.findByRole('button', { name: /add lee apex/i })).toBeInTheDocument();
+
+    fireEvent.change(box, { target: { value: 'a' } }); // too short → results cleared
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /add lee apex/i })).not.toBeInTheDocument()
+    );
+  });
+
+  it('shows no results when the driver search fails', async () => {
+    mockSearch.mockRejectedValue(new Error('search down'));
+    renderPage();
+    await screen.findByText('Max Power');
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
+    await waitFor(() => expect(mockSearch).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /add lee apex/i })).not.toBeInTheDocument();
+  });
+
+  it('resets the comparison when the currently-compared rival is removed', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+    await screen.findByText(/3 shared races/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /remove max power/i }));
+    await waitFor(() => expect(screen.queryByText(/3 shared races/i)).not.toBeInTheDocument());
+  });
+
+  it('surfaces a generic error when the comparison fails', async () => {
+    mockCompare.mockRejectedValue(new Error('compare boom'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+    await waitFor(() => expect(screen.getByText(/compare boom/i)).toBeInTheDocument());
   });
 });
