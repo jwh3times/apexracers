@@ -49,6 +49,13 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('button', { name: /forgot password/i })).not.toBeInTheDocument();
   });
 
+  it('navigates to the forgot-password page when Forgot Password is clicked', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: /forgot password/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/forgot-password');
+  });
+
   it('switching to Create Account tab shows confirm password field and hides it when switching back', async () => {
     const user = userEvent.setup();
     renderPage();

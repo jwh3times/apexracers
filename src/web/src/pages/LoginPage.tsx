@@ -180,6 +180,7 @@ export default function LoginPage() {
                   {tab === 'signin' && (
                     <button
                       type="button"
+                      onClick={() => navigate('/forgot-password')}
                       className="font-body-sm text-body-sm text-secondary-fixed-dim hover:text-secondary-fixed transition-colors"
                     >
                       Forgot Password?

@@ -11,7 +11,7 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(AuthService auth) : ControllerBase
+public class AuthController(AuthService auth, IWebHostEnvironment env) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct) =>
@@ -77,6 +77,39 @@ public class AuthController(AuthService auth) : ControllerBase
     public async Task<IActionResult> LogoutAsync([FromBody] RevokeRequest request, CancellationToken ct)
     {
         await auth.RevokeAsync(request.RefreshToken, ct);
+        return NoContent();
+    }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request, CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        await auth.ChangePasswordAsync(userId, request, ct);
+        return NoContent();
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest request, CancellationToken ct)
+    {
+        var token = await auth.GeneratePasswordResetTokenAsync(request.Email, ct);
+
+        // Email delivery is not wired up yet. In Development the token is returned in the
+        // response body so the reset flow is testable end-to-end; in every other environment
+        // it is withheld and the response is identical whether or not the account exists.
+        // The token is deliberately never logged — it is a single-use credential.
+        return Ok(new ForgotPasswordResponse(
+            "If an account exists for that email, a password reset link has been sent.",
+            env.IsDevelopment() ? token : null));
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request, CancellationToken ct)
+    {
+        await auth.ResetPasswordAsync(request, ct);
         return NoContent();
     }
 

@@ -31,7 +31,33 @@ export default function SettingsPage() {
   const [roleSaved, setRoleSaved] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
 
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+
   const connected = !!user;
+
+  async function changePassword(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPwError(null);
+    if (newPassword !== confirmPassword) {
+      setPwError('New passwords do not match.');
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPwSaved(true);
+      setTimeout(() => setPwSaved(false), 2500);
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : 'Failed to change password.');
+    } finally {
+      setPwSaving(false);
+    }
+  }
 
   async function saveProfile(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -314,15 +340,7 @@ export default function SettingsPage() {
               <h3 className="font-headline-sm text-headline-sm text-on-surface">Security</h3>
             </div>
 
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-              }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
-            >
+            <form onSubmit={changePassword} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label
                   htmlFor="current-password"
@@ -368,14 +386,16 @@ export default function SettingsPage() {
                   className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
               </div>
+              {pwError && (
+                <p className="md:col-span-3 font-body-sm text-body-sm text-error">{pwError}</p>
+              )}
               <div className="md:col-span-3 pt-2">
                 <button
                   type="submit"
-                  disabled
-                  title="Password change coming soon"
-                  className="bg-surface-container-highest border border-line-2 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm opacity-50 cursor-not-allowed"
+                  disabled={pwSaving}
+                  className="bg-surface-container-highest border border-line-2 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Update Password (Coming Soon)
+                  {pwSaving ? 'Updating…' : pwSaved ? 'Updated ✓' : 'Update Password'}
                 </button>
               </div>
             </form>

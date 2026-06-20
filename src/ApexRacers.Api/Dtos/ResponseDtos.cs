@@ -58,6 +58,14 @@ public record CarRecommendationDto(
 
 public record AuthResultDto(string Token, Guid UserId, string DisplayName, string? RefreshToken = null);
 
+/// <summary>
+/// Acknowledgement for a forgot-password request. <see cref="Message"/> is always a
+/// generic confirmation (it never reveals whether the account exists); <see cref="ResetToken"/>
+/// is populated only in the Development environment so the reset flow can be exercised
+/// without an email provider, and is null everywhere else.
+/// </summary>
+public record ForgotPasswordResponse(string Message, string? ResetToken);
+
 /// <summary>Typed body for the 409 returned when the caller has no linked iRacing customer id.</summary>
 public record NotLinkedDto(string Code, string Message);
 

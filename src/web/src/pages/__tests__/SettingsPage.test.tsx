@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SettingsPage from '../SettingsPage';
@@ -25,7 +25,12 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 vi.mock('../../services/api', () => ({
-  api: { updateProfile: vi.fn(), updateRole: vi.fn(), updateTheme: vi.fn() },
+  api: {
+    updateProfile: vi.fn(),
+    updateRole: vi.fn(),
+    updateTheme: vi.fn(),
+    changePassword: vi.fn(),
+  },
 }));
 
 vi.mock('../../context/ThemeContext', () => ({
@@ -307,22 +312,56 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(screen.getByText('Not allowed')).toBeInTheDocument());
   });
 
-  it('submits the security form and clears all password fields', async () => {
+  it('calls api.changePassword and clears all fields on success', async () => {
+    vi.mocked(api.changePassword).mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderPage();
     const currentInput = screen.getByLabelText(/current password/i);
     const newInput = screen.getByLabelText(/new password/i);
     const confirmInput = screen.getByLabelText(/confirm password/i);
-    await user.type(currentInput, 'oldpass');
-    await user.type(newInput, 'newpass');
-    await user.type(confirmInput, 'newpass');
-    expect(currentInput).toHaveValue('oldpass');
-    // The submit button is permanently disabled, so use fireEvent.submit on the form element
-    const securityForm = currentInput.closest('form')!;
-    fireEvent.submit(securityForm);
-    expect(currentInput).toHaveValue('');
-    expect(newInput).toHaveValue('');
-    expect(confirmInput).toHaveValue('');
+    await user.type(currentInput, 'oldpass1');
+    await user.type(newInput, 'newpass2');
+    await user.type(confirmInput, 'newpass2');
+    await user.click(screen.getByRole('button', { name: /update password/i }));
+    await waitFor(() => {
+      expect(vi.mocked(api.changePassword)).toHaveBeenCalledWith('oldpass1', 'newpass2');
+      expect(currentInput).toHaveValue('');
+      expect(newInput).toHaveValue('');
+      expect(confirmInput).toHaveValue('');
+    });
+  });
+
+  it('shows a mismatch error without calling api.changePassword when passwords differ', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText(/current password/i), 'oldpass1');
+    await user.type(screen.getByLabelText(/new password/i), 'newpass2');
+    await user.type(screen.getByLabelText(/confirm password/i), 'different');
+    await user.click(screen.getByRole('button', { name: /update password/i }));
+    await waitFor(() => expect(screen.getByText(/do not match/i)).toBeInTheDocument());
+    expect(vi.mocked(api.changePassword)).not.toHaveBeenCalled();
+  });
+
+  it('shows a server error when api.changePassword fails', async () => {
+    vi.mocked(api.changePassword).mockRejectedValue(new Error('Incorrect password.'));
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText(/current password/i), 'wrongpass');
+    await user.type(screen.getByLabelText(/new password/i), 'newpass2');
+    await user.type(screen.getByLabelText(/confirm password/i), 'newpass2');
+    await user.click(screen.getByRole('button', { name: /update password/i }));
+    await waitFor(() => expect(screen.getByText('Incorrect password.')).toBeInTheDocument());
+  });
+
+  it('shows fallback message when changePassword rejects with a non-Error value', async () => {
+    vi.mocked(api.changePassword).mockRejectedValue('oops');
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByLabelText(/current password/i), 'oldpass1');
+    await user.type(screen.getByLabelText(/new password/i), 'newpass2');
+    await user.type(screen.getByLabelText(/confirm password/i), 'newpass2');
+    await user.click(screen.getByRole('button', { name: /update password/i }));
+    await waitFor(() => expect(screen.getByText('Failed to change password.')).toBeInTheDocument());
   });
 
   it('clicking Disconnect calls logout', async () => {

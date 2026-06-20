@@ -199,6 +199,79 @@ describe('api', () => {
     });
   });
 
+  // ── changePassword ──────────────────────────────────────────────────────────
+
+  describe('changePassword', () => {
+    it('calls POST /api/auth/change-password with current and new password', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await expect(api.changePassword('OldPass1', 'NewPass2')).resolves.toBeUndefined();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/auth/change-password',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ currentPassword: 'OldPass1', newPassword: 'NewPass2' }),
+        })
+      );
+    });
+
+    it('throws with the server error body on failure', async () => {
+      mockFetchError({ status: 400, body: 'Incorrect password.' });
+      await expect(api.changePassword('bad', 'NewPass2')).rejects.toThrow('Incorrect password.');
+    });
+  });
+
+  // ── forgotPassword ──────────────────────────────────────────────────────────
+
+  describe('forgotPassword', () => {
+    it('calls POST /api/auth/forgot-password with email and returns the acknowledgement', async () => {
+      mockFetchOk({ message: 'If an account exists, a link was sent.', resetToken: 'tok-123' });
+      const result = await api.forgotPassword('driver@example.com');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/auth/forgot-password',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'driver@example.com' }),
+        })
+      );
+      expect(result.resetToken).toBe('tok-123');
+    });
+  });
+
+  // ── resetPassword ───────────────────────────────────────────────────────────
+
+  describe('resetPassword', () => {
+    it('calls POST /api/auth/reset-password with email, token, and new password', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await expect(api.resetPassword('a@b.com', 'tok', 'NewPass99')).resolves.toBeUndefined();
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/auth/reset-password',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'a@b.com', token: 'tok', newPassword: 'NewPass99' }),
+        })
+      );
+    });
+
+    it('throws with the server error body on an invalid token', async () => {
+      mockFetchError({ status: 400, body: 'Invalid token.' });
+      await expect(api.resetPassword('a@b.com', 'bad', 'NewPass99')).rejects.toThrow(
+        'Invalid token.'
+      );
+    });
+  });
+
   // ── postAuthCallback ────────────────────────────────────────────────────────
 
   describe('postAuthCallback', () => {

@@ -19,6 +19,9 @@ public class AuthServiceTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        // Password reset tokens are produced by DataProtectorTokenProvider, which needs
+        // data-protection services + the default token providers registered.
+        services.AddDataProtection();
         services.AddDbContext<AppDbContext>(o =>
             o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         services.AddIdentityCore<ApplicationUser>(o =>
@@ -33,7 +36,8 @@ public class AuthServiceTests
             o.Lockout.DefaultLockoutTimeSpan  = TimeSpan.FromMinutes(15);
         })
         .AddRoles<IdentityRole<Guid>>()
-        .AddEntityFrameworkStores<AppDbContext>();
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
         return services.BuildServiceProvider();
     }
 
@@ -703,5 +707,218 @@ public class AuthServiceTests
         var removed = await svc.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30), TestContext.Current.CancellationToken);
 
         Assert.Equal(0, removed);
+    }
+
+    // ── ChangePasswordAsync (T4) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task ChangePasswordAsync_CorrectCurrentPassword_SwapsTheLoginPassword()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("chg@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        await svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "NewPass2"), TestContext.Current.CancellationToken);
+
+        Assert.NotNull((await svc.LoginAsync(new LoginRequest("chg@example.com", "NewPass2"), TestContext.Current.CancellationToken)).Auth);
+        Assert.Null((await svc.LoginAsync(new LoginRequest("chg@example.com", "OldPass1"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WrongCurrentPassword_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("chg2@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("WrongOld", "NewPass2"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WeakNewPassword_SurfacesIdentityErrorDescription()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var reg = await svc.RegisterAsync(new RegisterRequest("chg3@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+
+        // "ab" is shorter than the configured RequiredLength of 4.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "ab"), TestContext.Current.CancellationToken));
+
+        Assert.Contains("least", ex.Message);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_UnknownUser_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ChangePasswordAsync(Guid.NewGuid(), new ChangePasswordRequest("OldPass1", "NewPass2"), TestContext.Current.CancellationToken));
+    }
+
+    // ── Password reset (T4) ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GeneratePasswordResetTokenAsync_ExistingUser_ReturnsNonEmptyToken()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("forgot@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var token = await svc.GeneratePasswordResetTokenAsync("forgot@example.com", TestContext.Current.CancellationToken);
+
+        Assert.False(string.IsNullOrEmpty(token));
+    }
+
+    [Fact]
+    public async Task GeneratePasswordResetTokenAsync_UnknownEmail_ReturnsNull()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var token = await svc.GeneratePasswordResetTokenAsync("nobody@example.com", TestContext.Current.CancellationToken);
+
+        Assert.Null(token);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ValidToken_SwapsTheLoginPassword()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var token = await svc.GeneratePasswordResetTokenAsync("reset@example.com", TestContext.Current.CancellationToken);
+
+        await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
+
+        Assert.NotNull((await svc.LoginAsync(new LoginRequest("reset@example.com", "NewPass99"), TestContext.Current.CancellationToken)).Auth);
+        Assert.Null((await svc.LoginAsync(new LoginRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_InvalidToken_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("badtoken@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ResetPasswordAsync(new ResetPasswordRequest("badtoken@example.com", "not-a-real-token", "NewPass99"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_UnknownEmail_ThrowsInvalidOperationException()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ResetPasswordAsync(new ResetPasswordRequest("ghost@example.com", "tok", "NewPass99"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ValidToken_RevokesActiveRefreshTokens()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var refreshToken = login.Auth!.RefreshToken!;
+
+        var token = await svc.GeneratePasswordResetTokenAsync("revoke@example.com", TestContext.Current.CancellationToken);
+        await svc.ResetPasswordAsync(new ResetPasswordRequest("revoke@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
+
+        // Every refresh token issued before the reset is now revoked, so it can't be exchanged.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
+    }
+
+    // ── Active refresh-token cap (T5) ─────────────────────────────────────────
+
+    private static int CountActiveTokens(AppDbContext db) =>
+        db.RefreshTokens.Count(t => t.RevokedAt == null && t.ExpiresAt > DateTimeOffset.UtcNow);
+
+    [Fact]
+    public async Task IssuingRefreshToken_BeyondCap_KeepsActiveCountAtTheCap()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        // Register issues one token; six more logins is seven issuances total,
+        // two past the cap of five.
+        await svc.RegisterAsync(new RegisterRequest("capped@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        for (var i = 0; i < 6; i++)
+            await svc.LoginAsync(new LoginRequest("capped@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // Active count is clamped to the cap; the surplus rows are revoked, not deleted.
+        Assert.Equal(5, CountActiveTokens(db));
+        Assert.Equal(7, db.RefreshTokens.Count());
+    }
+
+    [Fact]
+    public async Task IssuingRefreshToken_UnderCap_RevokesNothing()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        // One register + three logins = four active tokens, one under the cap.
+        await svc.RegisterAsync(new RegisterRequest("under@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        for (var i = 0; i < 3; i++)
+            await svc.LoginAsync(new LoginRequest("under@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, CountActiveTokens(db));
+        Assert.All(db.RefreshTokens, t => Assert.Null(t.RevokedAt));
+    }
+
+    [Fact]
+    public async Task IssuingRefreshToken_BeyondCap_RevokesTheOldestActiveToken()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        // Get to exactly the cap (five active tokens).
+        await svc.RegisterAsync(new RegisterRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        for (var i = 0; i < 4; i++)
+            await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // Give the five rows strictly increasing creation times so "oldest" is unambiguous.
+        var rows = db.RefreshTokens.OrderBy(t => t.CreatedAt).ToList();
+        Assert.Equal(5, rows.Count);
+        var baseTime = DateTimeOffset.UtcNow.AddMinutes(-10);
+        for (var i = 0; i < rows.Count; i++)
+            rows[i].CreatedAt = baseTime.AddSeconds(i);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var oldestId = rows[0].Id;
+
+        // The sixth issuance trips the cap and must revoke the oldest active token.
+        await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        var oldest = db.RefreshTokens.Single(t => t.Id == oldestId);
+        Assert.NotNull(oldest.RevokedAt);
+        Assert.Equal(5, CountActiveTokens(db));
     }
 }

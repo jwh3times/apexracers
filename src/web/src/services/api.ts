@@ -7,6 +7,13 @@ export interface AuthResult {
   refreshToken?: string;
 }
 
+export interface ForgotPasswordResult {
+  message: string;
+  // Only populated in the API's Development environment so the reset flow is testable
+  // without an email provider; null in every other environment.
+  resetToken: string | null;
+}
+
 export interface Series {
   id: number;
   name: string;
@@ -744,6 +751,27 @@ export const api = {
   postAuthCallback(code: string, state: string): Promise<unknown> {
     const qs = new URLSearchParams({ code, state });
     return request(`/api/auth/callback?${qs}`, { method: 'POST' });
+  },
+
+  /** POST /api/auth/change-password — change password for the authenticated user */
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return request('/api/auth/change-password', {
+      method: 'POST',
+      json: { currentPassword, newPassword },
+    });
+  },
+
+  /** POST /api/auth/forgot-password — request a password reset (dev echoes the token) */
+  forgotPassword(email: string): Promise<ForgotPasswordResult> {
+    return request('/api/auth/forgot-password', { method: 'POST', json: { email } });
+  },
+
+  /** POST /api/auth/reset-password — complete a password reset with a token */
+  resetPassword(email: string, token: string, newPassword: string): Promise<void> {
+    return request('/api/auth/reset-password', {
+      method: 'POST',
+      json: { email, token, newPassword },
+    });
   },
 
   /** POST /api/telemetry/upload — upload an iRacing .ibt file, returns extracted lap summary */
