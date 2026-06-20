@@ -87,6 +87,11 @@ export interface WeekDetail {
   cars: WeekCar[];
 }
 
+export interface WeekCarPercentile {
+  carId: number;
+  percentileRank: number; // higher is better (e.g. 92 → faster than 92% of the field)
+}
+
 export interface DistributionBin {
   minSeconds: number;
   maxSeconds: number;
@@ -760,6 +765,12 @@ export const api = {
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars — cars with aggregate lap stats */
   getCarsForWeek(seriesId: number, weekNumber: number): Promise<WeekCar[]> {
     return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars`);
+  },
+
+  /** GET /api/series/:seriesId/weeks/:weekNumber/my-percentiles — the caller's per-car percentile
+   * for the week (only cars they've raced). Authorize; throws IRacingNotLinkedError when unlinked. */
+  getMyWeekPercentiles(seriesId: number, weekNumber: number): Promise<WeekCarPercentile[]> {
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles`);
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile?customerId= */

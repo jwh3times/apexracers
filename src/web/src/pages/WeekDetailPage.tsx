@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, type WeekDetail, type WeekCar } from '../services/api';
 import { formatLapTime } from '../utils/lapTime';
+import { useAuth } from '../context/AuthContext';
+import PercentileBadge from '../components/PercentileBadge';
 
 const scanTexture: React.CSSProperties = {
   backgroundImage:
@@ -62,10 +64,13 @@ function sortCars(cars: WeekCar[], mode: SortMode): WeekCar[] {
 export default function WeekDetailPage() {
   const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [detail, setDetail] = useState<WeekDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortMode>('best');
+  // carId → the caller's percentile this week (higher = better). Empty unless signed-in + linked.
+  const [myPercentiles, setMyPercentiles] = useState<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (!seriesId || !weekNumber) return;
@@ -77,6 +82,24 @@ export default function WeekDetailPage() {
       )
       .finally(() => setLoading(false));
   }, [seriesId, weekNumber]);
+
+  // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the
+  // column blank rather than surfacing an error on this otherwise-public page.
+  useEffect(() => {
+    if (!seriesId || !weekNumber || !user) return;
+    let active = true;
+    api
+      .getMyWeekPercentiles(Number(seriesId), Number(weekNumber))
+      .then(rows => {
+        if (active) setMyPercentiles(new Map(rows.map(r => [r.carId, r.percentileRank])));
+      })
+      .catch(() => {
+        if (active) setMyPercentiles(new Map());
+      });
+    return () => {
+      active = false;
+    };
+  }, [seriesId, weekNumber, user]);
 
   if (loading) {
     return (
@@ -100,6 +123,10 @@ export default function WeekDetailPage() {
   const sorted = sortCars(cars, sort);
   const fieldBest = sorted.find(c => c.fastestLapSeconds != null);
   const totalEntries = cars.reduce((sum, c) => sum + c.entryCount, 0);
+  // Show the "Your pct" column only to signed-in drivers. percentileRank is higher-is-better;
+  // PercentileBadge wants the TOP value (lower-is-better), matching utils/percentile.topPercentLabel.
+  const showMyPct = !!user;
+  const topPct = (rank: number) => Math.max(1, Math.ceil(100 - rank));
 
   const trackSubtitle = detail
     ? [
@@ -303,6 +330,11 @@ export default function WeekDetailPage() {
                   <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
                     Laps
                   </th>
+                  {showMyPct && (
+                    <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
+                      Your pct
+                    </th>
+                  )}
                   <th className="th-p border-b border-line-2 w-8" />
                 </tr>
               </thead>
@@ -362,6 +394,19 @@ export default function WeekDetailPage() {
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
                         {car.entryCount.toLocaleString()}
                       </td>
+                      {/* Your pct (signed-in drivers) */}
+                      {showMyPct && (
+                        <td className="td-p border-b border-line-2 text-right">
+                          {myPercentiles.has(car.carId) ? (
+                            <PercentileBadge
+                              pct={topPct(myPercentiles.get(car.carId)!)}
+                              size="chip"
+                            />
+                          ) : (
+                            <span className="text-on-surface-variant/40">—</span>
+                          )}
+                        </td>
+                      )}
                       {/* Chevron */}
                       <td className="td-p border-b border-line-2 text-on-surface-variant/60">
                         <span className="material-symbols-outlined text-[16px]" aria-hidden="true">

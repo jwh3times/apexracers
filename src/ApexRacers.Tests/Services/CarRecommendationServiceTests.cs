@@ -412,4 +412,38 @@ public class CarRecommendationServiceTests
         Assert.Single(rows);                  // updated in place, not duplicated
         Assert.Equal(100.0, rows[0].PercentileRank);
     }
+
+    [Fact]
+    public async Task GetMyPercentilesAsync_ReturnsOnlyCarsTheCallerRaced()
+    {
+        await using var db = DbContextFactory.Create();
+        var (_, car1, car2, carClass, subsession) = SeedWeekWithTwoCars(db);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // car1: caller raced it (60 s) plus two others → actual path (BestLapSeconds set).
+        AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        // car2: only other drivers raced it (distinct cust_ids — the composite key is
+        // (SubsessionId, CustId)); the caller has a cached percentile from another week, so it
+        // surfaces as a projected-only recommendation (BestLapSeconds null) → excluded.
+        AddResult(db, subsession, car2, carClass, custId: 300, lapSeconds: 75);
+        AddResult(db, subsession, car2, carClass, custId: 400, lapSeconds: 85);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId, CarId = car2.Id, SeriesId = 1, WeekId = Guid.NewGuid(),
+            PercentileRank = 50.0, SampleSize = 10, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7),
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await CreateService(db).GetMyPercentilesAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(result); // only car1 (raced); car2 is projected-only → excluded
+        Assert.Equal(car1.Id, entry.CarId);
+        Assert.Equal(100.0, entry.PercentileRank); // 60 s beat both other drivers (2/2)
+    }
 }

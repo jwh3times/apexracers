@@ -142,7 +142,7 @@ Controllers contain no logic beyond binding HTTP inputs and returning `Ok(result
 Do not create generic CRUD controllers per entity. Each controller represents one user-facing capability:
 
 - `SeriesController` — active weekly series list
-- `WeekController` — cars and aggregate lap stats for a series week
+- `WeekController` — cars and aggregate lap stats for a series week (**public**); plus `GET /api/series/{id}/weeks/{n}/my-percentiles` (Authorize) returning the caller's own per-car percentile for the week — only cars they've raced — for the Week Detail "Your pct" column (typed `409` when unlinked; mirrors `SubsessionController`'s public-detail + Authorize-action split)
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
 - `StrategyController` — a series week's strategy briefing: track/pit context, weather risk, and per-car BoP with its week-over-week shift plus fuel/tire notes (`GET /api/series/{id}/weeks/{n}/strategy`, **public**; personalizes the "optimal for you" overlay — per-car percentile, projected lap, optimal rank — when a token resolves to a linked cust_id)
@@ -286,7 +286,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/series`                                                    | `SeriesPage` — browse all series                                                                                                                                                               |
 | `/series/:seriesId/schedule`                                 | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public)                                                                                                                 |
 | `/series/:seriesId/standings`                                | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public)                                              |
-| `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week                                                                                                                                               |
+| `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week; signed-in drivers also get a "Your pct" column (`getMyWeekPercentiles`)                                                                       |
 | `/series/:seriesId/weeks/:weekNumber/strategy`               | `StrategyPage` — per-week strategy briefing: weather-risk banner, track/pit context, and per-car BoP/fuel/tire cards with an "optimal for you" overlay (public)                                |
 | `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown                                                                                                                                            |
 | `/analytics`                                                 | `AnalyticsPage` — per-car percentile history with sparklines                                                                                                                                   |
@@ -391,7 +391,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 }
 ```
 
-- `PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
+- `PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg' | 'chip'`. The `chip` size renders a compact inline pill (not the ring) for dense contexts like table cells (e.g. the Week Detail "Your pct" column).
 - `LapTraceChart.tsx` — SVG per-lap pace trace (line + mean ± 1σ band + red incident markers). Accepts `laps: Lap[]`, `meanSeconds`, `stdDevSeconds`, optional `h`. Returns `null` when fewer than two timed laps. Used by the "Your Race Pace" card on `RaceDetailPage`.
 - `IRatingCompareChart.tsx` — SVG overlay of two drivers' iRating trajectories on a shared scale (cyan "you" line + amber rival line). Accepts `you: number[]`, `rival: number[]`, optional `h`. Uses a fixed viewBox stretched to width (scales fluidly without measuring layout); returns `null` when neither series has ≥2 points. Used by the iRating panel on `ComparePage`.
 
