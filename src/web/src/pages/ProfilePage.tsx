@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   api,
   IRacingNotLinkedError,
+  type Achievements,
+  type Award,
   type DriverProfile,
   type PersonalLap,
   type Series,
@@ -198,6 +200,89 @@ function DriverStats({ state }: { state: StatsState }) {
   );
 }
 
+type AchState = { status: 'loading' } | { status: 'ok'; data: Achievements } | { status: 'hidden' };
+
+const TROPHY_PREVIEW = 18;
+
+// iRacing icon colors come as bare 6-digit hex; prefix '#' so CSS accepts them.
+function normalizeColor(color: string | null): string | undefined {
+  if (!color) return undefined;
+  return /^[0-9a-fA-F]{6}$/.test(color) ? `#${color}` : color;
+}
+
+function AwardTile({ award }: { award: Award }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-1.5 w-[84px] text-center"
+      title={award.description ? `${award.name} — ${award.description}` : award.name}
+    >
+      <div className="relative">
+        {award.iconUrl ? (
+          <img src={award.iconUrl} alt="" className="w-12 h-12 object-contain" loading="lazy" />
+        ) : (
+          <div
+            className="w-12 h-12 card-r flex items-center justify-center text-section-head text-on-surface"
+            style={{ backgroundColor: normalizeColor(award.iconBackgroundColor) }}
+          >
+            {award.name.charAt(0) || '?'}
+          </div>
+        )}
+        {award.count > 1 && (
+          <span className="absolute -top-1 -right-1 text-[10px] font-mono px-1 rounded bg-primary-container text-on-primary-container">
+            ×{award.count}
+          </span>
+        )}
+      </div>
+      <span className="text-[11px] leading-tight text-on-surface-variant line-clamp-2">
+        {award.name}
+      </span>
+    </div>
+  );
+}
+
+function TrophyCase({ state }: { state: AchState }) {
+  const [showAll, setShowAll] = useState(false);
+
+  if (state.status === 'loading') {
+    return (
+      <p className="text-body-fluid text-on-surface-variant animate-pulse">
+        Loading trophy case&hellip;
+      </p>
+    );
+  }
+  // Hidden when unlinked/errored/empty — the driver-stats section already prompts linking.
+  if (state.status !== 'ok' || state.data.awards.length === 0) return null;
+
+  const { awards, awardCount } = state.data;
+  const shown = showAll ? awards : awards.slice(0, TROPHY_PREVIEW);
+  return (
+    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+      <div
+        className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
+        style={scanTexture}
+      >
+        <h3 className="text-section-head text-on-surface">Trophy Case</h3>
+        <span className="text-small-fluid text-on-surface-variant">{awardCount} awards</span>
+      </div>
+      <div className="card-p">
+        <div className="flex flex-wrap gap-fluid">
+          {shown.map(a => (
+            <AwardTile key={a.awardId} award={a} />
+          ))}
+        </div>
+        {awards.length > TROPHY_PREVIEW && (
+          <button
+            onClick={() => setShowAll(v => !v)}
+            className="btn-fluid-sm border border-line-2 text-on-surface-variant hover:text-on-surface hover:border-primary-container/40 transition-colors mt-fluid"
+          >
+            {showAll ? 'Show fewer' : `Show all ${awards.length}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
@@ -267,6 +352,7 @@ export default function ProfilePage() {
 
   const linked = !!user?.iRacingCustomerId;
   const [statsState, setStatsState] = useState<StatsState>({ status: 'loading' });
+  const [achState, setAchState] = useState<AchState>({ status: 'loading' });
 
   useEffect(() => {
     api
@@ -295,6 +381,22 @@ export default function ProfilePage() {
         setStatsState(
           err instanceof IRacingNotLinkedError ? { status: 'not-linked' } : { status: 'error' }
         );
+      });
+    return () => {
+      active = false;
+    };
+  }, [linked]);
+
+  useEffect(() => {
+    if (!linked) return;
+    let active = true;
+    api
+      .getAchievements()
+      .then(data => {
+        if (active) setAchState({ status: 'ok', data });
+      })
+      .catch(() => {
+        if (active) setAchState({ status: 'hidden' });
       });
     return () => {
       active = false;
@@ -383,6 +485,9 @@ export default function ProfilePage() {
 
       {/* Driver stats — career, licenses, favorites */}
       <DriverStats state={linked ? statsState : { status: 'not-linked' }} />
+
+      {/* Trophy case — earned awards/achievements */}
+      <TrophyCase state={linked ? achState : { status: 'hidden' }} />
 
       {/* Active series */}
       <section>

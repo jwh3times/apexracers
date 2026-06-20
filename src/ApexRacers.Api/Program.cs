@@ -127,6 +127,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<CachedIRacingClient>();
 builder.Services.AddScoped<MemberContext>();
 builder.Services.AddScoped<MemberStatsService>();
+builder.Services.AddScoped<AchievementsService>();
 builder.Services.AddScoped<RaceHistoryService>();
 builder.Services.AddScoped<SubsessionDetailService>();
 builder.Services.AddScoped<LapDataService>();

@@ -153,6 +153,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `UserAnalyticsController` — per-user analytics summary, optionally filtered by series (`/api/users/me/analytics`)
 - `ProgressionController` — per-category iRating / SR / CPI / TT with iRating history for the authenticated user (`/api/users/me/progression`); typed `409` when iRacing is unlinked
 - `ProfileStatsController` — enriched driver profile (identity, license badges, lifetime career stats, recap favorites) for the authenticated user (`/api/users/me/profile-stats`); typed `409` when iRacing is unlinked
+- `AchievementsController` — the authenticated driver's awards trophy case (`/api/users/me/achievements`, Authorize); typed `409` when iRacing is unlinked
 - `RaceHistoryController` — the authenticated driver's recent official races (`/api/users/me/races`); typed `409` when iRacing is unlinked
 - `SubsessionController` — full classified field + session context for one ingested subsession (`GET /api/subsessions/{id}`, **public** — official race data; `404` on unknown id); also a driver's per-lap pace trace (`GET /api/subsessions/{id}/laps?customerId=`, Authorize; defaults to the caller's cust_id; typed `409` when unlinked)
 - `ScheduleController` — a series' active-season schedule with weather forecast, per-car BoP, and the caller's PB overlay (`GET /api/series/{id}/schedule`, **public**; personalizes the PB overlay when a token is present)
@@ -176,6 +177,8 @@ Services in `src/ApexRacers.Api/Services/`:
 - `StrategyAnalysis` — pure strategy heuristics (`WeatherRisk`/`FuelNote`/`TireNote`/`BopShift`); unit-tested directly (mirrors `LapAnalysis`/`SharedRaceAnalysis`)
 - `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
 - `MemberStatsService` — on-demand iRacing member stats via `CachedIRacingClient` (6 h TTL). `GetProgressionAsync` returns one card per license category (iRating/SR/CPI/TT + iRating history); `GetDriverProfileAsync` returns the enriched profile (identity, license badges, career stats, this-year summary, recap favorites); `GetComparisonSideAsync` returns one side of a head-to-head (identity + license badges + career + per-category iRating history — lighter than the full profile, no summary/recap). Reuses the shared `profile:{custId}`/`career:{custId}`/`chart:…` cache entries via the pure `MapPoints`/`MapLicenses`/`MapCareer` helpers
+- `AchievementsService` — the authenticated driver's awards trophy case via `CachedIRacingClient` (6 h TTL; SDK auto-resolves the signed awards `data_url` into a typed array). Caches the mapped DTOs (newest first) via the pure `AchievementsMapper`. Participation credits are intentionally **not** surfaced: `GetMemberParticipationCreditsAsync` has no cust_id param (service-account-scoped, like `GetMemberDivisionAsync`), so it can't show the end user's credits
+- `AchievementsMapper` — pure `MemberAward` → `AwardDto` mapping (description fallback, large/small icon preference, date/color normalization); unit-tested directly (mirrors `CarCatalogMapper`)
 - `RaceHistoryService` — the authenticated driver's recent official races via `CachedIRacingClient` (10 min TTL); maps iRating/SR deltas and resolves car names from the local `Car` catalog
 - `SubsessionDetailService` — reads one ingested subsession (header context + classified field) from the DB; deserializes the stored weather block and normalizes temp/wind units (pure `TempToCelsius`/`WindToKph`/`MapWeather` helpers)
 - `LapDataService` — a driver's per-lap pace for one race via `CachedIRacingClient` (24 h TTL; SDK auto-fetches the chunked lap rows); maps laps and computes pace stats via the pure `LapAnalysis` helper (mean/σ/fastest/degradation slope over green laps)
@@ -298,7 +301,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/recommendations`                                           | `RecommendationsPage` — ranked car recommendations for current week                                                                                                                            |
 | `/my-laps`                                                   | `MyLapsPage` — personal best per track+car                                                                                                                                                     |
 | `/telemetry`                                                 | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries                                                                                                                            |
-| `/profile`                                                   | `ProfilePage` — user profile with series/lap stats                                                                                                                                             |
+| `/profile`                                                   | `ProfilePage` — user profile with series/lap stats, enriched driver stats, and an awards trophy case (`getAchievements`)                                                                        |
 | `/settings`                                                  | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout                                                                                                                     |
 | `/admin`                                                     | `AdminPage` — user role management and feature flag CRUD (AdminGuard)                                                                                                                          |
 
@@ -455,6 +458,7 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `CarCatalogServiceTests` / `TrackCatalogServiceTests` (DB-backed catalog list/detail + PersonalLap overlay)
 - `CatalogIngestTests` (pure SDK→entity catalog mapping, in `Tests/Ingestion`)
 - `ExternalDataCacheCleanupServiceTests` (expired-row purge)
+- `AchievementsMapperTests` (pure award → DTO mapping) / `AchievementsServiceTests` (trophy-case assembly + cache)
 
 ---
 

@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProfilePage from '../ProfilePage';
-import { api, IRacingNotLinkedError, type DriverProfile } from '../../services/api';
+import { api, IRacingNotLinkedError, type Award, type DriverProfile } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
 let mockUser: User | null = {
@@ -31,6 +31,7 @@ vi.mock('../../services/api', () => {
       getMyLaps: vi.fn(),
       getSeries: vi.fn(),
       getProfileStats: vi.fn(),
+      getAchievements: vi.fn(),
     },
     IRacingNotLinkedError,
   };
@@ -39,6 +40,7 @@ vi.mock('../../services/api', () => {
 const mockGetMyLaps = vi.mocked(api.getMyLaps);
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetProfileStats = vi.mocked(api.getProfileStats);
+const mockGetAchievements = vi.mocked(api.getAchievements);
 
 const minimalProfile: DriverProfile = {
   customerId: 100042,
@@ -168,6 +170,7 @@ describe('ProfilePage', () => {
     mockGetMyLaps.mockResolvedValue([]);
     mockGetSeries.mockResolvedValue([]);
     mockGetProfileStats.mockResolvedValue(minimalProfile);
+    mockGetAchievements.mockResolvedValue({ customerId: 100042, awardCount: 0, awards: [] });
   });
 
   it('renders the driver display name', async () => {
@@ -319,5 +322,73 @@ describe('ProfilePage', () => {
       expect(screen.queryByText(/loading driver stats/i)).not.toBeInTheDocument()
     );
     expect(screen.queryByText('Licenses')).not.toBeInTheDocument();
+  });
+
+  // ── Trophy case (3.4) ──────────────────────────────────────────────────────
+
+  const award = (id: number, name: string, count = 1): Award => ({
+    awardId: id,
+    name,
+    description: `${name} description`,
+    groupName: 'Racing',
+    count,
+    awardDate: '2026-05-01T00:00:00Z',
+    iconUrl: `https://img/${id}.png`,
+    iconBackgroundColor: '112233',
+    progress: 1,
+    threshold: 1,
+  });
+
+  it('renders the trophy case with award count and a multi-earn badge', async () => {
+    mockGetAchievements.mockResolvedValue({
+      customerId: 100042,
+      awardCount: 2,
+      awards: [award(1, 'Hat Trick', 3), award(2, 'Clean Race')],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Trophy Case')).toBeInTheDocument());
+    expect(screen.getByText('2 awards')).toBeInTheDocument();
+    expect(screen.getByText('Hat Trick')).toBeInTheDocument();
+    expect(screen.getByText('×3')).toBeInTheDocument(); // earned 3 times
+  });
+
+  it('toggles show-all when there are more awards than the preview limit', async () => {
+    const many = Array.from({ length: 20 }, (_, i) => award(i + 1, `Award ${i + 1}`));
+    mockGetAchievements.mockResolvedValue({ customerId: 100042, awardCount: 20, awards: many });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Award 1')).toBeInTheDocument());
+    // Only the first 18 are shown initially.
+    expect(screen.queryByText('Award 19')).not.toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: /show all 20/i });
+    fireEvent.click(toggle);
+    expect(screen.getByText('Award 19')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /show fewer/i }));
+    expect(screen.queryByText('Award 19')).not.toBeInTheDocument();
+  });
+
+  it('renders a color-tile fallback when an award has no icon', async () => {
+    mockGetAchievements.mockResolvedValue({
+      customerId: 100042,
+      awardCount: 1,
+      awards: [{ ...award(1, 'Iconless'), iconUrl: null }],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Trophy Case')).toBeInTheDocument());
+    expect(screen.getByText('Iconless')).toBeInTheDocument();
+  });
+
+  it('hides the trophy case when the achievements fetch fails', async () => {
+    mockGetAchievements.mockRejectedValue(new Error('boom'));
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Active Series')).toBeInTheDocument());
+    expect(screen.queryByText('Trophy Case')).not.toBeInTheDocument();
+  });
+
+  it('does not fetch achievements when the user is not linked', async () => {
+    mockUser = { ...mockUser!, iRacingCustomerId: null };
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Active Series')).toBeInTheDocument());
+    expect(mockGetAchievements).not.toHaveBeenCalled();
+    expect(screen.queryByText('Trophy Case')).not.toBeInTheDocument();
   });
 });

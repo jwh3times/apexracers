@@ -566,3 +566,24 @@ public record WeekStrategyDto(
     WeatherRiskDto WeatherRisk,
     bool Personalized,
     IReadOnlyList<CarStrategyDto> Cars);
+
+// ── Achievements / trophy case (3.4) ─────────────────────────────────────────
+
+/// <summary>One iRacing award/achievement the driver has earned (a trophy-case tile).</summary>
+public record AwardDto(
+    int AwardId,
+    string Name,
+    string? Description,
+    string? GroupName,
+    int Count,
+    DateTimeOffset AwardDate,
+    string? IconUrl,
+    string? IconBackgroundColor,
+    int Progress,
+    int Threshold);
+
+/// <summary>The authenticated driver's trophy case (awards, newest first).</summary>
+public record AchievementsDto(
+    long CustomerId,
+    int AwardCount,
+    IReadOnlyList<AwardDto> Awards);

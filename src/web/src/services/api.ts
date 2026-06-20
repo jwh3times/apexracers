@@ -235,6 +235,25 @@ export interface DriverProfile {
   favoriteTrack: FavoriteTrack | null;
 }
 
+export interface Award {
+  awardId: number;
+  name: string;
+  description: string | null;
+  groupName: string | null;
+  count: number;
+  awardDate: string; // ISO 8601
+  iconUrl: string | null;
+  iconBackgroundColor: string | null;
+  progress: number;
+  threshold: number;
+}
+
+export interface Achievements {
+  customerId: number;
+  awardCount: number;
+  awards: Award[];
+}
+
 export interface RaceHistoryRow {
   subsessionId: number;
   startTime: string; // ISO 8601
@@ -845,6 +864,11 @@ export const api = {
   /** GET /api/users/me/profile-stats — career stats, license badges, recap favorites */
   getProfileStats(): Promise<DriverProfile> {
     return request('/api/users/me/profile-stats');
+  },
+
+  /** GET /api/users/me/achievements — the driver's awards trophy case (newest first) */
+  getAchievements(): Promise<Achievements> {
+    return request('/api/users/me/achievements');
   },
 
   /** GET /api/users/me/races — recent official race history (newest first) */
