@@ -3,14 +3,19 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DashboardPage from '../DashboardPage';
 import { api } from '../../services/api';
-import type { Series, PersonalLap } from '../../services/api';
+import type { Series, PersonalLap, DriverProfile, CarAnalytics } from '../../services/api';
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Jerry', token: 't', userId: 'u1', email: 'j@j.com' } }),
 }));
 
 vi.mock('../../services/api', () => ({
-  api: { getSeries: vi.fn(), getMyLaps: vi.fn() },
+  api: {
+    getSeries: vi.fn(),
+    getMyLaps: vi.fn(),
+    getProfileStats: vi.fn(),
+    getMyAnalytics: vi.fn(),
+  },
 }));
 
 function renderPage() {
@@ -43,10 +48,92 @@ const baseLap: PersonalLap = {
   lastRecordedAt: '2024-01-01T00:00:00Z',
 };
 
+const emptyProfile: DriverProfile = {
+  customerId: 1,
+  displayName: 'Jerry',
+  country: null,
+  countryCode: null,
+  memberSince: null,
+  licenses: [],
+  career: [],
+  thisYear: { officialSessions: 0, officialWins: 0, leagueSessions: 0, leagueWins: 0 },
+  favoriteCar: null,
+  favoriteTrack: null,
+};
+
+const fullProfile: DriverProfile = {
+  ...emptyProfile,
+  licenses: [
+    {
+      categoryId: 1,
+      categoryName: 'Oval',
+      groupName: 'Class B',
+      licenseLevel: 13,
+      safetyRating: 2.1,
+      iRating: 1800,
+      color: 'feec04',
+    },
+    {
+      categoryId: 2,
+      categoryName: 'Road',
+      groupName: 'Class A',
+      licenseLevel: 20,
+      safetyRating: 3.45,
+      iRating: 2500,
+      color: '0153db',
+    },
+  ],
+  career: [
+    {
+      categoryId: 1,
+      categoryName: 'Oval',
+      starts: 10,
+      wins: 1,
+      top5: 3,
+      poles: 0,
+      avgStartPosition: 8,
+      avgFinishPosition: 9.0,
+      laps: 100,
+      lapsLed: 5,
+      winPercentage: 10,
+      top5Percentage: 30,
+    },
+    {
+      categoryId: 2,
+      categoryName: 'Road',
+      starts: 50,
+      wins: 5,
+      top5: 20,
+      poles: 2,
+      avgStartPosition: 5,
+      avgFinishPosition: 6.7,
+      laps: 500,
+      lapsLed: 30,
+      winPercentage: 10,
+      top5Percentage: 40,
+    },
+  ],
+};
+
+const carAnalytics: CarAnalytics = {
+  carId: 1,
+  carName: 'Porsche 911',
+  seriesId: 10,
+  seriesName: 'GT3 Cup',
+  latestPercentileRank: 90,
+  bestPercentileRank: 96,
+  personalBestLapSeconds: 130.5,
+  medianLapSeconds: 131,
+  totalWeeks: 4,
+  percentileHistory: [],
+};
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.mocked(api.getSeries).mockResolvedValue([]);
     vi.mocked(api.getMyLaps).mockResolvedValue([]);
+    vi.mocked(api.getProfileStats).mockResolvedValue(emptyProfile);
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([]);
   });
 
   it('renders the Race Center heading', async () => {
@@ -57,8 +144,52 @@ describe('DashboardPage', () => {
   it('shows dash placeholders while loading', () => {
     vi.mocked(api.getSeries).mockReturnValue(new Promise(() => {}));
     vi.mocked(api.getMyLaps).mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.getProfileStats).mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.getMyAnalytics).mockReturnValue(new Promise(() => {}));
     renderPage();
-    expect(screen.getAllByText('—')).toHaveLength(2);
+    // 2 lap/series tiles + 4 stat tiles (best percentile, iRating, SR, avg finish)
+    expect(screen.getAllByText('—')).toHaveLength(6);
+  });
+
+  it('shows iRating, safety rating, and avg finish for the highest-iRating category', async () => {
+    vi.mocked(api.getProfileStats).mockResolvedValue(fullProfile);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2500')).toBeInTheDocument());
+    expect(screen.getByText('3.45')).toBeInTheDocument();
+    expect(screen.getByText('6.7')).toBeInTheDocument();
+  });
+
+  it('falls back to a dash for avg finish when career has no matching category', async () => {
+    vi.mocked(api.getProfileStats).mockResolvedValue({ ...fullProfile, career: [] });
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([carAnalytics]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2500')).toBeInTheDocument());
+    expect(screen.getAllByText('—')).toHaveLength(1);
+  });
+
+  it('shows dashes for driver stats when the profile is unavailable', async () => {
+    vi.mocked(api.getProfileStats).mockRejectedValue(new Error('not linked'));
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([carAnalytics]);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('—')).toHaveLength(3));
+  });
+
+  it('shows the best (highest) percentile across cars as a TOP X% label', async () => {
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([
+      { ...carAnalytics, bestPercentileRank: 80 },
+      { ...carAnalytics, carId: 2, bestPercentileRank: 96 },
+      { ...carAnalytics, carId: 3, bestPercentileRank: 50 },
+    ]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('TOP 4%')).toBeInTheDocument());
+  });
+
+  it('shows a dash for best percentile when there is no analytics data', async () => {
+    vi.mocked(api.getProfileStats).mockResolvedValue(fullProfile);
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2500')).toBeInTheDocument());
+    expect(screen.getAllByText('—')).toHaveLength(1);
   });
 
   it('shows the series count once loaded', async () => {
