@@ -22,7 +22,9 @@ public class ExternalDataCacheCleanupServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_DeletesOnlyRowsExpiredBeyondGrace()
     {
-        await using var db = DbContextFactory.Create();
+        // InMemory (not SQLite): PurgeExpiredAsync filters on a DateTimeOffset range
+        // (ExpiresAt < cutoff), which Npgsql translates in production but SQLite cannot.
+        await using var db = DbContextFactory.CreateInMemory();
         db.ExternalDataCaches.AddRange(
             Row("abandoned", Now - TimeSpan.FromDays(3)), // expired 3 days ago → purged
             Row("recently-expired", Now - TimeSpan.FromHours(1)), // expired but within grace → kept
@@ -40,7 +42,9 @@ public class ExternalDataCacheCleanupServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_NothingStale_ReturnsZeroAndKeepsRows()
     {
-        await using var db = DbContextFactory.Create();
+        // InMemory (not SQLite): PurgeExpiredAsync filters on a DateTimeOffset range
+        // (ExpiresAt < cutoff), which Npgsql translates in production but SQLite cannot.
+        await using var db = DbContextFactory.CreateInMemory();
         db.ExternalDataCaches.Add(Row("fresh", Now + TimeSpan.FromHours(1)));
         await db.SaveChangesAsync(Ct);
 

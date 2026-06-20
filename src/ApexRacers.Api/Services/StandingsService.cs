@@ -139,11 +139,14 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
             .Select(s => s.Name)
             .FirstOrDefaultAsync(ct) ?? string.Empty;
 
+        // Order by the CarClass column *before* projecting to the DTO. Ordering by a positional
+        // record's property after projection doesn't translate to SQL (the provider can't map the
+        // DTO member back to the column) — it fails on Npgsql in production, not just SQLite.
         var classes = await db.SeasonCarClasses
             .Where(sc => sc.SeasonId == season.Id)
-            .Join(db.CarClasses, sc => sc.CarClassId, cc => cc.Id,
-                (sc, cc) => new CarClassOptionDto(cc.Id, cc.Name))
-            .OrderBy(c => c.CarClassName)
+            .Join(db.CarClasses, sc => sc.CarClassId, cc => cc.Id, (sc, cc) => cc)
+            .OrderBy(cc => cc.Name)
+            .Select(cc => new CarClassOptionDto(cc.Id, cc.Name))
             .ToListAsync(ct);
 
         var selectedClassId = carClassId ?? (classes.Count > 0 ? classes[0].CarClassId : (int?)null);
