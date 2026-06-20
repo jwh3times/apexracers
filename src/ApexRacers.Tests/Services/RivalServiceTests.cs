@@ -90,7 +90,9 @@ public class RivalServiceTests
     [Fact]
     public async Task ListAsync_ReturnsOnlyCallersRivals_NewestFirst()
     {
-        await using var db = DbContextFactory.Create();
+        // InMemory (not SQLite): ListAsync orders by CreatedAt (a DateTimeOffset), which EF Core
+        // blocks on SQLite but Npgsql orders natively in production.
+        await using var db = DbContextFactory.CreateInMemory();
         var me = Guid.NewGuid();
         var other = Guid.NewGuid();
         db.Rivals.AddRange(

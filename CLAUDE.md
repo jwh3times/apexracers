@@ -440,6 +440,8 @@ reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:Te
 
 When adding new service logic, add corresponding xUnit tests in `src/ApexRacers.Tests/`. Controllers are excluded from coverage targets (they contain no logic). Services and domain helpers in `Core` are the primary targets.
 
+**Test database provider:** `Helpers/DbContextFactory.Create()` backs DB-bound tests with **in-memory SQLite** — a real relational provider, so queries must actually translate to SQL (unlike the old EF InMemory provider, which client-evaluated everything and masked untranslatable LINQ). The connection sets `Foreign Keys=False` so unit tests can use minimal partial fixtures without seeding the full FK graph (production integrity is enforced by the Postgres schema + the ingestion worker's ordered inserts). The narrow exception is `DbContextFactory.CreateInMemory()` — reserved for the few tests whose production query is valid on Npgsql but untranslatable by SQLite, namely **`DateTimeOffset` range filters / ordering** (`ExternalDataCacheCleanupService`, `RivalService.ListAsync`). When writing a query, **order/project by entity columns before constructing a DTO** — ordering by a positional-record DTO property doesn't translate on Npgsql or SQLite.
+
 Current test files in `src/ApexRacers.Tests/Services/`:
 
 - `SeriesServiceTests`
