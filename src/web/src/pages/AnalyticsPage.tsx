@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, type Series, type CarAnalytics } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatLapTime } from '../utils/lapTime';
+import { topPercentLabel } from '../utils/percentile';
 import Sparkline from '../components/Sparkline';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -15,10 +16,6 @@ function trendAxisLabels(history: { computedAt: string }[]): [string, string] {
   }
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return [fmt(start), fmt(end)];
-}
-
-function topPercentLabel(rank: number): string {
-  return `TOP ${Math.max(1, Math.ceil(100 - rank))}%`;
 }
 
 function isImproving(history: { percentileRank: number }[]): boolean {

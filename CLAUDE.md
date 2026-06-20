@@ -274,7 +274,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 | Path | Component |
 | --- | --- |
-| `/dashboard` | `DashboardPage` — recent laps, active series, welcome |
+| `/dashboard` | `DashboardPage` — recent laps, active series, welcome, driver-stat KPI tiles (best percentile via `getMyAnalytics`; iRating/SR/avg finish from the top-iRating category via `getProfileStats`) |
 | `/series` | `SeriesPage` — browse all series |
 | `/series/:seriesId/schedule` | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public) |
 | `/series/:seriesId/standings` | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public) |
@@ -389,6 +389,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 #### Shared utilities
 
 `src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Pages that import it correctly: `AnalyticsPage`, `ProfilePage`, `TelemetryPage`, `DashboardPage`, `MyLapsPage`, `RecommendationsPage`. Always import from the shared module.
+
+`src/web/src/utils/percentile.ts` exports `topPercentLabel(rank: number): string` — formats a percentile rank (**higher is better**, e.g. 96 → `TOP 4%`), floored at `TOP 1%`. Imported by `AnalyticsPage` and `DashboardPage`. Don't re-inline the `100 - rank` formula.
 
 ### EF Core design-time factory
 

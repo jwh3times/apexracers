@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type Series, type PersonalLap } from '../services/api';
+import {
+  api,
+  type Series,
+  type PersonalLap,
+  type DriverProfile,
+  type CarAnalytics,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatLapTime } from '../utils/lapTime';
+import { topPercentLabel } from '../utils/percentile';
 
 function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
@@ -23,8 +30,12 @@ export default function DashboardPage() {
 
   const [series, setSeries] = useState<Series[]>([]);
   const [laps, setLaps] = useState<PersonalLap[]>([]);
+  const [profile, setProfile] = useState<DriverProfile | null>(null);
+  const [analytics, setAnalytics] = useState<CarAnalytics[]>([]);
   const [seriesLoading, setSeriesLoading] = useState(true);
   const [lapsLoading, setLapsLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   useEffect(() => {
     api
@@ -38,6 +49,18 @@ export default function DashboardPage() {
       .then(setLaps)
       .catch(() => {})
       .finally(() => setLapsLoading(false));
+
+    api
+      .getProfileStats()
+      .then(setProfile)
+      .catch(() => {})
+      .finally(() => setProfileLoading(false));
+
+    api
+      .getMyAnalytics()
+      .then(setAnalytics)
+      .catch(() => {})
+      .finally(() => setAnalyticsLoading(false));
   }, []);
 
   const recentLaps = laps.slice(0, 5);
@@ -46,6 +69,19 @@ export default function DashboardPage() {
     laps.length > 0
       ? laps.reduce((best, l) => (l.bestLapSeconds < best.bestLapSeconds ? l : best))
       : null;
+
+  // Headline driver stats come from the category the driver has the highest iRating in.
+  const topLicense =
+    profile && profile.licenses.length > 0
+      ? profile.licenses.reduce((best, l) => (l.iRating > best.iRating ? l : best))
+      : null;
+  const topCareer = topLicense
+    ? (profile!.career.find(c => c.categoryId === topLicense.categoryId) ?? null)
+    : null;
+
+  // Best percentile = the strongest (highest) rank across all the driver's cars.
+  const bestPercentileRank =
+    analytics.length > 0 ? Math.max(...analytics.map(a => a.bestPercentileRank)) : null;
 
   return (
     <main className="page-wrap">
@@ -83,7 +119,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI row — 2 primary loading tiles + 1 derived tile (no — placeholder) */}
+      {/* KPI row — lap/series tiles + driver-stat tiles (iRating / SR / avg finish) */}
       <div className="grid-kpi mb-4">
         {/* Active series */}
         <div
@@ -128,6 +164,74 @@ export default function DashboardPage() {
           </div>
           <div className="text-kpi-value mt-2 text-on-surface">
             {new Set(laps.map(l => l.carId)).size}
+          </div>
+        </div>
+
+        {/* Best percentile — strongest rank across the driver's cars */}
+        <div
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              social_leaderboard
+            </span>
+            Best percentile
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {analyticsLoading
+              ? '—'
+              : bestPercentileRank != null
+                ? topPercentLabel(bestPercentileRank)
+                : '—'}
+          </div>
+        </div>
+
+        {/* iRating — headline (highest-iRating category) */}
+        <div
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              trending_up
+            </span>
+            iRating
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {profileLoading ? '—' : (topLicense?.iRating ?? '—')}
+          </div>
+        </div>
+
+        {/* Safety Rating — same category */}
+        <div
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              shield
+            </span>
+            Safety Rating
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {profileLoading ? '—' : topLicense ? topLicense.safetyRating.toFixed(2) : '—'}
+          </div>
+        </div>
+
+        {/* Average finish — same category career */}
+        <div
+          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
+              sports_score
+            </span>
+            Avg finish
+          </div>
+          <div className="text-kpi-value mt-2 text-on-surface">
+            {profileLoading ? '—' : topCareer ? topCareer.avgFinishPosition.toFixed(1) : '—'}
           </div>
         </div>
       </div>
