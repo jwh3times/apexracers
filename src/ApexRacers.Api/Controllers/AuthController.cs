@@ -11,7 +11,7 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(AuthService auth, IWebHostEnvironment env, ILogger<AuthController> logger) : ControllerBase
+public class AuthController(AuthService auth, IWebHostEnvironment env) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct) =>
@@ -97,12 +97,10 @@ public class AuthController(AuthService auth, IWebHostEnvironment env, ILogger<A
     {
         var token = await auth.GeneratePasswordResetTokenAsync(request.Email, ct);
 
-        // Email delivery is not wired up yet. In Development we echo the token (and log it)
-        // so the reset flow is testable end-to-end; in every other environment the token is
-        // withheld and the response is the same whether or not the account exists.
-        if (env.IsDevelopment() && token is not null)
-            logger.LogInformation("Password reset token for {Email}: {Token}", request.Email, token);
-
+        // Email delivery is not wired up yet. In Development the token is returned in the
+        // response body so the reset flow is testable end-to-end; in every other environment
+        // it is withheld and the response is identical whether or not the account exists.
+        // The token is deliberately never logged — it is a single-use credential.
         return Ok(new ForgotPasswordResponse(
             "If an account exists for that email, a password reset link has been sent.",
             env.IsDevelopment() ? token : null));
