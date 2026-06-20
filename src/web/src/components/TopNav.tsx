@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GUEST_NAV, AUTH_NAV } from './navItems';
+import NotificationsBell from './NotificationsBell';
 
 function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -178,6 +179,7 @@ export default function TopNav() {
         ))}
       </div>
       <div className="flex items-center gap-4 ml-auto">
+        {user && <NotificationsBell />}
         <ProfileDropdown />
       </div>
     </nav>
