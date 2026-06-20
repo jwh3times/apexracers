@@ -342,6 +342,50 @@ export interface SeasonSchedule {
   weeks: ScheduleWeek[];
 }
 
+export interface WeatherRisk {
+  level: string; // "Low" | "Medium" | "High"
+  precipChancePct: number;
+  fieldRainCapable: boolean;
+  note: string;
+}
+
+export interface CarStrategy {
+  carId: number;
+  carName: string;
+  weightPenaltyKg: number;
+  powerAdjustPct: number;
+  maxPctFuelFill: number;
+  maxDryTireSets: number;
+  weightDeltaKg: number;
+  powerDeltaPct: number;
+  bopTrend: string; // "Nerfed" | "Buffed" | "Mixed" | "Unchanged" | "—"
+  fuelCapped: boolean;
+  fuelNote: string;
+  limitedTireSets: boolean;
+  tireNote: string;
+  rainEnabled: boolean;
+  percentileRank: number | null;
+  projectedLapSeconds: number | null;
+  optimalRank: number | null;
+}
+
+export interface WeekStrategy {
+  seriesId: number;
+  seriesName: string;
+  weekNumber: number;
+  trackName: string;
+  configName: string;
+  trackLengthMiles: number | null;
+  cornersPerLap: number | null;
+  numberPitstalls: number | null;
+  pitRoadSpeedLimit: number | null;
+  nightLighting: boolean;
+  weather: WeatherSummary | null;
+  weatherRisk: WeatherRisk;
+  personalized: boolean;
+  cars: CarStrategy[];
+}
+
 export interface GlobalLeaderboardEntry {
   categoryId: number;
   rank: number;
@@ -822,6 +866,12 @@ export const api = {
   /** GET /api/series/:seriesId/schedule — active-season calendar with weather, BoP, PB overlay */
   getSchedule(seriesId: number): Promise<SeasonSchedule> {
     return request(`/api/series/${seriesId}/schedule`);
+  },
+
+  /** GET /api/series/:seriesId/weeks/:weekNumber/strategy — per-week BoP/weather/fuel strategy
+   * briefing; personalizes the "optimal for you" overlay when the caller is iRacing-linked */
+  getWeekStrategy(seriesId: number, weekNumber: number): Promise<WeekStrategy> {
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}/strategy`);
   },
 
   /** GET /api/leaderboards?categoryId= — global top-N drivers for a category (ranked by iRating) */

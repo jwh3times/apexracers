@@ -513,3 +513,56 @@ public record TrackCatalogDetailDto(
     string? LargeImageUrl,
     string? TrackMapUrl,
     IReadOnlyList<PersonalLapDto> YourBestLaps);
+
+// ── Strategy & setup intelligence (3.3) ──────────────────────────────────────
+
+/// <summary>Weather-risk assessment for a strategy week (Low/Medium/High + advice).</summary>
+public record WeatherRiskDto(
+    string Level,
+    double PrecipChancePct,
+    bool FieldRainCapable,
+    string Note);
+
+/// <summary>
+/// Per-car strategy context for one week: Balance of Performance, its shift vs the previous
+/// week, fuel/tire notes derived from the BoP, rain capability, and — when the caller is
+/// iRacing-linked — their personalized competitiveness (percentile, projected lap, optimal rank).
+/// </summary>
+public record CarStrategyDto(
+    int CarId,
+    string CarName,
+    double WeightPenaltyKg,
+    double PowerAdjustPct,
+    double MaxPctFuelFill,
+    int MaxDryTireSets,
+    double WeightDeltaKg,
+    double PowerDeltaPct,
+    string BopTrend,
+    bool FuelCapped,
+    string FuelNote,
+    bool LimitedTireSets,
+    string TireNote,
+    bool RainEnabled,
+    double? PercentileRank,
+    double? ProjectedLapSeconds,
+    int? OptimalRank);
+
+/// <summary>
+/// A week's strategy briefing: track + pit context, weather risk, and per-car BoP/fuel/tire
+/// strategy. <see cref="Personalized"/> is true when an iRacing-linked caller's overlay is included.
+/// </summary>
+public record WeekStrategyDto(
+    int SeriesId,
+    string SeriesName,
+    int WeekNumber,
+    string TrackName,
+    string ConfigName,
+    double? TrackLengthMiles,
+    int? CornersPerLap,
+    int? NumberPitstalls,
+    int? PitRoadSpeedLimit,
+    bool NightLighting,
+    WeatherSummaryDto? Weather,
+    WeatherRiskDto WeatherRisk,
+    bool Personalized,
+    IReadOnlyList<CarStrategyDto> Cars);
