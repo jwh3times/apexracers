@@ -524,6 +524,26 @@ describe('api', () => {
     });
   });
 
+  // ── getWeekStrategy ─────────────────────────────────────────────────────────
+
+  describe('getWeekStrategy', () => {
+    it('calls GET /api/series/:id/weeks/:n/strategy and returns parsed data', async () => {
+      const data = { seriesId: 444, seriesName: 'GT3 Cup', weekNumber: 3, cars: [] };
+      mockFetchOk(data);
+      const result = await api.getWeekStrategy(444, 3);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/444/weeks/3/strategy',
+        expect.objectContaining({})
+      );
+      expect(result).toEqual(data);
+    });
+
+    it('throws with status info on a non-ok response', async () => {
+      mockFetchError({ status: 404, statusText: 'Not Found' });
+      await expect(api.getWeekStrategy(999, 1)).rejects.toThrow('404');
+    });
+  });
+
   // ── getLeaderboard ────────────────────────────────────────────────────────
 
   describe('getLeaderboard', () => {

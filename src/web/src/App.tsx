@@ -17,6 +17,7 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import RacesPage from './pages/RacesPage';
 import RaceDetailPage from './pages/RaceDetailPage';
 import SchedulePage from './pages/SchedulePage';
+import StrategyPage from './pages/StrategyPage';
 import StandingsPage from './pages/StandingsPage';
 import LeaderboardsPage from './pages/LeaderboardsPage';
 import ComparePage from './pages/ComparePage';
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="/series/:seriesId/schedule" element={<SchedulePage />} />
         <Route path="/series/:seriesId/standings" element={<StandingsPage />} />
         <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+        <Route path="/series/:seriesId/weeks/:weekNumber/strategy" element={<StrategyPage />} />
         <Route
           path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
           element={<PercentileCarPage />}

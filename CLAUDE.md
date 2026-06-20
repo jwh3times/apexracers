@@ -145,6 +145,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
+- `StrategyController` — a series week's strategy briefing: track/pit context, weather risk, and per-car BoP with its week-over-week shift plus fuel/tire notes (`GET /api/series/{id}/weeks/{n}/strategy`, **public**; personalizes the "optimal for you" overlay — per-car percentile, projected lap, optimal rank — when a token resolves to a linked cust_id)
 - `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), password change (`POST /api/auth/change-password`, Authorize), password reset request + completion (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, **public**), iRacing OAuth 2.0 callback (`POST /api/auth/callback`). Forgot-password always returns a generic 200 (never reveals whether the account exists) and only returns the reset token in the response body in the Development environment — the token is never logged (no email provider yet)
 - `TelemetryController` — iRacing `.ibt` file upload (`POST /api/telemetry/upload`) and personal best laps (`GET /api/telemetry/laps`)
 - `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
@@ -171,6 +172,8 @@ Services in `src/ApexRacers.Api/Services/`:
 - `WeekCarStatsService` — aggregate lap stats per car for a series week
 - `PercentileCalculationService` — compute and cache driver percentile rank; optionally overlays the world-record lap + gap via `WorldRecordService` (null when iRacing isn't configured)
 - `CarRecommendationService` — ranked car recommendations based on personal percentile data
+- `StrategyService` — a week's strategy briefing: reads the bulk-ingested BoP (this week + previous, for the shift) + weather (2.1) and track/pit context from the local catalog, reads wet-weather risk from the forecast, and overlays the caller's per-car competitiveness from `CarRecommendationService` when iRacing-linked. The pure heuristics (weather risk, fuel/tire notes, BoP shift) live in `StrategyAnalysis`; the fuel hint is BoP-cap-based (lap-data stint length deferred — it needs the caller to have already raced that week + live creds, so it can't render a forward-looking week)
+- `StrategyAnalysis` — pure strategy heuristics (`WeatherRisk`/`FuelNote`/`TireNote`/`BopShift`); unit-tested directly (mirrors `LapAnalysis`/`SharedRaceAnalysis`)
 - `UserAnalyticsService` — per-car percentile history and stats for the authenticated user
 - `MemberStatsService` — on-demand iRacing member stats via `CachedIRacingClient` (6 h TTL). `GetProgressionAsync` returns one card per license category (iRating/SR/CPI/TT + iRating history); `GetDriverProfileAsync` returns the enriched profile (identity, license badges, career stats, this-year summary, recap favorites); `GetComparisonSideAsync` returns one side of a head-to-head (identity + license badges + career + per-category iRating history — lighter than the full profile, no summary/recap). Reuses the shared `profile:{custId}`/`career:{custId}`/`chart:…` cache entries via the pure `MapPoints`/`MapLicenses`/`MapCareer` helpers
 - `RaceHistoryService` — the authenticated driver's recent official races via `CachedIRacingClient` (10 min TTL); maps iRating/SR deltas and resolves car names from the local `Car` catalog
@@ -281,6 +284,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/series/:seriesId/schedule`                                 | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public)                                                                                                                 |
 | `/series/:seriesId/standings`                                | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public)                                              |
 | `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week                                                                                                                                               |
+| `/series/:seriesId/weeks/:weekNumber/strategy`               | `StrategyPage` — per-week strategy briefing: weather-risk banner, track/pit context, and per-car BoP/fuel/tire cards with an "optimal for you" overlay (public)                                |
 | `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown                                                                                                                                            |
 | `/analytics`                                                 | `AnalyticsPage` — per-car percentile history with sparklines                                                                                                                                   |
 | `/progression`                                               | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines                                                                                                               |
@@ -438,6 +442,7 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `SeriesServiceTests`
 - `WeekCarStatsServiceTests`
 - `PercentileCalculationServiceTests`
+- `StrategyAnalysisTests` (pure weather-risk / fuel / tire / BoP-shift heuristics) / `StrategyServiceTests` (week briefing assembly + personal overlay)
 - `CarRecommendationServiceTests`
 - `UserAnalyticsServiceTests`
 - `AuthServiceTests`

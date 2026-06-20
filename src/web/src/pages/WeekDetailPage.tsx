@@ -156,6 +156,14 @@ export default function WeekDetailPage() {
               Standings
             </Link>
           )}
+          {seriesId && weekNumber && (
+            <Link
+              to={`/series/${seriesId}/weeks/${weekNumber}/strategy`}
+              className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Strategy
+            </Link>
+          )}
           {weekNumber && (
             <Link
               to={`/recommendations?seriesId=${seriesId}&weekNumber=${weekNumber}`}
