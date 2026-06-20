@@ -377,7 +377,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 `src/web/src/components/` contains:
 
 - `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Admin)
-- `TopNav.tsx` — Global header with user profile tile, logout, theme toggle
+- `TopNav.tsx` — Global header with user profile tile, logout, theme toggle, and (when signed in) the `NotificationsBell`
+- `NotificationsBell.tsx` — Bell + dropdown of client-side-derived notifications (races starting soon, percentile improvements), gated on the Settings "Alerts" toggle (`alertsEnabled`); fetches the race guide + analytics and derives alerts via the pure `deriveAlerts` (`utils/alerts.ts`). MVP — no persistence/server push
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
 
@@ -399,7 +400,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/context/` contains three React contexts:
 
-- `AuthContext` — Manages user session, JWT access token + refresh token, silent token refresh on startup (when JWT is expired but refresh token is valid), login/logout (logout revokes the refresh token), profile updates, role tier selection, and alert toggle. Wrap components that need auth state with `useAuth()`.
+- `AuthContext` — Manages user session, JWT access token + refresh token, silent token refresh on startup (when JWT is expired but refresh token is valid), login/logout (logout revokes the refresh token), profile updates, role tier selection, and the alert toggle (`alertsEnabled` / `setAlertsEnabled` — consumed by `NotificationsBell`). Wrap components that need auth state with `useAuth()`.
 - `ThemeContext` — Manages theme preference (`auto` / `light` / `dark`), applies the CSS class to `<html>`, and persists the selection to the API via `PUT /api/auth/theme`.
 - `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `hasFlag(key)` for conditional feature rendering.
 
@@ -408,6 +409,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 `src/web/src/utils/lapTime.ts` exports `formatLapTime(seconds: number): string`. **Do not define local copies of this function in page files.** Pages that import it correctly: `AnalyticsPage`, `ProfilePage`, `TelemetryPage`, `DashboardPage`, `MyLapsPage`, `RecommendationsPage`. Always import from the shared module.
 
 `src/web/src/utils/percentile.ts` exports `topPercentLabel(rank: number): string` — formats a percentile rank (**higher is better**, e.g. 96 → `TOP 4%`), floored at `TOP 1%`. Imported by `AnalyticsPage` and `DashboardPage`. Don't re-inline the `100 - rank` formula.
+
+`src/web/src/utils/alerts.ts` exports the pure `deriveAlerts({ raceGuide, analytics, now? }): Alert[]` — client-side notification derivation (races starting ≤30 min; per-car percentile improvements). Unit-tested directly; consumed by `NotificationsBell`.
 
 ### EF Core design-time factory
 

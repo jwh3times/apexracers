@@ -20,7 +20,7 @@ vi.mock('react-router-dom', async importOriginal => {
 let mockUser: User | null = null;
 
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ user: mockUser, logout: mockLogout }),
+  useAuth: () => ({ user: mockUser, logout: mockLogout, alertsEnabled: false }),
 }));
 
 // ---------------------------------------------------------------------------
