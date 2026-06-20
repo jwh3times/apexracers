@@ -4,17 +4,17 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 
 ## Repo structure
 
-| Path | Description |
-| ------ | ------------- |
-| `src/ApexRacers.Core/` | Domain models shared across all projects |
-| `src/ApexRacers.Data/` | EF Core DbContext, entity configurations, and migrations |
-| `src/ApexRacers.Api/` | ASP.NET Core Web API (controllers, services, auth) |
-| `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API |
-| `src/ApexRacers.Seeder/` | CLI tool that seeds synthetic lap time data (idempotent) |
-| `src/ApexRacers.Tests/` | xUnit unit tests for services and domain helpers |
-| `src/web/` | Vite + React + TypeScript frontend |
-| `infra/` | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
-| `.github/workflows/` | GitHub Actions CI/CD pipelines |
+| Path                        | Description                                                                |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `src/ApexRacers.Core/`      | Domain models shared across all projects                                   |
+| `src/ApexRacers.Data/`      | EF Core DbContext, entity configurations, and migrations                   |
+| `src/ApexRacers.Api/`       | ASP.NET Core Web API (controllers, services, auth)                         |
+| `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API                     |
+| `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)                   |
+| `src/ApexRacers.Tests/`     | xUnit unit tests for services and domain helpers                           |
+| `src/web/`                  | Vite + React + TypeScript frontend                                         |
+| `infra/`                    | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
+| `.github/workflows/`        | GitHub Actions CI/CD pipelines                                             |
 
 ## Prerequisites
 
@@ -95,14 +95,14 @@ dotnet run --project src/ApexRacers.Ingestion
 
 All ports used across the project's config files (`docker-compose.yml`, `Dockerfile`, `launchSettings.json`, `vite.config.ts`, and the `.env` files):
 
-| Port | Service | Defined in | Notes |
-| ---- | ------- | ---------- | ----- |
-| `5432` | PostgreSQL | `docker-compose.yml` (`${POSTGRES_PORT:-5432}:5432`), `launchSettings.json`, `.env` | Host port; override with `POSTGRES_PORT` |
-| `5050` | pgAdmin (host) | `docker-compose.yml` (`${PGADMIN_PORT:-5050}:80`) | Host port; override with `PGADMIN_PORT` |
-| `8080` | API (Docker) | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `src/web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
-| `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example` | Default when running the API directly |
-| `5173` | Vite dev server | Vite default (not pinned in `vite.config.ts`) | Auto-increments if the port is taken |
-| `443` | API (Azure cloud) | `src/web/.env.cloud` | `https://apexracers-api.azurewebsites.net` |
+| Port   | Service                  | Defined in                                                                                              | Notes                                                                   |
+| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `5432` | PostgreSQL               | `docker-compose.yml` (`${POSTGRES_PORT:-5432}:5432`), `launchSettings.json`, `.env`                     | Host port; override with `POSTGRES_PORT`                                |
+| `5050` | pgAdmin (host)           | `docker-compose.yml` (`${PGADMIN_PORT:-5050}:80`)                                                       | Host port; override with `PGADMIN_PORT`                                 |
+| `8080` | API (Docker)             | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `src/web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
+| `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example`                                | Default when running the API directly                                   |
+| `5173` | Vite dev server          | Vite default (not pinned in `vite.config.ts`)                                                           | Auto-increments if the port is taken                                    |
+| `443`  | API (Azure cloud)        | `src/web/.env.cloud`                                                                                    | `https://apexracers-api.azurewebsites.net`                              |
 
 The ingestion worker (`ingestion.Dockerfile`) exposes no port — it is a background worker with no HTTP listener.
 

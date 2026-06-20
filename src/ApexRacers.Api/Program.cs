@@ -81,7 +81,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddRoles<IdentityRole<Guid>>()
-.AddEntityFrameworkStores<AppDbContext>();
+.AddEntityFrameworkStores<AppDbContext>()
+// Token providers back password-reset tokens (UserManager.GeneratePasswordResetTokenAsync).
+.AddDefaultTokenProviders();
 
 // Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
 // layer of brute-force protection in front of the per-account lockout above.

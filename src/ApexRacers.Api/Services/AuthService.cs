@@ -16,6 +16,11 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     private const int AccessTokenMinutes = 15;
     private const int RefreshTokenDays   = 7;
 
+    // Cap concurrent sessions per account: issuing a new refresh token past this many
+    // active ones revokes the oldest, so a single account can't accumulate unbounded
+    // long-lived tokens (e.g. from many devices or a token-harvesting attempt).
+    private const int MaxActiveRefreshTokensPerUser = 5;
+
     private static readonly string[] SelfAssignableRoles = ["Beta", "Alpha"];
 
     public async Task<AuthResultDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
@@ -206,6 +211,51 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         return expired.Count;
     }
 
+    /// <summary>
+    /// Changes the password for an authenticated user who supplies their current password.
+    /// </summary>
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+
+        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+            // Identity's descriptions cover both "incorrect password" and policy failures
+            // (e.g. "Passwords must be at least 8 characters."); surface them to the caller.
+            throw new InvalidOperationException(
+                string.Join(" ", result.Errors.Select(e => e.Description)));
+    }
+
+    /// <summary>
+    /// Issues a single-use password reset token for the account with the given email, or
+    /// <c>null</c> when no such account exists. Returning null rather than throwing lets
+    /// the endpoint respond identically either way, so it can't be used to enumerate accounts.
+    /// </summary>
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    /// <summary>
+    /// Resets a password using a token from <see cref="GeneratePasswordResetTokenAsync"/>.
+    /// Because a reset is an account-recovery action, every outstanding refresh token is
+    /// revoked so any session opened before the reset is cut off.
+    /// </summary>
+    public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByEmailAsync(request.Email)
+            ?? throw new InvalidOperationException("Invalid or expired password reset request.");
+
+        var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(
+                string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        await RevokeAllActiveTokensAsync(user.Id, ct);
+    }
+
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; update ApplicationUser.IRacingCustomerId;
@@ -217,6 +267,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
 
     private async Task<string> CreateRefreshTokenAsync(Guid userId, CancellationToken ct)
     {
+        await EnforceActiveTokenCapAsync(userId, ct);
+
         var raw = GenerateRawToken();
         db.RefreshTokens.Add(new RefreshToken
         {
@@ -228,6 +280,41 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         });
         await db.SaveChangesAsync(ct);
         return raw;
+    }
+
+    /// <summary>
+    /// Revokes every active refresh token for the user (used on password reset).
+    /// </summary>
+    private async Task RevokeAllActiveTokensAsync(Guid userId, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var active = await db.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in active)
+            token.RevokedAt = now;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Revokes the user's oldest active refresh tokens so that adding one more keeps
+    /// the active total at or below <see cref="MaxActiveRefreshTokensPerUser"/>. The
+    /// revocations are not persisted here — the caller's SaveChanges commits them
+    /// together with the newly-issued token. Rotation (RefreshAsync) is exempt: it
+    /// revokes one and issues one, so the active count never grows.
+    /// </summary>
+    private async Task EnforceActiveTokenCapAsync(Guid userId, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var active = await db.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
+            .OrderBy(t => t.CreatedAt)
+            .ToListAsync(ct);
+
+        var excess = active.Count - (MaxActiveRefreshTokensPerUser - 1);
+        for (var i = 0; i < excess; i++)
+            active[i].RevokedAt = now;
     }
 
     private static string GenerateRawToken()

@@ -84,17 +84,17 @@ Copy `.env.example` to `.env` and fill in `JWT_SIGNING_KEY` before running. `DAT
 
 ### Azure (resource group: apexracers-rg)
 
-| Resource | Type | Location |
-| --- | --- | --- |
-| `apexracersacr` | Container Registry | eastus |
-| `apexracers-kv` | Key Vault | eastus |
-| `apexracers-pg` | PostgreSQL Flexible Server | westus3 |
-| `apexracers-plan` | App Service Plan | westus3 |
-| `apexracers-api` | App Service (API) | westus3 |
-| `apexracers-env` | Container Apps Environment | westus3 |
-| `apexracers-ingestion` | Container App (ingestion worker) | westus3 |
-| `workspace-apexracersrg0n6Q` | Log Analytics Workspace | westus3 |
-| `apexracers.gg` | SSL Certificate | westus3 |
+| Resource                     | Type                             | Location |
+| ---------------------------- | -------------------------------- | -------- |
+| `apexracersacr`              | Container Registry               | eastus   |
+| `apexracers-kv`              | Key Vault                        | eastus   |
+| `apexracers-pg`              | PostgreSQL Flexible Server       | westus3  |
+| `apexracers-plan`            | App Service Plan                 | westus3  |
+| `apexracers-api`             | App Service (API)                | westus3  |
+| `apexracers-env`             | Container Apps Environment       | westus3  |
+| `apexracers-ingestion`       | Container App (ingestion worker) | westus3  |
+| `workspace-apexracersrg0n6Q` | Log Analytics Workspace          | westus3  |
+| `apexracers.gg`              | SSL Certificate                  | westus3  |
 
 The API is deployed as an App Service; the ingestion worker runs as a Container App. Key Vault secret names use hyphens (e.g. `JWT-SIGNING-KEY`) and are mapped to underscore env var names by `HyphenToUnderscoreSecretManager` in both `Program.cs` files.
 
@@ -145,7 +145,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `WeekController` — cars and aggregate lap stats for a series week
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
-- `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), iRacing OAuth 2.0 callback (`POST /api/auth/callback`)
+- `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), password change (`POST /api/auth/change-password`, Authorize), password reset request + completion (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, **public**), iRacing OAuth 2.0 callback (`POST /api/auth/callback`). Forgot-password always returns a generic 200 (never reveals whether the account exists) and only echoes/logs the reset token in the Development environment (no email provider yet)
 - `TelemetryController` — iRacing `.ibt` file upload (`POST /api/telemetry/upload`) and personal best laps (`GET /api/telemetry/laps`)
 - `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
 - `FeatureFlagsController` — returns the caller's active feature flags (`/api/feature-flags`)
@@ -189,7 +189,7 @@ Services in `src/ApexRacers.Api/Services/`:
 - `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog read from the **persisted** `Car`/`Track` tables (populated by the ingestion worker's catalog-refresh step + the seeder). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404). No iRacing creds needed at read time
 - `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of the `Car`/`Track` **entity** → catalog DTOs (composing image URLs from the stored path bits via `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
 - `ExternalDataCacheCleanupService` — hosted `BackgroundService` that purges `ExternalDataCache` rows expired beyond a 2-day grace every 6 h (the cache otherwise only evicts lazily, on overwrite); pure `PurgeExpiredAsync` is unit-tested, the loop is `[ExcludeFromCodeCoverage]`
-- `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates
+- `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates, password change (`ChangePasswordAsync`), password reset (`GeneratePasswordResetTokenAsync` → null for unknown email so the endpoint can't enumerate accounts; `ResetPasswordAsync` revokes all the user's active refresh tokens on success). Issuing a refresh token caps active tokens per user at 5 — the oldest is revoked past the cap (rotation is exempt; needs `AddDefaultTokenProviders()` registered in `Program.cs` for reset tokens)
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
 - `AdminService` — user role management and feature flag CRUD
@@ -204,27 +204,27 @@ Do not create generic repository interfaces (`IRepository<T>`). Use `AppDbContex
 
 `src/ApexRacers.Core/Models/` contains the domain entities:
 
-| Model | Description |
-| --- | --- |
-| `ApplicationUser` | Extends `IdentityUser<Guid>`; adds `DisplayName`, `IRacingCustomerId`, `ThemePreference` |
-| `Series` | iRacing series (Id, Name, SeasonId, CurrentWeekNumber) |
-| `Season` | Season for a series (SeasonId, Year) |
-| `Week` | Race week (SeasonId, WeekNumber, TrackId, StartDate, WeatherSummaryJson) |
-| `Track` | Full iRacing track catalog (Id, Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired) |
-| `Car` | iRacing car (Id, Name, RelativeSpeed) |
-| `CarClass` | iRacing car class grouping |
-| `CarClassCar` | Many-to-many join between CarClass and Car |
-| `SeasonCar` | Cars available in a season |
-| `SeasonCarBop` | Per-week Balance of Performance per car (SeasonId, WeekNumber, CarId, WeightPenaltyKg, PowerAdjustPct, MaxPctFuelFill, MaxDryTireSets); composite PK |
-| `SeasonCarClass` | Car classes available in a season |
-| `Subsession` | iRacing race session (Id, SeasonId, WeekNumber, TrackId, OfficialSession, EventStrengthOfField, StartTime, EndTime, SplitNum) + race context (NumCautions, NumCautionLaps, NumLeadChanges, CornersPerLap, EventAverageLapSeconds, EventBestLapSeconds, EventLapsComplete, WeatherJson, TrackStateJson) |
-| `SubsessionResult` | One driver's result in a subsession (CarId, CarClassId, FinishPosition, BestLapSeconds, Incidents, …) + DisplayName, QualLapSeconds, New/OldSubLevel, New/OldTtRating |
-| `PersonalLap` | User's personal best lap per track+car (UserId, CarId, TrackId, LapTimeSeconds, IsValidLap, TrackTempCelsius, TrackWetness, RecordedAt) |
-| `CarPercentileResult` | Cached percentile rank (UserId, CarId, SeriesId, WeekId, PercentileRank, SampleSize, ComputedAt) |
-| `FeatureFlag` | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt) |
-| `RefreshToken` | Rotating refresh token (Id, UserId, TokenHash [SHA-256 hex], ExpiresAt, CreatedAt, RevokedAt?); stored in `identity` schema |
-| `ExternalDataCache` | Cached external (iRacing) API response (Id, CacheKey [unique], Payload [serialized JSON, `text`], FetchedAt, ExpiresAt); backs `CachedIRacingClient` get-or-fetch |
-| `Rival` | A driver a user follows for comparison (Id, UserId, RivalCustId, DisplayName, CreatedAt); unique index on (UserId, RivalCustId); cascade FK to `identity.Users` |
+| Model                 | Description                                                                                                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ApplicationUser`     | Extends `IdentityUser<Guid>`; adds `DisplayName`, `IRacingCustomerId`, `ThemePreference`                                                                                                                                                                                                               |
+| `Series`              | iRacing series (Id, Name, SeasonId, CurrentWeekNumber)                                                                                                                                                                                                                                                 |
+| `Season`              | Season for a series (SeasonId, Year)                                                                                                                                                                                                                                                                   |
+| `Week`                | Race week (SeasonId, WeekNumber, TrackId, StartDate, WeatherSummaryJson)                                                                                                                                                                                                                               |
+| `Track`               | Full iRacing track catalog (Id, Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)                                                                                                                                                                            |
+| `Car`                 | iRacing car (Id, Name, RelativeSpeed)                                                                                                                                                                                                                                                                  |
+| `CarClass`            | iRacing car class grouping                                                                                                                                                                                                                                                                             |
+| `CarClassCar`         | Many-to-many join between CarClass and Car                                                                                                                                                                                                                                                             |
+| `SeasonCar`           | Cars available in a season                                                                                                                                                                                                                                                                             |
+| `SeasonCarBop`        | Per-week Balance of Performance per car (SeasonId, WeekNumber, CarId, WeightPenaltyKg, PowerAdjustPct, MaxPctFuelFill, MaxDryTireSets); composite PK                                                                                                                                                   |
+| `SeasonCarClass`      | Car classes available in a season                                                                                                                                                                                                                                                                      |
+| `Subsession`          | iRacing race session (Id, SeasonId, WeekNumber, TrackId, OfficialSession, EventStrengthOfField, StartTime, EndTime, SplitNum) + race context (NumCautions, NumCautionLaps, NumLeadChanges, CornersPerLap, EventAverageLapSeconds, EventBestLapSeconds, EventLapsComplete, WeatherJson, TrackStateJson) |
+| `SubsessionResult`    | One driver's result in a subsession (CarId, CarClassId, FinishPosition, BestLapSeconds, Incidents, …) + DisplayName, QualLapSeconds, New/OldSubLevel, New/OldTtRating                                                                                                                                  |
+| `PersonalLap`         | User's personal best lap per track+car (UserId, CarId, TrackId, LapTimeSeconds, IsValidLap, TrackTempCelsius, TrackWetness, RecordedAt)                                                                                                                                                                |
+| `CarPercentileResult` | Cached percentile rank (UserId, CarId, SeriesId, WeekId, PercentileRank, SampleSize, ComputedAt)                                                                                                                                                                                                       |
+| `FeatureFlag`         | Feature flag (Id, Key, Name, Description, IsEnabled, MinimumRole, CreatedAt, UpdatedAt)                                                                                                                                                                                                                |
+| `RefreshToken`        | Rotating refresh token (Id, UserId, TokenHash [SHA-256 hex], ExpiresAt, CreatedAt, RevokedAt?); stored in `identity` schema                                                                                                                                                                            |
+| `ExternalDataCache`   | Cached external (iRacing) API response (Id, CacheKey [unique], Payload [serialized JSON, `text`], FetchedAt, ExpiresAt); backs `CachedIRacingClient` get-or-fetch                                                                                                                                      |
+| `Rival`               | A driver a user follows for comparison (Id, UserId, RivalCustId, DisplayName, CreatedAt); unique index on (UserId, RivalCustId); cascade FK to `identity.Users`                                                                                                                                        |
 
 ### iRacing data ingestion
 
@@ -263,38 +263,40 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 **Public routes (no AppShell — own layout):**
 
-| Path | Component |
-| --- | --- |
-| `/` | `HomePage` — marketing landing page with its own header/nav/footer |
-| `/login` | `LoginPage` |
-| `/terms` | `TermsOfServicePage` |
-| `/privacy` | `PrivacyPolicyPage` |
+| Path               | Component                                                                      |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `/`                | `HomePage` — marketing landing page with its own header/nav/footer             |
+| `/login`           | `LoginPage`                                                                    |
+| `/forgot-password` | `ForgotPasswordPage` — request a password reset link                           |
+| `/reset-password`  | `ResetPasswordPage` — set a new password from an emailed `?email=&token=` link |
+| `/terms`           | `TermsOfServicePage`                                                           |
+| `/privacy`         | `PrivacyPolicyPage`                                                            |
 
 **App routes (nested inside `AppShell` — Sidebar + TopNav + Footer):**
 
-| Path | Component |
-| --- | --- |
-| `/dashboard` | `DashboardPage` — recent laps, active series, welcome, driver-stat KPI tiles (best percentile via `getMyAnalytics`; iRating/SR/avg finish from the top-iRating category via `getProfileStats`) |
-| `/series` | `SeriesPage` — browse all series |
-| `/series/:seriesId/schedule` | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public) |
-| `/series/:seriesId/standings` | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public) |
-| `/series/:seriesId/weeks/:weekNumber` | `WeekDetailPage` — cars and lap stats for a week |
-| `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown |
-| `/analytics` | `AnalyticsPage` — per-car percentile history with sparklines |
-| `/progression` | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines |
-| `/races` | `RacesPage` — recent race history table with iRating/SR deltas and series filter |
-| `/leaderboards` | `LeaderboardsPage` — global iRating top-200 per category (highlights your row) |
-| `/compare` | `ComparePage` — driver-vs-driver head-to-head: rival manager (name search + shared-race suggestions + follow) and four panels (identity/licenses, iRating overlay, career, shared-race record) |
-| `/cars` · `/cars/:carId` | `CarsPage` / `CarDetailPage` — car catalog grid (search + category filter) and detail (specs, classes, "your best laps") (public) |
-| `/tracks` · `/tracks/:trackId` | `TracksPage` / `TrackDetailPage` — track catalog grid and detail (specs, interactive map, "your best laps") (public) |
-| `/live` | `LivePage` — "race now" board of sessions starting soon with live countdowns |
-| `/races/:subsessionId` | `RaceDetailPage` — full classified field + session context (public; highlights your row) |
-| `/recommendations` | `RecommendationsPage` — ranked car recommendations for current week |
-| `/my-laps` | `MyLapsPage` — personal best per track+car |
-| `/telemetry` | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries |
-| `/profile` | `ProfilePage` — user profile with series/lap stats |
-| `/settings` | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout |
-| `/admin` | `AdminPage` — user role management and feature flag CRUD (AdminGuard) |
+| Path                                                         | Component                                                                                                                                                                                      |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/dashboard`                                                 | `DashboardPage` — recent laps, active series, welcome, driver-stat KPI tiles (best percentile via `getMyAnalytics`; iRating/SR/avg finish from the top-iRating category via `getProfileStats`) |
+| `/series`                                                    | `SeriesPage` — browse all series                                                                                                                                                               |
+| `/series/:seriesId/schedule`                                 | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public)                                                                                                                 |
+| `/series/:seriesId/standings`                                | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public)                                              |
+| `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week                                                                                                                                               |
+| `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown                                                                                                                                            |
+| `/analytics`                                                 | `AnalyticsPage` — per-car percentile history with sparklines                                                                                                                                   |
+| `/progression`                                               | `ProgressionPage` — per-category iRating/SR/CPI/TT cards with iRating sparklines                                                                                                               |
+| `/races`                                                     | `RacesPage` — recent race history table with iRating/SR deltas and series filter                                                                                                               |
+| `/leaderboards`                                              | `LeaderboardsPage` — global iRating top-200 per category (highlights your row)                                                                                                                 |
+| `/compare`                                                   | `ComparePage` — driver-vs-driver head-to-head: rival manager (name search + shared-race suggestions + follow) and four panels (identity/licenses, iRating overlay, career, shared-race record) |
+| `/cars` · `/cars/:carId`                                     | `CarsPage` / `CarDetailPage` — car catalog grid (search + category filter) and detail (specs, classes, "your best laps") (public)                                                              |
+| `/tracks` · `/tracks/:trackId`                               | `TracksPage` / `TrackDetailPage` — track catalog grid and detail (specs, interactive map, "your best laps") (public)                                                                           |
+| `/live`                                                      | `LivePage` — "race now" board of sessions starting soon with live countdowns                                                                                                                   |
+| `/races/:subsessionId`                                       | `RaceDetailPage` — full classified field + session context (public; highlights your row)                                                                                                       |
+| `/recommendations`                                           | `RecommendationsPage` — ranked car recommendations for current week                                                                                                                            |
+| `/my-laps`                                                   | `MyLapsPage` — personal best per track+car                                                                                                                                                     |
+| `/telemetry`                                                 | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries                                                                                                                            |
+| `/profile`                                                   | `ProfilePage` — user profile with series/lap stats                                                                                                                                             |
+| `/settings`                                                  | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout                                                                                                                     |
+| `/admin`                                                     | `AdminPage` — user role management and feature flag CRUD (AdminGuard)                                                                                                                          |
 
 **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
 
@@ -304,31 +306,31 @@ All sizing in the frontend scales continuously with viewport width via `clamp()`
 
 ##### Typography
 
-| Class | Purpose |
-| --- | --- |
-| `text-page-title` | Large page heading (`h1`) |
-| `text-section-head` | Card / panel section heading (`h2`, `h3`) |
-| `text-eyebrow` | Mono ALL-CAPS label above a heading |
-| `text-body-fluid` | Standard body and list text |
-| `text-small-fluid` | Secondary / supporting text |
-| `text-th` | Table column header |
-| `text-kpi-value` | Large mono KPI number |
-| `text-mono-fluid` | Mono data values — lap times, rank numbers |
+| Class               | Purpose                                    |
+| ------------------- | ------------------------------------------ |
+| `text-page-title`   | Large page heading (`h1`)                  |
+| `text-section-head` | Card / panel section heading (`h2`, `h3`)  |
+| `text-eyebrow`      | Mono ALL-CAPS label above a heading        |
+| `text-body-fluid`   | Standard body and list text                |
+| `text-small-fluid`  | Secondary / supporting text                |
+| `text-th`           | Table column header                        |
+| `text-kpi-value`    | Large mono KPI number                      |
+| `text-mono-fluid`   | Mono data values — lap times, rank numbers |
 
 ##### Layout & spacing
 
-| Class | Purpose |
-| --- | --- |
-| `page-wrap` | Outer page padding — apply to `<main>` |
-| `card-r` | Card border-radius |
-| `card-p` | Card body padding |
-| `card-hp` | Card section-header padding (scan-texture rows) |
-| `kpi-p` | KPI tile padding |
-| `td-p` / `th-p` | Table cell / header padding |
-| `gap-fluid` / `gap-fluid-lg` | Column/row gaps |
-| `btn-fluid` / `btn-fluid-sm` | Button height, padding, font-size, radius |
-| `grid-kpi` | Auto-fit KPI tile grid (wraps naturally) |
-| `grid-cards` | Auto-fill series card grid |
+| Class                        | Purpose                                         |
+| ---------------------------- | ----------------------------------------------- |
+| `page-wrap`                  | Outer page padding — apply to `<main>`          |
+| `card-r`                     | Card border-radius                              |
+| `card-p`                     | Card body padding                               |
+| `card-hp`                    | Card section-header padding (scan-texture rows) |
+| `kpi-p`                      | KPI tile padding                                |
+| `td-p` / `th-p`              | Table cell / header padding                     |
+| `gap-fluid` / `gap-fluid-lg` | Column/row gaps                                 |
+| `btn-fluid` / `btn-fluid-sm` | Button height, padding, font-size, radius       |
+| `grid-kpi`                   | Auto-fit KPI tile grid (wraps naturally)        |
+| `grid-cards`                 | Auto-fill series card grid                      |
 
 ##### Standard card pattern
 
@@ -336,21 +338,27 @@ Every card uses a consistent combination of a CSS `cardStyle` constant for the b
 
 ```tsx
 const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
+  boxShadow:
+    "0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)",
 };
 const scanTexture: React.CSSProperties = {
-  backgroundImage: 'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
+  backgroundImage:
+    "repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)",
 };
 
 // Usage:
-<div className="card-r border border-white/10 bg-surface overflow-hidden" style={cardStyle}>
-  <div className="card-hp border-b border-white/10 flex items-center justify-between" style={scanTexture}>
+<div
+  className="card-r border border-white/10 bg-surface overflow-hidden"
+  style={cardStyle}
+>
+  <div
+    className="card-hp border-b border-white/10 flex items-center justify-between"
+    style={scanTexture}
+  >
     <h3 className="text-section-head text-on-surface">Section title</h3>
   </div>
-  <div className="card-p">
-    {/* body content */}
-  </div>
-</div>
+  <div className="card-p">{/* body content */}</div>
+</div>;
 ```
 
 ##### Color tokens
@@ -367,11 +375,13 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
 
 ```tsx
-{sparkData.length >= 2 && (
-  <div className="w-full">
-    <Sparkline data={sparkData} w={460} h={76} />
-  </div>
-)}
+{
+  sparkData.length >= 2 && (
+    <div className="w-full">
+      <Sparkline data={sparkData} w={460} h={76} />
+    </div>
+  );
+}
 ```
 
 - `PercentileBadge.tsx` — Ring gauge showing "TOP X%". Accepts `pct: number` (the TOP value, e.g. `4` for "TOP 4%"; lower is better) and `size: 'sm' | 'md' | 'lg'`.
