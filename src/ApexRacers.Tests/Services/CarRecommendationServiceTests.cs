@@ -337,4 +337,79 @@ public class CarRecommendationServiceTests
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap
     }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_ActualPath_UpdatesExistingCacheRow_AndSwapsRunningAverage()
+    {
+        // A cache row already exists for THIS week, so the running-average takes the swap branch
+        // (prior.Sum - oldReading + new) and the cache is updated in place — not duplicated.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 60); // caller — fastest
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week.Id,
+            PercentileRank = 40.0, SampleSize = 99, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1),
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+
+        var dto = result.Single(r => r.CarId == car1.Id);
+        Assert.Equal(100.0, dto.PercentileRank); // 60 s beat both other drivers (2/2)
+
+        var rows = db.CarPercentileResults
+            .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
+        Assert.Single(rows);                  // updated in place, not duplicated
+        Assert.Equal(100.0, rows[0].PercentileRank);
+        Assert.Equal(3, rows[0].SampleSize);  // refreshed to the current field size
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PersonalLapPath_UpdatesExistingCacheRow()
+    {
+        // Personal-lap path mirror of the above: cache row exists for this week → update branch.
+        await using var db = DbContextFactory.Create();
+        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
+
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = car1.Id, TrackId = 99, LapTimeSeconds = 65.0,
+            IsValidLap = true, SessionType = LapSessionType.Race, RecordedAt = DateTimeOffset.UtcNow,
+        });
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week.Id,
+            PercentileRank = 50.0, SampleSize = 10, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1),
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await CreateService(db).GetRecommendationsAsync(
+            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true,
+            ct: TestContext.Current.CancellationToken);
+
+        var dto = result.Single(r => r.CarId == car1.Id);
+        Assert.Equal(65.0, dto.BestLapSeconds);
+        Assert.Equal(100.0, dto.PercentileRank); // 65 s beats all 3 (3/3)
+
+        var rows = db.CarPercentileResults
+            .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
+        Assert.Single(rows);                  // updated in place, not duplicated
+        Assert.Equal(100.0, rows[0].PercentileRank);
+    }
 }

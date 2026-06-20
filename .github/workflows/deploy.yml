@@ -71,7 +71,7 @@ jobs:
             --logger "console;verbosity=normal"
 
       # irongut/CodeCoverageSummary's fail_below_min only enforces the LINE rate.
-      - name: Check backend line coverage threshold (>80%)
+      - name: Check backend line coverage threshold (>85%)
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: 'coverage/**/coverage.cobertura.xml'
@@ -79,11 +79,11 @@ jobs:
           format: text
           indicators: true
           output: console
-          thresholds: '80 80'
+          thresholds: '85 85'
 
       # The action above does not gate branch coverage, so enforce it explicitly
       # by reading branch-rate from the Cobertura report.
-      - name: Check backend branch coverage threshold (>80%)
+      - name: Check backend branch coverage threshold (>85%)
         run: |
           report=$(find coverage -name 'coverage.cobertura.xml' | head -1)
           if [ -z "$report" ]; then
@@ -93,10 +93,10 @@ jobs:
           rate=$(grep -m1 -oE 'branch-rate="[0-9.]+"' "$report" | grep -oE '[0-9.]+')
           pct=$(awk -v r="$rate" 'BEGIN { printf "%.2f", r * 100 }')
           echo "Backend branch coverage: ${pct}%"
-          if awk -v r="$rate" 'BEGIN { exit (r >= 0.80 ? 0 : 1) }'; then
-            echo "Branch coverage meets the 80% threshold."
+          if awk -v r="$rate" 'BEGIN { exit (r >= 0.85 ? 0 : 1) }'; then
+            echo "Branch coverage meets the 85% threshold."
           else
-            echo "::error::Branch coverage ${pct}% is below the required 80%."
+            echo "::error::Branch coverage ${pct}% is below the required 85%."
             exit 1
           fi
 
@@ -111,7 +111,7 @@ jobs:
         run: npm ci
         working-directory: src/web
 
-      - name: Run frontend tests with coverage (>80%)
+      - name: Run frontend tests with coverage (>85%)
         run: npx vitest run --coverage
         working-directory: src/web
 

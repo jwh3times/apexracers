@@ -419,7 +419,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 ### Frontend (Vitest)
 
-Coverage thresholds are enforced in `vite.config.ts` at **80%** across statements, branches, functions, and lines. `npx vitest run --coverage` must exit cleanly (no threshold errors) before any frontend change is considered done. When adding new source files, add corresponding tests to keep all four metrics above 80%.
+Coverage thresholds are enforced in `vite.config.ts` at **85%** across statements, branches, functions, and lines. `npx vitest run --coverage` must exit cleanly (no threshold errors) before any frontend change is considered done. When adding new source files, add corresponding tests to keep all four metrics above 85%.
 
 The CI `test` job (`.github/workflows/deploy.yml`) also runs `npx prettier --check .` from `src/web/` after `npm ci` and before the Vitest coverage step. Any unformatted file blocks both deploy jobs. Run `npx prettier --write .` locally to fix formatting before pushing.
 
@@ -431,7 +431,7 @@ cd src/web && npx vitest run --coverage
 
 ### Backend (.NET)
 
-Unit test coverage must also remain above **80%** for both **line** and **branch** coverage. CI enforces both: `irongut/CodeCoverageSummary` gates line coverage, and a follow-up step reads `branch-rate` from the Cobertura report to gate branch coverage. Use `dotnet-coverage` + `reportgenerator` to measure:
+Unit test coverage must also remain above **85%** for both **line** and **branch** coverage. CI enforces both: `irongut/CodeCoverageSummary` gates line coverage, and a follow-up step reads `branch-rate` from the Cobertura report to gate branch coverage. Use `dotnet-coverage` + `reportgenerator` to measure:
 
 ```bash
 dotnet-coverage collect "dotnet test" -f xml -o coverage.xml

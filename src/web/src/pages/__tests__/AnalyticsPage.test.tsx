@@ -232,4 +232,77 @@ describe('AnalyticsPage', () => {
       expect(screen.getByText(/no active series found/i)).toBeInTheDocument();
     });
   });
+
+  // ── By Car mode + badge thresholds (T8) ────────────────────────────────────
+
+  it('switches to By Car mode, fetches all analytics, and shows the car selector', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue(MOCK_ANALYTICS);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /by car/i }));
+
+    await waitFor(() => expect(screen.getByLabelText('Car:')).toBeInTheDocument());
+    expect(screen.getByRole('option', { name: 'Porsche 911 GT3 R' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'BMW M4 GT3' })).toBeInTheDocument();
+  });
+
+  it('filters to the chosen car in By Car mode', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue(MOCK_ANALYTICS);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /by car/i }));
+    await waitFor(() => expect(screen.getByLabelText('Car:')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Car:'), { target: { value: '102' } });
+    // flipLabels in car mode → the series name is the card title; only BMW's row remains.
+    await waitFor(() => expect(screen.getByText('TOP 30%')).toBeInTheDocument()); // BMW latest 70
+  });
+
+  it('shows the car-mode empty state when there is no analytics data', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([]);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/no percentile data for this series/i)).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByRole('button', { name: /by car/i }));
+    await waitFor(() => expect(screen.getByText(/no percentile data yet/i)).toBeInTheDocument());
+  });
+
+  it('shows the ELITE badge and gold styling for a ≥95 percentile car', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([
+      { ...MOCK_ANALYTICS[0], bestPercentileRank: 97, latestPercentileRank: 97 },
+    ]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('ELITE')).toBeInTheDocument());
+  });
+
+  it('renders a positive Best-vs-Median delta when the best lap is slower than the median', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([
+      { ...MOCK_ANALYTICS[0], personalBestLapSeconds: 141.0, medianLapSeconds: 139.5 },
+    ]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('+1.500s')).toBeInTheDocument());
+  });
+
+  it('labels the trend axis with years when history spans calendar years', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([
+      {
+        ...MOCK_ANALYTICS[0],
+        percentileHistory: [
+          { ...MOCK_ANALYTICS[0].percentileHistory[0], computedAt: '2025-12-01T00:00:00Z' },
+          { ...MOCK_ANALYTICS[0].percentileHistory[1], computedAt: '2026-01-08T00:00:00Z' },
+        ],
+      },
+    ]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2025')).toBeInTheDocument());
+    expect(screen.getByText('2026')).toBeInTheDocument();
+  });
 });
