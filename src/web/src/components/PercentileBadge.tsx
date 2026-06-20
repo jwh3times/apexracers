@@ -1,9 +1,18 @@
 interface Props {
   pct: number; // TOP X% (lower = better), e.g. 4 means "TOP 4%"
-  size?: 'lg' | 'md' | 'sm';
+  size?: 'lg' | 'md' | 'sm' | 'chip';
 }
 
 export default function PercentileBadge({ pct, size = 'md' }: Props) {
+  // Compact inline pill for dense contexts (e.g. table cells) — not the ring gauge.
+  if (size === 'chip') {
+    return (
+      <span className="inline-flex items-center rounded-full border border-primary-container/40 bg-primary-container/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-primary-container">
+        TOP {pct}%
+      </span>
+    );
+  }
+
   const S = size === 'lg' ? 1.32 : size === 'sm' ? 0.74 : 1;
   const d = 92 * S;
   const r = (d - 12 * S) / 2;

@@ -587,3 +587,9 @@ public record AchievementsDto(
     long CustomerId,
     int AwardCount,
     IReadOnlyList<AwardDto> Awards);
+
+/// <summary>
+/// The caller's own percentile for one car in a week (for the Week Detail "Your pct" column).
+/// Only cars the caller actually has a lap for this week are returned.
+/// </summary>
+public record WeekCarPercentileDto(int CarId, double PercentileRank);

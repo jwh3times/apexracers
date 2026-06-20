@@ -81,6 +81,30 @@ describe('api', () => {
     });
   });
 
+  // ── getMyWeekPercentiles ────────────────────────────────────────────────────
+
+  describe('getMyWeekPercentiles', () => {
+    it('calls GET /api/series/:id/weeks/:n/my-percentiles', async () => {
+      const data = [{ carId: 1, percentileRank: 92 }];
+      mockFetchOk(data);
+      const result = await api.getMyWeekPercentiles(7, 12);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/7/weeks/12/my-percentiles',
+        expect.objectContaining({})
+      );
+      expect(result).toEqual(data);
+    });
+
+    it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
+      mockFetchError({
+        status: 409,
+        statusText: 'Conflict',
+        body: JSON.stringify({ code: 'IRACING_NOT_LINKED', message: 'Link your iRacing ID.' }),
+      });
+      await expect(api.getMyWeekPercentiles(1, 1)).rejects.toBeInstanceOf(IRacingNotLinkedError);
+    });
+  });
+
   // ── getPercentile ───────────────────────────────────────────────────────────
 
   describe('getPercentile', () => {

@@ -71,4 +71,11 @@ describe('PercentileBadge', () => {
     // fillFrac = (100 - 100) / 100 = 0, so dashoffset = circ * 1 = circ
     expect(dashOffset).toBeCloseTo(dashArray, 0);
   });
+
+  it('renders a compact inline pill (no ring) for the chip size', () => {
+    const { container } = render(<PercentileBadge pct={4} size="chip" />);
+    expect(screen.getByText('TOP 4%')).toBeInTheDocument();
+    // The chip is a pill, not the SVG ring gauge.
+    expect(container.querySelector('svg')).toBeNull();
+  });
 });

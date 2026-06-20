@@ -4,12 +4,28 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import WeekDetailPage from '../WeekDetailPage';
 import { api } from '../../services/api';
 import type { WeekDetail } from '../../services/api';
+import type { User } from '../../context/AuthContext';
+
+let mockUser: User | null = null;
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ user: mockUser }),
+}));
 
 vi.mock('../../services/api', () => ({
-  api: { getWeekDetail: vi.fn(), getCarsForWeek: vi.fn() },
+  api: { getWeekDetail: vi.fn(), getCarsForWeek: vi.fn(), getMyWeekPercentiles: vi.fn() },
 }));
 
 const mockGetWeekDetail = vi.mocked(api.getWeekDetail);
+const mockGetMyWeekPercentiles = vi.mocked(api.getMyWeekPercentiles);
+
+const LINKED_USER: User = {
+  token: 'tok',
+  userId: 'u1',
+  displayName: 'Driver',
+  email: 't@t.com',
+  iRacingCustomerId: 100042,
+  role: 'Standard',
+};
 
 const emptyDetail: WeekDetail = {
   seriesName: 'VRS GT3 Sprint',
@@ -45,6 +61,8 @@ function renderPage(seriesId = '1', weekNumber = '10') {
 describe('WeekDetailPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockUser = null; // anonymous by default → no "Your pct" column
+    mockGetMyWeekPercentiles.mockResolvedValue([]);
   });
 
   it('shows loading state initially', () => {
@@ -218,5 +236,35 @@ describe('WeekDetailPage', () => {
       'href',
       '/series/1/schedule'
     );
+  });
+
+  // ── "Your pct" column (T12) ────────────────────────────────────────────────
+
+  it('does not render the Your pct column for anonymous visitors', async () => {
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar()] });
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Porsche 992 GT3').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/your pct/i)).not.toBeInTheDocument();
+    expect(mockGetMyWeekPercentiles).not.toHaveBeenCalled();
+  });
+
+  it('renders the Your pct chip for a signed-in driver with a percentile', async () => {
+    mockUser = LINKED_USER;
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
+    mockGetMyWeekPercentiles.mockResolvedValue([{ carId: 1, percentileRank: 92 }]);
+    renderPage('1', '10');
+    await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
+    expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(1, 10);
+    // percentileRank 92 → ceil(100-92) = TOP 8%
+    expect(screen.getByText('TOP 8%')).toBeInTheDocument();
+  });
+
+  it('shows a dash in the Your pct column for cars the driver has no percentile for', async () => {
+    mockUser = LINKED_USER;
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
+    mockGetMyWeekPercentiles.mockResolvedValue([]); // no percentile for car 1
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
+    expect(screen.queryByText(/TOP \d+%/)).not.toBeInTheDocument();
   });
 });
