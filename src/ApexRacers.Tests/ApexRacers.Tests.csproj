@@ -14,12 +14,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <!--
       Sqlite is the primary test DB provider (DbContextFactory.Create) — a real relational
-      provider that validates SQL translatability. Its transitive native lib
-      SQLitePCLRaw.lib.e_sqlite3 currently has advisory NU1903; it is accepted here because
-      (a) this is a test-only dependency never shipped to production (the app uses Npgsql),
-      (b) the advisory requires opening a malicious database file and our tests only ever
-      create their own in-memory databases from trusted code, and (c) no patched version is
-      published yet — Dependabot will bump it when one ships.
+      provider that validates SQL translatability. The vulnerable native lib
+      SQLitePCLRaw.lib.e_sqlite3 2.1.11 (SQLite < 3.50.2) is remediated centrally in
+      Directory.Packages.props by pinning the transitive SQLitePCLRaw bundle + core to the
+      3.0.x line, which ships SourceGear.sqlite3 (SQLite >= 3.50.2) instead. Test-only — the
+      app uses Npgsql.
     -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />

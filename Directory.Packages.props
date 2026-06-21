@@ -36,5 +36,17 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <!--
+      Transitive pin (CentralPackageTransitivePinningEnabled) to remediate the
+      SQLitePCLRaw.lib.e_sqlite3 advisory (SQLite < 3.50.2 memory corruption).
+      EF Core 10.0.9's Sqlite provider pulls SQLitePCLRaw.bundle_e_sqlite3 + .core 2.1.11,
+      and lib.e_sqlite3 is stuck at 2.1.11 (no patched 2.1.x exists). SQLitePCLRaw 3.0.x is
+      an API-compatible repackaging that replaces lib.e_sqlite3 with SourceGear.sqlite3
+      (>= 3.50.4.5, i.e. SQLite >= 3.50.2 — patched), so pinning the bundle + core to 3.0.x
+      drops the vulnerable native package from the graph. Sqlite is test-only here (the app
+      uses Npgsql), so this only affects ApexRacers.Tests.
+    -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <PackageVersion Include="SQLitePCLRaw.core" Version="3.0.3" />
   </ItemGroup>
 </Project>
