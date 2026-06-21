@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GUEST_NAV, AUTH_NAV } from './navItems';
 import NotificationsBell from './NotificationsBell';
+import { breadcrumbs } from '../utils/breadcrumbs';
 
 function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -153,6 +154,7 @@ function ProfileDropdown() {
 export default function TopNav() {
   const { user } = useAuth();
   const navItems = user ? AUTH_NAV : GUEST_NAV;
+  const crumbs = breadcrumbs(useLocation().pathname);
   return (
     <nav className="bg-surface/80 backdrop-blur-xl text-primary-fixed-dim sticky top-0 w-full z-40 border-b border-line-2 shadow-[0_0_20px_rgba(0,224,255,0.15)] flex justify-between items-center px-6 h-16">
       <div className="flex items-center gap-3 lg:hidden">
@@ -178,6 +180,44 @@ export default function TopNav() {
           </NavLink>
         ))}
       </div>
+      {/* Breadcrumbs — fill the otherwise-empty desktop header */}
+      {crumbs.length > 0 && (
+        <nav
+          aria-label="Breadcrumb"
+          className="hidden lg:flex items-center gap-1.5 text-small-fluid"
+        >
+          {crumbs.map((c, i) => {
+            const isLast = i === crumbs.length - 1;
+            return (
+              <span key={c.label} className="flex items-center gap-1.5">
+                {i > 0 && (
+                  <span
+                    className="material-symbols-outlined text-[16px] text-on-surface-variant/40"
+                    aria-hidden="true"
+                  >
+                    chevron_right
+                  </span>
+                )}
+                {c.to && !isLast ? (
+                  <Link
+                    to={c.to}
+                    className="text-on-surface-variant hover:text-on-surface transition-colors"
+                  >
+                    {c.label}
+                  </Link>
+                ) : (
+                  <span
+                    className={isLast ? 'text-on-surface font-medium' : 'text-on-surface-variant'}
+                    aria-current={isLast ? 'page' : undefined}
+                  >
+                    {c.label}
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </nav>
+      )}
       <div className="flex items-center gap-4 ml-auto">
         {user && <NotificationsBell />}
         <ProfileDropdown />

@@ -26,4 +26,5 @@ export const AUTH_NAV: readonly NavItem[] = [
   { to: '/telemetry', label: 'Telemetry', icon: 'sensors' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
   { to: '/profile', label: 'Profile', icon: 'account_circle' },
+  { to: '/support', label: 'Support', icon: 'help' },
 ];
