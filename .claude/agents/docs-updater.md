@@ -14,6 +14,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `CLAUDE.md` | Claude agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the authoritative guide agents read on every task |
 | `README.md` | Human developers (setup) | Prerequisites, local dev setup steps, seed/ingestion instructions |
 | `src/web/README.md` | Frontend developers | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system |
+| `private/ROADMAP.md` | Project status (canonical) | What's done / remaining / blocked, active milestones — the single source of truth for status. Historical detail lives in `private/archive/` (not maintained). |
 | `private/PRD.md` | Product context | Features, user stories, what is and isn't implemented |
 | `.claude/agents/dotnet-api.md` | dotnet-api subagent | .NET patterns, JWT/auth configuration, EF Core rules, test rules |
 | `.claude/agents/react-frontend.md` | react-frontend subagent | API client patterns, auth flow, design token system, test rules |
@@ -23,6 +24,9 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `.claude/agents/azure-infrastructure.md` | azure-infrastructure subagent | Resource inventory, Key Vault secrets, deployment commands |
 
 ## What triggers what update
+
+**Any feature, milestone, or planned item completed (or cancelled/parked)**
+- `private/ROADMAP.md`: tick/move the item — mark it done in "Completed", or update its status under "Active milestones" / "Remaining work" / "Backlog". This is the canonical status doc; keep it accurate on every shipped change. (Do not edit `private/archive/` — it's frozen history.)
 
 **New controller or endpoint added**
 - `CLAUDE.md`: add to the controllers table and (if applicable) the routes table

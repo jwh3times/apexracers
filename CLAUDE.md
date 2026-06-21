@@ -4,6 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Planning & project docs
+
+Planning/status docs live in `private/` (gitignored — local working docs, not shipped). When you need
+project context or finish a feature, use these:
+
+| Doc                                | What it is                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `private/ROADMAP.md`               | **Canonical** status, remaining work, and active milestones. Read this first for "what's next". |
+| `private/PRD.md`                   | Product spec — feature definitions, screen inventory, API & data-model summaries.           |
+| `private/deployTODO.md`            | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).           |
+| `private/archive/`                 | Historical record (`plan.md` per-slice build log, `repo-analysis.md`, `new-features.md`, `TODO.md`). Detail behind ROADMAP's condensed summaries; **not** maintained. |
+| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.        |
+
+**After completing a feature/fix:** update `private/ROADMAP.md` (tick/move items), `private/PRD.md`
+(new sections/rows + version bump), this `CLAUDE.md`, and `README.md` as relevant. ROADMAP.md is the
+single source of truth — do not resurrect `archive/plan.md` or `archive/TODO.md` as live trackers.
+
+> Current blocker (see ROADMAP.md): the deployed app lacks iRacing OAuth credentials, so the iRacing-data
+> features are non-functional in production. Milestone **M1** (planned) gates that surface behind an
+> `iracing-live` feature flag — **not yet built**; don't assume it exists in code.
+
+---
+
 ## Commands
 
 ### .NET (run from repo root)
