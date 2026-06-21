@@ -303,6 +303,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/telemetry`                                                 | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries                                                                                                                            |
 | `/profile`                                                   | `ProfilePage` — user profile with series/lap stats, enriched driver stats, and an awards trophy case (`getAchievements`)                                                                        |
 | `/settings`                                                  | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout                                                                                                                     |
+| `/support`                                                   | `SupportPage` — help & support card grid (help center, contact, API status, changelog)                                                                                                        |
 | `/admin`                                                     | `AdminPage` — user role management and feature flag CRUD (AdminGuard)                                                                                                                          |
 
 **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
@@ -376,8 +377,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Admin)
-- `TopNav.tsx` — Global header with user profile tile, logout, theme toggle, and (when signed in) the `NotificationsBell`
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Support, Admin). Collapses to an icon-only rail via a bottom toggle, persisted to `localStorage` (`ar_sidebar_collapsed`)
+- `TopNav.tsx` — Global header: user profile tile, logout, theme toggle, route-derived breadcrumbs (desktop), and (when signed in) the `NotificationsBell`
 - `NotificationsBell.tsx` — Bell + dropdown of client-side-derived notifications (races starting soon, percentile improvements), gated on the Settings "Alerts" toggle (`alertsEnabled`); fetches the race guide + analytics and derives alerts via the pure `deriveAlerts` (`utils/alerts.ts`). MVP — no persistence/server push
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
@@ -411,6 +412,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 `src/web/src/utils/percentile.ts` exports `topPercentLabel(rank: number): string` — formats a percentile rank (**higher is better**, e.g. 96 → `TOP 4%`), floored at `TOP 1%`. Imported by `AnalyticsPage` and `DashboardPage`. Don't re-inline the `100 - rank` formula.
 
 `src/web/src/utils/alerts.ts` exports the pure `deriveAlerts({ raceGuide, analytics, now? }): Alert[]` — client-side notification derivation (races starting ≤30 min; per-car percentile improvements). Unit-tested directly; consumed by `NotificationsBell`.
+
+`src/web/src/utils/breadcrumbs.ts` exports the pure `breadcrumbs(pathname): Crumb[]` — route → breadcrumb trail (labels from the URL only, no fetch; ancestor crumbs carry a `to`). Unit-tested directly; consumed by `TopNav`.
 
 ### EF Core design-time factory
 

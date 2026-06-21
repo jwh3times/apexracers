@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -296,5 +296,26 @@ describe('TopNav', () => {
     await waitFor(() =>
       expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument()
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // Breadcrumbs (T13)
+  // -------------------------------------------------------------------------
+
+  it('renders navigable breadcrumbs for a deep route', () => {
+    renderTopNav('/series/444/weeks/5/strategy');
+    const crumb = screen.getByRole('navigation', { name: /breadcrumb/i });
+    expect(within(crumb).getByRole('link', { name: 'Series' })).toHaveAttribute('href', '/series');
+    expect(within(crumb).getByRole('link', { name: 'Week 5' })).toHaveAttribute(
+      'href',
+      '/series/444/weeks/5'
+    );
+    expect(within(crumb).getByText('Strategy')).toBeInTheDocument();
+  });
+
+  it('renders a single current-page crumb for a top-level route', () => {
+    renderTopNav('/support');
+    const crumb = screen.getByRole('navigation', { name: /breadcrumb/i });
+    expect(within(crumb).getByText('Support')).toBeInTheDocument();
   });
 });

@@ -36,6 +36,7 @@ import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import SupportPage from './pages/SupportPage';
 
 function AppShell() {
   return (
@@ -113,6 +114,7 @@ function AppRoutes() {
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/settings" element={<SettingsPage key={user?.userId} />} />
           <Route element={<AdminGuard />}>
             <Route path="/admin" element={<AdminPage />} />
