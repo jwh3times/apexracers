@@ -90,7 +90,7 @@ auth-independent**:
 
 ```tsx
 export function RequireFlag() {
-  const enabled = useFeatureFlag('iracing-live');
+  const enabled = useFeatureFlag("iracing-live");
   return enabled ? <Outlet /> : <ComingSoon />;
 }
 ```
@@ -145,16 +145,16 @@ widgets on `useFeatureFlag('iracing-live')`.
 
 **`DashboardPage`** (audited — of 7 KPI tiles only 3 are local):
 
-| Element                         | Data source                  | Flag off |
-| ------------------------------- | ---------------------------- | -------- |
-| KPI: Laps recorded              | `getMyLaps` (local)          | keep     |
-| KPI: Cars tracked               | `getMyLaps` (local)          | keep     |
-| Card: Personal bests            | `getMyLaps` (local)          | keep     |
-| KPI: Active series              | `getSeries` (worker)         | hide     |
-| KPI: Best percentile            | `getMyAnalytics` (iRacing)   | hide     |
-| KPI: iRating / SR / Avg finish  | `getProfileStats` (iRacing)  | hide     |
-| Card: This week                 | `getSeries` (worker)         | hide     |
-| Right column: Active series     | `getSeries` (worker)         | hide     |
+| Element                        | Data source                 | Flag off |
+| ------------------------------ | --------------------------- | -------- |
+| KPI: Laps recorded             | `getMyLaps` (local)         | keep     |
+| KPI: Cars tracked              | `getMyLaps` (local)         | keep     |
+| Card: Personal bests           | `getMyLaps` (local)         | keep     |
+| KPI: Active series             | `getSeries` (worker)        | hide     |
+| KPI: Best percentile           | `getMyAnalytics` (iRacing)  | hide     |
+| KPI: iRating / SR / Avg finish | `getProfileStats` (iRacing) | hide     |
+| Card: This week                | `getSeries` (worker)        | hide     |
+| Right column: Active series    | `getSeries` (worker)        | hide     |
 
 - The `grid-kpi` auto-fit grid reflows naturally as tiles are removed.
 - When off, the 2-column body (`lg:grid-cols-[1.55fr_1fr]`) collapses to the single
