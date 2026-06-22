@@ -22,8 +22,10 @@ project context or finish a feature, use these:
 single source of truth — do not resurrect `archive/plan.md` or `archive/TODO.md` as live trackers.
 
 > Current blocker (see ROADMAP.md): the deployed app lacks iRacing OAuth credentials, so the iRacing-data
-> features are non-functional in production. Milestone **M1** (planned) gates that surface behind an
-> `iracing-live` feature flag — **not yet built**; don't assume it exists in code.
+> features are non-functional in production. Milestone **M1** (shipped) gates that surface behind an
+> `iracing-live` feature flag (seeded **disabled** in the DB via EF `InsertData`). iRacing-dependent
+> routes render `ComingSoonPage` and nav items are hidden until the flag is enabled. Do not assume
+> live iRacing data is available — check `useFeatureFlag('iracing-live')` before rendering those surfaces.
 
 ---
 
@@ -303,6 +305,8 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 **App routes (nested inside `AppShell` — Sidebar + TopNav + Footer):**
 
+iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage` when `iracing-live` is off (see `RequireFlag` below). Dashboard and Profile degrade gracefully — their iRacing-specific panels are hidden and their live-data fetches are skipped when the flag is off.
+
 | Path                                                         | Component                                                                                                                                                                                      |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/dashboard`                                                 | `DashboardPage` — recent laps, active series, welcome, driver-stat KPI tiles (best percentile via `getMyAnalytics`; iRating/SR/avg finish from the top-iRating category via `getProfileStats`) |
@@ -330,6 +334,8 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/admin`                                                     | `AdminPage` — user role management and feature flag CRUD (AdminGuard)                                                                                                                          |
 
 **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
+
+**`RequireFlag`** — wraps all iRacing-dependent routes (analytics, progression, recommendations, live, race history, leaderboards, compare, telemetry, my-laps, and the per-car percentile route). Renders `ComingSoonPage` when the `iracing-live` feature flag is off; otherwise renders the child route. Auth-independent — both guests and signed-in users see the coming-soon page when the flag is disabled.
 
 #### Fluid design system
 
@@ -400,8 +406,8 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Support, Admin). Collapses to an icon-only rail via a bottom toggle, persisted to `localStorage` (`ar_sidebar_collapsed`)
-- `TopNav.tsx` — Global header: user profile tile, logout, theme toggle, route-derived breadcrumbs (desktop), and (when signed in) the `NotificationsBell`
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Support, Admin). Nav items for iRacing-dependent routes are filtered by the `iracing-live` flag via the shared `visibleNav` helper — they are hidden from the sidebar when the flag is off. Collapses to an icon-only rail via a bottom toggle, persisted to `localStorage` (`ar_sidebar_collapsed`)
+- `TopNav.tsx` — Global header: user profile tile, logout, theme toggle, route-derived breadcrumbs (desktop), and (when signed in) the `NotificationsBell`. Nav items for iRacing-dependent routes are filtered by the `iracing-live` flag via `visibleNav` (same helper as `Sidebar.tsx`)
 - `NotificationsBell.tsx` — Bell + dropdown of client-side-derived notifications (races starting soon, percentile improvements), gated on the Settings "Alerts" toggle (`alertsEnabled`); fetches the race guide + analytics and derives alerts via the pure `deriveAlerts` (`utils/alerts.ts`). MVP — no persistence/server push
 - `Footer.tsx` — Global footer (rendered inside AppShell)
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
@@ -426,7 +432,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 - `AuthContext` — Manages user session, JWT access token + refresh token, silent token refresh on startup (when JWT is expired but refresh token is valid), login/logout (logout revokes the refresh token), profile updates, role tier selection, and the alert toggle (`alertsEnabled` / `setAlertsEnabled` — consumed by `NotificationsBell`). Wrap components that need auth state with `useAuth()`.
 - `ThemeContext` — Manages theme preference (`auto` / `light` / `dark`), applies the CSS class to `<html>`, and persists the selection to the API via `PUT /api/auth/theme`.
-- `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `hasFlag(key)` for conditional feature rendering.
+- `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `useFeatureFlag(key)` — a hook that returns `{ isEnabled: boolean }` — for conditional feature rendering.
 
 #### Shared utilities
 
