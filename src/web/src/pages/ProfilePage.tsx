@@ -10,6 +10,7 @@ import {
   type Series,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useFeatureFlag } from '../context/FeatureFlagContext';
 import { formatLapTime } from '../utils/lapTime';
 
 type StatsState =
@@ -344,6 +345,7 @@ function SeriesCard({ s }: { s: Series }) {
 export default function ProfilePage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
+  const iracingLive = useFeatureFlag('iracing-live');
 
   const [laps, setLaps] = useState<PersonalLap[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
@@ -360,16 +362,19 @@ export default function ProfilePage() {
       .then(setLaps)
       .catch(() => {})
       .finally(() => setLapsLoading(false));
+  }, []);
 
+  useEffect(() => {
+    if (!iracingLive) return;
     api
       .getSeries()
       .then(setSeries)
       .catch(() => {})
       .finally(() => setSeriesLoading(false));
-  }, []);
+  }, [iracingLive]);
 
   useEffect(() => {
-    if (!linked) return;
+    if (!linked || !iracingLive) return;
     let active = true;
     api
       .getProfileStats()
@@ -385,10 +390,10 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [linked]);
+  }, [linked, iracingLive]);
 
   useEffect(() => {
-    if (!linked) return;
+    if (!linked || !iracingLive) return;
     let active = true;
     api
       .getAchievements()
@@ -401,7 +406,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [linked]);
+  }, [linked, iracingLive]);
 
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
@@ -484,30 +489,32 @@ export default function ProfilePage() {
       </div>
 
       {/* Driver stats — career, licenses, favorites */}
-      <DriverStats state={linked ? statsState : { status: 'not-linked' }} />
+      {iracingLive && <DriverStats state={linked ? statsState : { status: 'not-linked' }} />}
 
       {/* Trophy case — earned awards/achievements */}
-      <TrophyCase state={linked ? achState : { status: 'hidden' }} />
+      {iracingLive && <TrophyCase state={linked ? achState : { status: 'hidden' }} />}
 
       {/* Active series */}
-      <section>
-        <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Active Series</h3>
-        {seriesLoading && (
-          <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
-            Loading&hellip;
-          </p>
-        )}
-        {!seriesLoading && series.length === 0 && (
-          <p className="font-body-sm text-body-sm text-on-surface-variant">No active series.</p>
-        )}
-        {!seriesLoading && series.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {series.slice(0, 6).map(s => (
-              <SeriesCard key={s.id} s={s} />
-            ))}
-          </div>
-        )}
-      </section>
+      {iracingLive && (
+        <section>
+          <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Active Series</h3>
+          {seriesLoading && (
+            <p className="font-body-sm text-body-sm text-on-surface-variant animate-pulse">
+              Loading&hellip;
+            </p>
+          )}
+          {!seriesLoading && series.length === 0 && (
+            <p className="font-body-sm text-body-sm text-on-surface-variant">No active series.</p>
+          )}
+          {!seriesLoading && series.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {series.slice(0, 6).map(s => (
+                <SeriesCard key={s.id} s={s} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Car performance table */}
       <section>
