@@ -1,4 +1,4 @@
-type NavItem = {
+export type NavItem = {
   readonly to: string;
   readonly label: string;
   readonly icon: string;
@@ -28,3 +28,22 @@ export const AUTH_NAV: readonly NavItem[] = [
   { to: '/profile', label: 'Profile', icon: 'account_circle' },
   { to: '/support', label: 'Support', icon: 'help' },
 ];
+
+// Nav paths gated behind the `iracing-live` flag (see the plan's "gated set").
+export const GATED_NAV_PATHS: ReadonlySet<string> = new Set([
+  '/series',
+  '/analytics',
+  '/progression',
+  '/recommendations',
+  '/live',
+  '/races',
+  '/leaderboards',
+  '/compare',
+  '/cars',
+  '/tracks',
+]);
+
+// When iracing-live is off, hide the gated entries; otherwise show everything.
+export function visibleNav(items: readonly NavItem[], iracingLive: boolean): readonly NavItem[] {
+  return iracingLive ? items : items.filter(i => !GATED_NAV_PATHS.has(i.to));
+}
