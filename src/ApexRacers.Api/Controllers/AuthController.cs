@@ -113,6 +113,26 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
         return NoContent();
     }
 
+    [HttpPost("request-email-change")]
+    [Authorize]
+    public async Task<IActionResult> RequestEmailChangeAsync([FromBody] RequestEmailChangeRequest request, CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        await auth.RequestEmailChangeAsync(userId, request.NewEmail, ct);
+        // Generic response — never reveals whether the target address is already in use.
+        return Ok(new MessageResponse("If that address is available, a confirmation email has been sent."));
+    }
+
+    [HttpPost("confirm-email-change")]
+    public async Task<IActionResult> ConfirmEmailChangeAsync([FromBody] ConfirmEmailChangeRequest request, CancellationToken ct)
+    {
+        await auth.ConfirmEmailChangeAsync(request.UserId, request.NewEmail, request.Token, ct);
+        return NoContent();
+    }
+
     [HttpPost("callback")]
     [Authorize]
     public async Task<IActionResult> CallbackAsync(

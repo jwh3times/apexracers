@@ -861,6 +861,39 @@ public class AuthServiceTests
         Assert.Empty(emails.Sent);
     }
 
+    // ── ConfirmEmailChangeAsync (C2) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_ValidToken_ChangesEmailAndUsername()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByIdAsync(reg.UserId.ToString());
+        var token = await userManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
+
+        await svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", token, TestContext.Current.CancellationToken);
+
+        var updated = await userManager.FindByIdAsync(reg.UserId.ToString());
+        Assert.Equal("new@example.com", updated!.Email);
+        Assert.Equal("new@example.com", updated.UserName);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_BadToken_Throws()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", "not-a-real-token", TestContext.Current.CancellationToken));
+    }
+
     // ── Active refresh-token cap (T5) ─────────────────────────────────────────
 
     private static int CountActiveTokens(AppDbContext db) =>

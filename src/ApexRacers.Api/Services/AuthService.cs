@@ -272,6 +272,24 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         await RevokeAllActiveTokensAsync(user.Id, ct);
     }
 
+    /// <summary>
+    /// Applies a pending email change using a token from <see cref="RequestEmailChangeAsync"/>. Keeps the
+    /// username in sync (login is by email) and revokes all active refresh tokens (account-recovery action).
+    /// </summary>
+    public async Task ConfirmEmailChangeAsync(Guid userId, string newEmail, string token, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("Invalid or expired email change request.");
+
+        var trimmed = newEmail.Trim();
+        var result = await userManager.ChangeEmailAsync(user, trimmed, token);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        await userManager.SetUserNameAsync(user, trimmed);
+        await RevokeAllActiveTokensAsync(user.Id, ct);
+    }
+
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
     //       code for an iRacing access token via the Authorization Code flow; fetch driver
     //       profile (customerId, displayName) from iRacing; update ApplicationUser.IRacingCustomerId;
