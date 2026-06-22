@@ -2,7 +2,9 @@ namespace ApexRacers.Api.Dtos;
 
 public record RegisterRequest(string Email, string Password);
 public record LoginRequest(string Email, string Password);
-public record UpdateProfileRequest(string DisplayName, long? IRacingCustomerId = null, string? Email = null, string? ThemePreference = null);
+public record UpdateProfileRequest(string DisplayName, long? IRacingCustomerId = null, string? ThemePreference = null);
+public record RequestEmailChangeRequest(string NewEmail);
+public record ConfirmEmailChangeRequest(Guid UserId, string NewEmail, string Token);
 public record UpdateRoleRequest(string Role);
 public record UpdateThemeRequest(string ThemePreference);
 public record AdminUpdateUserRoleRequest(string Role);

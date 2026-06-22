@@ -66,6 +66,8 @@ public record AuthResultDto(string Token, Guid UserId, string DisplayName, strin
 /// </summary>
 public record ForgotPasswordResponse(string Message, string? ResetToken);
 
+public record MessageResponse(string Message);
+
 /// <summary>Typed body for the 409 returned when the caller has no linked iRacing customer id.</summary>
 public record NotLinkedDto(string Code, string Message);
 

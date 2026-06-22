@@ -361,7 +361,7 @@ describe('api', () => {
   describe('updateProfile', () => {
     it('calls PUT /api/auth/profile with display name and customer ID', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      const result = await api.updateProfile('Updated Name', 100042, 'driver@example.com');
+      const result = await api.updateProfile('Updated Name', 100042);
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/profile',
         expect.objectContaining({
@@ -369,7 +369,6 @@ describe('api', () => {
           body: JSON.stringify({
             displayName: 'Updated Name',
             iRacingCustomerId: 100042,
-            email: 'driver@example.com',
           }),
         })
       );
@@ -378,14 +377,13 @@ describe('api', () => {
 
     it('sends null iRacingCustomerId when not provided', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      await api.updateProfile('Updated Name', null, 'driver@example.com');
+      await api.updateProfile('Updated Name', null);
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/profile',
         expect.objectContaining({
           body: JSON.stringify({
             displayName: 'Updated Name',
             iRacingCustomerId: null,
-            email: 'driver@example.com',
           }),
         })
       );
@@ -393,16 +391,14 @@ describe('api', () => {
 
     it('throws with server error body on failure', async () => {
       mockFetchError({ body: 'Display name too long.' });
-      await expect(api.updateProfile('A'.repeat(100), null, 'driver@example.com')).rejects.toThrow(
+      await expect(api.updateProfile('A'.repeat(100), null)).rejects.toThrow(
         'Display name too long.'
       );
     });
 
     it('falls back to status line when body is empty', async () => {
       mockFetchError({ status: 400, statusText: 'Bad Request', body: '' });
-      await expect(api.updateProfile('name', null, 'driver@example.com')).rejects.toThrow(
-        'PUT /api/auth/profile → 400'
-      );
+      await expect(api.updateProfile('name', null)).rejects.toThrow('PUT /api/auth/profile → 400');
     });
   });
 
@@ -1431,7 +1427,7 @@ describe('api', () => {
           text: () => Promise.resolve(''),
         } as unknown as Response);
 
-      const result = await api.updateProfile('Updated', null, 'a@b.com');
+      const result = await api.updateProfile('Updated', null);
       expect(result.displayName).toBe('Updated');
     });
 
@@ -1467,7 +1463,7 @@ describe('api', () => {
           text: () => Promise.resolve('error body'),
         } as unknown as Response);
 
-      await expect(api.updateProfile('X', null, 'a@b.com')).rejects.toThrow('error body');
+      await expect(api.updateProfile('X', null)).rejects.toThrow('error body');
     });
 
     it('DELETE retry (deleteFeatureFlag) retries after 401 and succeeds', async () => {
@@ -1690,6 +1686,46 @@ describe('api', () => {
         } as unknown as Response);
 
       await expect(api.login('a@b.com', 'pass')).rejects.toThrow('forbidden body');
+    });
+  });
+
+  // ── requestEmailChange ──────────────────────────────────────────────────────
+
+  describe('requestEmailChange', () => {
+    it('requestEmailChange posts the new email', async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve({ message: 'ok' }),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await api.requestEmailChange('new@example.com');
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/auth/request-email-change',
+        expect.objectContaining({ method: 'POST' })
+      );
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      expect(body).toEqual({ newEmail: 'new@example.com' });
+    });
+  });
+
+  // ── confirmEmailChange ──────────────────────────────────────────────────────
+
+  describe('confirmEmailChange', () => {
+    it('confirmEmailChange posts userId, newEmail, token', async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await api.confirmEmailChange('uid-1', 'new@example.com', 'tok');
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      expect(body).toEqual({ userId: 'uid-1', newEmail: 'new@example.com', token: 'tok' });
     });
   });
 

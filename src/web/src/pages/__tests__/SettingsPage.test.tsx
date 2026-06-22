@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SettingsPage from '../SettingsPage';
@@ -30,6 +30,7 @@ vi.mock('../../services/api', () => ({
     updateRole: vi.fn(),
     updateTheme: vi.fn(),
     changePassword: vi.fn(),
+    requestEmailChange: vi.fn(),
   },
 }));
 
@@ -108,7 +109,7 @@ describe('SettingsPage', () => {
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null, 'j@j.com');
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
       expect(mockUpdateSession).toHaveBeenCalledWith({
         token: 'new-tok',
         userId: 'u1',
@@ -117,7 +118,7 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('passes updated email to api.updateProfile when email is changed', async () => {
+  it('does not pass email to api.updateProfile (email change is handled separately)', async () => {
     mockUser = {
       token: 'tok',
       userId: 'u1',
@@ -138,7 +139,7 @@ describe('SettingsPage', () => {
     await user.type(emailInput, 'new@example.com');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null, 'new@example.com');
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null);
     });
   });
 
@@ -429,5 +430,44 @@ describe('SettingsPage', () => {
     expect(currentInput).toHaveValue('secret1');
     expect(newInput).toHaveValue('secret2');
     expect(confirmInput).toHaveValue('secret2');
+  });
+
+  it('requests an email change and shows a pending notice', async () => {
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'old@example.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    (api.requestEmailChange as ReturnType<typeof vi.fn>).mockResolvedValue({ message: 'ok' });
+    renderPage();
+    const emailInput = screen.getByLabelText(/email address/i);
+    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    await waitFor(() => expect(api.requestEmailChange).toHaveBeenCalledWith('new@example.com'));
+    expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
+  });
+
+  it('clears the pending notice when the email input is edited after a successful request', async () => {
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'old@example.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    (api.requestEmailChange as ReturnType<typeof vi.fn>).mockResolvedValue({ message: 'ok' });
+    renderPage();
+    const emailInput = screen.getByLabelText(/email address/i);
+    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
+
+    // Editing the email input should clear the pending notice
+    fireEvent.change(emailInput, { target: { value: 'another@example.com' } });
+    expect(screen.queryByText(/pending verification/i)).not.toBeInTheDocument();
   });
 });

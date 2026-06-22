@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
+using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,17 +43,18 @@ public class AuthServiceTests
         return services.BuildServiceProvider();
     }
 
-    private static AuthService BuildService(ServiceProvider provider)
+    private static AuthService BuildService(ServiceProvider provider, IEmailSender? emailSender = null)
     {
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var db          = provider.GetRequiredService<AppDbContext>();
         var config      = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!"
+                ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!",
+                ["APP_BASE_URL"]    = "https://test.apexracers.gg"
             })
             .Build();
-        return new AuthService(userManager, config, db);
+        return new AuthService(userManager, config, db, emailSender ?? new FakeEmailSender());
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
@@ -251,64 +254,6 @@ public class AuthServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
         Assert.Contains(jwt.Claims, c => c.Type == "iracing_id" && c.Value == "123456789");
-    }
-
-    [Fact]
-    public async Task UpdateProfileAsync_UpdatesEmail_WhenNewEmailProvided()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"), TestContext.Current.CancellationToken);
-
-        var canLoginWithNew = await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        Assert.NotNull(canLoginWithNew.Auth);
-
-        var canLoginWithOld = await svc.LoginAsync(new LoginRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        Assert.Null(canLoginWithOld.Auth);
-    }
-
-    [Fact]
-    public async Task UpdateProfileAsync_Token_ContainsUpdatedEmailClaim()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "new@example.com"), TestContext.Current.CancellationToken);
-
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "new@example.com");
-    }
-
-    [Fact]
-    public async Task UpdateProfileAsync_DuplicateEmail_ThrowsInvalidOperationException()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-
-        var reg1 = await svc.RegisterAsync(new RegisterRequest("user1@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        await svc.RegisterAsync(new RegisterRequest("user2@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.UpdateProfileAsync(reg1.UserId, new UpdateProfileRequest("Name", Email: "user2@example.com"), TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task UpdateProfileAsync_SameEmail_DoesNotThrow()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-
-        var reg = await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", Email: "user@example.com"), TestContext.Current.CancellationToken);
-
-        Assert.NotEmpty(result.Token);
     }
 
     [Fact]
@@ -768,28 +713,59 @@ public class AuthServiceTests
     // ── Password reset (T4) ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task GeneratePasswordResetTokenAsync_ExistingUser_ReturnsNonEmptyToken()
+    public async Task RequestPasswordResetAsync_ExistingUser_ReturnsNonEmptyToken()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("forgot@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var token = await svc.GeneratePasswordResetTokenAsync("forgot@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("forgot@example.com", TestContext.Current.CancellationToken);
 
         Assert.False(string.IsNullOrEmpty(token));
     }
 
     [Fact]
-    public async Task GeneratePasswordResetTokenAsync_UnknownEmail_ReturnsNull()
+    public async Task RequestPasswordResetAsync_UnknownEmail_ReturnsNull()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var token = await svc.GeneratePasswordResetTokenAsync("nobody@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
 
         Assert.Null(token);
+    }
+
+    [Fact]
+    public async Task RequestPasswordResetAsync_KnownUser_SendsEmailWithTokenLink()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(token);
+        Assert.NotNull(emails.Last);
+        Assert.Equal("reset@example.com", emails.Last!.To);
+        Assert.Contains("https://test.apexracers.gg/reset-password", emails.Last.HtmlBody);
+        Assert.Contains(Uri.EscapeDataString(token!), emails.Last.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RequestPasswordResetAsync_UnknownUser_ReturnsNullAndSendsNothing()
+    {
+        await using var provider = BuildProvider();
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+
+        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
+
+        Assert.Null(token);
+        Assert.Empty(emails.Sent);
     }
 
     [Fact]
@@ -800,7 +776,7 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken);
-        var token = await svc.GeneratePasswordResetTokenAsync("reset@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
 
         await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
 
@@ -843,10 +819,99 @@ public class AuthServiceTests
         var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
 
-        var token = await svc.GeneratePasswordResetTokenAsync("revoke@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("revoke@example.com", TestContext.Current.CancellationToken);
         await svc.ResetPasswordAsync(new ResetPasswordRequest("revoke@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
 
         // Every refresh token issued before the reset is now revoked, so it can't be exchanged.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
+    }
+
+    // ── RequestEmailChangeAsync (C1) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task RequestEmailChangeAsync_NewAddress_SendsVerificationToNewEmail()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(emails.Last);
+        Assert.Equal("new@example.com", emails.Last!.To);
+        Assert.Contains("https://test.apexracers.gg/verify-email", emails.Last.HtmlBody);
+        Assert.Contains(reg.UserId.ToString(), emails.Last.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RequestEmailChangeAsync_AddressUsedByAnother_SendsNothing()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        await svc.RegisterAsync(new RegisterRequest("taken@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await svc.RegisterAsync(new RegisterRequest("me@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await svc.RequestEmailChangeAsync(reg.UserId, "taken@example.com", TestContext.Current.CancellationToken);
+
+        Assert.Empty(emails.Sent);
+    }
+
+    // ── ConfirmEmailChangeAsync (C2) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_ValidToken_ChangesEmailAndUsername()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByIdAsync(reg.UserId.ToString());
+        var token = await userManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
+
+        await svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", token, TestContext.Current.CancellationToken);
+
+        var updated = await userManager.FindByIdAsync(reg.UserId.ToString());
+        Assert.Equal("new@example.com", updated!.Email);
+        Assert.Equal("new@example.com", updated.UserName);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_BadToken_Throws()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", "not-a-real-token", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_ValidToken_RevokesActiveRefreshTokens()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        await svc.RegisterAsync(new RegisterRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var refreshToken = login.Auth!.RefreshToken!;
+
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync("revoke-email@example.com");
+        var token = await userManager.GenerateChangeEmailTokenAsync(user!, "revoke-email-new@example.com");
+        await svc.ConfirmEmailChangeAsync(user!.Id, "revoke-email-new@example.com", token, TestContext.Current.CancellationToken);
+
+        // Every refresh token issued before the email change is now revoked, so it can't be exchanged.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
     }

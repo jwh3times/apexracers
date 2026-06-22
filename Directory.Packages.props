@@ -17,6 +17,7 @@
       10.0.7 — without a common floor that produces MSB3277 warnings).
     -->
     <PackageVersion Include="Aydsko.iRacingData" Version="2603.0.0" />
+    <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />

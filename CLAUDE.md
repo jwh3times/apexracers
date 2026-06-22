@@ -4,6 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Ground Rules
+
+- **Don't build on unverified assumptions — ask.** When a task depends on a fact you can't confirm
+  from the code, the docs, or a quick check — especially **external or domain facts** (iRacing API
+  response shapes, the `Aydsko.iRacingData` SDK's wire types and their version drift / `[Obsolete]`
+  fields, the chunked result/lap-data structure, iRacing data semantics like percentile / BoP /
+  license-category / lap-time fields) — stop and ask before designing against a guess. **Ground truth
+  here is usually not a live call:** the iRacing service-account OAuth credentials are unavailable (the
+  project's standing blocker — see ROADMAP.md), so you typically can't fetch a fresh sample. Verify
+  instead against what *is* obtainable, **before** writing the implementation, not as a manual step
+  deferred to the end:
+  - the captured field shapes in `private/iracing-api-response-objects/` — read the relevant endpoint
+    before mapping it (this is the authoritative shape reference);
+  - the `Aydsko.iRacingData` SDK's own typed models (the SDK is the wire contract — map from it, never
+    serialize raw SDK types into the cache);
+  - a real local dataset — `docker compose up` + `ApexRacers.Seeder` populates Postgres with catalog
+    data and synthetic laps for all 7 series, so query/SQL/aggregation shape can be checked against a
+    running DB.
+
+  If the shape you need isn't in the captured samples and can't be reached through the SDK types or a
+  local seed, say so and ask — don't infer it. Designing a structure to "discover" an unknown shape at
+  runtime is still building on an assumption; verify the discovery against the captured samples / SDK
+  types first.
+- **A sensible default for a genuinely low-stakes choice is fine — state it and proceed.** The bar is:
+  would being wrong about this force a rework or ship something incorrect (a wrong percentile, a
+  mis-mapped lap time, a bad EF migration, a cache keyed on the wrong shape)? If yes, it's load-bearing
+  — ask.
+
+---
+
 ## Planning & project docs
 
 Planning/status docs live in `private/` (gitignored — local working docs, not shipped). When you need
@@ -171,7 +201,7 @@ Do not create generic CRUD controllers per entity. Each controller represents on
 - `PercentileController` — driver's lap time percentile for a specific car and week (computes and caches)
 - `RecommendationController` — ranked car recommendations for the authenticated user
 - `StrategyController` — a series week's strategy briefing: track/pit context, weather risk, and per-car BoP with its week-over-week shift plus fuel/tire notes (`GET /api/series/{id}/weeks/{n}/strategy`, **public**; personalizes the "optimal for you" overlay — per-car percentile, projected lap, optimal rank — when a token resolves to a linked cust_id)
-- `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), password change (`POST /api/auth/change-password`, Authorize), password reset request + completion (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, **public**), iRacing OAuth 2.0 callback (`POST /api/auth/callback`). Forgot-password always returns a generic 200 (never reveals whether the account exists) and only returns the reset token in the response body in the Development environment — the token is never logged (no email provider yet)
+- `AuthController` — account management: register, login, token refresh (`POST /api/auth/refresh`), logout/revoke (`POST /api/auth/logout`), profile update (`PUT /api/auth/profile`), theme update (`PUT /api/auth/theme`), role self-service (`PUT /api/auth/role` — self-assign `Standard`/`Beta`/`Alpha`; `Admin` not self-assignable), password change (`POST /api/auth/change-password`, Authorize), password reset request + completion (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, **public**), email-change request + confirmation (`POST /api/auth/request-email-change`, Authorize; `POST /api/auth/confirm-email-change`, **public**), iRacing OAuth 2.0 callback (`POST /api/auth/callback`). Forgot-password emails the reset link via `IEmailSender` (Azure Communication Services) and always returns a generic 200 (never reveals whether the account exists); in Development it also returns the reset token in the response body — the token is never logged. **Profile update no longer mutates email** — changing email is verify-then-apply: `request-email-change` emails a confirmation link to the new address (enumeration-safe), and `confirm-email-change` applies the change, syncs `UserName`, and revokes all refresh tokens
 - `TelemetryController` — iRacing `.ibt` file upload (`POST /api/telemetry/upload`) and personal best laps (`GET /api/telemetry/laps`)
 - `AdminController` — user role management and feature flag CRUD (`/api/admin`, requires AdminOnly policy)
 - `FeatureFlagsController` — returns the caller's active feature flags (`/api/feature-flags`)
@@ -220,7 +250,9 @@ Services in `src/ApexRacers.Api/Services/`:
 - `CarCatalogService` / `TrackCatalogService` — browsable car/track catalog read from the **persisted** `Car`/`Track` tables (populated by the ingestion worker's catalog-refresh step + the seeder). Detail joins car-class membership (cars) from the local catalog and overlays the caller's `PersonalLap` bests when a user id is supplied; unknown id → `KeyNotFoundException` (404). No iRacing creds needed at read time
 - `CarCatalogMapper` / `TrackCatalogMapper` — pure mapping of the `Car`/`Track` **entity** → catalog DTOs (composing image URLs from the stored path bits via `CatalogImage`); unit-tested directly. The track logo is omitted (`TrackAssets.Logo` is `[Obsolete]`)
 - `ExternalDataCacheCleanupService` — hosted `BackgroundService` that purges `ExternalDataCache` rows expired beyond a 2-day grace every 6 h (the cache otherwise only evicts lazily, on overwrite); pure `PurgeExpiredAsync` is unit-tested, the loop is `[ExcludeFromCodeCoverage]`
-- `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates, password change (`ChangePasswordAsync`), password reset (`GeneratePasswordResetTokenAsync` → null for unknown email so the endpoint can't enumerate accounts; `ResetPasswordAsync` revokes all the user's active refresh tokens on success). Issuing a refresh token caps active tokens per user at 5 — the oldest is revoked past the cap (rotation is exempt; needs `AddDefaultTokenProviders()` registered in `Program.cs` for reset tokens)
+- `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates (no longer mutates email), password change (`ChangePasswordAsync`), password reset (`RequestPasswordResetAsync` → generates a single-use token, emails the reset link via `IEmailSender`, and returns null for an unknown email so the endpoint can't enumerate accounts; `ResetPasswordAsync` revokes all the user's active refresh tokens on success), email change (`RequestEmailChangeAsync` → enumeration-safe, emails a confirmation link to the new address via Identity's `GenerateChangeEmailTokenAsync`; `ConfirmEmailChangeAsync` → applies the change, syncs `UserName`, revokes all refresh tokens). Issuing a refresh token caps active tokens per user at 5 — the oldest is revoked past the cap (rotation is exempt; needs `AddDefaultTokenProviders()` registered in `Program.cs` for reset / change-email tokens)
+- `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (in `Services/Email/`) — transactional-email abstraction over the provider-agnostic `OutboundEmail` DTO. DI binds `AcsEmailSender` (Azure Communication Services, via `ACS_CONNECTION_STRING`; sender `ACS_SENDER_ADDRESS`, default `noreply@apexracers.gg`) when configured, else `LoggingEmailSender` (logs the subject only — links/tokens are never logged) so the app runs locally / pre-provisioning. Both senders are thin `[ExcludeFromCodeCoverage]` glue; behavior is covered via fakes. Absolute links are built from `APP_BASE_URL` (default `https://apexracers.gg`)
+- `AccountEmailTemplates` — pure builders for the password-reset and email-change-verification emails (branded HTML + plain-text alternate, CTA + raw-link fallback); unit-tested directly (mirrors `AchievementsMapper`)
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
 - `AdminService` — user role management and feature flag CRUD. Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`): every role change is Remove-then-Add, and a unique index on `identity.UserRoles(UserId)` enforces it at the DB level. Flag eligibility is hierarchical — `GetFlagsForRoleAsync` returns flags whose `MinimumRole` level ≤ the user's level (so `Admin` sees `Alpha`/`Beta`/`Standard` flags too)
@@ -300,6 +332,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 | `/login`           | `LoginPage`                                                                    |
 | `/forgot-password` | `ForgotPasswordPage` — request a password reset link                           |
 | `/reset-password`  | `ResetPasswordPage` — set a new password from an emailed `?email=&token=` link |
+| `/verify-email`    | `VerifyEmailPage` — confirm an email change from an emailed `?userId=&email=&token=` link |
 | `/terms`           | `TermsOfServicePage`                                                           |
 | `/privacy`         | `PrivacyPolicyPage`                                                            |
 
@@ -485,7 +518,8 @@ Current test files in `src/ApexRacers.Tests/Services/`:
 - `StrategyAnalysisTests` (pure weather-risk / fuel / tire / BoP-shift heuristics) / `StrategyServiceTests` (week briefing assembly + personal overlay)
 - `CarRecommendationServiceTests`
 - `UserAnalyticsServiceTests`
-- `AuthServiceTests`
+- `AuthServiceTests` (incl. password-reset email send, email-change request/confirm, revoke-on-change)
+- `AccountEmailTemplatesTests` (pure password-reset / email-change-verification email builders)
 - `TelemetryUploadServiceTests`
 - `PersonalLapServiceTests`
 - `IbtParserTests` (telemetry `.ibt` file parsing)

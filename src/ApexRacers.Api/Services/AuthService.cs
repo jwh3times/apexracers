@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using ApexRacers.Api.Dtos;
+using ApexRacers.Api.Services.Email;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ApexRacers.Api.Services;
 
-public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config, AppDbContext db)
+public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config, AppDbContext db, IEmailSender emailSender)
 {
     private const int AccessTokenMinutes = 15;
     private const int RefreshTokenDays   = 7;
@@ -22,6 +23,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     private const int MaxActiveRefreshTokensPerUser = 5;
 
     private static readonly string[] SelfAssignableRoles = ["Beta", "Alpha"];
+
+    private string BaseUrl => config["APP_BASE_URL"]?.TrimEnd('/') ?? "https://apexracers.gg";
 
     public async Task<AuthResultDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
@@ -88,22 +91,6 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         if (!string.IsNullOrWhiteSpace(request.ThemePreference) &&
             request.ThemePreference is "auto" or "light" or "dark")
             user.ThemePreference = request.ThemePreference;
-
-        if (!string.IsNullOrWhiteSpace(request.Email))
-        {
-            var newEmail = request.Email.Trim();
-            if (!string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                var existing = await userManager.FindByEmailAsync(newEmail);
-                if (existing is not null && existing.Id != userId)
-                    throw new InvalidOperationException("Email address is already in use.");
-
-                user.Email                = newEmail;
-                user.NormalizedEmail      = userManager.NormalizeEmail(newEmail);
-                user.UserName             = newEmail;
-                user.NormalizedUserName   = userManager.NormalizeName(newEmail);
-            }
-        }
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -228,18 +215,47 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     }
 
     /// <summary>
-    /// Issues a single-use password reset token for the account with the given email, or
-    /// <c>null</c> when no such account exists. Returning null rather than throwing lets
-    /// the endpoint respond identically either way, so it can't be used to enumerate accounts.
+    /// Generates a single-use reset token for the account and emails the reset link. Returns the token
+    /// (for Development-only echoing) or null when no account exists for the email.
     /// </summary>
-    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct = default)
+    public async Task<string?> RequestPasswordResetAsync(string email, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
-        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+        if (user is null)
+            return null;
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var url = $"{BaseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+        await emailSender.SendAsync(AccountEmailTemplates.PasswordReset(email, url), ct);
+        return token;
     }
 
     /// <summary>
-    /// Resets a password using a token from <see cref="GeneratePasswordResetTokenAsync"/>.
+    /// Begins a verify-then-apply email change: emails a confirmation link to the new address. The account
+    /// email is unchanged until <see cref="ConfirmEmailChangeAsync"/> runs. Enumeration-safe — if the target
+    /// address already belongs to another account, nothing is sent.
+    /// </summary>
+    public async Task RequestEmailChangeAsync(Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        newEmail = newEmail?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(newEmail))
+            throw new InvalidOperationException("Email address cannot be empty.");
+
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return;
+
+        var existing = await userManager.FindByEmailAsync(newEmail);
+        if (existing is not null && existing.Id != userId)
+            return;
+
+        var token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+        var url = $"{BaseUrl}/verify-email?userId={userId}&email={Uri.EscapeDataString(newEmail)}&token={Uri.EscapeDataString(token)}";
+        await emailSender.SendAsync(AccountEmailTemplates.EmailChangeVerification(newEmail, url), ct);
+    }
+
+    /// <summary>
+    /// Resets a password using a token from <see cref="RequestPasswordResetAsync"/>.
     /// Because a reset is an account-recovery action, every outstanding refresh token is
     /// revoked so any session opened before the reset is cut off.
     /// </summary>
@@ -253,6 +269,24 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
             throw new InvalidOperationException(
                 string.Join(" ", result.Errors.Select(e => e.Description)));
 
+        await RevokeAllActiveTokensAsync(user.Id, ct);
+    }
+
+    /// <summary>
+    /// Applies a pending email change using a token from <see cref="RequestEmailChangeAsync"/>. Keeps the
+    /// username in sync (login is by email) and revokes all active refresh tokens (account-recovery action).
+    /// </summary>
+    public async Task ConfirmEmailChangeAsync(Guid userId, string newEmail, string token, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("Invalid or expired email change request.");
+
+        var trimmed = newEmail.Trim();
+        var result = await userManager.ChangeEmailAsync(user, trimmed, token);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        await userManager.SetUserNameAsync(user, trimmed);
         await RevokeAllActiveTokensAsync(user.Id, ct);
     }
 

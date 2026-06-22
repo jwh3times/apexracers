@@ -809,15 +809,11 @@ export const api = {
     return request('/api/auth/register', { method: 'POST', json: { email, password } });
   },
 
-  /** PUT /api/auth/profile — update display name, email, and optional iRacing customer ID, returns fresh JWT */
-  updateProfile(
-    displayName: string,
-    iRacingCustomerId: number | null,
-    email: string
-  ): Promise<AuthResult> {
+  /** PUT /api/auth/profile — update display name and optional iRacing customer ID, returns fresh JWT */
+  updateProfile(displayName: string, iRacingCustomerId: number | null): Promise<AuthResult> {
     return request('/api/auth/profile', {
       method: 'PUT',
-      json: { displayName, iRacingCustomerId, email },
+      json: { displayName, iRacingCustomerId },
     });
   },
 
@@ -845,6 +841,19 @@ export const api = {
     return request('/api/auth/reset-password', {
       method: 'POST',
       json: { email, token, newPassword },
+    });
+  },
+
+  /** POST /api/auth/request-email-change — send a verification link to the new address */
+  requestEmailChange(newEmail: string): Promise<{ message: string }> {
+    return request('/api/auth/request-email-change', { method: 'POST', json: { newEmail } });
+  },
+
+  /** POST /api/auth/confirm-email-change — apply a pending email change from the emailed link */
+  confirmEmailChange(userId: string, email: string, token: string): Promise<void> {
+    return request('/api/auth/confirm-email-change', {
+      method: 'POST',
+      json: { userId, newEmail: email, token },
     });
   },
 

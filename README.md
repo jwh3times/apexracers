@@ -129,6 +129,10 @@ CLOUD   (npm run dev:cloud)       :5173 ──/api──▶ :443  apexracers-api
 
 iRacing does not have a self-service developer portal. To obtain OAuth 2.0 credentials (`IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`) you must contact iRacing support directly and request API access. The ingestion worker also requires a dedicated iRacing account (`IRACING_USERNAME`, `IRACING_PASSWORD`) for the Password Limited OAuth flow used to pull data.
 
+## Transactional email
+
+Password-reset and email-change-verification emails are sent through Azure Communication Services. The API reads `ACS_CONNECTION_STRING` (from Key Vault in Azure), `ACS_SENDER_ADDRESS` (default `noreply@apexracers.gg`), and `APP_BASE_URL` (default `https://apexracers.gg`, used to build the links in emails). When `ACS_CONNECTION_STRING` is **not** set (e.g. local development), the app binds a logging email sender instead of sending real mail — the password-reset flow still works locally because the reset token is returned in the response body in the Development environment. See `private/deployTODO.md` §13 for the ACS provisioning runbook.
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
