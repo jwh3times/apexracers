@@ -107,4 +107,12 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /leaderboards/i })).not.toBeInTheDocument();
   });
+
+  it('hides gated items and keeps Home for guest when iracing-live is off', () => {
+    mockUser = null;
+    mockFlag = false;
+    renderSidebar();
+    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /browse series/i })).not.toBeInTheDocument();
+  });
 });

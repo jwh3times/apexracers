@@ -9,6 +9,11 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ alertsEnabled: mockAlertsEnabled }),
 }));
 
+let mockFlag = true;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
+}));
+
 vi.mock('../../services/api', () => ({
   api: { getRaceGuide: vi.fn(), getMyAnalytics: vi.fn() },
 }));
@@ -39,6 +44,7 @@ describe('NotificationsBell', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockAlertsEnabled = true;
+    mockFlag = true;
     mockGetRaceGuide.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);
   });
@@ -79,5 +85,15 @@ describe('NotificationsBell', () => {
     expect(screen.getByText('Notifications')).toBeInTheDocument();
     fireEvent.click(bell);
     expect(screen.queryByText('Notifications')).not.toBeInTheDocument();
+  });
+
+  it('skips iRacing fetches and shows no badge when iracing-live flag is off', async () => {
+    mockFlag = false;
+    renderBell();
+    // Yield so any erroneously-triggered effect would have time to run
+    await new Promise(r => setTimeout(r, 0));
+    expect(mockGetRaceGuide).not.toHaveBeenCalled();
+    expect(mockGetMyAnalytics).not.toHaveBeenCalled();
+    expect(screen.queryByText('1')).not.toBeInTheDocument(); // no badge
   });
 });

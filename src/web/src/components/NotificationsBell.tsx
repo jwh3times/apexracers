@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type RaceGuideEntry, type CarAnalytics } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useFeatureFlag } from '../context/FeatureFlagContext';
 import { deriveAlerts, type Alert } from '../utils/alerts';
 
 /**
@@ -12,13 +13,14 @@ import { deriveAlerts, type Alert } from '../utils/alerts';
  */
 export default function NotificationsBell() {
   const { alertsEnabled } = useAuth();
+  const iracingLive = useFeatureFlag('iracing-live');
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
-    // Only fetch when alerts are on. When off we don't reset state here (that would be a
-    // synchronous setState in an effect) — the render gates all alert display on alertsEnabled.
-    if (!alertsEnabled) return;
+    // Only fetch when alerts are on AND the iracing-live flag is enabled.
+    // Without the flag the race-guide endpoint is iRacing-creds-backed and will 503 in production.
+    if (!alertsEnabled || !iracingLive) return;
     let active = true;
     Promise.all([
       api.getRaceGuide().catch((): RaceGuideEntry[] => []),
@@ -29,7 +31,7 @@ export default function NotificationsBell() {
     return () => {
       active = false;
     };
-  }, [alertsEnabled]);
+  }, [alertsEnabled, iracingLive]);
 
   const count = alerts.length;
 
