@@ -840,10 +840,25 @@ public class AuthServiceTests
 
         await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", TestContext.Current.CancellationToken);
 
-        Assert.NotNull(emails.Last);
-        Assert.Equal("new@example.com", emails.Last!.To);
-        Assert.Contains("https://test.apexracers.gg/verify-email", emails.Last.HtmlBody);
-        Assert.Contains(reg.UserId.ToString(), emails.Last.HtmlBody);
+        var verification = Assert.Single(emails.Sent, e => e.To == "new@example.com");
+        Assert.Contains("https://test.apexracers.gg/verify-email", verification.HtmlBody);
+        Assert.Contains(reg.UserId.ToString(), verification.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RequestEmailChangeAsync_NewAddress_AlsoNotifiesOldAddress()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", TestContext.Current.CancellationToken);
+
+        var notice = Assert.Single(emails.Sent, e => e.To == "old@example.com");
+        Assert.Contains("new@example.com", notice.HtmlBody);
+        Assert.Contains("https://test.apexracers.gg/forgot-password", notice.HtmlBody);
     }
 
     [Fact]
