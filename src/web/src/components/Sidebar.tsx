@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GUEST_NAV, AUTH_NAV } from './navItems';
+import { GUEST_NAV, AUTH_NAV, visibleNav } from './navItems';
+import { useFeatureFlag } from '../context/FeatureFlagContext';
 
 const STORAGE_KEY = 'ar_sidebar_collapsed';
 
 export default function Sidebar() {
   const { user } = useAuth();
-  const navItems = user ? AUTH_NAV : GUEST_NAV;
+  const iracingLive = useFeatureFlag('iracing-live');
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, iracingLive);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
 
   const toggle = () =>

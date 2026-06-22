@@ -23,6 +23,11 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, logout: mockLogout, alertsEnabled: false }),
 }));
 
+let mockFlag = true;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -53,6 +58,7 @@ describe('TopNav', () => {
     vi.resetAllMocks();
     mockUser = null;
     mockLogout.mockResolvedValue(undefined);
+    mockFlag = true;
   });
 
   // -------------------------------------------------------------------------
@@ -317,5 +323,14 @@ describe('TopNav', () => {
     renderTopNav('/support');
     const crumb = screen.getByRole('navigation', { name: /breadcrumb/i });
     expect(within(crumb).getByText('Support')).toBeInTheDocument();
+  });
+
+  it('hides gated inline nav links when iracing-live is off', () => {
+    mockUser = { ...baseUser };
+    mockFlag = false;
+    renderTopNav();
+    // /analytics is gated → gone from the inline (slice(1)) links
+    expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /browse series/i })).not.toBeInTheDocument();
   });
 });

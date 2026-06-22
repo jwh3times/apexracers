@@ -10,6 +10,11 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
+let mockFlag = true;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
+}));
+
 const LOGGED_IN: User = {
   token: 't',
   userId: 'u1',
@@ -31,6 +36,7 @@ describe('Sidebar', () => {
   beforeEach(() => {
     localStorage.clear();
     mockUser = null;
+    mockFlag = true;
   });
 
   it('shows guest nav when no user is logged in', () => {
@@ -87,5 +93,18 @@ describe('Sidebar', () => {
     renderSidebar();
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+  });
+
+  it('hides gated nav items but keeps the always-on tools when iracing-live is off', () => {
+    mockUser = LOGGED_IN;
+    mockFlag = false;
+    renderSidebar();
+    // Always-on tools remain
+    expect(screen.getByRole('link', { name: /my laps/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /telemetry/i })).toBeInTheDocument();
+    // Gated items are gone
+    expect(screen.queryByRole('link', { name: /browse series/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /leaderboards/i })).not.toBeInTheDocument();
   });
 });
