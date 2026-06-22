@@ -26,6 +26,9 @@ export default function SettingsPage() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailPending, setEmailPending] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const [roleSaving, setRoleSaving] = useState(false);
   const [roleSaved, setRoleSaved] = useState(false);
@@ -75,6 +78,24 @@ export default function SettingsPage() {
       setProfileError(err instanceof Error ? err.message : 'Failed to save profile.');
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  async function submitEmailChange(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setEmailError(null);
+    if (!email || email === user?.email) {
+      setEmailError('Enter a different email address.');
+      return;
+    }
+    setEmailSaving(true);
+    try {
+      await api.requestEmailChange(email);
+      setEmailPending(email);
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Failed to request email change.');
+    } finally {
+      setEmailSaving(false);
     }
   }
 
@@ -174,22 +195,6 @@ export default function SettingsPage() {
 
               <div>
                 <label
-                  htmlFor="profile-email"
-                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
-                >
-                  Email Address
-                </label>
-                <input
-                  id="profile-email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
-                />
-              </div>
-
-              <div>
-                <label
                   htmlFor="iracing-customer-id"
                   className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
                 >
@@ -220,6 +225,43 @@ export default function SettingsPage() {
                   className="bg-surface-container-highest border border-line-2 text-on-surface px-4 py-2 rounded font-body-sm text-body-sm hover:border-primary-fixed-dim/50 hover:text-primary-fixed-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {profileSaving ? 'Saving…' : profileSaved ? 'Saved ✓' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+
+            <form onSubmit={submitEmailChange} className="space-y-4 mt-6 pt-6 border-t border-line">
+              <div>
+                <label
+                  htmlFor="profile-email"
+                  className="block font-label-caps text-label-caps text-on-surface-variant mb-2"
+                >
+                  Email Address
+                </label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
+                />
+                {emailPending && (
+                  <p className="mt-1.5 font-body-sm text-[12px] text-primary-fixed-dim">
+                    Pending verification: {emailPending}. Check that inbox to confirm the change.
+                  </p>
+                )}
+                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
+                  Changing your email sends a confirmation link to the new address. Your sign-in
+                  email won&apos;t change until you confirm it.
+                </p>
+              </div>
+              {emailError && <p className="font-body-sm text-body-sm text-error">{emailError}</p>}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={emailSaving}
+                  className="bg-primary-fixed-dim text-on-primary-fixed font-headline-sm text-headline-sm px-4 py-2 rounded-lg hover:bg-primary-fixed transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {emailSaving ? 'Sending…' : 'Verify new email'}
                 </button>
               </div>
             </form>

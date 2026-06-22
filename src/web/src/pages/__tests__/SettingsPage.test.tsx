@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SettingsPage from '../SettingsPage';
@@ -30,6 +30,7 @@ vi.mock('../../services/api', () => ({
     updateRole: vi.fn(),
     updateTheme: vi.fn(),
     changePassword: vi.fn(),
+    requestEmailChange: vi.fn(),
   },
 }));
 
@@ -429,5 +430,23 @@ describe('SettingsPage', () => {
     expect(currentInput).toHaveValue('secret1');
     expect(newInput).toHaveValue('secret2');
     expect(confirmInput).toHaveValue('secret2');
+  });
+
+  it('requests an email change and shows a pending notice', async () => {
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'old@example.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    (api.requestEmailChange as ReturnType<typeof vi.fn>).mockResolvedValue({ message: 'ok' });
+    renderPage();
+    const emailInput = screen.getByLabelText(/email address/i);
+    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    await waitFor(() => expect(api.requestEmailChange).toHaveBeenCalledWith('new@example.com'));
+    expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
   });
 });
