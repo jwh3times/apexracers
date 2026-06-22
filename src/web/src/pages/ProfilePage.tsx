@@ -364,6 +364,9 @@ export default function ProfilePage() {
       .finally(() => setLapsLoading(false));
   }, []);
 
+  // When iracing-live is off we skip these iRacing fetches, so seriesLoading stays `true`
+  // and statsState/achState stay 'loading'. Safe only because every section reading them is
+  // also gated off below — if you un-gate one of those sections, restore its fetch too.
   useEffect(() => {
     if (!iracingLive) return;
     api

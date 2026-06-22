@@ -47,6 +47,9 @@ export default function DashboardPage() {
       .finally(() => setLapsLoading(false));
   }, []);
 
+  // When iracing-live is off we skip these fetches, so seriesLoading/profileLoading/
+  // analyticsLoading stay `true`. That's safe only because every widget reading them is
+  // also gated off below — if you un-gate one of those widgets, restore its fetch too.
   useEffect(() => {
     if (!iracingLive) return;
     api
