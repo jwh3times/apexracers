@@ -95,7 +95,7 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
-        var token = await auth.GeneratePasswordResetTokenAsync(request.Email, ct);
+        var token = await auth.RequestPasswordResetAsync(request.Email, ct);
 
         // Email delivery is not wired up yet. In Development the token is returned in the
         // response body so the reset flow is testable end-to-end; in every other environment

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using ApexRacers.Api.Dtos;
+using ApexRacers.Api.Services.Email;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ApexRacers.Api.Services;
 
-public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config, AppDbContext db)
+public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config, AppDbContext db, IEmailSender emailSender)
 {
     private const int AccessTokenMinutes = 15;
     private const int RefreshTokenDays   = 7;
@@ -22,6 +23,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     private const int MaxActiveRefreshTokensPerUser = 5;
 
     private static readonly string[] SelfAssignableRoles = ["Beta", "Alpha"];
+
+    private string BaseUrl => config["APP_BASE_URL"]?.TrimEnd('/') ?? "https://apexracers.gg";
 
     public async Task<AuthResultDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
@@ -228,18 +231,23 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
     }
 
     /// <summary>
-    /// Issues a single-use password reset token for the account with the given email, or
-    /// <c>null</c> when no such account exists. Returning null rather than throwing lets
-    /// the endpoint respond identically either way, so it can't be used to enumerate accounts.
+    /// Generates a single-use reset token for the account and emails the reset link. Returns the token
+    /// (for Development-only echoing) or null when no account exists for the email.
     /// </summary>
-    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct = default)
+    public async Task<string?> RequestPasswordResetAsync(string email, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
-        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+        if (user is null)
+            return null;
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var url = $"{BaseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+        await emailSender.SendAsync(AccountEmailTemplates.PasswordReset(email, url), ct);
+        return token;
     }
 
     /// <summary>
-    /// Resets a password using a token from <see cref="GeneratePasswordResetTokenAsync"/>.
+    /// Resets a password using a token from <see cref="RequestPasswordResetAsync"/>.
     /// Because a reset is an account-recovery action, every outstanding refresh token is
     /// revoked so any session opened before the reset is cut off.
     /// </summary>

@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
+using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,17 +43,18 @@ public class AuthServiceTests
         return services.BuildServiceProvider();
     }
 
-    private static AuthService BuildService(ServiceProvider provider)
+    private static AuthService BuildService(ServiceProvider provider, IEmailSender? emailSender = null)
     {
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var db          = provider.GetRequiredService<AppDbContext>();
         var config      = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!"
+                ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!",
+                ["APP_BASE_URL"]    = "https://test.apexracers.gg"
             })
             .Build();
-        return new AuthService(userManager, config, db);
+        return new AuthService(userManager, config, db, emailSender ?? new FakeEmailSender());
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
@@ -768,28 +771,59 @@ public class AuthServiceTests
     // ── Password reset (T4) ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task GeneratePasswordResetTokenAsync_ExistingUser_ReturnsNonEmptyToken()
+    public async Task RequestPasswordResetAsync_ExistingUser_ReturnsNonEmptyToken()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("forgot@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var token = await svc.GeneratePasswordResetTokenAsync("forgot@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("forgot@example.com", TestContext.Current.CancellationToken);
 
         Assert.False(string.IsNullOrEmpty(token));
     }
 
     [Fact]
-    public async Task GeneratePasswordResetTokenAsync_UnknownEmail_ReturnsNull()
+    public async Task RequestPasswordResetAsync_UnknownEmail_ReturnsNull()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var token = await svc.GeneratePasswordResetTokenAsync("nobody@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
 
         Assert.Null(token);
+    }
+
+    [Fact]
+    public async Task RequestPasswordResetAsync_KnownUser_SendsEmailWithTokenLink()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(token);
+        Assert.NotNull(emails.Last);
+        Assert.Equal("reset@example.com", emails.Last!.To);
+        Assert.Contains("https://test.apexracers.gg/reset-password", emails.Last.HtmlBody);
+        Assert.Contains(Uri.EscapeDataString(token!), emails.Last.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RequestPasswordResetAsync_UnknownUser_ReturnsNullAndSendsNothing()
+    {
+        await using var provider = BuildProvider();
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+
+        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
+
+        Assert.Null(token);
+        Assert.Empty(emails.Sent);
     }
 
     [Fact]
@@ -800,7 +834,7 @@ public class AuthServiceTests
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken);
-        var token = await svc.GeneratePasswordResetTokenAsync("reset@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
 
         await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
 
@@ -843,7 +877,7 @@ public class AuthServiceTests
         var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
 
-        var token = await svc.GeneratePasswordResetTokenAsync("revoke@example.com", TestContext.Current.CancellationToken);
+        var token = await svc.RequestPasswordResetAsync("revoke@example.com", TestContext.Current.CancellationToken);
         await svc.ResetPasswordAsync(new ResetPasswordRequest("revoke@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
 
         // Every refresh token issued before the reset is now revoked, so it can't be exchanged.
