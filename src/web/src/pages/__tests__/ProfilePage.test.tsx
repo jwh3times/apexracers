@@ -18,6 +18,11 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
+let mockFlag = true;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
+}));
+
 vi.mock('../../services/api', () => {
   class IRacingNotLinkedError extends Error {
     code = 'IRACING_NOT_LINKED';
@@ -159,6 +164,7 @@ function renderPage() {
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockFlag = true;
     mockUser = {
       token: 'tok',
       userId: 'u1',
@@ -390,5 +396,24 @@ describe('ProfilePage', () => {
     await waitFor(() => expect(screen.getByText('Active Series')).toBeInTheDocument());
     expect(mockGetAchievements).not.toHaveBeenCalled();
     expect(screen.queryByText('Trophy Case')).not.toBeInTheDocument();
+  });
+
+  it('hides iRacing sections and skips their fetches when iracing-live is off', async () => {
+    mockFlag = false;
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+    // Local content stays
+    await waitFor(() => expect(screen.getByText('Personal Best by Car')).toBeInTheDocument());
+    expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
+    // iRacing sections are gone
+    expect(screen.queryByText('Licenses')).not.toBeInTheDocument();
+    expect(screen.queryByText('Trophy Case')).not.toBeInTheDocument();
+    expect(screen.queryByText('Active Series')).not.toBeInTheDocument();
+    // iRacing fetches never fire; local laps still load
+    expect(mockGetSeries).not.toHaveBeenCalled();
+    expect(mockGetProfileStats).not.toHaveBeenCalled();
+    expect(mockGetAchievements).not.toHaveBeenCalled();
+    expect(mockGetMyLaps).toHaveBeenCalled();
   });
 });

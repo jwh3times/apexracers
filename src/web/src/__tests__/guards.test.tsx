@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { RequireAuth, AdminGuard } from '../App';
+import { RequireAuth, AdminGuard, RequireFlag } from '../App';
 import type { User } from '../context/AuthContext';
 
 let mockUser: User | null = null;
@@ -10,6 +10,11 @@ let mockLoading = false;
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, loading: mockLoading }),
+}));
+
+let mockFlag = true;
+vi.mock('../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
 }));
 
 const adminUser: User = {
@@ -92,5 +97,34 @@ describe('AdminGuard', () => {
     mockUser = adminUser;
     renderGuard(<AdminGuard />, '/admin');
     expect(screen.getByText('admin content')).toBeInTheDocument();
+  });
+});
+
+describe('RequireFlag', () => {
+  beforeEach(() => {
+    mockUser = null;
+    mockLoading = false;
+    mockFlag = true;
+  });
+
+  it('renders the gated outlet when iracing-live is on', () => {
+    mockFlag = true;
+    renderGuard(<RequireFlag />, '/secret');
+    expect(screen.getByText('secret content')).toBeInTheDocument();
+  });
+
+  it('renders ComingSoon (not the outlet) when iracing-live is off', () => {
+    mockFlag = false;
+    renderGuard(<RequireFlag />, '/secret');
+    expect(screen.queryByText('secret content')).not.toBeInTheDocument();
+    expect(screen.getByText(/live iracing analytics arriving soon/i)).toBeInTheDocument();
+  });
+
+  it('renders ComingSoon for a guest (no redirect to login) when off', () => {
+    mockUser = null;
+    mockFlag = false;
+    renderGuard(<RequireFlag />, '/secret');
+    expect(screen.queryByText('login page')).not.toBeInTheDocument();
+    expect(screen.getByText(/live iracing analytics arriving soon/i)).toBeInTheDocument();
   });
 });
