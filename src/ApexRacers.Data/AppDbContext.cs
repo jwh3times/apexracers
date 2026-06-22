@@ -39,7 +39,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<ApplicationUser>().ToTable("Users", "identity");
         modelBuilder.Entity<IdentityRole<Guid>>().ToTable("Roles", "identity");
-        modelBuilder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles", "identity");
+        modelBuilder.Entity<IdentityUserRole<Guid>>(b =>
+        {
+            b.ToTable("UserRoles", "identity");
+            // Enforce one role per user at the DB level. Compatible with the app's
+            // Remove-then-Add role swaps (AuthService register, AdminService.SetUserRoleAsync,
+            // and the ADMIN_SEED_EMAILS promotion in Program.cs); blocks any path — or manual
+            // DB edit — that would give a user a second role.
+            b.HasIndex(ur => ur.UserId).IsUnique();
+        });
         modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims", "identity");
         modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins", "identity");
         modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens", "identity");

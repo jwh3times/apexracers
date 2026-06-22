@@ -223,7 +223,7 @@ Services in `src/ApexRacers.Api/Services/`:
 - `AuthService` — registration, login (JWT + refresh token), refresh token rotation, token revocation, profile updates, password change (`ChangePasswordAsync`), password reset (`GeneratePasswordResetTokenAsync` → null for unknown email so the endpoint can't enumerate accounts; `ResetPasswordAsync` revokes all the user's active refresh tokens on success). Issuing a refresh token caps active tokens per user at 5 — the oldest is revoked past the cap (rotation is exempt; needs `AddDefaultTokenProviders()` registered in `Program.cs` for reset tokens)
 - `TelemetryUploadService` — parse `.ibt` file, extract valid laps, persist to `PersonalLap`
 - `PersonalLapService` — query personal best laps per track+car
-- `AdminService` — user role management and feature flag CRUD
+- `AdminService` — user role management and feature flag CRUD. Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`): every role change is Remove-then-Add, and a unique index on `identity.UserRoles(UserId)` enforces it at the DB level. Flag eligibility is hierarchical — `GetFlagsForRoleAsync` returns flags whose `MinimumRole` level ≤ the user's level (so `Admin` sees `Alpha`/`Beta`/`Standard` flags too)
 - `CachedIRacingClient` — get-or-fetch cache over the iRacing `IDataClient` (TTL per `ExternalDataCache`); throws `IRacingNotConfiguredException` when iRacing creds are absent
 - `MemberContext` — resolves the authenticated user's iRacing `cust_id` from the DB; returns null when unlinked, which controllers turn into a typed `409` `NotLinkedDto` (`IRACING_NOT_LINKED`) via `ControllerExtensions.IRacingNotLinked()`
 
