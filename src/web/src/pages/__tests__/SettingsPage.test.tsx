@@ -108,7 +108,7 @@ describe('SettingsPage', () => {
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null, 'j@j.com');
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
       expect(mockUpdateSession).toHaveBeenCalledWith({
         token: 'new-tok',
         userId: 'u1',
@@ -117,7 +117,7 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('passes updated email to api.updateProfile when email is changed', async () => {
+  it('does not pass email to api.updateProfile (email change is handled separately)', async () => {
     mockUser = {
       token: 'tok',
       userId: 'u1',
@@ -138,7 +138,7 @@ describe('SettingsPage', () => {
     await user.type(emailInput, 'new@example.com');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null, 'new@example.com');
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null);
     });
   });
 

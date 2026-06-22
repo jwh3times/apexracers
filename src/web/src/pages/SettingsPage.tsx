@@ -66,8 +66,7 @@ export default function SettingsPage() {
     try {
       const result = await api.updateProfile(
         displayName,
-        iRacingCustomerId ? Number(iRacingCustomerId) : null,
-        email
+        iRacingCustomerId ? Number(iRacingCustomerId) : null
       );
       await updateSession(result);
       setProfileSaved(true);
