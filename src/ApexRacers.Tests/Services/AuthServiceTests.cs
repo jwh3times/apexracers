@@ -894,6 +894,28 @@ public class AuthServiceTests
             svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", "not-a-real-token", TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task ConfirmEmailChangeAsync_ValidToken_RevokesActiveRefreshTokens()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var db  = provider.GetRequiredService<AppDbContext>();
+
+        await svc.RegisterAsync(new RegisterRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var refreshToken = login.Auth!.RefreshToken!;
+
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync("revoke-email@example.com");
+        var token = await userManager.GenerateChangeEmailTokenAsync(user!, "revoke-email-new@example.com");
+        await svc.ConfirmEmailChangeAsync(user!.Id, "revoke-email-new@example.com", token, TestContext.Current.CancellationToken);
+
+        // Every refresh token issued before the email change is now revoked, so it can't be exchanged.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
+    }
+
     // ── Active refresh-token cap (T5) ─────────────────────────────────────────
 
     private static int CountActiveTokens(AppDbContext db) =>

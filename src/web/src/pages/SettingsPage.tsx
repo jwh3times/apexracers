@@ -241,7 +241,11 @@ export default function SettingsPage() {
                   id="profile-email"
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    setEmailPending(null);
+                    setEmailError(null);
+                  }}
                   className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
                 {emailPending && (

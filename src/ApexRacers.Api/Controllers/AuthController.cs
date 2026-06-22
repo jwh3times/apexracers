@@ -97,10 +97,10 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
     {
         var token = await auth.RequestPasswordResetAsync(request.Email, ct);
 
-        // Email delivery is not wired up yet. In Development the token is returned in the
-        // response body so the reset flow is testable end-to-end; in every other environment
-        // it is withheld and the response is identical whether or not the account exists.
-        // The token is deliberately never logged — it is a single-use credential.
+        // In Development the token is also returned in the response body so the reset flow is
+        // testable end-to-end without inspecting an inbox; in every other environment it is
+        // withheld and the response is identical whether or not the account exists. The token
+        // is deliberately never logged — it is a single-use credential.
         return Ok(new ForgotPasswordResponse(
             "If an account exists for that email, a password reset link has been sent.",
             env.IsDevelopment() ? token : null));

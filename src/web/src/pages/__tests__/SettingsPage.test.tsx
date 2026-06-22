@@ -449,4 +449,25 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(api.requestEmailChange).toHaveBeenCalledWith('new@example.com'));
     expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
   });
+
+  it('clears the pending notice when the email input is edited after a successful request', async () => {
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'old@example.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    (api.requestEmailChange as ReturnType<typeof vi.fn>).mockResolvedValue({ message: 'ok' });
+    renderPage();
+    const emailInput = screen.getByLabelText(/email address/i);
+    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
+
+    // Editing the email input should clear the pending notice
+    fireEvent.change(emailInput, { target: { value: 'another@example.com' } });
+    expect(screen.queryByText(/pending verification/i)).not.toBeInTheDocument();
+  });
 });
