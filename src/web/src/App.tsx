@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { useFeatureFlag } from './context/FeatureFlagContext';
 import { AuthProvider } from './context/AuthProvider';
 import { FeatureFlagProvider } from './context/FeatureFlagProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+import ComingSoonPage from './pages/ComingSoonPage';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import Footer from './components/Footer';
@@ -69,6 +71,14 @@ export function AdminGuard() {
   return <Outlet />;
 }
 
+// Gate for routes behind the iracing-live flag. Auth-independent: renders the
+// ComingSoon page for everyone (guest or signed-in) when the flag is off, so deep
+// links degrade gracefully instead of 404/redirect.
+export function RequireFlag() {
+  const enabled = useFeatureFlag('iracing-live');
+  return enabled ? <Outlet /> : <ComingSoonPage />;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   return (
@@ -82,40 +92,44 @@ function AppRoutes() {
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
       <Route element={<AppShell />}>
-        {/* Series browsing is reachable by guests (see GUEST_NAV) */}
-        <Route path="/series" element={<SeriesPage />} />
-        <Route path="/series/:seriesId/schedule" element={<SchedulePage />} />
-        <Route path="/series/:seriesId/standings" element={<StandingsPage />} />
-        <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
-        <Route path="/series/:seriesId/weeks/:weekNumber/strategy" element={<StrategyPage />} />
-        <Route
-          path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
-          element={<PercentileCarPage />}
-        />
-        {/* Public — official race results (shareable); reached from /races */}
-        <Route path="/races/:subsessionId" element={<RaceDetailPage />} />
-
-        {/* Public — car & track reference catalog (personalized when signed in) */}
-        <Route path="/cars" element={<CarsPage />} />
-        <Route path="/cars/:carId" element={<CarDetailPage />} />
-        <Route path="/tracks" element={<TracksPage />} />
-        <Route path="/tracks/:trackId" element={<TrackDetailPage />} />
+        {/* Public but iRacing-data-dependent → gated behind iracing-live */}
+        <Route element={<RequireFlag />}>
+          <Route path="/series" element={<SeriesPage />} />
+          <Route path="/series/:seriesId/schedule" element={<SchedulePage />} />
+          <Route path="/series/:seriesId/standings" element={<StandingsPage />} />
+          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+          <Route path="/series/:seriesId/weeks/:weekNumber/strategy" element={<StrategyPage />} />
+          <Route
+            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+            element={<PercentileCarPage />}
+          />
+          <Route path="/races/:subsessionId" element={<RaceDetailPage />} />
+          <Route path="/cars" element={<CarsPage />} />
+          <Route path="/cars/:carId" element={<CarDetailPage />} />
+          <Route path="/tracks" element={<TracksPage />} />
+          <Route path="/tracks/:trackId" element={<TrackDetailPage />} />
+        </Route>
 
         {/* Everything below requires an authenticated user */}
         <Route element={<RequireAuth />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/progression" element={<ProgressionPage />} />
-          <Route path="/recommendations" element={<RecommendationsPage />} />
-          <Route path="/races" element={<RacesPage />} />
-          <Route path="/leaderboards" element={<LeaderboardsPage />} />
-          <Route path="/compare" element={<ComparePage />} />
-          <Route path="/live" element={<LivePage />} />
           <Route path="/my-laps" element={<MyLapsPage />} />
           <Route path="/telemetry" element={<TelemetryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/settings" element={<SettingsPage key={user?.userId} />} />
+
+          {/* Authed + iRacing-data-dependent → gated behind iracing-live */}
+          <Route element={<RequireFlag />}>
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/progression" element={<ProgressionPage />} />
+            <Route path="/recommendations" element={<RecommendationsPage />} />
+            <Route path="/races" element={<RacesPage />} />
+            <Route path="/leaderboards" element={<LeaderboardsPage />} />
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/live" element={<LivePage />} />
+          </Route>
+
           <Route element={<AdminGuard />}>
             <Route path="/admin" element={<AdminPage />} />
           </Route>
