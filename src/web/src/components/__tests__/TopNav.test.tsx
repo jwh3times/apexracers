@@ -332,5 +332,7 @@ describe('TopNav', () => {
     // /analytics is gated → gone from the inline (slice(1)) links
     expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /browse series/i })).not.toBeInTheDocument();
+    // always-on items must still be present (filter must not drop everything)
+    expect(screen.getByRole('link', { name: /my laps/i })).toBeInTheDocument();
   });
 });
