@@ -3,8 +3,10 @@ using System.Threading.RateLimiting;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Azure.Communication.Email;
 using ApexRacers.Api.Middleware;
 using ApexRacers.Api.Services;
+using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -150,6 +152,18 @@ builder.Services.AddScoped<CarRecommendationService>();
 builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddScoped<AuthService>();
+
+var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(acsConnectionString))
+{
+    builder.Services.AddSingleton(new EmailClient(acsConnectionString));
+    builder.Services.AddScoped<IEmailSender, AcsEmailSender>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
+}
+
 builder.Services.AddScoped<TelemetryUploadService>();
 builder.Services.AddScoped<PersonalLapService>();
 
