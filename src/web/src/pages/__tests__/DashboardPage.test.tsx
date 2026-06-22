@@ -18,6 +18,11 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
+let mockFlag = true;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockFlag,
+}));
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -130,6 +135,8 @@ const carAnalytics: CarAnalytics = {
 
 describe('DashboardPage', () => {
   beforeEach(() => {
+    mockFlag = true;
+    vi.clearAllMocks();
     vi.mocked(api.getSeries).mockResolvedValue([]);
     vi.mocked(api.getMyLaps).mockResolvedValue([]);
     vi.mocked(api.getProfileStats).mockResolvedValue(emptyProfile);
@@ -293,5 +300,23 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(screen.getByText('No active series available.')).toBeInTheDocument()
     );
+  });
+
+  it('hides iRacing widgets and skips their fetches when iracing-live is off', async () => {
+    mockFlag = false;
+    vi.mocked(api.getMyLaps).mockResolvedValue([baseLap]);
+    renderPage();
+    // Local content stays
+    await waitFor(() => expect(screen.getByText('Laps recorded')).toBeInTheDocument());
+    expect(screen.getByText('Cars tracked')).toBeInTheDocument();
+    expect(screen.getByText('Personal bests')).toBeInTheDocument();
+    // iRacing widgets are gone
+    expect(screen.queryByText('This week')).not.toBeInTheDocument();
+    expect(screen.queryByText('Best percentile')).not.toBeInTheDocument();
+    expect(screen.queryByText('iRating')).not.toBeInTheDocument();
+    // iRacing fetches never fire
+    expect(api.getSeries).not.toHaveBeenCalled();
+    expect(api.getProfileStats).not.toHaveBeenCalled();
+    expect(api.getMyAnalytics).not.toHaveBeenCalled();
   });
 });
