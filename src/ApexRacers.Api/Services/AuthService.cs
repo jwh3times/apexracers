@@ -92,22 +92,6 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
             request.ThemePreference is "auto" or "light" or "dark")
             user.ThemePreference = request.ThemePreference;
 
-        if (!string.IsNullOrWhiteSpace(request.Email))
-        {
-            var newEmail = request.Email.Trim();
-            if (!string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                var existing = await userManager.FindByEmailAsync(newEmail);
-                if (existing is not null && existing.Id != userId)
-                    throw new InvalidOperationException("Email address is already in use.");
-
-                user.Email                = newEmail;
-                user.NormalizedEmail      = userManager.NormalizeEmail(newEmail);
-                user.UserName             = newEmail;
-                user.NormalizedUserName   = userManager.NormalizeName(newEmail);
-            }
-        }
-
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
             throw new InvalidOperationException("Update failed. Please try again.");
@@ -244,6 +228,30 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         var url = $"{BaseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
         await emailSender.SendAsync(AccountEmailTemplates.PasswordReset(email, url), ct);
         return token;
+    }
+
+    /// <summary>
+    /// Begins a verify-then-apply email change: emails a confirmation link to the new address. The account
+    /// email is unchanged until <see cref="ConfirmEmailChangeAsync"/> runs. Enumeration-safe — if the target
+    /// address already belongs to another account, nothing is sent.
+    /// </summary>
+    public async Task RequestEmailChangeAsync(Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        newEmail = newEmail?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(newEmail))
+            throw new InvalidOperationException("Email address cannot be empty.");
+
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return;
+
+        var existing = await userManager.FindByEmailAsync(newEmail);
+        if (existing is not null && existing.Id != userId)
+            return;
+
+        var token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+        var url = $"{BaseUrl}/verify-email?userId={userId}&email={Uri.EscapeDataString(newEmail)}&token={Uri.EscapeDataString(token)}";
+        await emailSender.SendAsync(AccountEmailTemplates.EmailChangeVerification(newEmail, url), ct);
     }
 
     /// <summary>
