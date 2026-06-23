@@ -21,8 +21,9 @@ export default function NotificationsBell() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
-    // Only fetch when alerts are on AND the iracing-live flag is enabled.
-    // Without the flag the race-guide endpoint is iRacing-creds-backed and will 503 in production.
+    // Only fetch when alerts are on AND the iRacing surface is available (iracing-live OR
+    // iracing-demo). The race-guide endpoint is iRacing-creds-backed, so it returns real data
+    // only under iracing-live; under iracing-demo it relies on the seeded cache (Plan 2).
     if (!alertsEnabled || !showIracing) return;
     let active = true;
     Promise.all([
