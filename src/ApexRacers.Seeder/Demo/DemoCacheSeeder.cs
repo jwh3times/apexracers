@@ -36,4 +36,11 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await DemoCache.UpsertAsync(db, $"awards:{DemoData.DriverCustId}", DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
         await DemoCache.UpsertAsync(db, $"recent:{DemoData.DriverCustId}", DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
     }
+
+    /// <summary>leaderboard:1..6 (the API allows category 1-6; default 5).</summary>
+    public async Task SeedLeaderboardsAsync(CancellationToken ct)
+    {
+        for (var categoryId = 1; categoryId <= 6; categoryId++)
+            await DemoCache.UpsertAsync(db, $"leaderboard:{categoryId}", DemoLeaderboardData.Build(categoryId), ct);
+    }
 }
