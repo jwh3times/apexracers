@@ -12,9 +12,9 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, loading: mockLoading }),
 }));
 
-let mockFlag = true;
+let mockFlags: Record<string, boolean> = {};
 vi.mock('../context/FeatureFlagContext', () => ({
-  useFeatureFlag: () => mockFlag,
+  useFeatureFlag: (key: string) => mockFlags[key] ?? false,
 }));
 
 const adminUser: User = {
@@ -104,25 +104,31 @@ describe('RequireFlag', () => {
   beforeEach(() => {
     mockUser = null;
     mockLoading = false;
-    mockFlag = true;
+    mockFlags = { 'iracing-live': true };
   });
 
   it('renders the gated outlet when iracing-live is on', () => {
-    mockFlag = true;
+    mockFlags = { 'iracing-live': true };
     renderGuard(<RequireFlag />, '/secret');
     expect(screen.getByText('secret content')).toBeInTheDocument();
   });
 
-  it('renders ComingSoon (not the outlet) when iracing-live is off', () => {
-    mockFlag = false;
+  it('renders the gated outlet when only iracing-demo is on', () => {
+    mockFlags = { 'iracing-live': false, 'iracing-demo': true };
+    renderGuard(<RequireFlag />, '/secret');
+    expect(screen.getByText('secret content')).toBeInTheDocument();
+  });
+
+  it('renders ComingSoon when both flags are off', () => {
+    mockFlags = { 'iracing-live': false, 'iracing-demo': false };
     renderGuard(<RequireFlag />, '/secret');
     expect(screen.queryByText('secret content')).not.toBeInTheDocument();
     expect(screen.getByText(/live iracing analytics arriving soon/i)).toBeInTheDocument();
   });
 
-  it('renders ComingSoon for a guest (no redirect to login) when off', () => {
+  it('renders ComingSoon for a guest when both flags are off', () => {
     mockUser = null;
-    mockFlag = false;
+    mockFlags = { 'iracing-live': false, 'iracing-demo': false };
     renderGuard(<RequireFlag />, '/secret');
     expect(screen.queryByText('login page')).not.toBeInTheDocument();
     expect(screen.getByText(/live iracing analytics arriving soon/i)).toBeInTheDocument();
