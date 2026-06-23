@@ -252,6 +252,12 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
         var token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
         var url = $"{BaseUrl}/verify-email?userId={userId}&email={Uri.EscapeDataString(newEmail)}&token={Uri.EscapeDataString(token)}";
         await emailSender.SendAsync(AccountEmailTemplates.EmailChangeVerification(newEmail, url), ct);
+
+        // Security notice to the current (old) address: in a hijacked-session takeover the verification
+        // link goes to the attacker's inbox, so this is the real owner's earliest chance to react.
+        if (!string.IsNullOrEmpty(user.Email))
+            await emailSender.SendAsync(
+                AccountEmailTemplates.EmailChangeNotice(user.Email, newEmail, $"{BaseUrl}/forgot-password"), ct);
     }
 
     /// <summary>
