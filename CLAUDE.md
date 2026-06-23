@@ -13,8 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   license-category / lap-time fields) — stop and ask before designing against a guess. **Ground truth
   here is usually not a live call:** the iRacing service-account OAuth credentials are unavailable (the
   project's standing blocker — see ROADMAP.md), so you typically can't fetch a fresh sample. Verify
-  instead against what *is* obtainable, **before** writing the implementation, not as a manual step
+  instead against what _is_ obtainable, **before** writing the implementation, not as a manual step
   deferred to the end:
+
   - the captured field shapes in `private/iracing-api-response-objects/` — read the relevant endpoint
     before mapping it (this is the authoritative shape reference);
   - the `Aydsko.iRacingData` SDK's own typed models (the SDK is the wire contract — map from it, never
@@ -27,6 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   local seed, say so and ask — don't infer it. Designing a structure to "discover" an unknown shape at
   runtime is still building on an assumption; verify the discovery against the captured samples / SDK
   types first.
+
 - **A sensible default for a genuinely low-stakes choice is fine — state it and proceed.** The bar is:
   would being wrong about this force a rework or ship something incorrect (a wrong percentile, a
   mis-mapped lap time, a bad EF migration, a cache keyed on the wrong shape)? If yes, it's load-bearing
@@ -39,13 +41,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Planning/status docs live in `private/` (gitignored — local working docs, not shipped). When you need
 project context or finish a feature, use these:
 
-| Doc                                | What it is                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `private/ROADMAP.md`               | **Canonical** status, remaining work, and active milestones. Read this first for "what's next". |
-| `private/PRD.md`                   | Product spec — feature definitions, screen inventory, API & data-model summaries.           |
-| `private/deployTODO.md`            | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).           |
-| `private/archive/`                 | Historical record (`plan.md` per-slice build log, `repo-analysis.md`, `new-features.md`, `TODO.md`). Detail behind ROADMAP's condensed summaries; **not** maintained. |
-| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.        |
+| Doc                                     | What it is                                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `private/ROADMAP.md`                    | **Canonical** status, remaining work, and active milestones. Read this first for "what's next".                                                                       |
+| `private/PRD.md`                        | Product spec — feature definitions, screen inventory, API & data-model summaries.                                                                                     |
+| `private/deployTODO.md`                 | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).                                                                                     |
+| `private/archive/`                      | Historical record (`plan.md` per-slice build log, `repo-analysis.md`, `new-features.md`, `TODO.md`). Detail behind ROADMAP's condensed summaries; **not** maintained. |
+| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.                                                                                       |
 
 **After completing a feature/fix:** update `private/ROADMAP.md` (tick/move items), `private/PRD.md`
 (new sections/rows + version bump), this `CLAUDE.md`, and `README.md` as relevant. ROADMAP.md is the
@@ -326,15 +328,15 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 **Public routes (no AppShell — own layout):**
 
-| Path               | Component                                                                      |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `/`                | `HomePage` — marketing landing page with its own header/nav/footer             |
-| `/login`           | `LoginPage`                                                                    |
-| `/forgot-password` | `ForgotPasswordPage` — request a password reset link                           |
-| `/reset-password`  | `ResetPasswordPage` — set a new password from an emailed `?email=&token=` link |
+| Path               | Component                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `/`                | `HomePage` — marketing landing page with its own header/nav/footer                        |
+| `/login`           | `LoginPage`                                                                               |
+| `/forgot-password` | `ForgotPasswordPage` — request a password reset link                                      |
+| `/reset-password`  | `ResetPasswordPage` — set a new password from an emailed `?email=&token=` link            |
 | `/verify-email`    | `VerifyEmailPage` — confirm an email change from an emailed `?userId=&email=&token=` link |
-| `/terms`           | `TermsOfServicePage`                                                           |
-| `/privacy`         | `PrivacyPolicyPage`                                                            |
+| `/terms`           | `TermsOfServicePage`                                                                      |
+| `/privacy`         | `PrivacyPolicyPage`                                                                       |
 
 **App routes (nested inside `AppShell` — Sidebar + TopNav + Footer):**
 
@@ -346,7 +348,7 @@ iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage
 | `/series`                                                    | `SeriesPage` — browse all series                                                                                                                                                               |
 | `/series/:seriesId/schedule`                                 | `SchedulePage` — active-season calendar with weather, BoP, PB overlay (public)                                                                                                                 |
 | `/series/:seriesId/standings`                                | `StandingsPage` — Championship / Time Trial / Qualifying tabs per car class, with a "your division" badge and a qualifying week selector (public)                                              |
-| `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week; signed-in drivers also get a "Your pct" column (`getMyWeekPercentiles`)                                                                       |
+| `/series/:seriesId/weeks/:weekNumber`                        | `WeekDetailPage` — cars and lap stats for a week; signed-in drivers also get a "Your pct" column (`getMyWeekPercentiles`)                                                                      |
 | `/series/:seriesId/weeks/:weekNumber/strategy`               | `StrategyPage` — per-week strategy briefing: weather-risk banner, track/pit context, and per-car BoP/fuel/tire cards with an "optimal for you" overlay (public)                                |
 | `/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile` | `PercentileCarPage` — detailed percentile breakdown                                                                                                                                            |
 | `/analytics`                                                 | `AnalyticsPage` — per-car percentile history with sparklines                                                                                                                                   |
@@ -361,9 +363,9 @@ iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage
 | `/recommendations`                                           | `RecommendationsPage` — ranked car recommendations for current week                                                                                                                            |
 | `/my-laps`                                                   | `MyLapsPage` — personal best per track+car                                                                                                                                                     |
 | `/telemetry`                                                 | `TelemetryPage` — upload `.ibt` files, view extracted lap summaries                                                                                                                            |
-| `/profile`                                                   | `ProfilePage` — user profile with series/lap stats, enriched driver stats, and an awards trophy case (`getAchievements`)                                                                        |
+| `/profile`                                                   | `ProfilePage` — user profile with series/lap stats, enriched driver stats, and an awards trophy case (`getAchievements`)                                                                       |
 | `/settings`                                                  | `SettingsPage` — display name, email, iRacing ID, theme, role tier, logout                                                                                                                     |
-| `/support`                                                   | `SupportPage` — help & support card grid (help center, contact, API status, changelog)                                                                                                        |
+| `/support`                                                   | `SupportPage` — help & support card grid (help center, contact, API status, changelog)                                                                                                         |
 | `/admin`                                                     | `AdminPage` — user role management and feature flag CRUD (AdminGuard)                                                                                                                          |
 
 **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
