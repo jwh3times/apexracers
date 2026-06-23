@@ -38,6 +38,7 @@ public class DemoCacheSeederMemberTests
         // Rival has profile + career + chart (for /compare) but NOT summary/recap.
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"profile:{DemoData.RivalCustId}", Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"career:{DemoData.RivalCustId}", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"chart:{DemoData.RivalCustId}:5:{(int)Aydsko.iRacingData.Member.MemberChartType.IRating}", Ct));
         Assert.False(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"summary:{DemoData.RivalCustId}", Ct));
     }
 }

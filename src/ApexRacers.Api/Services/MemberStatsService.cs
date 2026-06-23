@@ -189,22 +189,7 @@ public class MemberStatsService(CachedIRacingClient cached)
 /// <summary>SDK-decoupled cache snapshot for <c>profile:{custId}</c> (public so the demo seeder can build it).</summary>
 public sealed record ProfileSnapshot(
     string DisplayName, string? FlairName, string? FlairShortName, string? MemberSince,
-    IReadOnlyList<LicenseSnapshot> Licenses)
-{
-    // IReadOnlyList<T> doesn't override Equals, so the default record equality compares by reference.
-    // Structural equality is needed so pure deterministic builders can be equality-tested.
-    public bool Equals(ProfileSnapshot? other) =>
-        other is not null &&
-        DisplayName == other.DisplayName &&
-        FlairName == other.FlairName &&
-        FlairShortName == other.FlairShortName &&
-        MemberSince == other.MemberSince &&
-        Licenses.SequenceEqual(other.Licenses);
-
-    public override int GetHashCode() =>
-        HashCode.Combine(DisplayName, FlairName, FlairShortName, MemberSince,
-            Licenses.Aggregate(0, (h, l) => HashCode.Combine(h, l)));
-}
+    IReadOnlyList<LicenseSnapshot> Licenses);
 
 public sealed record LicenseSnapshot(
     int CategoryId, string? Category, int Irating, double SafetyRating, double Cpi,
