@@ -8,8 +8,9 @@ const STORAGE_KEY = 'ar_sidebar_collapsed';
 
 export default function Sidebar() {
   const { user } = useAuth();
-  const iracingLive = useFeatureFlag('iracing-live');
-  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, iracingLive);
+  const live = useFeatureFlag('iracing-live');
+  const demo = useFeatureFlag('iracing-demo');
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, live || demo);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
 
   const toggle = () =>

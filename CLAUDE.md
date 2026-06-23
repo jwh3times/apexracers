@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   license-category / lap-time fields) — stop and ask before designing against a guess. **Ground truth
   here is usually not a live call:** the iRacing service-account OAuth credentials are unavailable (the
   project's standing blocker — see ROADMAP.md), so you typically can't fetch a fresh sample. Verify
-  instead against what _is_ obtainable, **before** writing the implementation, not as a manual step
+instead against what _is_ obtainable, **before** writing the implementation, not as a manual step
   deferred to the end:
 
   - the captured field shapes in `private/iracing-api-response-objects/` — read the relevant endpoint
@@ -61,6 +61,11 @@ ROADMAP.md as a completed log.
 > `iracing-live` feature flag (seeded **disabled** in the DB via EF `InsertData`). iRacing-dependent
 > routes render `ComingSoonPage` and nav items are hidden until the flag is enabled. Do not assume
 > live iRacing data is available — check `useFeatureFlag('iracing-live')` before rendering those surfaces.
+> A separate Alpha-gated `iracing-demo` flag (also seeded **disabled**) can reveal the same surface backed
+> by clearly-labeled **synthetic** demo data while real creds are absent: `RequireFlag`/`visibleNav` gate
+> on `iracing-live` **OR** `iracing-demo`, and `MemberContext` resolves demo users to `DemoData.DriverCustId`.
+> This is Plan 1 (the reversible mechanism); Plan 2 seeds the synthetic cached data, so do **not** enable
+> `iracing-demo` in production until Plan 2 ships (the cached pages would 503).
 
 ---
 
@@ -262,7 +267,7 @@ Services in `src/ApexRacers.Api/Services/`:
 - `PersonalLapService` — query personal best laps per track+car
 - `AdminService` — user role management and feature flag CRUD. Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`): every role change is Remove-then-Add, and a unique index on `identity.UserRoles(UserId)` enforces it at the DB level. Flag eligibility is hierarchical — `GetFlagsForRoleAsync` returns flags whose `MinimumRole` level ≤ the user's level (so `Admin` sees `Alpha`/`Beta`/`Standard` flags too)
 - `CachedIRacingClient` — get-or-fetch cache over the iRacing `IDataClient` (TTL per `ExternalDataCache`); throws `IRacingNotConfiguredException` when iRacing creds are absent
-- `MemberContext` — resolves the authenticated user's iRacing `cust_id` from the DB; returns null when unlinked, which controllers turn into a typed `409` `NotLinkedDto` (`IRACING_NOT_LINKED`) via `ControllerExtensions.IRacingNotLinked()`
+- `MemberContext` — resolves the authenticated user's iRacing `cust_id` from the DB; returns null when unlinked, which controllers turn into a typed `409` `NotLinkedDto` (`IRACING_NOT_LINKED`) via `ControllerExtensions.IRacingNotLinked()`. When the `iracing-demo` feature flag is active for the caller's role, it resolves every lookup to the shared synthetic `DemoData.DriverCustId` (`ApexRacers.Core.DemoData`, = 100001) instead of the real/absent link — the **only** demo-aware branch in the API
 
 ### No over-abstraction
 
@@ -343,7 +348,7 @@ The app has two layout tiers defined in `src/web/src/App.tsx`:
 
 **App routes (nested inside `AppShell` — Sidebar + TopNav + Footer):**
 
-iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage` when `iracing-live` is off (see `RequireFlag` below). Dashboard and Profile degrade gracefully — their iRacing-specific panels are hidden and their live-data fetches are skipped when the flag is off.
+iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage` when **both** `iracing-live` and `iracing-demo` are off (see `RequireFlag` below). Dashboard and Profile degrade gracefully — their iRacing-specific panels are hidden and their live-data fetches are skipped when the flag is off; note those panels still gate on `iracing-live` **only**, so they stay hidden under `iracing-demo` alone (a known Plan-1 limitation — the dedicated routes render the demo data).
 
 | Path                                                         | Component                                                                                                                                                                                      |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -373,7 +378,7 @@ iRacing-dependent routes are wrapped in `RequireFlag` and render `ComingSoonPage
 
 **`AdminGuard`** — wraps `/admin`. Unauthenticated users are sent to `/login`; authenticated non-admin users are sent to `/dashboard` (not `/`).
 
-**`RequireFlag`** — wraps all iRacing-dependent routes (analytics, progression, recommendations, live, race history, leaderboards, compare, telemetry, my-laps, and the per-car percentile route). Renders `ComingSoonPage` when the `iracing-live` feature flag is off; otherwise renders the child route. Auth-independent — both guests and signed-in users see the coming-soon page when the flag is disabled.
+**`RequireFlag`** — wraps all iRacing-dependent routes (analytics, progression, recommendations, live, race history, leaderboards, compare, telemetry, my-laps, and the per-car percentile route). Renders `ComingSoonPage` when **both** the `iracing-live` and `iracing-demo` feature flags are off; otherwise (either flag on) renders the child route. Both hooks are called unconditionally and OR-ed (rules-of-hooks). Auth-independent — both guests and signed-in users see the coming-soon page when both flags are disabled.
 
 #### Fluid design system
 
@@ -444,10 +449,11 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 `src/web/src/components/` contains:
 
-- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Support, Admin). Nav items for iRacing-dependent routes are filtered by the `iracing-live` flag via the shared `visibleNav` helper — they are hidden from the sidebar when the flag is off. Collapses to an icon-only rail via a bottom toggle, persisted to `localStorage` (`ar_sidebar_collapsed`)
-- `TopNav.tsx` — Global header: user profile tile, logout, theme toggle, route-derived breadcrumbs (desktop), and (when signed in) the `NotificationsBell`. Nav items for iRacing-dependent routes are filtered by the `iracing-live` flag via `visibleNav` (same helper as `Sidebar.tsx`)
+- `Sidebar.tsx` — Persistent left navigation (Dashboard, Series, Analytics, Progression, Recommendations, Race Now, Race History, Leaderboards, Compare, Cars, Tracks, My Laps, Telemetry, Settings, Profile, Support, Admin). Nav items for iRacing-dependent routes are filtered by the `iracing-live` **OR** `iracing-demo` flag via the shared `visibleNav` helper — they are hidden from the sidebar when both flags are off. Collapses to an icon-only rail via a bottom toggle, persisted to `localStorage` (`ar_sidebar_collapsed`)
+- `TopNav.tsx` — Global header: user profile tile, logout, theme toggle, route-derived breadcrumbs (desktop), and (when signed in) the `NotificationsBell`. Nav items for iRacing-dependent routes are filtered by the `iracing-live` **OR** `iracing-demo` flag via `visibleNav` (same helper as `Sidebar.tsx`)
 - `NotificationsBell.tsx` — Bell + dropdown of client-side-derived notifications (races starting soon, percentile improvements), gated on the Settings "Alerts" toggle (`alertsEnabled`); fetches the race guide + analytics and derives alerts via the pure `deriveAlerts` (`utils/alerts.ts`). MVP — no persistence/server push
 - `Footer.tsx` — Global footer (rendered inside AppShell)
+- `DemoBanner.tsx` — Persistent, non-dismissible cyan banner rendered in `AppShell` (above the routed `Outlet`) whenever `useFeatureFlag('iracing-demo')` is on; labels every gated page as synthetic demo data so figures can't be mistaken for real iRacing results. Renders `null` when the flag is off
 - `Sparkline.tsx` — SVG area-chart for percentile history. Accepts `data: number[]`, optional `w` and `h`. Returns `null` when `data.length < 2`. Always guard the wrapper element so an empty flex slot is not created:
 
 ```tsx
@@ -470,7 +476,7 @@ The primary accent is cyan, not green. Use `text-primary-container` / `bg-primar
 
 - `AuthContext` — Manages user session, JWT access token + refresh token, silent token refresh on startup (when JWT is expired but refresh token is valid), login/logout (logout revokes the refresh token), profile updates, role tier selection, and the alert toggle (`alertsEnabled` / `setAlertsEnabled` — consumed by `NotificationsBell`). Wrap components that need auth state with `useAuth()`.
 - `ThemeContext` — Manages theme preference (`auto` / `light` / `dark`), applies the CSS class to `<html>`, and persists the selection to the API via `PUT /api/auth/theme`.
-- `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `useFeatureFlag(key)` — a hook that returns `{ isEnabled: boolean }` — for conditional feature rendering.
+- `FeatureFlagContext` — Fetches and caches the user's eligible feature flags based on their role. Exposes `useFeatureFlag(key)` — a hook that returns a `boolean` — for conditional feature rendering. The seeded flags include `iracing-live` (real creds, M1) and `iracing-demo` (`MinimumRole=Alpha`, seeded **disabled** — reveals the iRacing surface backed by synthetic demo data for Alpha testers); `RequireFlag` + `visibleNav` gate on `iracing-live` **OR** `iracing-demo`, and `DemoBanner` shows while `iracing-demo` is on.
 
 #### Shared utilities
 
