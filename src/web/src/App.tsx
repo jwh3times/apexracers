@@ -72,12 +72,16 @@ export function AdminGuard() {
   return <Outlet />;
 }
 
-// Gate for routes behind the iracing-live flag. Auth-independent: renders the
-// ComingSoon page for everyone (guest or signed-in) when the flag is off, so deep
-// links degrade gracefully instead of 404/redirect.
+// Gate for routes behind the iRacing surface. Auth-independent: renders the
+// ComingSoon page for everyone (guest or signed-in) when neither flag is on, so deep
+// links degrade gracefully instead of 404/redirect. Shows the surface when real data
+// (iracing-live) OR synthetic demo data (iracing-demo) is available.
 export function RequireFlag() {
-  const enabled = useFeatureFlag('iracing-live');
-  return enabled ? <Outlet /> : <ComingSoonPage />;
+  // Both hooks must be called unconditionally (rules-of-hooks) — `||` on the calls
+  // would short-circuit the second, so evaluate each first, then OR the results.
+  const live = useFeatureFlag('iracing-live');
+  const demo = useFeatureFlag('iracing-demo');
+  return live || demo ? <Outlet /> : <ComingSoonPage />;
 }
 
 function AppRoutes() {
