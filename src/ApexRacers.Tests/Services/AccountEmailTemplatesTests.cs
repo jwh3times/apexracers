@@ -27,4 +27,27 @@ public class AccountEmailTemplatesTests
         Assert.Contains("https://apexracers.gg/verify-email?token=xyz", email.HtmlBody);
         Assert.Contains("https://apexracers.gg/verify-email?token=xyz", email.TextBody);
     }
+
+    [Fact]
+    public void EmailChangeNotice_GoesToOldAddressAndNamesNewEmailPlusSecurityLink()
+    {
+        var email = AccountEmailTemplates.EmailChangeNotice(
+            "old@example.com", "new@example.com", "https://apexracers.gg/forgot-password");
+
+        Assert.Equal("old@example.com", email.To);
+        Assert.Contains("new@example.com", email.HtmlBody);
+        Assert.Contains("new@example.com", email.TextBody);
+        Assert.Contains("https://apexracers.gg/forgot-password", email.HtmlBody);
+        Assert.Contains("https://apexracers.gg/forgot-password", email.TextBody);
+    }
+
+    [Fact]
+    public void EmailChangeNotice_HtmlEncodesTheRequestedAddress()
+    {
+        var email = AccountEmailTemplates.EmailChangeNotice(
+            "old@example.com", "<script>x</script>@evil.com", "https://apexracers.gg/forgot-password");
+
+        Assert.DoesNotContain("<script>", email.HtmlBody);
+        Assert.Contains("&lt;script&gt;", email.HtmlBody);
+    }
 }

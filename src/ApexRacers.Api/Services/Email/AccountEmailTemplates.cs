@@ -37,6 +37,30 @@ public static class AccountEmailTemplates
         return new OutboundEmail(toEmail, null, subject, html, text);
     }
 
+    /// <summary>
+    /// Security notice sent to the account's CURRENT (old) address when an email change is requested,
+    /// so a hijacked-session change is detectable before it completes. The requested address is
+    /// HTML-encoded since it is attacker-controllable in a takeover.
+    /// </summary>
+    public static OutboundEmail EmailChangeNotice(string toEmail, string newEmail, string securityUrl)
+    {
+        const string subject = "Security notice: an email change was requested";
+        var encodedNew = System.Net.WebUtility.HtmlEncode(newEmail);
+        var html = Layout(
+            "Email change requested",
+            $"A request was made to change the email on your ApexRacers account to <strong>{encodedNew}</strong>. " +
+            "If this was you, follow the confirmation link sent to that new address — nothing to do here. " +
+            "If this wasn't you, reset your password now to secure your account.",
+            "Reset your password", securityUrl,
+            "This notice was sent to the current address on your account.");
+        var text =
+            $"Security notice — {BrandName} email change requested\n\n" +
+            $"A request was made to change your account email to {newEmail}. If this was you, follow the " +
+            "confirmation link sent to that new address — nothing to do here.\n\n" +
+            $"If this wasn't you, reset your password now to secure your account:\n{securityUrl}";
+        return new OutboundEmail(toEmail, null, subject, html, text);
+    }
+
     private static string Layout(string heading, string body, string cta, string url, string footnote) =>
         $$"""
         <!DOCTYPE html>
