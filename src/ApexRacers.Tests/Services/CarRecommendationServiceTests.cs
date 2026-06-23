@@ -446,4 +446,38 @@ public class CarRecommendationServiceTests
         Assert.Equal(car1.Id, entry.CarId);
         Assert.Equal(100.0, entry.PercentileRank); // 60 s beat both other drivers (2/2)
     }
+
+    // ── RunningAveragePercentile (pure helper) ───────────────────────────────
+
+    [Fact]
+    public void RunningAveragePercentile_NoPriorHistory_ReturnsReadingItself()
+    {
+        Assert.Equal(80.0, CarRecommendationService.RunningAveragePercentile(80.0, prior: null, oldReading: null));
+    }
+
+    [Fact]
+    public void RunningAveragePercentile_NewWeekRow_AddsToSumAndGrowsCount()
+    {
+        // prior = (Sum 120 over 2 readings), new reading 90 → (120 + 90) / (2 + 1) = 70.
+        var result = CarRecommendationService.RunningAveragePercentile(90.0, prior: (120.0, 2), oldReading: null);
+        Assert.Equal(70.0, result, tolerance: 1e-9);
+    }
+
+    [Fact]
+    public void RunningAveragePercentile_ExistingWeekRow_SwapsOldReadingKeepingCount()
+    {
+        // prior = (Sum 150 over 3 readings); this week's row already contributed 40, now reads 100.
+        // (150 - 40 + 100) / 3 = 70.
+        var result = CarRecommendationService.RunningAveragePercentile(100.0, prior: (150.0, 3), oldReading: 40.0);
+        Assert.Equal(70.0, result, tolerance: 1e-9);
+    }
+
+    [Fact]
+    public void RunningAveragePercentile_ExistingWeekRow_WithZeroCount_FallsBackToReading()
+    {
+        // Guards against divide-by-zero when an existing-week row is present but the prior count is 0
+        // (unreachable via the integration path, where the GroupBy always yields Count >= 1).
+        var result = CarRecommendationService.RunningAveragePercentile(55.0, prior: (0.0, 0), oldReading: 40.0);
+        Assert.Equal(55.0, result, tolerance: 1e-9);
+    }
 }
