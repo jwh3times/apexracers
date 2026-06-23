@@ -11,6 +11,8 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
+var seedDemo = args.Contains("--demo");
+
 var connectionString =
     config["DATABASE_CONNECTION_STRING"]
     ?? "Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=devpassword";
@@ -584,6 +586,13 @@ else
 }
 
 Console.WriteLine("\nSeeding complete.");
+
+if (seedDemo)
+{
+    Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
+    await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
+    Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -102,4 +102,15 @@ public sealed class DemoCacheSeeder(AppDbContext db)
 
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>
+    public async Task SeedAllAsync(CancellationToken ct)
+    {
+        await SeedMembersAsync(ct);
+        await SeedActivityAsync(ct);
+        await SeedLeaderboardsAsync(ct);
+        await SeedStandingsAsync(ct);
+        await SeedRaceGuideAsync(ct);
+        await SeedBopAndWeatherAsync(ct);
+    }
 }
