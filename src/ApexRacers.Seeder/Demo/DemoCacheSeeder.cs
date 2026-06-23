@@ -73,4 +73,33 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         var seriesIds = await db.Seasons.Where(s => s.Active).Select(s => s.SeriesId).Distinct().ToListAsync(ct);
         await DemoCache.UpsertAsync(db, "race-guide", DemoRaceGuideData.Build(seriesIds), ct);
     }
+
+    /// <summary>Fills the §6 persisted gaps: per-week weather + per-car BoP for active seasons.
+    /// Only fills weeks/cars that don't already have data (idempotent; never clobbers real data).</summary>
+    public async Task SeedBopAndWeatherAsync(CancellationToken ct)
+    {
+        var activeSeasonIds = await db.Seasons.Where(s => s.Active).Select(s => s.Id).ToListAsync(ct);
+
+        foreach (var seasonId in activeSeasonIds)
+        {
+            var weeks = await db.Weeks.Where(w => w.SeasonId == seasonId).ToListAsync(ct);
+            var carIds = await db.SeasonCars.Where(c => c.SeasonId == seasonId).Select(c => c.CarId).ToListAsync(ct);
+
+            foreach (var week in weeks)
+            {
+                if (string.IsNullOrEmpty(week.WeatherSummaryJson))
+                    week.WeatherSummaryJson = DemoScheduleData.WeatherJson();
+
+                foreach (var carId in carIds)
+                {
+                    var exists = await db.SeasonCarBops
+                        .AnyAsync(b => b.SeasonId == seasonId && b.WeekNumber == week.WeekNumber && b.CarId == carId, ct);
+                    if (!exists)
+                        db.SeasonCarBops.Add(DemoScheduleData.BuildBop(seasonId, week.WeekNumber, carId));
+                }
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
 }
