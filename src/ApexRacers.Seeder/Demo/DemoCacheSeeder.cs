@@ -66,4 +66,11 @@ public sealed class DemoCacheSeeder(AppDbContext db)
             }
         }
     }
+
+    /// <summary>race-guide for the active series (always-live window — see DemoRaceGuideData).</summary>
+    public async Task SeedRaceGuideAsync(CancellationToken ct)
+    {
+        var seriesIds = await db.Seasons.Where(s => s.Active).Select(s => s.SeriesId).Distinct().ToListAsync(ct);
+        await DemoCache.UpsertAsync(db, "race-guide", DemoRaceGuideData.Build(seriesIds), ct);
+    }
 }
