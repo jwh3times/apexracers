@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ApexRacers.Data\ApexRacers.Data.csproj" />
+    <ProjectReference Include="..\ApexRacers.Api\ApexRacers.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

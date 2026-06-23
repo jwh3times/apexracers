@@ -11,6 +11,8 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
+var seedDemo = args.Contains("--demo");
+
 var connectionString =
     config["DATABASE_CONNECTION_STRING"]
     ?? "Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=devpassword";
@@ -421,6 +423,7 @@ foreach (var schedule in schedules)
                 {
                     SubsessionId            = subsessionId,
                     CustId                  = custId,
+                    DisplayName             = DemoDriverName(custId),
                     CarId                   = carId,
                     CarClassId              = carClassId,
                     BestLapSeconds          = lapSeconds,
@@ -585,6 +588,13 @@ else
 
 Console.WriteLine("\nSeeding complete.");
 
+if (seedDemo)
+{
+    Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
+    await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
+    Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Serialize a slug list to a JSON array string for the catalog's CategoriesJson/CarTypesJson
@@ -683,6 +693,15 @@ static double GetCarOffset(int carId)
     var rng = new Random(HashCode.Combine(carId, 0x5F3759DF));
     return (rng.NextDouble() - 0.5) * 3.0;
 }
+
+// Display name for a synthetic driver — matches the demo cache builders (DemoMemberData)
+// so the demo driver/rival show consistent names on Race Detail + /compare suggestions.
+static string DemoDriverName(long custId) => custId switch
+{
+    ApexRacers.Core.DemoData.DriverCustId => "Demo Driver",
+    ApexRacers.Core.DemoData.RivalCustId  => "Rival Racer",
+    _ => $"Driver {custId}",
+};
 
 // Deterministic skill factor for a driver: 0 = fastest, 1 = slowest.
 static double ComputeSkillFactor(long driverId)

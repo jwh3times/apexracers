@@ -16,12 +16,6 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
 {
     private static readonly TimeSpan Horizon = TimeSpan.FromHours(3);
 
-    // SDK-decoupled cache row: the session normalized to UTC instants before caching, so the
-    // cached JSON doesn't depend on the Aydsko wire shape. The time-window filter and series-name
-    // join still run per request (off the cached rows) so a cached payload reflects the current clock.
-    private sealed record RaceGuideCacheRow(
-        int SeriesId, DateTimeOffset Start, DateTimeOffset End, int EntryCount, int RaceWeekNumber);
-
     public async Task<IReadOnlyList<RaceGuideEntryDto>> GetGuideAsync(CancellationToken ct)
     {
         var sessions = await cached.GetOrFetchAsync(
@@ -65,3 +59,7 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
     private static DateTimeOffset Utc(DateTime dt) =>
         new(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
 }
+
+/// <summary>SDK-decoupled cache row for <c>race-guide</c> (public so the demo seeder can build it).</summary>
+public sealed record RaceGuideCacheRow(
+    int SeriesId, DateTimeOffset Start, DateTimeOffset End, int EntryCount, int RaceWeekNumber);

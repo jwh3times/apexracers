@@ -30,5 +30,6 @@
   <ItemGroup>
     <ProjectReference Include="..\ApexRacers.Api\ApexRacers.Api.csproj" />
     <ProjectReference Include="..\ApexRacers.Ingestion\ApexRacers.Ingestion.csproj" />
+    <ProjectReference Include="..\ApexRacers.Seeder\ApexRacers.Seeder.csproj" />
   </ItemGroup>
 </Project>

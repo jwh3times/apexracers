@@ -9,4 +9,7 @@ namespace ApexRacers.Core;
 public static class DemoData
 {
     public const long DriverCustId = 100_001;
+
+    /// <summary>A second synthetic pool driver used as the demo /compare rival.</summary>
+    public const long RivalCustId = 100_002;
 }
