@@ -21,7 +21,9 @@
             [ApexRacers.Data]ApexRacers.Data.DesignTimeDbContextFactory,
             [ApexRacers.Ingestion]ApexRacers.Ingestion.Worker,
             [ApexRacers.Ingestion]Program,
-            [ApexRacers.Ingestion]HyphenToUnderscoreSecretManager
+            [ApexRacers.Ingestion]HyphenToUnderscoreSecretManager,
+            [ApexRacers.Seeder]Program,
+            [ApexRacers.Seeder]<Program>$
           </Exclude>
           <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
         </Configuration>

@@ -19,17 +19,6 @@ public class MemberStatsService(CachedIRacingClient cached)
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(6);
 
-    // ── SDK-decoupled cache snapshots ─────────────────────────────────────────
-    private sealed record ProfileSnapshot(
-        string DisplayName, string? FlairName, string? FlairShortName, string? MemberSince,
-        IReadOnlyList<LicenseSnapshot> Licenses);
-
-    private sealed record LicenseSnapshot(
-        int CategoryId, string? Category, int Irating, double SafetyRating, double Cpi,
-        int LicenseLevel, string GroupName, int TtRating, string Color);
-
-    private sealed record RecapSnapshot(FavoriteCarDto? FavoriteCar, FavoriteTrackDto? FavoriteTrack);
-
     /// <summary>
     /// One progression card per license category the member holds: current iRating, safety
     /// rating, CPI, TT rating and license level, plus the iRating history for that category.
@@ -196,3 +185,15 @@ public class MemberStatsService(CachedIRacingClient cached)
         return string.Join(' ', words);
     }
 }
+
+/// <summary>SDK-decoupled cache snapshot for <c>profile:{custId}</c> (public so the demo seeder can build it).</summary>
+public sealed record ProfileSnapshot(
+    string DisplayName, string? FlairName, string? FlairShortName, string? MemberSince,
+    IReadOnlyList<LicenseSnapshot> Licenses);
+
+public sealed record LicenseSnapshot(
+    int CategoryId, string? Category, int Irating, double SafetyRating, double Cpi,
+    int LicenseLevel, string GroupName, int TtRating, string Color);
+
+/// <summary>SDK-decoupled cache snapshot for <c>recap:{custId}</c>.</summary>
+public sealed record RecapSnapshot(FavoriteCarDto? FavoriteCar, FavoriteTrackDto? FavoriteTrack);

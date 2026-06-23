@@ -13,14 +13,6 @@ namespace ApexRacers.Api.Services;
 /// </summary>
 public class RaceHistoryService(CachedIRacingClient cached, AppDbContext db)
 {
-    // SDK-decoupled cache row: exactly the fields we read from iRacing's Race, mapped before
-    // caching so the cached JSON never depends on the Aydsko wire shape. Car names are resolved
-    // from the local catalog afterwards (not part of the cached payload).
-    private sealed record RecentRaceCacheRow(
-        int SubsessionId, DateTimeOffset SessionStartTime, string SeriesName, string TrackName,
-        int CarId, int StartPosition, int FinishPosition, int Incidents,
-        int IRatingDelta, double SrDelta, int StrengthOfField, int Points);
-
     public async Task<IReadOnlyList<RaceHistoryRowDto>> GetRecentRacesAsync(
         long custId, CancellationToken ct)
     {
@@ -70,3 +62,9 @@ public class RaceHistoryService(CachedIRacingClient cached, AppDbContext db)
             .ToList();
     }
 }
+
+/// <summary>SDK-decoupled cache row for <c>recent:{custId}</c> (public so the demo seeder can build it).</summary>
+public sealed record RecentRaceCacheRow(
+    int SubsessionId, DateTimeOffset SessionStartTime, string SeriesName, string TrackName,
+    int CarId, int StartPosition, int FinishPosition, int Incidents,
+    int IRatingDelta, double SrDelta, int StrengthOfField, int Points);
