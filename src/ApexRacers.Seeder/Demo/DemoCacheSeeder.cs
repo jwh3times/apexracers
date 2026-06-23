@@ -29,4 +29,11 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await DemoCache.UpsertAsync(db, $"summary:{DemoData.DriverCustId}", DemoMemberData.BuildSummary(DemoData.DriverCustId), ct);
         await DemoCache.UpsertAsync(db, $"recap:{DemoData.DriverCustId}", DemoMemberData.BuildRecap(DemoData.DriverCustId), ct);
     }
+
+    /// <summary>awards + recent races for the authenticated demo driver only.</summary>
+    public async Task SeedActivityAsync(CancellationToken ct)
+    {
+        await DemoCache.UpsertAsync(db, $"awards:{DemoData.DriverCustId}", DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
+        await DemoCache.UpsertAsync(db, $"recent:{DemoData.DriverCustId}", DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
+    }
 }
