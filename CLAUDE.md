@@ -330,6 +330,8 @@ There are **three** ways iRacing data reaches a read path. Pick deliberately; do
 
 `iracing-demo` is **now fully functional** once a DB is seeded with Plan 2 (`--demo`). Demo data is per-database — nothing appears in prod until you run the seeder against `apexracers-pg` and enable the flag for an Alpha user. See `private/deployTODO.md` §14 for the full prod rollout runbook.
 
+**Known demo caveats** (not page-breakers): the `/compare` driver-search box 503s — the `driversearch:*` keys aren't seeded (infinite terms); use the shared-race **suggestions** list to add the rival instead. The percentile world-record overlay and the Race Detail per-lap pace trace are deferred (render empty); `/analytics` populates lazily after a Recommendations/percentile visit; and the race-guide board shows static "in-progress" sessions (a sentinel-cached row can't track the clock).
+
 ### Frontend
 
 Vite dev server proxies all `/api` requests to `http://localhost:5000` (the API). The typed API client is in `src/web/src/services/api.ts` — all fetch calls go through it. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in the API.

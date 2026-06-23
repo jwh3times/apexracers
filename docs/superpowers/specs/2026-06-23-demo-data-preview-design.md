@@ -152,6 +152,13 @@ UPDATE iracing."Weeks" SET "WeatherSummaryJson" = NULL WHERE <seeded seasons>;  
 COMMIT;
 ```
 
+> **Implementation note (Plan 2, shipped):** the illustrative SQL above predates implementation. The
+> shipped `purge_demo_data.sql` uses the **actual EF table names, which are plural** —
+> `iracing."ExternalDataCaches"` and `iracing."SeasonCarBops"` (the singular names above are not real
+> tables) — and scopes the BoP/weather deletes to active seasons. Also: there is **no `progression:`
+> cache key** (an example used elsewhere in this spec) — progression is composed at read time from the
+> `profile:` + per-category `chart:` entries.
+
 **Catalog is intentionally retained.** Like `truncate_seed_data.sql`, the purge leaves
 `Series` / `Seasons` / `Weeks` / `Cars` / `Tracks` / `CarClasses` in place — these are reference/catalog
 data (captured from real iRacing responses), not synthetic clutter, and the real ingestion worker
