@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeProvider';
 import ComingSoonPage from './pages/ComingSoonPage';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
+import DemoBanner from './components/DemoBanner';
 import Footer from './components/Footer';
 import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
@@ -47,6 +48,7 @@ function AppShell() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopNav />
+        <DemoBanner />
         <Outlet />
         <Footer />
       </div>
