@@ -345,7 +345,10 @@ function SeriesCard({ s }: { s: Series }) {
 export default function ProfilePage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
-  const iracingLive = useFeatureFlag('iracing-live');
+  const liveFlag = useFeatureFlag('iracing-live');
+  const demoFlag = useFeatureFlag('iracing-demo');
+  // Show iRacing panels when real (live) OR synthetic demo data is available.
+  const showIracing = liveFlag || demoFlag;
 
   const [laps, setLaps] = useState<PersonalLap[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
@@ -368,16 +371,16 @@ export default function ProfilePage() {
   // and statsState/achState stay 'loading'. Safe only because every section reading them is
   // also gated off below — if you un-gate one of those sections, restore its fetch too.
   useEffect(() => {
-    if (!iracingLive) return;
+    if (!showIracing) return;
     api
       .getSeries()
       .then(setSeries)
       .catch(() => {})
       .finally(() => setSeriesLoading(false));
-  }, [iracingLive]);
+  }, [showIracing]);
 
   useEffect(() => {
-    if (!linked || !iracingLive) return;
+    if (!linked || !showIracing) return;
     let active = true;
     api
       .getProfileStats()
@@ -393,10 +396,10 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [linked, iracingLive]);
+  }, [linked, showIracing]);
 
   useEffect(() => {
-    if (!linked || !iracingLive) return;
+    if (!linked || !showIracing) return;
     let active = true;
     api
       .getAchievements()
@@ -409,7 +412,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [linked, iracingLive]);
+  }, [linked, showIracing]);
 
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
@@ -492,13 +495,13 @@ export default function ProfilePage() {
       </div>
 
       {/* Driver stats — career, licenses, favorites */}
-      {iracingLive && <DriverStats state={linked ? statsState : { status: 'not-linked' }} />}
+      {showIracing && <DriverStats state={linked ? statsState : { status: 'not-linked' }} />}
 
       {/* Trophy case — earned awards/achievements */}
-      {iracingLive && <TrophyCase state={linked ? achState : { status: 'hidden' }} />}
+      {showIracing && <TrophyCase state={linked ? achState : { status: 'hidden' }} />}
 
       {/* Active series */}
-      {iracingLive && (
+      {showIracing && (
         <section>
           <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Active Series</h3>
           {seriesLoading && (

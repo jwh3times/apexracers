@@ -18,9 +18,10 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-let mockFlag = true;
+let mockLiveFlag = true;
+let mockDemoFlag = false;
 vi.mock('../../context/FeatureFlagContext', () => ({
-  useFeatureFlag: () => mockFlag,
+  useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
 }));
 
 function renderPage() {
@@ -135,7 +136,8 @@ const carAnalytics: CarAnalytics = {
 
 describe('DashboardPage', () => {
   beforeEach(() => {
-    mockFlag = true;
+    mockLiveFlag = true;
+    mockDemoFlag = false;
     vi.clearAllMocks();
     vi.mocked(api.getSeries).mockResolvedValue([]);
     vi.mocked(api.getMyLaps).mockResolvedValue([]);
@@ -303,7 +305,7 @@ describe('DashboardPage', () => {
   });
 
   it('hides iRacing widgets and skips their fetches when iracing-live is off', async () => {
-    mockFlag = false;
+    mockLiveFlag = false;
     vi.mocked(api.getMyLaps).mockResolvedValue([baseLap]);
     renderPage();
     // Local content stays
@@ -318,5 +320,22 @@ describe('DashboardPage', () => {
     expect(api.getSeries).not.toHaveBeenCalled();
     expect(api.getProfileStats).not.toHaveBeenCalled();
     expect(api.getMyAnalytics).not.toHaveBeenCalled();
+  });
+
+  it('shows iRacing widgets when iracing-demo is on and iracing-live is off', async () => {
+    mockLiveFlag = false;
+    mockDemoFlag = true;
+    vi.mocked(api.getSeries).mockResolvedValue([baseSeries]);
+    vi.mocked(api.getMyAnalytics).mockResolvedValue([carAnalytics]);
+    vi.mocked(api.getProfileStats).mockResolvedValue(emptyProfile);
+    renderPage();
+    // iRacing widgets are shown (demo data available)
+    await waitFor(() => expect(screen.getByText('This week')).toBeInTheDocument());
+    expect(screen.getByText('Best percentile')).toBeInTheDocument();
+    expect(screen.getByText('iRating')).toBeInTheDocument();
+    // iRacing fetches fire
+    expect(api.getSeries).toHaveBeenCalled();
+    expect(api.getProfileStats).toHaveBeenCalled();
+    expect(api.getMyAnalytics).toHaveBeenCalled();
   });
 });

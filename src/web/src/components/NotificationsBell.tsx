@@ -13,14 +13,17 @@ import { deriveAlerts, type Alert } from '../utils/alerts';
  */
 export default function NotificationsBell() {
   const { alertsEnabled } = useAuth();
-  const iracingLive = useFeatureFlag('iracing-live');
+  const liveFlag = useFeatureFlag('iracing-live');
+  const demoFlag = useFeatureFlag('iracing-demo');
+  // Show iRacing panels when real (live) OR synthetic demo data is available.
+  const showIracing = liveFlag || demoFlag;
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
     // Only fetch when alerts are on AND the iracing-live flag is enabled.
     // Without the flag the race-guide endpoint is iRacing-creds-backed and will 503 in production.
-    if (!alertsEnabled || !iracingLive) return;
+    if (!alertsEnabled || !showIracing) return;
     let active = true;
     Promise.all([
       api.getRaceGuide().catch((): RaceGuideEntry[] => []),
@@ -31,7 +34,7 @@ export default function NotificationsBell() {
     return () => {
       active = false;
     };
-  }, [alertsEnabled, iracingLive]);
+  }, [alertsEnabled, showIracing]);
 
   const count = alerts.length;
 
