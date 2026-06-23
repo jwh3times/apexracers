@@ -1,6 +1,7 @@
 -- Surgically removes the SYNTHETIC demo data (negative-id subsessions + their results,
--- and computed percentile snapshots) while PRESERVING catalog reference data
--- (Series/Seasons/Weeks/Cars/Tracks/CarClasses) and all real user-owned data.
+-- computed percentile snapshots, demo ExternalDataCache rows, and synthetic BoP/weather)
+-- while PRESERVING catalog reference data (Series/Seasons/Weeks/Cars/Tracks/CarClasses)
+-- and all real user-owned data.
 --
 -- Safe to run against production as part of the M2 "real creds on" runbook, in this order:
 --   1. In Admin -> Feature Flags, set iracing-demo IsEnabled=false.
@@ -25,9 +26,14 @@ DELETE FROM iracing."Subsessions" WHERE "Id" < 0;
 -- Computed percentile snapshots (demo-derived at teardown time -- see header).
 DELETE FROM iracing."CarPercentileResults";
 
--- -- Extended by Plan 2 (cache-seeding) -----------------------------------------
--- DELETE FROM iracing."ExternalDataCaches" WHERE "ExpiresAt" >= '9000-01-01';
--- DELETE FROM iracing."SeasonCarBop" WHERE <seeded seasons>;
--- UPDATE iracing."Weeks" SET "WeatherSummaryJson" = NULL WHERE <seeded seasons>;
+-- Demo cache rows are marked by the far-future ExpiresAt sentinel (>= 9000-01-01); real
+-- cache rows have TTLs of 60 s - 24 h and can never reach it.
+DELETE FROM iracing."ExternalDataCaches" WHERE "ExpiresAt" >= '9000-01-01';
+
+-- Synthetic BoP + per-week weather for active seasons (real ingestion re-fills these idempotently).
+DELETE FROM iracing."SeasonCarBops"
+ WHERE "SeasonId" IN (SELECT "Id" FROM iracing."Seasons" WHERE "Active" = true);
+UPDATE iracing."Weeks" SET "WeatherSummaryJson" = NULL
+ WHERE "SeasonId" IN (SELECT "Id" FROM iracing."Seasons" WHERE "Active" = true);
 
 COMMIT;
