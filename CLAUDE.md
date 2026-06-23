@@ -41,17 +41,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Planning/status docs live in `private/` (gitignored — local working docs, not shipped). When you need
 project context or finish a feature, use these:
 
-| Doc                                     | What it is                                                                                                                                                            |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `private/ROADMAP.md`                    | **Canonical** status, remaining work, and active milestones. Read this first for "what's next".                                                                       |
-| `private/PRD.md`                        | Product spec — feature definitions, screen inventory, API & data-model summaries.                                                                                     |
-| `private/deployTODO.md`                 | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).                                                                                     |
-| `private/archive/`                      | Historical record (`plan.md` per-slice build log, `repo-analysis.md`, `new-features.md`, `TODO.md`). Detail behind ROADMAP's condensed summaries; **not** maintained. |
-| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.                                                                                       |
+| Doc                                     | What it is                                                                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `private/ROADMAP.md`                    | **Canonical** record of **remaining** work — blockers, active milestones, backlog. Carries no completed record. Read this first for "what's next".                  |
+| `private/archive/COMPLETED.md`          | **Canonical** record of **completed** work (high-level log, newest first). Maintained — move a ROADMAP item's summary here when it ships.                           |
+| `private/PRD.md`                        | Product spec — feature definitions, screen inventory, API & data-model summaries.                                                                                   |
+| `private/deployTODO.md`                 | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).                                                                                   |
+| `private/archive/`                      | `COMPLETED.md` (live completed log) + frozen detail: `plan.md` per-slice build log, `repo-analysis.md`, `new-features.md`. The frozen three are **not** maintained. |
+| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.                                                                                     |
 
-**After completing a feature/fix:** update `private/ROADMAP.md` (tick/move items), `private/PRD.md`
-(new sections/rows + version bump), this `CLAUDE.md`, and `README.md` as relevant. ROADMAP.md is the
-single source of truth — do not resurrect `archive/plan.md` or `archive/TODO.md` as live trackers.
+**After completing a feature/fix:** remove the shipped item from `private/ROADMAP.md` and append its
+summary to `private/archive/COMPLETED.md` (newest first); update `private/PRD.md` (new sections/rows +
+version bump), this `CLAUDE.md`, and `README.md` as relevant. ROADMAP.md tracks only what remains;
+COMPLETED.md is the record of what shipped — do not resurrect the frozen `archive/plan.md` or use
+ROADMAP.md as a completed log.
 
 > Current blocker (see ROADMAP.md): the deployed app lacks iRacing OAuth credentials, so the iRacing-data
 > features are non-functional in production. Milestone **M1** (shipped) gates that surface behind an
