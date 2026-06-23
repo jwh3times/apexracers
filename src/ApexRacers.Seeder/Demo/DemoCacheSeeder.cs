@@ -1,6 +1,7 @@
 using ApexRacers.Core;
 using ApexRacers.Data;
 using Aydsko.iRacingData.Member;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Seeder.Demo;
 
@@ -42,5 +43,27 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     {
         for (var categoryId = 1; categoryId <= 6; categoryId++)
             await DemoCache.UpsertAsync(db, $"leaderboard:{categoryId}", DemoLeaderboardData.Build(categoryId), ct);
+    }
+
+    /// <summary>standings/tt-standings per active season × car class; qual per season × class × week.</summary>
+    public async Task SeedStandingsAsync(CancellationToken ct)
+    {
+        var activeSeasonIds = await db.Seasons.Where(s => s.Active).Select(s => s.Id).ToListAsync(ct);
+
+        foreach (var seasonId in activeSeasonIds)
+        {
+            var classIds = await db.SeasonCarClasses
+                .Where(c => c.SeasonId == seasonId).Select(c => c.CarClassId).ToListAsync(ct);
+            var weeks = await db.Weeks
+                .Where(w => w.SeasonId == seasonId).Select(w => w.WeekNumber).ToListAsync(ct);
+
+            foreach (var classId in classIds)
+            {
+                await DemoCache.UpsertAsync(db, $"standings:{seasonId}:{classId}", DemoStandingsData.BuildStandings(seasonId, classId), ct);
+                await DemoCache.UpsertAsync(db, $"tt-standings:{seasonId}:{classId}", DemoStandingsData.BuildTtStandings(seasonId, classId), ct);
+                foreach (var week in weeks)
+                    await DemoCache.UpsertAsync(db, $"qual:{seasonId}:{classId}:{week}", DemoStandingsData.BuildQualify(seasonId, classId, week), ct);
+            }
+        }
     }
 }
