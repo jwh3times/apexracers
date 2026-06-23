@@ -26,7 +26,7 @@ DELETE FROM iracing."Subsessions" WHERE "Id" < 0;
 DELETE FROM iracing."CarPercentileResults";
 
 -- -- Extended by Plan 2 (cache-seeding) -----------------------------------------
--- DELETE FROM iracing."ExternalDataCache" WHERE "ExpiresAt" >= '9000-01-01';
+-- DELETE FROM iracing."ExternalDataCaches" WHERE "ExpiresAt" >= '9000-01-01';
 -- DELETE FROM iracing."SeasonCarBop" WHERE <seeded seasons>;
 -- UPDATE iracing."Weeks" SET "WeatherSummaryJson" = NULL WHERE <seeded seasons>;
 
