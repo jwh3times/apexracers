@@ -156,53 +156,10 @@ public class CarRecommendationService(AppDbContext db)
                 var slowerCount = carField.Count(r => r.CustId != customerId && r.BestLap > driverBest);
                 var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
 
-                // Compute the running average percentile that will include this week's reading.
-                // cachedPercentiles holds (Sum, Count) of all prior rows for this (user, car, series).
-                double newAvg;
-                if (cachedPercentiles.TryGetValue(carId, out var prior))
-                {
-                    if (existingCacheThisWeek.TryGetValue(carId, out _))
-                    {
-                        // Updating an existing week row: swap out old value, keep count the same.
-                        var oldReading = existingCacheThisWeek[carId].PercentileRank;
-                        newAvg = prior.Count > 0
-                            ? (prior.Sum - oldReading + percentileRank) / prior.Count
-                            : percentileRank;
-                    }
-                    else
-                    {
-                        // New week row: add to sum and increment count.
-                        newAvg = (prior.Sum + percentileRank) / (prior.Count + 1);
-                    }
-                }
-                else
-                {
-                    // No prior history at all for this car/series — first ever reading.
-                    newAvg = percentileRank;
-                }
-
-                if (user is not null)
-                {
-                    if (existingCacheThisWeek.TryGetValue(carId, out var cached))
-                    {
-                        cached.PercentileRank = percentileRank;
-                        cached.SampleSize     = total;
-                        cached.ComputedAt     = computedAt;
-                    }
-                    else
-                    {
-                        db.CarPercentileResults.Add(new CarPercentileResult
-                        {
-                            UserId         = user.Id,
-                            CarId          = carId,
-                            SeriesId       = week.SeriesId,
-                            WeekId         = weekDbId,
-                            PercentileRank = percentileRank,
-                            SampleSize     = total,
-                            ComputedAt     = computedAt,
-                        });
-                    }
-                }
+                // Fold this week's reading into the running average and upsert the cache row.
+                var newAvg = RecordPercentileReading(
+                    user, cachedPercentiles, existingCacheThisWeek,
+                    carId, week.SeriesId, weekDbId, percentileRank, total, computedAt);
 
                 var actualSortedLaps = carField.Select(r => r.BestLap).ToList();
                 var projectedFromActual = ProjectedLapTime(actualSortedLaps, newAvg);
@@ -225,48 +182,9 @@ public class CarRecommendationService(AppDbContext db)
                 var slowerCount = carField.Count(r => r.BestLap > personalLap);
                 var percentileRank = total > 0 ? slowerCount * 100.0 / total : 100.0;
 
-                double newAvg;
-                if (cachedPercentiles.TryGetValue(carId, out var prior2))
-                {
-                    if (existingCacheThisWeek.TryGetValue(carId, out _))
-                    {
-                        var oldReading = existingCacheThisWeek[carId].PercentileRank;
-                        newAvg = prior2.Count > 0
-                            ? (prior2.Sum - oldReading + percentileRank) / prior2.Count
-                            : percentileRank;
-                    }
-                    else
-                    {
-                        newAvg = (prior2.Sum + percentileRank) / (prior2.Count + 1);
-                    }
-                }
-                else
-                {
-                    newAvg = percentileRank;
-                }
-
-                if (user is not null)
-                {
-                    if (existingCacheThisWeek.TryGetValue(carId, out var cached2))
-                    {
-                        cached2.PercentileRank = percentileRank;
-                        cached2.SampleSize     = total;
-                        cached2.ComputedAt     = computedAt;
-                    }
-                    else
-                    {
-                        db.CarPercentileResults.Add(new CarPercentileResult
-                        {
-                            UserId         = user.Id,
-                            CarId          = carId,
-                            SeriesId       = week.SeriesId,
-                            WeekId         = weekDbId,
-                            PercentileRank = percentileRank,
-                            SampleSize     = total,
-                            ComputedAt     = computedAt,
-                        });
-                    }
-                }
+                var newAvg = RecordPercentileReading(
+                    user, cachedPercentiles, existingCacheThisWeek,
+                    carId, week.SeriesId, weekDbId, percentileRank, total, computedAt);
 
                 var plSortedLaps = carField.Select(r => r.BestLap).ToList();
                 var plProjected  = ProjectedLapTime(plSortedLaps, newAvg);
@@ -334,6 +252,83 @@ public class CarRecommendationService(AppDbContext db)
             .Where(r => r.BestLapSeconds is not null)
             .Select(r => new WeekCarPercentileDto(r.CarId, r.PercentileRank))
             .ToList();
+    }
+
+    /// <summary>
+    /// Records this week's percentile reading for one car: returns the per-(car, series) running
+    /// average (folding in the reading) and upserts the cache row. The single shared path for both
+    /// the actual-lap and personal-lap branches.
+    /// </summary>
+    private double RecordPercentileReading(
+        ApplicationUser? user,
+        Dictionary<int, (double Sum, int Count)> cachedPercentiles,
+        Dictionary<int, CarPercentileResult> existingCacheThisWeek,
+        int carId, int seriesId, Guid weekDbId,
+        double percentileRank, int sampleSize, DateTimeOffset computedAt)
+    {
+        var prior = cachedPercentiles.TryGetValue(carId, out var p) ? ((double Sum, int Count)?)p : null;
+        double? oldReading = existingCacheThisWeek.TryGetValue(carId, out var existing)
+            ? existing.PercentileRank
+            : null;
+
+        var runningAverage = RunningAveragePercentile(percentileRank, prior, oldReading);
+        UpsertPercentileCache(user, existingCacheThisWeek, carId, seriesId, weekDbId, percentileRank, sampleSize, computedAt);
+        return runningAverage;
+    }
+
+    /// <summary>
+    /// Folds this week's <paramref name="percentileRank"/> reading into the driver's prior
+    /// per-(car, series) running average.
+    /// <list type="bullet">
+    /// <item>No prior history (<paramref name="prior"/> is null) → the reading itself.</item>
+    /// <item>A row already exists for this week (<paramref name="oldReading"/> is non-null) → swap the
+    /// old reading out of the sum, keeping the count fixed.</item>
+    /// <item>Otherwise → a fresh reading: add to the sum and grow the count.</item>
+    /// </list>
+    /// Pure so every branch (including the guarded zero-count case) is unit-tested directly.
+    /// </summary>
+    public static double RunningAveragePercentile(
+        double percentileRank,
+        (double Sum, int Count)? prior,
+        double? oldReading)
+    {
+        if (prior is not { } p) return percentileRank;
+        if (oldReading is { } old)
+            return p.Count > 0 ? (p.Sum - old + percentileRank) / p.Count : percentileRank;
+        return (p.Sum + percentileRank) / (p.Count + 1);
+    }
+
+    /// <summary>
+    /// Upserts the driver's cached percentile row for this (user, car, series, week): mutates the
+    /// existing row in place when present, else stages a new row for insert. No-op for an unlinked caller.
+    /// </summary>
+    private void UpsertPercentileCache(
+        ApplicationUser? user,
+        Dictionary<int, CarPercentileResult> existingCacheThisWeek,
+        int carId, int seriesId, Guid weekDbId,
+        double percentileRank, int sampleSize, DateTimeOffset computedAt)
+    {
+        if (user is null) return;
+
+        if (existingCacheThisWeek.TryGetValue(carId, out var cached))
+        {
+            cached.PercentileRank = percentileRank;
+            cached.SampleSize     = sampleSize;
+            cached.ComputedAt     = computedAt;
+        }
+        else
+        {
+            db.CarPercentileResults.Add(new CarPercentileResult
+            {
+                UserId         = user.Id,
+                CarId          = carId,
+                SeriesId       = seriesId,
+                WeekId         = weekDbId,
+                PercentileRank = percentileRank,
+                SampleSize     = sampleSize,
+                ComputedAt     = computedAt,
+            });
+        }
     }
 
     private static double? ProjectedLapTime(IReadOnlyList<double> sortedLaps, double percentileRank)
