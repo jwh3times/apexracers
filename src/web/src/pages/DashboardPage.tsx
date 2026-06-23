@@ -28,7 +28,10 @@ const cardStyle: React.CSSProperties = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
-  const iracingLive = useFeatureFlag('iracing-live');
+  const liveFlag = useFeatureFlag('iracing-live');
+  const demoFlag = useFeatureFlag('iracing-demo');
+  // Show iRacing panels when real (live) OR synthetic demo data is available.
+  const showIracing = liveFlag || demoFlag;
 
   const [series, setSeries] = useState<Series[]>([]);
   const [laps, setLaps] = useState<PersonalLap[]>([]);
@@ -51,7 +54,7 @@ export default function DashboardPage() {
   // analyticsLoading stay `true`. That's safe only because every widget reading them is
   // also gated off below — if you un-gate one of those widgets, restore its fetch too.
   useEffect(() => {
-    if (!iracingLive) return;
+    if (!showIracing) return;
     api
       .getSeries()
       .then(setSeries)
@@ -69,7 +72,7 @@ export default function DashboardPage() {
       .then(setAnalytics)
       .catch(() => {})
       .finally(() => setAnalyticsLoading(false));
-  }, [iracingLive]);
+  }, [showIracing]);
 
   const recentLaps = laps.slice(0, 5);
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
@@ -130,7 +133,7 @@ export default function DashboardPage() {
       {/* KPI row — lap/series tiles + driver-stat tiles (iRating / SR / avg finish) */}
       <div className="grid-kpi mb-4">
         {/* Active series */}
-        {iracingLive && (
+        {showIracing && (
           <div
             className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
             style={cardStyle}
@@ -178,7 +181,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Best percentile — strongest rank across the driver's cars */}
-        {iracingLive && (
+        {showIracing && (
           <div
             className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
             style={cardStyle}
@@ -200,7 +203,7 @@ export default function DashboardPage() {
         )}
 
         {/* iRating — headline (highest-iRating category) */}
-        {iracingLive && (
+        {showIracing && (
           <div
             className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
             style={cardStyle}
@@ -218,7 +221,7 @@ export default function DashboardPage() {
         )}
 
         {/* Safety Rating — same category */}
-        {iracingLive && (
+        {showIracing && (
           <div
             className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
             style={cardStyle}
@@ -236,7 +239,7 @@ export default function DashboardPage() {
         )}
 
         {/* Average finish — same category career */}
-        {iracingLive && (
+        {showIracing && (
           <div
             className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
             style={cardStyle}
@@ -254,14 +257,14 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Main content — 2 col on lg+ when iracingLive, single col otherwise */}
+      {/* Main content — 2 col on lg+ when showIracing, single col otherwise */}
       <div
-        className={`grid grid-cols-1 ${iracingLive ? 'lg:grid-cols-[1.55fr_1fr]' : ''} gap-fluid`}
+        className={`grid grid-cols-1 ${showIracing ? 'lg:grid-cols-[1.55fr_1fr]' : ''} gap-fluid`}
       >
         {/* Left column */}
         <div className="flex flex-col gap-fluid">
           {/* This week */}
-          {iracingLive && (
+          {showIracing && (
             <div
               className="card-r border border-line-2 bg-surface overflow-hidden"
               style={cardStyle}
@@ -407,7 +410,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right column: Active series list */}
-        {iracingLive && (
+        {showIracing && (
           <div>
             <div
               className="card-r border border-line-2 bg-surface overflow-hidden h-full"

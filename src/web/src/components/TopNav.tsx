@@ -10,8 +10,9 @@ function MobileNav() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const iracingLive = useFeatureFlag('iracing-live');
-  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, iracingLive);
+  const live = useFeatureFlag('iracing-live');
+  const demo = useFeatureFlag('iracing-demo');
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, live || demo);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -155,8 +156,9 @@ function ProfileDropdown() {
 
 export default function TopNav() {
   const { user } = useAuth();
-  const iracingLive = useFeatureFlag('iracing-live');
-  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, iracingLive);
+  const live = useFeatureFlag('iracing-live');
+  const demo = useFeatureFlag('iracing-demo');
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, live || demo);
   const crumbs = breadcrumbs(useLocation().pathname);
   return (
     <nav className="bg-surface/80 backdrop-blur-xl text-primary-fixed-dim sticky top-0 w-full z-40 border-b border-line-2 shadow-[0_0_20px_rgba(0,224,255,0.15)] flex justify-between items-center px-6 h-16">

@@ -9,9 +9,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ alertsEnabled: mockAlertsEnabled }),
 }));
 
-let mockFlag = true;
+let mockLiveFlag = true;
+let mockDemoFlag = false;
 vi.mock('../../context/FeatureFlagContext', () => ({
-  useFeatureFlag: () => mockFlag,
+  useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
 }));
 
 vi.mock('../../services/api', () => ({
@@ -44,7 +45,8 @@ describe('NotificationsBell', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockAlertsEnabled = true;
-    mockFlag = true;
+    mockLiveFlag = true;
+    mockDemoFlag = false;
     mockGetRaceGuide.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);
   });
@@ -88,12 +90,23 @@ describe('NotificationsBell', () => {
   });
 
   it('skips iRacing fetches and shows no badge when iracing-live flag is off', async () => {
-    mockFlag = false;
+    mockLiveFlag = false;
     renderBell();
     // Yield so any erroneously-triggered effect would have time to run
     await new Promise(r => setTimeout(r, 0));
     expect(mockGetRaceGuide).not.toHaveBeenCalled();
     expect(mockGetMyAnalytics).not.toHaveBeenCalled();
     expect(screen.queryByText('1')).not.toBeInTheDocument(); // no badge
+  });
+
+  it('fetches and shows a badge when iracing-demo is on and iracing-live is off', async () => {
+    mockLiveFlag = false;
+    mockDemoFlag = true;
+    mockGetRaceGuide.mockResolvedValue([soonRace()]);
+    renderBell();
+    await waitFor(() => expect(mockGetRaceGuide).toHaveBeenCalled());
+    expect(mockGetMyAnalytics).toHaveBeenCalled();
+    // Badge should appear (1 race-starting-soon alert)
+    await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
   });
 });

@@ -18,9 +18,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-let mockFlag = true;
+let mockLiveFlag = true;
+let mockDemoFlag = false;
 vi.mock('../../context/FeatureFlagContext', () => ({
-  useFeatureFlag: () => mockFlag,
+  useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
 }));
 
 vi.mock('../../services/api', () => {
@@ -164,7 +165,8 @@ function renderPage() {
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockFlag = true;
+    mockLiveFlag = true;
+    mockDemoFlag = false;
     mockUser = {
       token: 'tok',
       userId: 'u1',
@@ -399,7 +401,7 @@ describe('ProfilePage', () => {
   });
 
   it('hides iRacing sections and skips their fetches when iracing-live is off', async () => {
-    mockFlag = false;
+    mockLiveFlag = false;
     mockGetMyLaps.mockResolvedValue(sampleLaps);
     mockGetProfileStats.mockResolvedValue(sampleProfile);
     renderPage();
@@ -415,5 +417,22 @@ describe('ProfilePage', () => {
     expect(mockGetProfileStats).not.toHaveBeenCalled();
     expect(mockGetAchievements).not.toHaveBeenCalled();
     expect(mockGetMyLaps).toHaveBeenCalled();
+  });
+
+  it('shows iRacing sections when iracing-demo is on and iracing-live is off', async () => {
+    mockLiveFlag = false;
+    mockDemoFlag = true;
+    mockGetMyLaps.mockResolvedValue(sampleLaps);
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    mockGetSeries.mockResolvedValue(sampleSeries);
+    mockGetAchievements.mockResolvedValue({ customerId: 100042, awardCount: 0, awards: [] });
+    renderPage();
+    // iRacing sections are visible (demo data)
+    await waitFor(() => expect(screen.getByText('Active Series')).toBeInTheDocument());
+    expect(screen.getByText('Licenses')).toBeInTheDocument();
+    // iRacing fetches fire
+    expect(mockGetSeries).toHaveBeenCalled();
+    expect(mockGetProfileStats).toHaveBeenCalled();
+    expect(mockGetAchievements).toHaveBeenCalled();
   });
 });

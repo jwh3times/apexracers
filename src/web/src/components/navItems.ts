@@ -29,7 +29,7 @@ export const AUTH_NAV: readonly NavItem[] = [
   { to: '/support', label: 'Support', icon: 'help' },
 ];
 
-// Nav paths gated behind the `iracing-live` flag (see the plan's "gated set").
+// Nav paths gated behind the iRacing surface (iracing-live OR iracing-demo).
 export const GATED_NAV_PATHS: ReadonlySet<string> = new Set([
   '/series',
   '/analytics',
@@ -43,7 +43,8 @@ export const GATED_NAV_PATHS: ReadonlySet<string> = new Set([
   '/tracks',
 ]);
 
-// When iracing-live is off, hide the gated entries; otherwise show everything.
-export function visibleNav(items: readonly NavItem[], iracingLive: boolean): readonly NavItem[] {
-  return iracingLive ? items : items.filter(i => !GATED_NAV_PATHS.has(i.to));
+// When neither iracing-live nor iracing-demo is active, hide the gated entries;
+// otherwise show everything. Callers pass `iracingLive || iracingDemo`.
+export function visibleNav(items: readonly NavItem[], showGated: boolean): readonly NavItem[] {
+  return showGated ? items : items.filter(i => !GATED_NAV_PATHS.has(i.to));
 }
