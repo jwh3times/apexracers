@@ -1,3 +1,5 @@
+using ApexRacers.Api.Dtos;
+using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
 using Aydsko.iRacingData.Member;
@@ -120,6 +122,24 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         foreach (var (carId, trackId, fieldBest) in combos)
             await DemoCache.UpsertAsync<double?>(
                 db, $"wr:{carId}:{trackId}", DemoWorldRecord.RecordSeconds(fieldBest), ct);
+    }
+
+    /// <summary>laps:{subsessionId}:{demo driver} — a synthetic per-lap trace around the demo driver's
+    /// BestLapSeconds for each synthetic subsession; summary stats via the real LapAnalysis.Compute.</summary>
+    public async Task SeedLapDataAsync(CancellationToken ct)
+    {
+        var subBests = await db.SubsessionResults
+            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Select(r => new { r.SubsessionId, r.BestLapSeconds })
+            .ToListAsync(ct);
+
+        foreach (var s in subBests)
+        {
+            var laps = DemoLapData.BuildLaps(s.SubsessionId, s.BestLapSeconds);
+            var (mean, std, fastest, deg) = LapAnalysis.Compute(laps);
+            var dto = new DriverLapsDto(s.SubsessionId, DemoData.DriverCustId, mean, std, fastest, deg, laps);
+            await DemoCache.UpsertAsync(db, $"laps:{s.SubsessionId}:{DemoData.DriverCustId}", dto, ct);
+        }
     }
 
     /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>

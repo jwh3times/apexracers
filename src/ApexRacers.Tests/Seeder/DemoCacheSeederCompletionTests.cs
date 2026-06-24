@@ -42,4 +42,21 @@ public class DemoCacheSeederCompletionTests
         Assert.Equal(86.24, wr!.Value, precision: 2);              // 88.0 * 0.98
         Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
     }
+
+    [Fact]
+    public async Task SeedLapDataAsync_WritesLapTracePerSubsession_ForDemoDriver()
+    {
+        await using var db = await SeededResultsAsync();
+
+        await new DemoCacheSeeder(db).SeedLapDataAsync(Ct);
+
+        var row = await db.ExternalDataCaches
+            .SingleAsync(c => c.CacheKey == $"laps:-10:{DemoData.DriverCustId}", Ct);
+        var dto = JsonSerializer.Deserialize<ApexRacers.Api.Dtos.DriverLapsDto>(row.Payload)!;
+        Assert.Equal(-10, dto.SubsessionId);
+        Assert.Equal(DemoData.DriverCustId, dto.CustId);
+        Assert.Equal(90.0, dto.FastestLapSeconds, precision: 3);   // demo driver's BestLapSeconds
+        Assert.Equal(30, dto.Laps.Count);
+        Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
+    }
 }
