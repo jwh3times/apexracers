@@ -11,31 +11,31 @@ You are managing the ApexRacers Azure infrastructure. Know the resource topology
 
 Resource group: **apexracers-rg**
 
-| Resource | Type | Region | Notes |
-|---|---|---|---|
-| `apexracersacr` | Container Registry | eastus | Stores both api and ingestion images |
-| `apexracers-kv` | Key Vault | eastus | All app secrets |
-| `apexracers-pg` | PostgreSQL Flexible Server | westus3 | eastus was at capacity for Burstable tier |
-| `apexracers-plan` | App Service Plan | westus3 | |
-| `apexracers-api` | App Service | westus3 | Runs API + React SPA |
-| `apexracers-env` | Container Apps Environment | westus3 | |
-| `apexracers-ingestion` | Container App | westus3 | iRacing ingestion worker |
-| `workspace-apexracersrg0n6Q` | Log Analytics Workspace | westus3 | |
-| `apexracers.gg` | SSL Certificate | westus3 | |
+| Resource                     | Type                       | Region  | Notes                                     |
+| ---------------------------- | -------------------------- | ------- | ----------------------------------------- |
+| `apexracersacr`              | Container Registry         | eastus  | Stores both api and ingestion images      |
+| `apexracers-kv`              | Key Vault                  | eastus  | All app secrets                           |
+| `apexracers-pg`              | PostgreSQL Flexible Server | westus3 | eastus was at capacity for Burstable tier |
+| `apexracers-plan`            | App Service Plan           | westus3 |                                           |
+| `apexracers-api`             | App Service                | westus3 | Runs API + React SPA                      |
+| `apexracers-env`             | Container Apps Environment | westus3 |                                           |
+| `apexracers-ingestion`       | Container App              | westus3 | iRacing ingestion worker                  |
+| `workspace-apexracersrg0n6Q` | Log Analytics Workspace    | westus3 |                                           |
+| `apexracers.gg`              | SSL Certificate            | westus3 |                                           |
 
 ## Key Vault secrets
 
 Secret names use **hyphens** in Key Vault. `HyphenToUnderscoreSecretManager` in both `Program.cs` files maps them to the underscore names the app reads via `IConfiguration`.
 
-| Key Vault name | App env var | Used by |
-|---|---|---|
-| `JWT-SIGNING-KEY` | `JWT_SIGNING_KEY` | Api |
-| `DATABASE-CONNECTION-STRING` | `DATABASE_CONNECTION_STRING` | Api, Ingestion |
-| `ADMIN-SEED-EMAILS` | `ADMIN_SEED_EMAILS` | Api (startup role seeding) |
-| `IRACING-USERNAME` | `IRACING_USERNAME` | Ingestion |
-| `IRACING-PASSWORD` | `IRACING_PASSWORD` | Ingestion |
-| `IRACING-CLIENT-ID` | `IRACING_CLIENT_ID` | Ingestion |
-| `IRACING-CLIENT-SECRET` | `IRACING_CLIENT_SECRET` | Ingestion |
+| Key Vault name               | App env var                  | Used by                    |
+| ---------------------------- | ---------------------------- | -------------------------- |
+| `JWT-SIGNING-KEY`            | `JWT_SIGNING_KEY`            | Api                        |
+| `DATABASE-CONNECTION-STRING` | `DATABASE_CONNECTION_STRING` | Api, Ingestion             |
+| `ADMIN-SEED-EMAILS`          | `ADMIN_SEED_EMAILS`          | Api (startup role seeding) |
+| `IRACING-USERNAME`           | `IRACING_USERNAME`           | Ingestion                  |
+| `IRACING-PASSWORD`           | `IRACING_PASSWORD`           | Ingestion                  |
+| `IRACING-CLIENT-ID`          | `IRACING_CLIENT_ID`          | Ingestion                  |
+| `IRACING-CLIENT-SECRET`      | `IRACING_CLIENT_SECRET`      | Ingestion                  |
 
 `AZURE_KEY_VAULT_URL` env var triggers Key Vault config in both apps. Set this on the App Service and Container App; it is not a Key Vault secret itself.
 
@@ -85,6 +85,7 @@ Comma-separated list in Key Vault (`ADMIN-SEED-EMAILS`). At API startup, users w
 ## Database connection
 
 Azure PostgreSQL Flexible Server (`apexracers-pg`, westus3) requires SSL. The connection string in Key Vault must include `Ssl Mode=Require` (or `VerifyFull`). Example format:
+
 ```
 Host=apexracers-pg.postgres.database.azure.com;Database=apexracers;Username=apexracers;Password=...;Ssl Mode=Require
 ```
@@ -92,6 +93,7 @@ Host=apexracers-pg.postgres.database.azure.com;Database=apexracers;Username=apex
 ## Logging
 
 Both the API and ingestion worker write structured logs. View via:
+
 ```bash
 az monitor log-analytics query \
   --workspace workspace-apexracersrg0n6Q \

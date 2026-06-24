@@ -20,22 +20,22 @@ Two schemas in one database:
 
 **`iracing` schema** (default via `HasDefaultSchema("iracing")`) — all domain tables:
 
-| Table | Key | Notes |
-|---|---|---|
-| `Series` | int PK | A racing series (e.g., GT3 Cup) |
-| `Seasons` | int PK | Belongs to Series; `Active` bool |
-| `SeasonCars` | composite | Links Season ↔ Car |
-| `SeasonCarClasses` | composite | Links Season ↔ CarClass |
-| `Weeks` | **Guid PK** | Belongs to Season; `TrackId` FK |
-| `Tracks` | int PK | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired) |
-| `Cars` | int PK | Car definitions (Name, RelativeSpeed) |
-| `CarClasses` | int PK | Car class groupings (Name, ShortName, RelativeSpeed) |
-| `CarClassCars` | composite | Many-to-many: CarClass ↔ Car |
-| `Subsessions` | int PK | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum) |
-| `SubsessionResults` | composite | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …) |
-| `CarPercentileResults` | composite | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute |
-| `PersonalLaps` | Guid PK | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness` |
-| `FeatureFlags` | int PK | Unique index on `Key` |
+| Table                  | Key         | Notes                                                                                                                    |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Series`               | int PK      | A racing series (e.g., GT3 Cup)                                                                                          |
+| `Seasons`              | int PK      | Belongs to Series; `Active` bool                                                                                         |
+| `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                      |
+| `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                 |
+| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK                                                                                          |
+| `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)  |
+| `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                    |
+| `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                     |
+| `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                            |
+| `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum) |
+| `SubsessionResults`    | composite   | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …) |
+| `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                          |
+| `PersonalLaps`         | Guid PK     | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness`            |
+| `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                    |
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens:
 
@@ -52,6 +52,7 @@ Two schemas in one database:
 ## Critical indexes
 
 `SubsessionResult` has indexes that drive every percentile query:
+
 - `(CarId, WeekId)` — filters all results for a car in a week (via `Subsession.WeekId`)
 - `(CustId, SeasonId, WeekNumber)` — finds a specific driver's results for a week
 
@@ -66,29 +67,18 @@ When adding new query patterns in services, consider whether a new index is need
 Each entity has its own `IEntityTypeConfiguration<T>` class in `src/ApexRacers.Data/EntityConfigurations/`. They are registered via `modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly)` — no manual registration needed.
 
 Rules:
+
 - **Fluent API only** — no data annotations on model classes.
 - Specify `OnDelete` on every relationship:
-  - Cascade for `LapTimeEntry → Week` (delete week, delete its laps)
-  - Restrict for `LapTimeEntry → Car` (prevent orphaned references)
+  - **Cascade** for ownership (e.g. `Rival → User`, week/season ownership) — deleting the parent removes its children.
+  - **Restrict** for catalog references (anything → `Car` / `Track`) — prevent orphaned references.
   - Follow the same pattern for new entities; choose Cascade or Restrict intentionally.
 - Use `HasIndex(e => new { e.A, e.B })` for composite indexes.
 - Unique constraints: `HasIndex(e => e.Key).IsUnique()`.
 
 ## Migrations
 
-```bash
-# Create
-dotnet ef migrations add <MigrationName> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
-
-# Apply locally
-dotnet ef database update --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
-```
-
-`DesignTimeDbContextFactory` reads `DATABASE_CONNECTION_STRING` or falls back to the local dev connection string — no env var needed for local `dotnet ef` commands.
-
-Migrations run automatically at API startup via `db.Database.MigrateAsync()`. No manual migration step is needed in deployments.
-
-For additive changes (new columns with defaults, new tables) migrations are safe to run while the app starts. For destructive changes (column drops, renames), coordinate with a deployment window.
+The `dotnet ef migrations add` / `database update` commands are in CLAUDE.md (Commands); auto-apply-at-startup and the `DesignTimeDbContextFactory` fallback are the `dotnet-api` agent's. The DB-side concern that's yours: for **additive** changes (new columns with defaults, new tables) migrations are safe to run while the app starts; for **destructive** changes (column drops, renames), coordinate a deployment window.
 
 ## Query patterns in services
 
@@ -106,15 +96,4 @@ Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or
 
 ## Seed data
 
-Idempotent seeder: `dotnet run --project src/ApexRacers.Seeder`  
-Seeds synthetic lap time data for all 7 series. Safe to run multiple times.
-
-SQL seed scripts in `src/ApexRacers.Data/Seeds/`:
-- `seed_gt3_series.sql` — legacy GT3 seed (imported via Docker psql)
-- `remove_gt3_seed.sql` — removes only the legacy seed data
-- `truncate_seed_data.sql` — removes ALL synthetic seed data for a clean re-seed
-
-Run SQL scripts against Docker:
-```powershell
-Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
-```
+The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in CLAUDE.md (Commands). It seeds synthetic lap data for all 7 series.

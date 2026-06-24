@@ -7,17 +7,7 @@ model: sonnet
 
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
 
-## Project layout
-
-```
-ApexRacers.Core        ← models only, no dependencies
-ApexRacers.Data        ← AppDbContext, entity configs, ApplicationUser, migrations
-ApexRacers.Api         ← controllers, services, DTOs, Program.cs
-ApexRacers.Ingestion   ← BackgroundService worker (iRacing data fetch)
-ApexRacers.Tests       ← xUnit tests for services only
-```
-
-Core and Data are shared; Api and Ingestion never reference each other.
+The project `CLAUDE.md` you've loaded already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
 
 ## C# style
 
@@ -26,55 +16,30 @@ Core and Data are shared; Api and Ingestion never reference each other.
 - `record` types for all DTOs. Positional records for simple shapes.
 - Pattern matching and null-coalescing over verbose null checks.
 
-## Package management
+## Controllers — the .NET specifics
 
-All package versions live in `Directory.Packages.props` at the repo root. **Never add `Version=""` to a `<PackageReference>` in any `.csproj`.** Use `dotnet add package` — it writes the version to `Directory.Packages.props` automatically. `CentralPackageTransitivePinningEnabled=true` is intentional; do not remove it.
+CLAUDE.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in CLAUDE.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
 
-## Controllers
+## Services — the .NET specifics
 
-Controllers in `src/ApexRacers.Api/Controllers/` contain **no logic**. Their only job is:
-1. Bind HTTP inputs (route params, query string, body, `[FromBody]`, `CancellationToken`).
-2. Call the injected service.
-3. Return `Ok(result)`, `NotFound()`, `BadRequest(ex.Message)`, or `Unauthorized()`.
+CLAUDE.md covers the service-layer rules (all logic here; inject `AppDbContext` directly; no MediatR / `IRepository<T>`; one responsibility per class). Conventions it doesn't:
 
-Extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` when needed; parse the Guid before passing to the service. Do not put EF Core queries, business rules, or multi-step logic in controllers.
-
-## Services
-
-Services in `src/ApexRacers.Api/Services/` hold all business logic. Rules:
-
-- Inject `AppDbContext` directly. No `IRepository<T>`, no MediatR, no command/query handlers.
-- One focused responsibility per class (e.g., `PercentileCalculationService`, `CarRecommendationService`).
-- `async Task<T>` with `CancellationToken ct = default` as the last parameter on all public async methods.
-- Throw `InvalidOperationException` for business rule violations; controllers catch and return `BadRequest(ex.Message)`.
-- Return `null` (or `null`-returning nullable) when a resource is not found; controllers map that to `NotFound()`.
+- `async Task<T>` with `CancellationToken ct = default` as the last parameter on every public async method.
+- Drive error flow by throwing — `ArgumentException` / `InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503 (see `ExceptionStatusMapper`). Don't catch these back to `BadRequest`/`NotFound` in the controller.
 
 ## DTOs
 
-- **Response shapes**: `record` types in `src/ApexRacers.Api/Dtos/ResponseDtos.cs`.
-- **Request shapes**: `record` types in `src/ApexRacers.Api/Dtos/RequestDtos.cs`.
-- When adding or changing a response DTO, also update the matching TypeScript interface in `src/web/src/services/api.ts`. They must stay in sync.
+`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (CLAUDE.md notes the `ResponseDtos.cs` ↔ `src/web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
 
 ## AppDbContext and schemas
 
-`AppDbContext` extends `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`.
+`AppDbContext` extends `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`. Default schema is `iracing` (`HasDefaultSchema("iracing")`); ASP.NET Identity tables are moved to the `identity` schema with explicit `ToTable(..., "identity")` overrides that must run **after** `base.OnModelCreating(modelBuilder)` — ordering matters.
 
-- Default schema: `iracing` (set via `HasDefaultSchema("iracing")`).
-- All ASP.NET Identity tables use `identity` schema with explicit `ToTable(..., "identity")` overrides — this must happen after `base.OnModelCreating(modelBuilder)`.
-- Entity configurations implement `IEntityTypeConfiguration<T>` in `src/ApexRacers.Data/EntityConfigurations/`, registered via `ApplyConfigurationsFromAssembly`.
-- Use Fluent API in configurations; never use data annotations on model classes.
-- Specify `OnDelete` behavior explicitly on every `HasOne(...).WithMany(...)` — use `Restrict` for cars, `Cascade` for weeks/seasons.
+The entity-config mechanics (one `IEntityTypeConfiguration<T>` per entity in `src/ApexRacers.Data/EntityConfigurations/`, Fluent-API-only, explicit `OnDelete`) plus the full schema, PKs, and indexes are the `postgres-specialist` agent's lens.
 
 ## Migrations
 
-```bash
-dotnet ef migrations add <MigrationName> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
-dotnet ef database update --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
-```
-
-`dotnet-ef` version must match EF Core (currently 10.0.7). Migrations run automatically at API startup via `db.Database.MigrateAsync()` — no separate deployment step. Safe because the API is single-instance on App Service.
-
-`DesignTimeDbContextFactory` reads `DATABASE_CONNECTION_STRING` or falls back to the hardcoded local dev string — no env var needed for local `dotnet ef` commands.
+The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in CLAUDE.md (Commands). Beyond those: migrations **auto-apply at API startup** via `db.Database.MigrateAsync()`, so write them to apply cleanly on boot (the prod deploy story is the `azure-infrastructure` agent's). `DesignTimeDbContextFactory` reads `DATABASE_CONNECTION_STRING` or falls back to a hardcoded local dev string, so `dotnet ef` needs no env var locally.
 
 ## Auth and RBAC
 
@@ -96,25 +61,13 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 - Stored in DB as SHA-256 hash (`RefreshToken` entity in `identity.RefreshTokens`). The raw token is never persisted.
 - `RefreshAsync(rawToken)`: validates hash + `IsActive`, revokes the old token, inserts a new one, and returns a new JWT + new refresh token — all in a single `SaveChangesAsync`.
 - `RevokeAsync(rawToken)`: best-effort; no-op if token not found.
+- Issuing a refresh token caps active tokens per user at 5 (oldest revoked past the cap; rotation is exempt).
 - `POST /api/auth/refresh` and `POST /api/auth/logout` do **not** have `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT expires.
 
-## Configuration and Key Vault
+## Configuration
 
-- `AZURE_KEY_VAULT_URL` env var triggers Azure Key Vault configuration via `DefaultAzureCredential`.
-- Key Vault secret names use hyphens (`JWT-SIGNING-KEY`, `DATABASE-CONNECTION-STRING`, `ADMIN-SEED-EMAILS`).
-- `HyphenToUnderscoreSecretManager` maps them to the underscore keys the app expects (`JWT_SIGNING_KEY`, etc.).
-- Required env vars: `DATABASE_CONNECTION_STRING`, `JWT_SIGNING_KEY`. Missing either throws on startup.
-
-## Ingestion worker
-
-`ApexRacers.Ingestion` is a `BackgroundService`. It uses `Aydsko.iRacingData` with `UsePasswordLimitedOAuth()` (four env vars: `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`). Resolve `IDataClient` and `AppDbContext` through `IServiceScopeFactory` per ingestion cycle — never inject scoped services directly into the singleton worker.
+`AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in CLAUDE.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup.
 
 ## Tests
 
-- xUnit in `src/ApexRacers.Tests/`.
-- Test services directly — never spin up the HTTP pipeline or test controllers.
-- `DbContextFactory.Create()` creates an in-memory `AppDbContext` with a unique database name per test.
-- Each test method creates its own `AppDbContext` instance; never share state between tests.
-- Coverage target: **>80% line coverage** for services and `Core` helpers. Controllers are excluded (no logic to cover).
-- Run coverage: `dotnet-coverage collect "dotnet test" -f xml -o coverage.xml`, then `reportgenerator`.
-- When adding service logic, add corresponding tests before calling the work done.
+xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. CLAUDE.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
