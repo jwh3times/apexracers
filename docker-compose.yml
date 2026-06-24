@@ -8,7 +8,9 @@ services:
     ports:
       # Host port defaults to 5432; override with POSTGRES_PORT in .env if 5432
       # is taken locally (e.g. another project's Postgres). Container always 5432.
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Bound to 127.0.0.1 so the database is not reachable from the host network
+      # (it ships with a default dev password — keep it localhost-only).
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       # PG18 moved the default PGDATA to /var/lib/postgresql/18/docker, so the
       # named volume is mounted at the parent dir (not .../data) to cover it.
@@ -25,7 +27,8 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@apexracers.gg
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      # Localhost-only — pgAdmin ships with a default dev login; don't expose it on the network.
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +41,9 @@ services:
       # Host port defaults to 8080; override with API_PORT in .env. The container
       # always listens on 8080 (matches the Azure App Service image), so this is
       # a host-only remap and never affects the deployed image.
-      - "${API_PORT:-8080}:8080"
+      # Bound to 127.0.0.1: this compose stack runs in Development, where
+      # /api/auth/forgot-password echoes the reset token — keep it off the network.
+      - "127.0.0.1:${API_PORT:-8080}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
