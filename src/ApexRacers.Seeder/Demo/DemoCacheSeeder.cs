@@ -159,5 +159,8 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await SeedStandingsAsync(ct);
         await SeedRaceGuideAsync(ct);
         await SeedBopAndWeatherAsync(ct);
+        await SeedWorldRecordsAsync(ct);
+        await SeedLapDataAsync(ct);
+        await SeedDriverSearchAsync(ct);
     }
 }
