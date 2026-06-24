@@ -142,6 +142,14 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         }
     }
 
+    /// <summary>driversearch:{term} for a curated set of terms matching the demo names. Arbitrary
+    /// unseeded terms still 503 (documented caveat).</summary>
+    public async Task SeedDriverSearchAsync(CancellationToken ct)
+    {
+        foreach (var (term, hits) in DemoDriverSearchData.Terms)
+            await DemoCache.UpsertAsync(db, $"driversearch:{term}", hits, ct);
+    }
+
     /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>
     public async Task SeedAllAsync(CancellationToken ct)
     {

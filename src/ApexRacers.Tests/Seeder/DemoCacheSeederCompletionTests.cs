@@ -59,4 +59,19 @@ public class DemoCacheSeederCompletionTests
         Assert.Equal(30, dto.Laps.Count);
         Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
     }
+
+    [Fact]
+    public async Task SeedDriverSearchAsync_WritesCuratedTermKeys()
+    {
+        await using var db = DbContextFactory.Create();
+
+        await new DemoCacheSeeder(db).SeedDriverSearchAsync(Ct);
+
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:rival", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:demo", Ct));
+        var row = await db.ExternalDataCaches.SingleAsync(c => c.CacheKey == "driversearch:rival", Ct);
+        var hits = JsonSerializer.Deserialize<List<ApexRacers.Api.Dtos.DriverSearchResultDto>>(row.Payload)!;
+        Assert.Contains(hits, h => h.CustId == DemoData.RivalCustId);
+        Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
+    }
 }
