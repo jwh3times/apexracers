@@ -1,4 +1,6 @@
+using System.Text.Json;
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Aydsko.iRacingData;
@@ -88,5 +90,22 @@ public class WorldRecordServiceTests
         Assert.Equal(first, second);
         await client.Received(1).GetWorldRecordsAsync(
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetWorldRecordLapSecondsAsync_NotConfiguredButCacheSeeded_ReturnsCachedValue()
+    {
+        await using var db = DbContextFactory.Create();
+        db.ExternalDataCaches.Add(new ExternalDataCache
+        {
+            CacheKey = "wr:132:532",
+            Payload = JsonSerializer.Serialize<double?>(65.5),
+            FetchedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = new DateTimeOffset(9999, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        await db.SaveChangesAsync(Ct);
+        var service = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(null)));
+
+        Assert.Equal(65.5, (await service.GetWorldRecordLapSecondsAsync(132, 532, Ct))!.Value, precision: 3);
     }
 }
