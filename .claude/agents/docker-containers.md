@@ -14,10 +14,12 @@ You are working with the ApexRacers container setup. Know the multi-stage build 
 Three stages:
 
 1. **`frontend`** (`node:26-alpine`) — installs npm deps then builds React:
+
    - Copy `package.json` + `package-lock.json` first → `npm ci` → copy `src/web/` → `npm run build`
    - Output: `/app/dist`
 
 2. **`api-build`** (`mcr.microsoft.com/dotnet/sdk:10.0`) — publishes the API:
+
    - Copy `Directory.Packages.props` first (required for central package management)
    - Copy only the three needed projects: `Core`, `Data`, `Api`
    - `dotnet publish ApexRacers.Api.csproj -c Release -o /publish --no-self-contained`
@@ -35,6 +37,7 @@ The React SPA is served from `wwwroot` in production — same origin as the API,
 Two stages:
 
 1. **`build`** (`mcr.microsoft.com/dotnet/sdk:10.0`):
+
    - Copy `Directory.Packages.props` + three projects: `Core`, `Data`, `Ingestion`
    - `dotnet publish ApexRacers.Ingestion.csproj -c Release -o /publish --no-self-contained`
 
@@ -45,16 +48,17 @@ Two stages:
 
 Four services:
 
-| Service | Image | Port | Notes |
-|---|---|---|---|
-| `postgres` | `postgres:18-alpine` | 5432 | Healthcheck: `pg_isready -U apexracers`. Volume mounts the parent dir `/var/lib/postgresql` (PG18 moved PGDATA to `…/18/docker`) |
-| `pgadmin` | `dpage/pgadmin4` | 5050→80 | admin@apexracers.gg / admin |
-| `api` | built from `Dockerfile` | 8080 | Depends on postgres health |
-| `ingestion` | built from `ingestion.Dockerfile` | — | Profile: `ingestion` |
+| Service     | Image                             | Port    | Notes                                                                                                                            |
+| ----------- | --------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `postgres`  | `postgres:18-alpine`              | 5432    | Healthcheck: `pg_isready -U apexracers`. Volume mounts the parent dir `/var/lib/postgresql` (PG18 moved PGDATA to `…/18/docker`) |
+| `pgadmin`   | `dpage/pgadmin4`                  | 5050→80 | admin@apexracers.gg / admin                                                                                                      |
+| `api`       | built from `Dockerfile`           | 8080    | Depends on postgres health                                                                                                       |
+| `ingestion` | built from `ingestion.Dockerfile` | —       | Profile: `ingestion`                                                                                                             |
 
 All services that depend on postgres use `condition: service_healthy` — the healthcheck must pass before they start.
 
 The `ingestion` service is gated behind the `ingestion` profile:
+
 ```bash
 docker compose --profile ingestion up -d   # include ingestion worker
 docker compose up -d                        # postgres + pgadmin + api only
@@ -63,18 +67,21 @@ docker compose up -d                        # postgres + pgadmin + api only
 ## `.env` file
 
 Copy `.env.example` to `.env` at repo root before first run. Required:
+
 - `JWT_SIGNING_KEY` — must be set; no default
 - `DATABASE_CONNECTION_STRING` — pre-filled for Docker network: `Host=postgres;Database=apexracers;Username=apexracers;Password=devpassword`
 - `POSTGRES_PASSWORD` — defaults to `devpassword`
 - `ADMIN_SEED_EMAILS` — optional comma-separated list for admin bootstrap
 
 Ingestion-only vars (only needed with `--profile ingestion`):
+
 - `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`
 - `INGESTION_INTERVAL_MINUTES` — defaults to 60
 
 ## Layer caching — key ordering rules
 
 Both Dockerfiles follow this ordering pattern to maximize cache hits:
+
 1. Copy lock files / props first (rarely change)
 2. Run install / restore (expensive, should be cached)
 3. Copy source (changes frequently, invalidates from here down)
