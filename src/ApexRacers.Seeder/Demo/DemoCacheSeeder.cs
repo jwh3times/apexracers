@@ -1,3 +1,5 @@
+using ApexRacers.Api.Dtos;
+using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
 using Aydsko.iRacingData.Member;
@@ -103,6 +105,51 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>wr:{carId}:{trackId} = the fastest synthetic field lap for that car+track × 0.98
+    /// (a realistic WR gap). Reads the synthetic results (negative subsession ids).</summary>
+    public async Task SeedWorldRecordsAsync(CancellationToken ct)
+    {
+        // Project entity columns server-side (nav join is fine), then group in memory (SQLite-safe).
+        var rows = await db.SubsessionResults
+            .Where(r => r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Select(r => new { r.CarId, r.Subsession.TrackId, r.BestLapSeconds })
+            .ToListAsync(ct);
+
+        var combos = rows
+            .GroupBy(r => (r.CarId, r.TrackId))
+            .Select(g => (g.Key.CarId, g.Key.TrackId, FieldBest: g.Min(r => r.BestLapSeconds)));
+
+        foreach (var (carId, trackId, fieldBest) in combos)
+            await DemoCache.UpsertAsync<double?>(
+                db, $"wr:{carId}:{trackId}", DemoWorldRecord.RecordSeconds(fieldBest), ct);
+    }
+
+    /// <summary>laps:{subsessionId}:{demo driver} — a synthetic per-lap trace around the demo driver's
+    /// BestLapSeconds for each synthetic subsession; summary stats via the real LapAnalysis.Compute.</summary>
+    public async Task SeedLapDataAsync(CancellationToken ct)
+    {
+        var subBests = await db.SubsessionResults
+            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Select(r => new { r.SubsessionId, r.BestLapSeconds })
+            .ToListAsync(ct);
+
+        foreach (var s in subBests)
+        {
+            var laps = DemoLapData.BuildLaps(s.SubsessionId, s.BestLapSeconds);
+            var (mean, std, fastest, deg) = LapAnalysis.Compute(laps);
+            var dto = new DriverLapsDto(s.SubsessionId, DemoData.DriverCustId, mean, std, fastest, deg, laps);
+            await DemoCache.UpsertAsync(db, $"laps:{s.SubsessionId}:{DemoData.DriverCustId}", dto, ct);
+        }
+    }
+
+    /// <summary>driversearch:{term} for a curated set of terms matching the demo names. Arbitrary
+    /// unseeded terms still 503 (documented caveat).</summary>
+    public async Task SeedDriverSearchAsync(CancellationToken ct)
+    {
+        foreach (var (term, hits) in DemoDriverSearchData.Terms)
+            await DemoCache.UpsertAsync(db, $"driversearch:{term}", hits, ct);
+    }
+
     /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>
     public async Task SeedAllAsync(CancellationToken ct)
     {
@@ -112,5 +159,8 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await SeedStandingsAsync(ct);
         await SeedRaceGuideAsync(ct);
         await SeedBopAndWeatherAsync(ct);
+        await SeedWorldRecordsAsync(ct);
+        await SeedLapDataAsync(ct);
+        await SeedDriverSearchAsync(ct);
     }
 }
