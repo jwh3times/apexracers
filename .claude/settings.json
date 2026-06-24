@@ -9,6 +9,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "ApexRacers documentation freshness check. Run `git diff HEAD --name-only 2>/dev/null || git status --short` to see what changed this turn. If nothing changed under `src/` (the .NET backend projects or `src/web/` frontend) or in root infra (`docker-compose.yml`, `*.Dockerfile`, `.github/workflows/`), respond 'No source files changed, skipping docs check' and stop immediately. If source files did change, read `.claude/agents/docs-updater.md` and follow its instructions: detect and fix ONLY the documentation drift caused by those specific changes — not a full audit, only the sections relevant to what changed.",
+            "statusMessage": "Checking docs freshness...",
+            "timeout": 180
+          }
+        ]
+      }
     ]
   }
 }
