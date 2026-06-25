@@ -60,6 +60,13 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # ── Dockerfiles (Dockerfile, ingestion.Dockerfile) ──────────────────────────
   # Dependabot's docker manager detects files named `Dockerfile` or
@@ -75,6 +82,13 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      docker-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # ── docker-compose.yml (postgres, pgadmin) ──────────────────────────────────
   - package-ecosystem: "docker-compose"
@@ -88,3 +102,10 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      compose-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
