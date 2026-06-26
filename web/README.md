@@ -51,10 +51,11 @@ The CI `test` job runs `npx prettier --check .` before the Vitest coverage step.
 
 ```
 src/
-  pages/              ← one file per route; all app and public pages
-  pages/__tests__/    ← Vitest tests for every page
-  components/         ← shared UI: Sidebar, TopNav, Footer, Sparkline, PercentileBadge, CalculationSource
-  components/__tests__/
+  features/           ← feature-grouped pages, each with a colocated *.test.tsx sibling
+    auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
+  pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
+  pages/__tests__/    ← Vitest tests for the static pages
+  components/         ← shared UI (Sidebar, TopNav, Footer, Sparkline, …) + colocated *.test.tsx siblings
   context/            ← AuthContext, ThemeContext, FeatureFlagContext
   context/__tests__/
   services/           ← api.ts (typed fetch client), db.ts (IndexedDB helpers)

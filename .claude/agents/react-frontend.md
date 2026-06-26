@@ -49,10 +49,11 @@ React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`. N
 ## File structure
 
 ```
-src/pages/              ← one file per route page
-src/pages/__tests__/    ← Vitest tests for pages
-src/components/         ← shared UI pieces
-src/components/__tests__/
+src/features/<area>/    ← feature-grouped route pages, each with a colocated *.test.tsx sibling
+                          (auth, series, racing, driver, rivals, catalog, telemetry, profile, admin)
+src/pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
+src/pages/__tests__/    ← Vitest tests for the static pages
+src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext)
 src/context/__tests__/
 src/services/           ← api.ts, db.ts
@@ -127,7 +128,7 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 ## Testing
 
 - Framework: Vitest + React Testing Library; environment `jsdom`; setup file `src/test/setup.ts` (in `vite.config.ts`); `globals: true` (no need to import `describe`/`it`/`expect`).
-- Every new source file needs a corresponding test file in the adjacent `__tests__/` directory.
+- Every new source file needs a corresponding test file. Pages (`features/`) and components colocate the test as a `*.test.tsx` sibling next to the source; `context/`, `services/`, and `utils/` keep theirs in an adjacent `__tests__/` directory.
 - Test behavior, not implementation: prefer `getByRole`, `getByText`, `findBy*` over snapshot tests.
 - Mock `src/services/api.ts` with `vi.mock('../services/api')` in tests that call API methods; mock `src/context/AuthContext.tsx` when testing pages that call `useAuth()`.
 - The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in CLAUDE.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
