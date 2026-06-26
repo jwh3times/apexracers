@@ -15,7 +15,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | ---------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CLAUDE.md`                              | Claude agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the authoritative guide agents read on every task                               |
 | `README.md`                              | Human developers (setup)      | Prerequisites, local dev setup steps, seed/ingestion instructions                                                                                               |
-| `src/web/README.md`                      | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
+| `web/README.md`                      | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
 | `private/ROADMAP.md`                     | Remaining work (canonical)    | What remains / is blocked / parked + active milestones. Carries **no** completed record (that's `archive.md`).                                                  |
 | `private/archive.md`                     | Completed work (canonical)    | Single chronological log of shipped work, newest first; build-era detail merged in at the bottom. Prepend new dated entries at the **top**.                     |
 | `CHANGELOG.md` (repo root)               | Public release notes          | Keep a Changelog + SemVer. Add shipped work under `[Unreleased]`; roll into a versioned section only on a deliberate release cut. The one **shipped** doc here. |
@@ -59,16 +59,16 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 **New design tokens or UI pattern change**
 
 - `react-frontend.md`: Styling section — typography, layout, card pattern, color tokens
-- `src/web/README.md`: Design system section
+- `web/README.md`: Design system section
 
 **New frontend context, shared component, or service added**
 
-- `src/web/README.md`: Project structure table and/or Contexts table
+- `web/README.md`: Project structure table and/or Contexts table
 - `react-frontend.md`: file structure or relevant pattern section
 
 **Auth mechanism changed (frontend side)**
 
-- `src/web/README.md`: Authentication section and API client 401 interceptor description
+- `web/README.md`: Authentication section and API client 401 interceptor description
 
 **New Azure resource or Key Vault secret**
 
@@ -103,7 +103,7 @@ Select-String "ToTable.*identity" src/ApexRacers.Data/AppDbContext.cs
 Select-String "AccessTokenMinutes|RefreshTokenDays" src/ApexRacers.Api/Services/AuthService.cs
 
 # What design tokens are defined?
-Select-String "@layer components" src/web/src/index.css -A 200
+Select-String "@layer components" web/src/index.css -A 200
 ```
 
 ## What NOT to change

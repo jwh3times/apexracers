@@ -32,7 +32,7 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 
 **JWT claims decoded client-side**
 
-- `AuthContext.decodeJwt()` in `src/web/src/context/AuthContext.tsx` decodes without signature verification.
+- `AuthContext.decodeJwt()` in `web/src/context/AuthContext.tsx` decodes without signature verification.
 - Server-side validation is the real gate, but check: are any access control decisions made client-side based on decoded role claims that a user could manipulate locally (e.g., by editing IndexedDB)?
 - Check if the `role` claim from a locally modified JWT would grant UI access to admin pages before the API rejects the request.
 

@@ -1,5 +1,5 @@
-src/web/node_modules/
-src/web/dist/
+web/node_modules/
+web/dist/
 src/**/bin/
 src/**/obj/
 tools/

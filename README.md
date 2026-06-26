@@ -12,7 +12,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API                     |
 | `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)                   |
 | `src/ApexRacers.Tests/`     | xUnit unit tests for services and domain helpers                           |
-| `src/web/`                  | Vite + React + TypeScript frontend                                         |
+| `web/`                  | Vite + React + TypeScript frontend                                         |
 | `infra/`                    | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
 | `.github/workflows/`        | GitHub Actions CI/CD pipelines                                             |
 
@@ -62,7 +62,7 @@ The API starts on `http://localhost:5000`. Swagger UI is available at `http://lo
 ### 5. Run the frontend
 
 ```bash
-cd src/web
+cd web
 npm install
 npm run dev
 ```
@@ -99,10 +99,10 @@ All ports used across the project's config files (`docker-compose.yml`, `Dockerf
 | ------ | ------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `5432` | PostgreSQL               | `docker-compose.yml` (`${POSTGRES_PORT:-5432}:5432`), `launchSettings.json`, `.env`                     | Host port; override with `POSTGRES_PORT`                                |
 | `5050` | pgAdmin (host)           | `docker-compose.yml` (`${PGADMIN_PORT:-5050}:80`)                                                       | Host port; override with `PGADMIN_PORT`                                 |
-| `8080` | API (Docker)             | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `src/web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
+| `8080` | API (Docker)             | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
 | `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example`                                | Default when running the API directly                                   |
 | `5173` | Vite dev server          | Vite default (not pinned in `vite.config.ts`)                                                           | Auto-increments if the port is taken                                    |
-| `443`  | API (Azure cloud)        | `src/web/.env.cloud`                                                                                    | `https://apexracers-api.azurewebsites.net`                              |
+| `443`  | API (Azure cloud)        | `web/.env.cloud`                                                                                    | `https://apexracers-api.azurewebsites.net`                              |
 
 The ingestion worker (`ingestion.Dockerfile`) exposes no port — it is a background worker with no HTTP listener.
 

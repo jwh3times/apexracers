@@ -1,9 +1,9 @@
 # ── Stage 1: Build React frontend ────────────────────────────────────────────
 FROM node:26-alpine AS frontend
 WORKDIR /app
-COPY src/web/package.json src/web/package-lock.json ./
+COPY web/package.json web/package-lock.json ./
 RUN npm ci
-COPY src/web/ ./
+COPY web/ ./
 RUN npm run build
 # Output: /app/dist
 

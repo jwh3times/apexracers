@@ -59,7 +59,7 @@ your expectations accordingly. The following are **in scope**:
 
 - The ApexRacers Web API (`src/ApexRacers.Api`) — authentication (JWT, refresh
   tokens, iRacing OAuth), authorization/RBAC, input validation, and API endpoints.
-- The React frontend (`src/web`) — auth/token handling, XSS, and client-side data
+- The React frontend (`web`) — auth/token handling, XSS, and client-side data
   exposure.
 - The ingestion worker (`src/ApexRacers.Ingestion`) and seeder
   (`src/ApexRacers.Seeder`).

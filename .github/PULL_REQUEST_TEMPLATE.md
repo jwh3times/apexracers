@@ -35,7 +35,7 @@ Closes #
 
 - [ ] Follows the conventions in [CONTRIBUTING.md](../CONTRIBUTING.md) and [CLAUDE.md](../CLAUDE.md)
 - [ ] Backend: `dotnet test` passes; line **and** branch coverage stay above 80%
-- [ ] Frontend (`src/web/`): `npm run lint`, `npx prettier --check .`, and `npx vitest run --coverage` pass
+- [ ] Frontend (`web/`): `npm run lint`, `npx prettier --check .`, and `npx vitest run --coverage` pass
 - [ ] Added/updated tests for new logic
 - [ ] Added/updated documentation where relevant (README, CLAUDE.md, etc.)
 - [ ] Database changes include an EF Core migration (if applicable)

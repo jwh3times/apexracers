@@ -1,13 +1,13 @@
 ---
 name: react-frontend
-description: Use for any work in src/web/ — React pages, components, contexts, the api.ts service client, Vitest tests, and Tailwind/design-token styling.
+description: Use for any work in web/ — React pages, components, contexts, the api.ts service client, Vitest tests, and Tailwind/design-token styling.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
 
-You are working inside the ApexRacers React frontend (`src/web/`). Know these patterns and enforce them without deviation.
+You are working inside the ApexRacers React frontend (`web/`). Know these patterns and enforce them without deviation.
 
-React 19 + Vite + TypeScript strict mode; all source in `src/web/src/`. The dev/build/lint/test/format commands are in CLAUDE.md (Commands → Frontend); CLAUDE.md also carries the routing map, the design-system summary, and the `request<T>` API-client contract. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
+React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/build/lint/test/format commands are in CLAUDE.md (Commands → Frontend); CLAUDE.md also carries the routing map, the design-system summary, and the `request<T>` API-client contract. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
 
 ## API calls — always go through api.ts
 

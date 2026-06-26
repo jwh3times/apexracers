@@ -39,15 +39,15 @@ jobs:
         with:
           node-version: '26'
           cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
+          cache-dependency-path: web/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: src/web
+        working-directory: web
 
       - name: Check Prettier formatting
         run: npx prettier --check .
-        working-directory: src/web
+        working-directory: web
 
   # ── Test gate — backend + frontend tests (required status check on PRs) ──────
   test:
@@ -105,15 +105,15 @@ jobs:
         with:
           node-version: '26'
           cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
+          cache-dependency-path: web/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: src/web
+        working-directory: web
 
       - name: Run frontend tests with coverage (>85%)
         run: npx vitest run --coverage
-        working-directory: src/web
+        working-directory: web
 
   # ── API (React SPA + .NET API served from one App Service) ───────────────────
   deploy-api:
