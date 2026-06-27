@@ -1,9 +1,9 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { AuthProvider } from '../AuthProvider';
-import { useAuth } from '../AuthContext';
-import type { AuthResult } from '../../services/api';
+import { AuthProvider } from './AuthProvider';
+import { useAuth } from './AuthContext';
+import type { AuthResult } from '../services/api';
 
 const mockDbGet = vi.fn();
 const mockDbSet = vi.fn();
@@ -16,13 +16,13 @@ const mockRevokeToken = vi.fn();
 let capturedOnTokenRefreshed: ((token: string, refreshToken: string) => void) | null = null;
 let capturedOnSessionExpired: (() => void) | null = null;
 
-vi.mock('../../services/db', () => ({
+vi.mock('../services/db', () => ({
   dbGet: (...args: unknown[]) => mockDbGet(...args),
   dbSet: (...args: unknown[]) => mockDbSet(...args),
   dbRemove: (...args: unknown[]) => mockDbRemove(...args),
 }));
 
-vi.mock('../../services/api', () => ({
+vi.mock('../services/api', () => ({
   setToken: (...args: unknown[]) => mockSetToken(...args),
   clearToken: (...args: unknown[]) => mockClearToken(...args),
   setRefreshToken: (...args: unknown[]) => mockSetRefreshToken(...args),
@@ -38,7 +38,7 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-vi.mock('../ThemeContext', () => {
+vi.mock('./ThemeContext', () => {
   // Stable references (created once) so AuthProvider's mount effect, which depends
   // on syncFromJwt, runs a single time — mirroring the real useCallback-backed value.
   const setTheme = vi.fn();

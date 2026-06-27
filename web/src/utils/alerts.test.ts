@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { deriveAlerts } from '../alerts';
-import type { RaceGuideEntry, CarAnalytics } from '../../services/api';
+import { deriveAlerts } from './alerts';
+import type { RaceGuideEntry, CarAnalytics } from '../services/api';
 
 const NOW = new Date('2026-06-20T12:00:00Z');
 

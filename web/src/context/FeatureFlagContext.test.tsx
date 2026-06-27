@@ -1,17 +1,17 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { FeatureFlagProvider } from '../FeatureFlagProvider';
-import { useFeatureFlag } from '../FeatureFlagContext';
-import { api } from '../../services/api';
-import type { User } from '../AuthContext';
+import { FeatureFlagProvider } from './FeatureFlagProvider';
+import { useFeatureFlag } from './FeatureFlagContext';
+import { api } from '../services/api';
+import type { User } from './AuthContext';
 
 let mockUser: User | null = null;
 
-vi.mock('../AuthContext', () => ({
+vi.mock('./AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../../services/api', () => ({
+vi.mock('../services/api', () => ({
   api: { getFeatureFlags: vi.fn() },
 }));
 

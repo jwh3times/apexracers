@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { topPercentLabel } from '../percentile';
+import { topPercentLabel } from './percentile';
 
 describe('topPercentLabel', () => {
   it('converts a percentile rank (higher better) to a TOP X% label', () => {

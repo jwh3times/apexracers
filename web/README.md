@@ -56,11 +56,9 @@ src/
   pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
   pages/__tests__/    ← Vitest tests for the static pages
   components/         ← shared UI (Sidebar, TopNav, Footer, Sparkline, …) + colocated *.test.tsx siblings
-  context/            ← AuthContext, ThemeContext, FeatureFlagContext
-  context/__tests__/
-  services/           ← api.ts (typed fetch client), db.ts (IndexedDB helpers)
-  services/__tests__/
-  utils/              ← lapTime.ts (formatLapTime) — import from here, never redefine
+  context/            ← AuthContext, ThemeContext, FeatureFlagContext + colocated *.test.tsx siblings
+  services/           ← api.ts (typed fetch client), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
+  utils/              ← formatLapTime, topPercentLabel, deriveAlerts, breadcrumbs + colocated *.test.ts siblings
   test/               ← setup.ts (Vitest global setup)
   App.tsx             ← route definitions, AppShell layout
   index.css           ← Tailwind base + fluid design token utilities
