@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e:
     name: Playwright E2E
@@ -33,7 +37,7 @@ jobs:
     env:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://localhost:8080
-      DATABASE_CONNECTION_STRING: 'Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=postgres'
+      DATABASE_CONNECTION_STRING: "Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=postgres"
       JWT_SIGNING_KEY: ci-e2e-signing-key-not-a-secret-0123456789abcdef
 
     steps:
@@ -42,14 +46,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '26'
-          cache: 'npm'
+          node-version: "26"
+          cache: "npm"
           cache-dependency-path: web/package-lock.json
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.x'
+          dotnet-version: "10.x"
 
       - name: Install frontend dependencies
         run: npm ci

@@ -16,14 +16,14 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    // Locally, reuseExistingServer attaches to `docker compose up` on :8080 and this
-    // command is never run. In CI nothing is on :8080, so Playwright launches the API,
-    // which serves the SPA from wwwroot and self-migrates against the Postgres service.
+    // Locally (CI unset), reuseExistingServer attaches to `docker compose up` on :8080
+    // and this command is never run. In CI, reuseExistingServer is false so Playwright
+    // always starts a fresh server and fails loudly if :8080 is unexpectedly occupied.
     command: 'dotnet run --configuration Release --no-launch-profile --project src/ApexRacers.Api',
     cwd: '..',
     url: baseURL,
     timeout: 240_000,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',
   },

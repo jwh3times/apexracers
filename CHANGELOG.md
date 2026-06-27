@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Playwright E2E test harness (`web/e2e/`) with a register→dashboard smoke test; run locally with `npm run test:e2e` (requires the full stack at `http://localhost:8080`).
+- Non-blocking per-PR Playwright E2E CI workflow (`.github/workflows/e2e.yml`): spins up a Postgres service, builds the SPA into the API wwwroot, runs the suite, and uploads the Playwright report as an artifact; not yet a required status check.
 
 ## [0.0.1] - 2026-06-16
 

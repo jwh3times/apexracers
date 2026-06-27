@@ -61,7 +61,7 @@ npm run test:e2e      # Playwright headless run (Chromium)
 npm run test:e2e:ui   # Playwright UI mode (interactive)
 ```
 
-Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`; `reuseExistingServer: true` so Playwright attaches to the running stack). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes Vitest to `src/**`). CI integration is a planned follow-up — the suite currently runs locally only.
+Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`; `reuseExistingServer: !process.env.CI` so Playwright attaches to the running stack locally and always starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow (`.github/workflows/e2e.yml`) — it is not yet a required check.
 
 ## Project structure
 
