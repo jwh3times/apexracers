@@ -21,6 +21,9 @@ _ReSharper*/
 # Node / Vite
 web/node_modules/
 web/dist/
+web/playwright-report/
+web/test-results/
+web/blob-report/
 web/.env
 web/.env.local
 web/.env.*.local
