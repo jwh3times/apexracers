@@ -35,17 +35,33 @@ npm run lint     # ESLint
 
 ## Testing
 
+### Unit / integration (Vitest)
+
 ```bash
 npm run test          # Vitest one-shot run
 npm run test:watch    # Vitest in watch mode
-npx vitest run --coverage   # Coverage report (80% threshold enforced)
+npx vitest run --coverage   # Coverage report (85% threshold enforced)
 npx prettier --check .      # Formatting check (also runs in CI)
 npx prettier --write .      # Auto-fix formatting
 ```
 
-Coverage is enforced at **80%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
+Coverage is enforced at **85%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
 
 The CI `test` job runs `npx prettier --check .` before the Vitest coverage step. Any unformatted file blocks both deploy jobs.
+
+### End-to-end (Playwright)
+
+Tests live in `web/e2e/`. They run against the full local stack served at `http://localhost:8080`.
+
+```bash
+# Start the full stack first (Postgres + API serving the SPA at :8080)
+docker compose up -d
+
+npm run test:e2e      # Playwright headless run (Chromium)
+npm run test:e2e:ui   # Playwright UI mode (interactive)
+```
+
+Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`; `reuseExistingServer: true` so Playwright attaches to the running stack). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes Vitest to `src/**`). CI integration is a planned follow-up — the suite currently runs locally only.
 
 ## Project structure
 

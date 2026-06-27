@@ -105,6 +105,8 @@ npm run dev:cloud    # proxies /api → https://apexracers-api.azurewebsites.net
 npm run build        # tsc + Vite production build
 npm run lint         # ESLint
 npm run test         # Vitest one-shot   (test:watch for watch mode)
+npm run test:e2e     # Playwright E2E — requires app at http://localhost:8080 (e.g. docker compose up)
+npm run test:e2e:ui  # Playwright UI mode (interactive)
 npx prettier --check .   # CI runs this — fix with: npx prettier --write .
 ```
 

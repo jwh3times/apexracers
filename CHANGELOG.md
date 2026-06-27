@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- Playwright E2E test harness (`web/e2e/`) with a register→dashboard smoke test; run locally with `npm run test:e2e` (requires the full stack at `http://localhost:8080`).
 
 ## [0.0.1] - 2026-06-16
 
