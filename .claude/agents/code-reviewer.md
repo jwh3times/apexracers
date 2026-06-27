@@ -23,7 +23,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 
 - All DTOs must be `record` types. Flag mutable class DTOs.
 - Response shapes live in `ResponseDtos.cs`; request shapes in `RequestDtos.cs`. Flag DTOs defined elsewhere.
-- When a response DTO is added or changed, the matching TypeScript interface in `src/web/src/services/api.ts` must also change. Flag backend DTO changes that have no corresponding frontend update.
+- When a response DTO is added or changed, the matching TypeScript interface in `web/src/services/api.ts` must also change. Flag backend DTO changes that have no corresponding frontend update.
 
 **Package management**
 

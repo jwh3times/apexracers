@@ -29,7 +29,7 @@ CLAUDE.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 ## DTOs
 
-`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (CLAUDE.md notes the `ResponseDtos.cs` ↔ `src/web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
+`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (CLAUDE.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
 
 ## AppDbContext and schemas
 

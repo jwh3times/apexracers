@@ -15,7 +15,7 @@ Three stages:
 
 1. **`frontend`** (`node:26-alpine`) — installs npm deps then builds React:
 
-   - Copy `package.json` + `package-lock.json` first → `npm ci` → copy `src/web/` → `npm run build`
+   - Copy `package.json` + `package-lock.json` first → `npm ci` → copy `web/` → `npm run build`
    - Output: `/app/dist`
 
 2. **`api-build`** (`mcr.microsoft.com/dotnet/sdk:10.0`) — publishes the API:

@@ -29,7 +29,7 @@ updates:
 
   # ── Frontend / npm ──────────────────────────────────────────────────────────
   - package-ecosystem: "npm"
-    directory: "/src/web"
+    directory: "/web"
     schedule:
       interval: "daily"
       time: "07:00"

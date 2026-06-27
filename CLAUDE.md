@@ -94,7 +94,7 @@ installed globally and match EF Core (currently 10.0.7). SQL seed/cleanup script
 `src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
 
-### Frontend (run from `src/web/`)
+### Frontend (run from `web/`)
 
 ```bash
 npm install
@@ -108,7 +108,7 @@ npm run test         # Vitest one-shot   (test:watch for watch mode)
 npx prettier --check .   # CI runs this — fix with: npx prettier --write .
 ```
 
-Proxy target is `API_TARGET` in the relevant `src/web/.env.*` file; the default falls back to
+Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
 
 ### Infrastructure
@@ -282,9 +282,9 @@ JSON matches what live services write. **Demo caveats** (not page-breakers): `/a
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
 `/compare` search only hits a curated term set (arbitrary terms 503 — use the suggestions list instead).
 
-### Frontend (`src/web/`)
+### Frontend (`web/`)
 
-The typed API client is `src/web/src/services/api.ts` — **all** fetch calls route through one private
+The typed API client is `web/src/services/api.ts` — **all** fetch calls route through one private
 `request<T>(path, init)` helper (attaches auth headers, retries once after silent refresh on 401, maps
 RFC-7807 errors, throws typed `IRacingNotLinkedError` on the `409`). Add endpoints by calling `request`
 with `{ method, json }` or `{ method, body }` — don't reintroduce per-verb helpers. `api.ts` response
@@ -292,13 +292,13 @@ types must stay in sync with `ResponseDtos.cs`. Full frontend patterns (auth/`Au
 interceptor, feature flags, **design-token system + card pattern**, Vitest rules) are in the
 `react-frontend` agent — don't duplicate the design-token tables here.
 
-**Design system:** all sizing is fluid via `clamp()` utility classes in `src/web/src/index.css` (not
+**Design system:** all sizing is fluid via `clamp()` utility classes in `web/src/index.css` (not
 Tailwind breakpoints); use those classes for new UI. Primary accent is **cyan** —
 `text/bg/border-primary-container` for all accent use; never hardcode the old greens (`#00FF88`,
 `#00e479`, green RGBA glows). `primary-fixed-dim` is the allowed dim-accent token. (Class catalog +
 `cardStyle`/`scanTexture` pattern: `react-frontend` agent.)
 
-#### Routing (`src/web/src/App.tsx`)
+#### Routing (`web/src/App.tsx`)
 
 Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-password`,
 `/verify-email`, `/terms`, `/privacy`. **App** (inside `AppShell` — Sidebar + TopNav + Footer):
@@ -322,15 +322,15 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
 
 #### Components, contexts, utilities
 
-- **Components** (`src/web/src/components/`): `Sidebar` / `TopNav` (nav filtered by the `iracing-live`
+- **Components** (`web/src/components/`): `Sidebar` / `TopNav` (nav filtered by the `iracing-live`
   OR `iracing-demo` flag via shared `visibleNav`), `NotificationsBell` (client-derived alerts via pure
   `deriveAlerts`), `DemoBanner` (shows while `iracing-demo` on), `Footer`, and the SVG charts
   `Sparkline` / `PercentileBadge` / `LapTraceChart` / `IRatingCompareChart` (each returns `null` below
   its minimum data points — guard the wrapper).
-- **Contexts** (`src/web/src/context/`): `AuthContext` (session, JWT + refresh, silent refresh,
+- **Contexts** (`web/src/context/`): `AuthContext` (session, JWT + refresh, silent refresh,
   `alertsEnabled`), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
   `FeatureFlagContext` (`useFeatureFlag(key)`).
-- **Utilities** (`src/web/src/utils/`): import the shared `formatLapTime`, `topPercentLabel`,
+- **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `topPercentLabel`,
   `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
 
 ---
@@ -341,8 +341,8 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
 `react-frontend` agents carry the per-stack test rules — the load-bearing facts:
 
 - **Frontend (Vitest):** thresholds (statements/branches/functions/lines) in `vite.config.ts`; CI also
-  runs `npx prettier --check .` from `src/web/` (unformatted files block deploy). Run:
-  `cd src/web && npx vitest run --coverage`.
+  runs `npx prettier --check .` from `web/` (unformatted files block deploy). Run:
+  `cd web && npx vitest run --coverage`.
 - **Backend (.NET, xUnit in `src/ApexRacers.Tests/`):** 85% **line and branch** (CI gates both —
   `irongut/CodeCoverageSummary` for line, a `branch-rate` step for branch). Test services + `Core`
   helpers directly; controllers are excluded. Measure with `dotnet-coverage collect "dotnet test" -f xml`

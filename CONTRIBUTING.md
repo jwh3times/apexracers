@@ -71,7 +71,7 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 dotnet run --project src/ApexRacers.Api
 
 # In another terminal, run the frontend (http://localhost:5173)
-cd src/web
+cd web
 npm install
 npm run dev
 ```
@@ -89,7 +89,7 @@ worker — is documented in the [README](README.md#local-development-setup).
 | `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API |
 | `src/ApexRacers.Seeder/` | CLI tool that seeds synthetic lap time data (idempotent) |
 | `src/ApexRacers.Tests/` | xUnit tests |
-| `src/web/` | Vite + React + TypeScript frontend |
+| `web/` | Vite + React + TypeScript frontend |
 
 Architectural conventions (use-case-oriented controllers, services hold all
 logic, no generic repositories, the fluid design system on the frontend, etc.)
@@ -133,7 +133,7 @@ reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:Te
 
 ### Frontend (React + Vite)
 
-Run from `src/web/`:
+Run from `web/`:
 
 ```bash
 npm run lint                 # ESLint
@@ -170,7 +170,7 @@ Commit the generated migration files. Do **not** add `Version="..."` to
   demands them, not preemptively.
 - One clear responsibility per class.
 - Keep API response shapes in sync between `ResponseDtos.cs` (API) and
-  `src/web/src/services/api.ts` (frontend).
+  `web/src/services/api.ts` (frontend).
 - `// TODO:` comments are acceptable as scaffolding stubs — always describe what
   needs implementing.
 

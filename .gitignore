@@ -19,15 +19,15 @@ _ReSharper*/
 *.ef.json
 
 # Node / Vite
-src/web/node_modules/
-src/web/dist/
-src/web/.env
-src/web/.env.local
-src/web/.env.*.local
-src/web/npm-debug.log*
-src/web/yarn-debug.log*
-src/web/yarn-error.log*
-src/web/pnpm-debug.log*
+web/node_modules/
+web/dist/
+web/.env
+web/.env.local
+web/.env.*.local
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/pnpm-debug.log*
 
 # Environment secrets (never commit)
 .env
