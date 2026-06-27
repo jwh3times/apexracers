@@ -1,0 +1,80 @@
+name: E2E
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Non-blocking for now: runs on PRs for signal but is intentionally NOT a required
+# status check. Promote to required once the suite proves stable.
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: apexracers
+          POSTGRES_USER: apexracers
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apexracers"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://localhost:8080
+      DATABASE_CONNECTION_STRING: 'Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=postgres'
+      JWT_SIGNING_KEY: ci-e2e-signing-key-not-a-secret-0123456789abcdef
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Build SPA into API wwwroot
+        run: |
+          npm run build
+          rm -rf ../src/ApexRacers.Api/wwwroot
+          mkdir -p ../src/ApexRacers.Api/wwwroot
+          cp -r dist/. ../src/ApexRacers.Api/wwwroot/
+        working-directory: web
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+
+      - name: Run E2E tests
+        run: npx playwright test
+        working-directory: web
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7
