@@ -1,12 +1,12 @@
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { ThemeProvider } from '../ThemeProvider';
-import { useTheme } from '../ThemeContext';
+import { ThemeProvider } from './ThemeProvider';
+import { useTheme } from './ThemeContext';
 
 const mockUpdateTheme = vi.fn();
 
-vi.mock('../../services/api', () => ({
+vi.mock('../services/api', () => ({
   api: { updateTheme: (...args: unknown[]) => mockUpdateTheme(...args) },
 }));
 

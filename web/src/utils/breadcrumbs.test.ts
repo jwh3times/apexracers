@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { breadcrumbs } from '../breadcrumbs';
+import { breadcrumbs } from './breadcrumbs';
 
 describe('breadcrumbs', () => {
   it('returns nothing for the root path', () => {

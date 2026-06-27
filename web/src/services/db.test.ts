@@ -86,20 +86,20 @@ describe('db', () => {
 
   it('dbSet stores a value and dbGet retrieves it', async () => {
     setupFakeIndexedDB();
-    const { dbGet, dbSet } = await import('../db');
+    const { dbGet, dbSet } = await import('./db');
     await dbSet('key1', 'value1');
     expect(await dbGet<string>('key1')).toBe('value1');
   });
 
   it('dbGet returns undefined for a missing key', async () => {
     setupFakeIndexedDB();
-    const { dbGet } = await import('../db');
+    const { dbGet } = await import('./db');
     expect(await dbGet<string>('missing')).toBeUndefined();
   });
 
   it('dbRemove deletes a stored value', async () => {
     setupFakeIndexedDB();
-    const { dbGet, dbSet, dbRemove } = await import('../db');
+    const { dbGet, dbSet, dbRemove } = await import('./db');
     await dbSet('del', 'gone');
     await dbRemove('del');
     expect(await dbGet<string>('del')).toBeUndefined();
@@ -107,7 +107,7 @@ describe('db', () => {
 
   it('reuses the cached db connection on subsequent calls', async () => {
     setupFakeIndexedDB();
-    const { dbGet, dbSet } = await import('../db');
+    const { dbGet, dbSet } = await import('./db');
     await dbSet('a', 1);
     await dbSet('b', 2);
     expect(await dbGet<number>('a')).toBe(1);
@@ -116,25 +116,25 @@ describe('db', () => {
 
   it('dbGet rejects when the store request errors', async () => {
     setupFakeIndexedDB({ failGet: true });
-    const { dbGet } = await import('../db');
+    const { dbGet } = await import('./db');
     await expect(dbGet('k')).rejects.toThrow('get failed');
   });
 
   it('dbSet rejects when the store request errors', async () => {
     setupFakeIndexedDB({ failPut: true });
-    const { dbSet } = await import('../db');
+    const { dbSet } = await import('./db');
     await expect(dbSet('k', 'v')).rejects.toThrow('put failed');
   });
 
   it('dbRemove rejects when the store request errors', async () => {
     setupFakeIndexedDB({ failDelete: true });
-    const { dbRemove } = await import('../db');
+    const { dbRemove } = await import('./db');
     await expect(dbRemove('k')).rejects.toThrow('delete failed');
   });
 
   it('all operations reject when open fails', async () => {
     setupFakeIndexedDB({ failOpen: true });
-    const { dbGet } = await import('../db');
+    const { dbGet } = await import('./db');
     await expect(dbGet('k')).rejects.toThrow('open failed');
   });
 });

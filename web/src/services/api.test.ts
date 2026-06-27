@@ -7,7 +7,7 @@ import {
   onTokenRefreshed,
   onSessionExpired,
   IRacingNotLinkedError,
-} from '../api';
+} from './api';
 
 // ── Fetch mock helpers ────────────────────────────────────────────────────────
 
