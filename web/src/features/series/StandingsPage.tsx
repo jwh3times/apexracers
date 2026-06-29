@@ -17,9 +17,7 @@ type Payload =
   | { view: 'qualifying'; data: SeasonQualifyResults };
 
 type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; payload: Payload }
-  | { status: 'error'; message: string };
+  { status: 'loading' } | { status: 'ok'; payload: Payload } | { status: 'error'; message: string };
 
 const cardStyle: React.CSSProperties = {
   boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',

@@ -129,12 +129,7 @@ export interface CarRecommendation {
 }
 
 export type LapSessionType =
-  | 'Unknown'
-  | 'Practice'
-  | 'Qualifying'
-  | 'TimeTrial'
-  | 'Race'
-  | 'LoneQualify';
+  'Unknown' | 'Practice' | 'Qualifying' | 'TimeTrial' | 'Race' | 'LoneQualify';
 
 export interface RecommendationOptions {
   includePersonalLaps?: boolean;
