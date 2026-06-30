@@ -1,10 +1,12 @@
 # Dependabot configuration — automated dependency version updates.
 # Minor/patch updates for each ecosystem are grouped into a single PR to cut
-# noise; MAJOR version bumps arrive as individual PRs so each can be reviewed
-# (and tested) on its own. Docs: https://docs.github.com/code-security/dependabot
+# noise; MAJOR version bumps arrive as individual PRs — EXCEPT for peer-locked
+# families where a lone bump would leave an unsatisfiable peer range. Those
+# families travel together as one major PR.
+# Docs: https://docs.github.com/code-security/dependabot
 version: 2
 updates:
-  # ── .NET / NuGet ────────────────────────────────────────────────────────────
+  # ── .NET / NuGet ─────────────────────────────────────────────────────────────
   # Versions are centrally managed in Directory.Packages.props at the repo root;
   # Dependabot discovers all projects under src/ from the root directory.
   - package-ecosystem: "nuget"
@@ -27,7 +29,7 @@ updates:
           - "minor"
           - "patch"
 
-  # ── Frontend / npm ──────────────────────────────────────────────────────────
+  # ── Frontend / npm ─────────────────────────────────────────────────────────
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
@@ -41,6 +43,53 @@ updates:
       prefix: "chore"
       include: "scope"
     groups:
+      # --- Peer-locked families — majors only. All minor/patch bumps land in the
+      #     catch-all group at the bottom. ---
+
+      # react + react-dom ship at identical versions and must match at runtime;
+      # the @types/* packages track the same major.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "major"
+
+      # @vitejs/plugin-react requires a matching Vite major; vitest tracks
+      # the Vite majors it supports.
+      vite-ecosystem:
+        patterns:
+          - "vite"
+          - "vitest"
+          - "@vitejs/plugin-react"
+          - "@vitest/*"
+        update-types:
+          - "major"
+
+      # @testing-library/react and user-event both peer-require @testing-library/dom.
+      testing-library:
+        patterns:
+          - "@testing-library/*"
+        update-types:
+          - "major"
+
+      # @eslint/js is lockstep-versioned with eslint; plugins peer-cap on the eslint
+      # major; typescript-eslint peer-bounds both eslint and typescript.
+      lint-and-typescript:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-plugin-*"
+          - "eslint-config-*"
+          - "typescript-eslint"
+          - "globals"
+          - "typescript"
+        update-types:
+          - "major"
+
+      # One PR for all minor + patch bumps; ungrouped majors open individually.
       npm-minor-patch:
         patterns:
           - "*"
@@ -48,7 +97,7 @@ updates:
           - "minor"
           - "patch"
 
-  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  # ── GitHub Actions ───────────────────────────────────────────────────────────
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -90,7 +139,7 @@ updates:
           - "minor"
           - "patch"
 
-  # ── docker-compose.yml (postgres, pgadmin) ──────────────────────────────────
+  # ── docker-compose.yml (postgres, pgadmin) ───────────────────────────────
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
