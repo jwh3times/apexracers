@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`primary-container`, `primary-fixed-dim`, `primary`, `secondary-fixed-dim`, and companion fill/ink
   tokens) in the `html.theme-light` / `prefers-color-scheme: light` overrides in `index.css`; dropped
   the low-opacity modifier on hero stat captions and footer text; and added a persistent underline to
-  inline links on the Privacy, Dashboard, My Laps, and Profile pages. Dark mode is unchanged.
+  inline links on the Privacy, Dashboard, My Laps, and Profile pages. Dark-mode accent colors are unchanged.
 
 ## [0.1.0] - 2026-06-30
 
