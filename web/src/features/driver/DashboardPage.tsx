@@ -350,7 +350,10 @@ export default function DashboardPage() {
                 </span>
                 <p className="text-body-fluid text-on-surface-variant">
                   No laps yet.{' '}
-                  <Link to="/telemetry" className="text-primary-container hover:opacity-80">
+                  <Link
+                    to="/telemetry"
+                    className="text-primary-container underline hover:opacity-80"
+                  >
                     Upload a telemetry file
                   </Link>{' '}
                   to get started.

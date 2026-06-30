@@ -209,7 +209,7 @@ export default function HomePage() {
             ].map(([v, l]) => (
               <div key={l}>
                 <div className="font-mono text-[23px] font-bold">{v}</div>
-                <div className="text-[12px] text-on-surface-variant/60 mt-[3px]">{l}</div>
+                <div className="text-[12px] text-on-surface-variant mt-[3px]">{l}</div>
               </div>
             ))}
           </div>
@@ -273,7 +273,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="mt-auto border-t border-line-2 px-[clamp(20px,5vw,64px)] py-[26px] flex items-center gap-4 text-on-surface-variant/50 text-[12.5px] flex-wrap">
+      <footer className="mt-auto border-t border-line-2 px-[clamp(20px,5vw,64px)] py-[26px] flex items-center gap-4 text-on-surface-variant text-[12.5px] flex-wrap">
         <span className="font-bold tracking-[-0.02em] text-[14px] whitespace-nowrap text-on-surface-variant">
           APEX<b className="text-primary-container font-bold">//</b>RACERS
         </span>

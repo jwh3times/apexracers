@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Axe-core (`@axe-core/playwright`) accessibility audits in the Playwright E2E suite — asserts zero
+  WCAG 2.1 A/AA violations across the public + authenticated page set (5 public + 7 authed pages);
+  runs in the existing non-blocking E2E workflow.
+
+### Fixed
+
+- Light-mode color contrast now meets WCAG 2.1 AA — darkened the cyan accent tokens
+  (`primary-container`, `primary-fixed-dim`, `primary`, `secondary-fixed-dim`, and companion fill/ink
+  tokens) in the `html.theme-light` / `prefers-color-scheme: light` overrides in `index.css`; dropped
+  the low-opacity modifier on hero stat captions and footer text; and added a persistent underline to
+  inline links on the Privacy, Dashboard, My Laps, and Profile pages. Dark-mode accent colors are unchanged.
+
 ## [0.1.0] - 2026-06-30
 
 The first feature release since the initial production deployment. It lands the

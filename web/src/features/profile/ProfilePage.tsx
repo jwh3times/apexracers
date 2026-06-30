@@ -561,7 +561,7 @@ export default function ProfilePage() {
                 No lap data yet.{' '}
                 <Link
                   to="/telemetry"
-                  className="text-primary-fixed-dim hover:text-primary transition-colors"
+                  className="text-primary-fixed-dim underline hover:text-primary transition-colors"
                 >
                   Upload a telemetry file
                 </Link>{' '}

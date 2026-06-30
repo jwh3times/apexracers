@@ -27,6 +27,7 @@
     "node": ">=26"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/forms": "^0.5.11",

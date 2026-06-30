@@ -61,11 +61,27 @@ npm run test:e2e      # Playwright headless run (Chromium)
 npm run test:e2e:ui   # Playwright UI mode (interactive)
 ```
 
-Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`; `reuseExistingServer: !process.env.CI` so Playwright attaches to the running stack locally and always starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow (`.github/workflows/e2e.yml`) — it is not yet a required check.
+Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`;
+`reuseExistingServer: !process.env.CI` so Playwright attaches to the running stack locally and always
+starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes
+Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow
+(`.github/workflows/e2e.yml`) — it is not yet a required check.
+
+**Accessibility audits:** `web/e2e/a11y.spec.ts` runs WCAG 2.1 A/AA axe-core checks across 5 public
+pages and 7 authenticated pages and asserts zero violations. The shared helper
+`web/e2e/helpers/a11y.ts` exports `auditA11y(page, opts?)` (runs `@axe-core/playwright` against the
+`wcag2a`/`wcag2aa` tagset) and `formatViolations(violations)` (human-readable summary for test
+failure output).
 
 ## Project structure
 
 ```
+e2e/
+  helpers/
+    a11y.ts           ← auditA11y() / formatViolations() — shared axe-core helper
+    users.ts          ← registerNewUser() and test-user helpers
+  a11y.spec.ts        ← WCAG 2.1 A/AA audits: 5 public + 7 authed pages (axe-core)
+  smoke.spec.ts       ← register → dashboard smoke test
 src/
   features/           ← feature-grouped pages, each with a colocated *.test.tsx sibling
     auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
