@@ -49,6 +49,22 @@ html.theme-light {
   --card-shadow: 0 1px 2px rgba(15, 18, 20, 0.04), 0 16px 36px -26px rgba(15, 18, 20, 0.4);
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-border: rgba(15, 18, 20, 0.12);
+
+  /* Accent (cyan) — darkened for WCAG AA contrast on light surfaces.
+     Dark mode keeps the bright cyan defined in @theme; only the light
+     foreground/ink values are overridden here. Foreground cyan tokens
+     used as text/icons become a deep cyan (≥4.5:1 on white & tints);
+     the cyan fills they double as keep a light ink so dark-on-cyan and
+     cyan-on-light both pass. */
+  --color-primary-container: #006072;
+  --color-primary-fixed-dim: #006072;
+  --color-primary: #006072;
+  --color-secondary-fixed-dim: #00707f;
+  --color-primary-fixed: #004f5e;
+  --color-secondary-fixed: #005e6e;
+  --color-on-primary-fixed: #eafdff;
+  --color-on-primary-container: #eafdff;
+  --color-on-primary-fixed-variant: #eafdff;
 }
 
 /* ── Palette — auto (follows OS preference) ───────────────── */
@@ -73,6 +89,18 @@ html.theme-light {
     --card-shadow: 0 1px 2px rgba(15, 18, 20, 0.04), 0 16px 36px -26px rgba(15, 18, 20, 0.4);
     --glass-bg: rgba(255, 255, 255, 0.75);
     --glass-border: rgba(15, 18, 20, 0.12);
+
+    /* Accent (cyan) — darkened for WCAG AA contrast on light surfaces
+       (see html.theme-light above for rationale). */
+    --color-primary-container: #006072;
+    --color-primary-fixed-dim: #006072;
+    --color-primary: #006072;
+    --color-secondary-fixed-dim: #00707f;
+    --color-primary-fixed: #004f5e;
+    --color-secondary-fixed: #005e6e;
+    --color-on-primary-fixed: #eafdff;
+    --color-on-primary-container: #eafdff;
+    --color-on-primary-fixed-variant: #eafdff;
   }
 }
 
