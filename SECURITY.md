@@ -10,10 +10,10 @@ ApexRacers is a continuously deployed web application. Only the latest code on t
 (`https://apexracers.gg`) are supported and will receive security fixes. There are
 no long-term support branches or backports to older commits.
 
-| Version | Supported |
-| ------- | --------- |
-| `main` (latest) | ✅ |
-| Older commits / tags | ❌ |
+| Version              | Supported |
+| -------------------- | --------- |
+| `main` (latest)      | ✅        |
+| Older commits / tags | ❌        |
 
 ## Reporting a vulnerability
 
