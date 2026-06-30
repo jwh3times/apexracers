@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 
 /** WCAG 2.1 Level A & AA rule tags — the conformance target for this suite. */
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] as const;
 
 /** A single axe violation, derived from the AxeBuilder result so we need no extra dependency. */
 export type Violation = Awaited<ReturnType<AxeBuilder['analyze']>>['violations'][number];
@@ -37,7 +37,7 @@ export function formatViolations(violations: Violation[]): string {
  * `// KNOWN-A11Y(<rule>): <reason> — follow-up: <ref>` comment at the call site.
  */
 export async function auditA11y(page: Page, opts: A11yOptions = {}): Promise<void> {
-  let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
+  let builder = new AxeBuilder({ page }).withTags([...WCAG_TAGS]);
   if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules);
   for (const selector of opts.exclude ?? []) builder = builder.exclude(selector);
   const { violations } = await builder.analyze();

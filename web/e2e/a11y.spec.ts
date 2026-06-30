@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { formatViolations, type Violation } from './helpers/a11y';
-import { auditA11y } from './helpers/a11y';
+import { formatViolations, auditA11y, type Violation } from './helpers/a11y';
 import { registerNewUser } from './helpers/users';
 
 // Minimal fixture shaped like an axe violation — only the fields formatViolations reads.
