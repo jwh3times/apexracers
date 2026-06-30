@@ -54,7 +54,7 @@ summary to `private/archive.md` (newest first), and add a bullet under the `CHAN
 section (correct `Added`/`Changed`/`Fixed`/`Removed`/`Security` category); update `private/PRD.md`,
 this `CLAUDE.md`, and `README.md` as relevant. ROADMAP tracks only what remains; `archive.md` is the
 record of what shipped. **Cutting a release** — rolling `[Unreleased]` into a versioned `[x.y.z]` section
-and tagging — is a separate, deliberate step (SemVer; currently `0.0.1`). (The `docs-updater` agent owns
+and tagging — is a separate, deliberate step (SemVer; currently `0.1.0`). (The `docs-updater` agent owns
 the full doc-update matrix.)
 
 > **iRacing blocker (canonical note — referenced elsewhere).** The deployed app lacks iRacing OAuth
