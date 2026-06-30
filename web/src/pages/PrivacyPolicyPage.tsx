@@ -52,7 +52,7 @@ export default function PrivacyPolicyPage() {
           For any privacy-related questions or data deletion requests, please contact us at{' '}
           <a
             href="mailto:privacy@apexracers.gg"
-            className="text-primary hover:text-primary-fixed-dim transition-colors"
+            className="text-primary underline hover:text-primary-fixed-dim transition-colors"
           >
             privacy@apexracers.gg
           </a>

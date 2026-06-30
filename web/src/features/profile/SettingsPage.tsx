@@ -209,7 +209,7 @@ export default function SettingsPage() {
                   placeholder="e.g. 100042"
                   className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
-                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
+                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant">
                   Used to look up your lap time percentile. Will be set automatically once iRacing
                   OAuth is available.
                 </p>
@@ -253,7 +253,7 @@ export default function SettingsPage() {
                     Pending verification: {emailPending}. Check that inbox to confirm the change.
                   </p>
                 )}
-                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant/60">
+                <p className="mt-1.5 font-body-sm text-[12px] text-on-surface-variant">
                   Changing your email sends a confirmation link to the new address. Your sign-in
                   email won&apos;t change until you confirm it.
                 </p>
@@ -282,8 +282,8 @@ export default function SettingsPage() {
 
             <div className="bg-surface-container-high rounded-lg p-4 border border-line flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#00D1FF]/10 rounded flex items-center justify-center border border-[#00D1FF]/20 shrink-0">
-                  <span className="font-data-md text-data-md text-[#00D1FF]">iR</span>
+                <div className="w-10 h-10 bg-primary-container/10 rounded flex items-center justify-center border border-primary-container/20 shrink-0">
+                  <span className="font-data-md text-data-md text-primary-container">iR</span>
                 </div>
                 <div>
                   <p className="font-body-sm text-body-sm text-on-surface font-semibold">
