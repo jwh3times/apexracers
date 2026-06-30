@@ -81,15 +81,15 @@ worker — is documented in the [README](README.md#local-development-setup).
 
 ## Project layout
 
-| Path | Description |
-| --- | --- |
-| `src/ApexRacers.Core/` | Domain models shared across all projects (no dependencies) |
-| `src/ApexRacers.Data/` | EF Core `DbContext`, entity configurations, migrations |
-| `src/ApexRacers.Api/` | ASP.NET Core Web API — controllers, services, auth |
-| `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API |
-| `src/ApexRacers.Seeder/` | CLI tool that seeds synthetic lap time data (idempotent) |
-| `src/ApexRacers.Tests/` | xUnit tests |
-| `web/` | Vite + React + TypeScript frontend |
+| Path                        | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| `src/ApexRacers.Core/`      | Domain models shared across all projects (no dependencies) |
+| `src/ApexRacers.Data/`      | EF Core `DbContext`, entity configurations, migrations     |
+| `src/ApexRacers.Api/`       | ASP.NET Core Web API — controllers, services, auth         |
+| `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API     |
+| `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)   |
+| `src/ApexRacers.Tests/`     | xUnit tests                                                |
+| `web/`                      | Vite + React + TypeScript frontend                         |
 
 Architectural conventions (use-case-oriented controllers, services hold all
 logic, no generic repositories, the fluid design system on the frontend, etc.)
