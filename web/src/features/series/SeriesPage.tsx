@@ -44,7 +44,7 @@ function SeriesCard({ s }: { s: Series }) {
           ) : (
             <span />
           )}
-          <span className="text-[11px] font-mono text-on-surface-variant/50">
+          <span className="text-[11px] font-mono text-on-surface-variant">
             S{s.seasonId}
             {active ? ` · WK ${s.currentWeekNumber}` : ''}
           </span>
@@ -71,7 +71,7 @@ function SeriesCard({ s }: { s: Series }) {
             </span>
             <span className="font-semibold text-on-surface">{s.trackName}</span>
             {s.trackConfigName && s.trackConfigName !== s.trackName && (
-              <span className="text-on-surface-variant/50">· {s.trackConfigName}</span>
+              <span className="text-on-surface-variant">· {s.trackConfigName}</span>
             )}
           </div>
         )}
@@ -82,7 +82,7 @@ function SeriesCard({ s }: { s: Series }) {
             {s.carCount > 0 && (
               <div>
                 <div
-                  className="font-mono uppercase tracking-wider text-on-surface-variant/60"
+                  className="font-mono uppercase tracking-wider text-on-surface-variant"
                   style={{ fontSize: '10.5px' }}
                 >
                   Cars
@@ -93,7 +93,7 @@ function SeriesCard({ s }: { s: Series }) {
             {s.driverCount > 0 && (
               <div>
                 <div
-                  className="font-mono uppercase tracking-wider text-on-surface-variant/60"
+                  className="font-mono uppercase tracking-wider text-on-surface-variant"
                   style={{ fontSize: '10.5px' }}
                 >
                   Drivers

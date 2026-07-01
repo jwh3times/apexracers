@@ -338,7 +338,7 @@ export default function PercentileCarPage() {
                   </div>
 
                   {/* Cache note */}
-                  <p className="text-small-fluid text-on-surface-variant/60 border-t border-line-2 pt-4">
+                  <p className="text-small-fluid text-on-surface-variant border-t border-line-2 pt-4">
                     Computed {formatDate(result.computedAt)}
                   </p>
                 </div>
