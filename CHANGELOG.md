@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Extended light/dark WCAG 2.1 AA link-distinction (`underline` on inline accent links) and muted-text
-  contrast (full-strength `on-surface-variant`) to the remaining sibling pages (Profile, Progression,
-  Analytics, Recommendations, Admin, Series, Week detail, Percentile). Added `/reset-password` and
-  `/verify-email` to the axe audit set.
+- Extended light/dark WCAG 2.1 AA link-distinction — a persistent `underline` on inline accent links —
+  across Profile, Progression, Analytics, Recommendations, Races, Percentile, and Compare (WCAG 1.4.1);
+  extended full-strength muted-text contrast (`on-surface-variant`) to Admin, Series, and Percentile
+  (WCAG 1.4.3); and added `/reset-password` and `/verify-email` to the axe audit set.
 
 ## [0.2.0] - 2026-06-30
 
