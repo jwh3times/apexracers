@@ -312,6 +312,7 @@ describe('ProfilePage', () => {
     await waitFor(() =>
       expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/settings')
     );
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveClass('underline');
     expect(mockGetProfileStats).not.toHaveBeenCalled();
   });
 

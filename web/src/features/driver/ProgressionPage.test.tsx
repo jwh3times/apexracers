@@ -135,6 +135,7 @@ describe('ProgressionPage', () => {
     await waitFor(() => {
       const link = screen.getByRole('link', { name: /settings/i });
       expect(link).toHaveAttribute('href', '/settings');
+      expect(link).toHaveClass('underline');
     });
   });
 

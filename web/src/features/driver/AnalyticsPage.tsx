@@ -470,7 +470,7 @@ export default function AnalyticsPage() {
             </span>
             <p className="text-body-fluid text-on-surface-variant max-w-xs">
               No percentile data for this series yet.{' '}
-              <Link to="/series" className="text-primary-container hover:opacity-80">
+              <Link to="/series" className="text-primary-container underline hover:opacity-80">
                 Browse series
               </Link>{' '}
               and compute your percentile to start tracking trends.
@@ -489,7 +489,7 @@ export default function AnalyticsPage() {
           </span>
           <p className="text-body-fluid text-on-surface-variant max-w-xs">
             No percentile data yet.{' '}
-            <Link to="/series" className="text-primary-container hover:opacity-80">
+            <Link to="/series" className="text-primary-container underline hover:opacity-80">
               Browse series
             </Link>{' '}
             and compute your percentile to start tracking trends.

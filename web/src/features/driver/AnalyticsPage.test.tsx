@@ -206,6 +206,7 @@ describe('AnalyticsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/no percentile data for this series/i)).toBeInTheDocument();
     });
+    expect(screen.getByRole('link', { name: /browse series/i })).toHaveClass('underline');
   });
 
   it('calls getMyAnalytics with the new seriesId when a different series is selected', async () => {
@@ -270,6 +271,7 @@ describe('AnalyticsPage', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /by car/i }));
     await waitFor(() => expect(screen.getByText(/no percentile data yet/i)).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /browse series/i })).toHaveClass('underline');
   });
 
   it('shows the ELITE badge and gold styling for a ≥95 percentile car', async () => {
