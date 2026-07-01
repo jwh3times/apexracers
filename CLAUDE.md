@@ -349,6 +349,11 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   `irongut/CodeCoverageSummary` for line, a `branch-rate` step for branch). Test services + `Core`
   helpers directly; controllers are excluded. Measure with `dotnet-coverage collect "dotnet test" -f xml`
   then `reportgenerator`.
+- **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
+  full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across 5 public
+  + 7 authed pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
+  (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
+  in the `react-frontend` agent.
 - **Test DB provider:** `Helpers/DbContextFactory.Create()` uses **in-memory SQLite** (a real relational
   provider — queries must translate), with `Foreign Keys=False` so tests use minimal partial fixtures.
   Narrow exception `CreateInMemory()` is for the few production queries valid on Npgsql but untranslatable
