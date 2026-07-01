@@ -91,7 +91,7 @@ function UsersTab() {
                   <td className="p-4">
                     {isAdmin ? (
                       <span
-                        className="font-body-sm text-body-sm text-on-surface-variant/50 px-3 py-1.5 inline-block"
+                        className="font-body-sm text-body-sm text-on-surface-variant px-3 py-1.5 inline-block"
                         title="Managed via Key Vault"
                       >
                         Admin
@@ -414,7 +414,7 @@ function FlagsTab() {
                       </td>
                       <td className="p-4">
                         <span
-                          className={`font-label-caps text-label-caps ${flag.isEnabled ? 'text-primary-fixed-dim' : 'text-on-surface-variant/50'}`}
+                          className={`font-label-caps text-label-caps ${flag.isEnabled ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}
                         >
                           {flag.isEnabled ? 'Yes' : 'No'}
                         </span>

@@ -128,6 +128,7 @@ describe('RacesPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/settings')
     );
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveClass('underline');
   });
 
   it('shows an error message when the API fails', async () => {

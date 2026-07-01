@@ -26,7 +26,15 @@ test.describe('a11y helper: formatViolations', () => {
 });
 
 /** Pages that render real content with no auth in CI. */
-const PUBLIC_PAGES = ['/', '/login', '/forgot-password', '/terms', '/privacy'];
+const PUBLIC_PAGES = [
+  '/',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/terms',
+  '/privacy',
+];
 
 /**
  * Authenticated pages that render real content without iRacing creds.

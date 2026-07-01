@@ -113,6 +113,7 @@ describe('RecommendationsPage', () => {
     mockGetRecs.mockResolvedValue([]);
     renderPage('?seriesId=1');
     await waitFor(() => expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /profile/i })).toHaveClass('underline');
   });
 
   it('renders top recommendation with car name and formatted lap times', async () => {
@@ -169,6 +170,7 @@ describe('RecommendationsPage', () => {
       const link = screen.getByRole('link', { name: /settings/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', '/settings');
+      expect(link).toHaveClass('underline');
     });
   });
 

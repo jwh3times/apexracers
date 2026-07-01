@@ -334,7 +334,7 @@ export default function RecommendationsPage() {
               customer ID in{' '}
               <Link
                 to="/settings"
-                className="text-primary-container hover:opacity-80 transition-opacity"
+                className="text-primary-container underline hover:opacity-80 transition-opacity"
               >
                 Settings
               </Link>
@@ -358,7 +358,7 @@ export default function RecommendationsPage() {
               No recommendations available. Set your iRacing Customer ID in your{' '}
               <Link
                 to="/profile"
-                className="text-primary-container hover:opacity-80 transition-opacity"
+                className="text-primary-container underline hover:opacity-80 transition-opacity"
               >
                 profile
               </Link>{' '}

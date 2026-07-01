@@ -526,7 +526,7 @@ export default function ComparePage() {
                 Link your iRacing account to compare. Add your iRacing customer ID in{' '}
                 <Link
                   to="/settings"
-                  className="text-primary-container hover:opacity-80 transition-opacity"
+                  className="text-primary-container underline hover:opacity-80 transition-opacity"
                 >
                   Settings
                 </Link>

@@ -192,7 +192,7 @@ export default function PercentileCarPage() {
             </span>
             <p className="text-body-fluid text-on-surface-variant">
               Set your iRacing Customer ID in your{' '}
-              <Link to="/profile" className="text-primary-container hover:opacity-80">
+              <Link to="/profile" className="text-primary-container underline hover:opacity-80">
                 profile
               </Link>{' '}
               to skip this step.
@@ -338,7 +338,7 @@ export default function PercentileCarPage() {
                   </div>
 
                   {/* Cache note */}
-                  <p className="text-small-fluid text-on-surface-variant/60 border-t border-line-2 pt-4">
+                  <p className="text-small-fluid text-on-surface-variant border-t border-line-2 pt-4">
                     Computed {formatDate(result.computedAt)}
                   </p>
                 </div>
