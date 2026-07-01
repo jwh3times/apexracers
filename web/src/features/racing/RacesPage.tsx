@@ -176,7 +176,7 @@ export default function RacesPage() {
             Link your iRacing account to see your race history. Add your iRacing customer ID in{' '}
             <Link
               to="/settings"
-              className="text-primary-container hover:opacity-80 transition-opacity"
+              className="text-primary-container underline hover:opacity-80 transition-opacity"
             >
               Settings
             </Link>

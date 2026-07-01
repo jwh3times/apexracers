@@ -125,6 +125,7 @@ describe('PercentileCarPage', () => {
     renderPage();
     expect(screen.getByLabelText(/iRacing Customer ID/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /profile/i })).toHaveClass('underline');
   });
 
   it('submit button is disabled when input is empty', () => {

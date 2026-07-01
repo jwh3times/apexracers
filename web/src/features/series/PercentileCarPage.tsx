@@ -192,7 +192,7 @@ export default function PercentileCarPage() {
             </span>
             <p className="text-body-fluid text-on-surface-variant">
               Set your iRacing Customer ID in your{' '}
-              <Link to="/profile" className="text-primary-container hover:opacity-80">
+              <Link to="/profile" className="text-primary-container underline hover:opacity-80">
                 profile
               </Link>{' '}
               to skip this step.

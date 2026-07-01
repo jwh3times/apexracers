@@ -408,7 +408,7 @@ export default function WeekDetailPage() {
                         </td>
                       )}
                       {/* Chevron */}
-                      <td className="td-p border-b border-line-2 text-on-surface-variant">
+                      <td className="td-p border-b border-line-2 text-on-surface-variant/60">
                         <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                           chevron_right
                         </span>
