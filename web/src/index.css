@@ -55,7 +55,10 @@ html.theme-light {
      foreground/ink values are overridden here. Foreground cyan tokens
      used as text/icons become a deep cyan (≥4.5:1 on white & tints);
      the cyan fills they double as keep a light ink so dark-on-cyan and
-     cyan-on-light both pass. */
+     cyan-on-light both pass. Note: primary, primary-container, and
+     primary-fixed-dim intentionally collapse to the same #006072 here
+     (for the sidebar tinted-bg case), so some `hover:text-primary-*`
+     transitions are no-ops in light mode — deliberate, not a bug. */
   --color-primary-container: #006072;
   --color-primary-fixed-dim: #006072;
   --color-primary: #006072;
