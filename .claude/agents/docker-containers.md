@@ -55,6 +55,11 @@ Four services:
 | `api`       | built from `Dockerfile`           | 8080    | Depends on postgres health                                                                                                       |
 | `ingestion` | built from `ingestion.Dockerfile` | —       | Profile: `ingestion`                                                                                                             |
 
+All three published host ports (`postgres`, `pgadmin`, `api`) are bound to `127.0.0.1` in
+`docker-compose.yml` (`127.0.0.1:${PORT}:...`), not all interfaces — this stack ships with default dev
+credentials and (in Development) an echoed password-reset token, so it must not be reachable from the
+network. Preserve this binding when editing the compose file.
+
 All services that depend on postgres use `condition: service_healthy` — the healthcheck must pass before they start.
 
 The `ingestion` service is gated behind the `ingestion` profile:

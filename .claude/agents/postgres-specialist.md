@@ -33,9 +33,12 @@ Two schemas in one database:
 | `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                            |
 | `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum) |
 | `SubsessionResults`    | composite   | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …) |
+| `SeasonCarBops`        | composite   | Per-week BoP for one car (SeasonId, WeekNumber, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)  |
 | `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                          |
 | `PersonalLaps`         | Guid PK     | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness`            |
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                    |
+| `ExternalDataCaches`   | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on `CacheKey` (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
+| `Rivals`               | Guid PK     | A driver a user follows; unique index on (UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`        |
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens:
 
@@ -47,7 +50,7 @@ Two schemas in one database:
 
 ## Week.Id is a Guid
 
-`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other entity PK is an `int` (database sequence), except `PersonalLap` (Guid) and `RefreshToken` (Guid). Do not switch these PKs without a migration plan.
+`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `PersonalLap` (Guid), `RefreshToken` (Guid), and `Rival` (Guid). Do not switch these PKs without a migration plan.
 
 ## Critical indexes
 
@@ -59,6 +62,12 @@ Two schemas in one database:
 `RefreshToken.TokenHash` has a unique index — lookup by hash is the only way to find a token (raw tokens are never stored).
 
 `FeatureFlag.Key` has a unique index — enforced at DB level, not just application level.
+
+`ExternalDataCache.CacheKey` has a unique index (max length 200) — the only lookup path for `CachedIRacingClient`'s get-or-fetch.
+
+`Rival` has a unique index on `(UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
+
+`SeasonCarBop` has an index on `(SeasonId, WeekNumber)` — backs the per-week BoP lookup from `ScheduleService`/`StrategyService`.
 
 When adding new query patterns in services, consider whether a new index is needed. Check the existing entity configuration first.
 

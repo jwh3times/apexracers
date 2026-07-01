@@ -90,7 +90,7 @@ dotnet ef database update      --project src/ApexRacers.Data --startup-project s
 
 Seeder needs `private/iracing-api-response-objects/` populated first (gitignored — see README) and
 `DATABASE_CONNECTION_STRING` (else falls back to the local Docker default). `dotnet-ef` must be
-installed globally and match EF Core (currently 10.0.7). SQL seed/cleanup scripts live in
+installed globally and match EF Core (currently 10.0.9). SQL seed/cleanup scripts live in
 `src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
 
