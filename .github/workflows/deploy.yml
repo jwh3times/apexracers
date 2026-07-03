@@ -121,6 +121,11 @@ jobs:
     needs: [format, test]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Serialize deploys: two closely-spaced merges to main queue instead of racing
+    # (a stale image could otherwise win the App Service update).
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
 
@@ -154,6 +159,10 @@ jobs:
     needs: [format, test]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Serialize deploys (same rationale as deploy-api).
+    concurrency:
+      group: deploy-ingestion
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
 
