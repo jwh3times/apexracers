@@ -17,6 +17,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Security testing (JWT/auth flows, data isolation, CORS, admin)      | `penetration-tester`   |
 | Documentation sync after changes (CHANGELOG, CLAUDE.md, README, …) | `docs-updater`         |
 
+Docs freshness is auto-checked at the end of every response turn by a read-only Stop hook in
+`.claude/settings.json` (single pre-approved git command + Read/Grep/Glob — it never edits files).
+When it detects drift it blocks the stop with specifics and the main session invokes `docs-updater`
+to fix exactly that drift.
+
 ---
 
 ## Ground Rules

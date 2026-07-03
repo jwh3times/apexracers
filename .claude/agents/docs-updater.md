@@ -81,30 +81,17 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 ## How to detect drift
 
-Before writing, verify against the actual code — do not trust docs alone:
+Before writing, verify against the actual code — do not trust docs alone. Use the
+**Grep and Glob tools** (not shell commands) — they work identically on Windows, macOS,
+Linux, and web sessions, and never require permission approval:
 
-```bash
-# What controllers exist?
-Get-ChildItem src/ApexRacers.Api/Controllers/ -Filter *.cs | Select-Object Name
-
-# What services exist?
-Get-ChildItem src/ApexRacers.Api/Services/ -Filter *.cs | Select-Object Name
-
-# What Core models exist?
-Get-ChildItem src/ApexRacers.Core/Models/ -Filter *.cs | Select-Object Name
-
-# What tables are in AppDbContext?
-Select-String "DbSet<" src/ApexRacers.Data/AppDbContext.cs
-
-# What routes does AppDbContext configure in identity schema?
-Select-String "ToTable.*identity" src/ApexRacers.Data/AppDbContext.cs
-
-# What JWT expiry is configured in AuthService?
-Select-String "AccessTokenMinutes|RefreshTokenDays" src/ApexRacers.Api/Services/AuthService.cs
-
-# What design tokens are defined?
-Select-String "@layer components" web/src/index.css -A 200
-```
+- **Controllers that exist** — Glob `src/ApexRacers.Api/Controllers/*.cs`
+- **Services that exist** — Glob `src/ApexRacers.Api/Services/*.cs`
+- **Core models that exist** — Glob `src/ApexRacers.Core/Models/*.cs`
+- **Tables in AppDbContext** — Grep pattern `DbSet<` in `src/ApexRacers.Data/AppDbContext.cs`
+- **Identity-schema table mappings** — Grep pattern `ToTable.*identity` in `src/ApexRacers.Data/AppDbContext.cs`
+- **JWT expiry configured in AuthService** — Grep pattern `AccessTokenMinutes|RefreshTokenDays` in `src/ApexRacers.Api/Services/AuthService.cs`
+- **Design tokens defined** — Grep pattern `@layer components` in `web/src/index.css` with `-A 200` context
 
 ## What NOT to change
 
