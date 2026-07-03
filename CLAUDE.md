@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > reads; the per-domain rules live in `.claude/agents/` and load only when that subagent runs. Pointers
 > below say which agent owns what — don't duplicate their content back into this file.
 
+| Work type                                                           | Agent                  |
+| -------------------------------------------------------------------- | ---------------------- |
+| .NET/EF features, services, auth, ingestion patterns                | `dotnet-api`           |
+| React pages/components, design tokens, Vitest/Playwright rules      | `react-frontend`       |
+| Schema, indexes, query patterns, migrations                         | `postgres-specialist`  |
+| Dockerfiles, Compose, image builds                                  | `docker-containers`    |
+| Azure resources, Key Vault map, deploy commands                     | `azure-infrastructure` |
+| Reviewing a diff for correctness/security before merging            | `code-reviewer`        |
+| Security testing (JWT/auth flows, data isolation, CORS, admin)      | `penetration-tester`   |
+| Documentation sync after changes (CHANGELOG, CLAUDE.md, README, …) | `docs-updater`         |
+
 ---
 
 ## Ground Rules
@@ -107,8 +118,11 @@ npm run lint         # ESLint
 npm run test         # Vitest one-shot   (test:watch for watch mode)
 npm run test:e2e     # Playwright E2E — requires app at http://localhost:8080 (e.g. docker compose up)
 npm run test:e2e:ui  # Playwright UI mode (interactive)
-npx prettier --check .   # CI runs this — fix with: npx prettier --write .
+npx prettier --check .   # CI runs this exact check — fix with: npx prettier --write .
 ```
+
+Note: `npm run format` / `npm run format:check` exist but only cover `src/**` — CI's prettier check
+covers the whole `web/` tree, so prefer the `npx prettier … .` forms above.
 
 Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
