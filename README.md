@@ -133,6 +133,14 @@ iRacing does not have a self-service developer portal. To obtain OAuth 2.0 crede
 
 Password-reset and email-change-verification emails are sent through Azure Communication Services. The API reads `ACS_CONNECTION_STRING` (from Key Vault in Azure), `ACS_SENDER_ADDRESS` (default `noreply@apexracers.gg`), and `APP_BASE_URL` (default `https://apexracers.gg`, used to build the links in emails). When `ACS_CONNECTION_STRING` is **not** set (e.g. local development), the app binds a logging email sender instead of sending real mail — the password-reset flow still works locally because the reset token is returned in the response body in the Development environment. See `private/deployTODO.md` §13 for the ACS provisioning runbook.
 
+## Contributing & support
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and quality
+gates, and [CLAUDE.md](CLAUDE.md) for the architectural conventions PRs are expected to follow. By
+participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). For help, bug reports, and
+feature requests, see [SUPPORT.md](SUPPORT.md); report vulnerabilities privately per
+[SECURITY.md](SECURITY.md).
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.

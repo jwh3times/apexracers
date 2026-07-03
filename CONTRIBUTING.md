@@ -50,7 +50,7 @@ with review turnaround.
 - [Node.js 26+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - The EF Core CLI: `dotnet tool install --global dotnet-ef` (version must match
-  EF Core — currently **10.0.7**)
+  EF Core — currently **10.0.9**)
 - iRacing OAuth credentials are only needed for the ingestion worker — see the
   [README](README.md#iracing-oauth-credentials). You do **not** need them for most
   contributions.
@@ -119,12 +119,12 @@ dotnet build
 # Run tests
 dotnet test
 
-# Measure coverage (line AND branch must stay above 80%)
+# Measure coverage (line AND branch must stay above 85%)
 dotnet-coverage collect "dotnet test" -f xml -o coverage.xml
 reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:TextSummary
 ```
 
-- **Line and branch coverage must each remain above 80%.** CI gates line
+- **Line and branch coverage must each remain above 85%.** CI gates line
   coverage via `irongut/CodeCoverageSummary` and branch coverage via a follow-up
   step that reads `branch-rate` from the Cobertura report.
 - New service logic needs matching xUnit tests in `src/ApexRacers.Tests/`.
@@ -138,11 +138,11 @@ Run from `web/`:
 ```bash
 npm run lint                 # ESLint
 npx prettier --check .       # Formatting — CI runs this exact check
-npx vitest run --coverage    # Tests + 80% coverage thresholds
+npx vitest run --coverage    # Tests + 85% coverage thresholds
 npm run build                # tsc + production build
 ```
 
-- Coverage thresholds are enforced at **80%** for statements, branches,
+- Coverage thresholds are enforced at **85%** for statements, branches,
   functions, and lines (`vite.config.ts`). Add tests for any new source file.
 - **Formatting is a hard gate.** Run `npx prettier --write .` before pushing —
   an unformatted file blocks the deploy.
