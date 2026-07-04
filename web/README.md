@@ -126,6 +126,8 @@ All sizing scales continuously with viewport width via `clamp()`. Use the utilit
 
 **Typography:** `text-page-title`, `text-section-head`, `text-eyebrow`, `text-body-fluid`, `text-small-fluid`, `text-th`, `text-kpi-value`, `text-mono-fluid`
 
+**Gold accent** — `text-gold` / `bg-gold` / `border-gold` / `shadow-gold` are the only sanctioned gold tokens, reserved for the ELITE/premium tier accent on badges and trophies. Never hardcode `#FFD700`.
+
 **Layout:** `page-wrap`, `card-r`, `card-p`, `card-hp`, `kpi-p`, `td-p`, `th-p`, `gap-fluid`, `gap-fluid-lg`, `btn-fluid`, `btn-fluid-sm`, `grid-kpi`, `grid-cards`
 
 Every card uses `cardStyle` (box-shadow) + optional `scanTexture` (header background) CSS constants — see any existing page for the pattern.

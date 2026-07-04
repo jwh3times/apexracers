@@ -1037,7 +1037,7 @@ export const api = {
       .catch(() => void 0);
   },
 
-  /** GET /api/feature-flags — flags the authenticated user is entitled to see */
+  /** GET /api/feature-flags — the caller's entitled flags (authenticated: their role set; anonymous: the public Standard set) */
   getFeatureFlags(): Promise<FeatureFlag[]> {
     return request('/api/feature-flags');
   },

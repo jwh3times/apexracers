@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typed `ApiError` (carrying the HTTP status) in the frontend API client, and a guided "search unavailable" hint on `/compare` that distinguishes a 503 (search backend unavailable) from "no drivers matched" — with demo mode naming the searchable sample drivers.
 - Seeder `--verify-demo` / `--verify-teardown` gates — mechanical exit-code checks that the demo surface is fully seeded (a prod `iracing-demo` rollout precondition) or fully torn down (the M2 purge check); `--demo` now self-verifies at the end.
 - E2E functional specs — logout/session-protection and password-reset (via the Development token echo) auth flows, and `.ibt` telemetry upload → My Laps — plus a feature-flag gating spec that restores the ComingSoonPage axe audit (asserting gated routes render synthetic demo content when the flag is on, and ComingSoon when off).
+- Anonymous/guest feature-flag read: `GET /api/feature-flags` is now public and returns the enabled Standard-tier flag set to signed-out visitors (a GA prerequisite so flag-gated public pages render for guests once `iracing-live` is enabled); the frontend flag provider fetches under a `guest` owner.
+- A `--color-gold` design token (Tailwind `text-gold`/`bg-gold`/`border-gold`/`shadow-gold`) replacing hardcoded `#FFD700` across the analytics/profile/settings UI.
 
 ### Fixed
 
@@ -44,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   maintainer's local planning docs.
 - Deleted the stale GT3 SQL seed scripts (`seed_gt3_series.sql`, `remove_gt3_seed.sql`) — they targeted
   the pre-June-2026 `LapTimeEntries` schema and no longer run; the Seeder's `--ci` mode replaces them.
+- Removed the dead, unused `.tier-badge-gold` / `.tier-badge-green` CSS utility rules (zero usages).
 
 ## [0.2.0] - 2026-06-30
 
