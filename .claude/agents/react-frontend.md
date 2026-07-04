@@ -40,7 +40,7 @@ Module-level exports for `AuthContext` to wire in: `setRefreshToken`, `onTokenRe
 
 ## Feature flags
 
-`FeatureFlagContext` (`src/context/FeatureFlagContext.tsx`) fetches flags from `GET /api/feature-flags` and caches them; read them through the context hook (`useFeatureFlag(key)`). **Never inline flag logic or conditionally call flag APIs outside the context.**
+`FeatureFlagContext` (`src/context/FeatureFlagContext.tsx`) fetches flags from `GET /api/feature-flags` (public — signed-out visitors fetch the enabled Standard-tier set under a `guest` owner) and caches them; read them through the context hook (`useFeatureFlag(key)`). **Never inline flag logic or conditionally call flag APIs outside the context.**
 
 ## State management
 
@@ -123,6 +123,12 @@ const scanTexture: React.CSSProperties = {
 
 Icons use Material Symbols via `<span className="material-symbols-outlined" aria-hidden="true">icon_name</span>`. Always include `aria-hidden="true"` on decorative icons.
 
+### Color tokens
+
+| Token              | Utilities                             | Use                                                     |
+| ------------------ | ------------------------------------- | ------------------------------------------------------- |
+| `--color-gold`     | `text-gold` `bg-gold` `border-gold`   | ELITE/premium tier accent (badges, trophies); sanctioned gold only — never hardcode `#FFD700` |
+
 ## Testing
 
 - Framework: Vitest + React Testing Library; environment `jsdom`; setup file `src/test/setup.ts` (in `vite.config.ts`); `globals: true` (no need to import `describe`/`it`/`expect`).
@@ -132,5 +138,6 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 - The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in CLAUDE.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
 - **End-to-end (Playwright):** tests live in `web/e2e/` and run against the full stack at `http://localhost:8080` (e.g. `docker compose up`). Config is `web/playwright.config.ts` (single Chromium project; `reuseExistingServer: !process.env.CI`). Run with `npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive). Vitest excludes `e2e/` via `include: ['src/**']` in `vite.config.ts` — E2E tests never count toward the coverage gate. A non-blocking per-PR GitHub Actions workflow (`.github/workflows/e2e.yml`) also runs the suite (Postgres service + builds SPA into API wwwroot + Playwright); it is not yet a required check.
 - **Accessibility audits:** `web/e2e/a11y.spec.ts` asserts zero WCAG 2.1 A/AA violations across 5 public + 7 authed pages via `auditA11y(page)` from `web/e2e/helpers/a11y.ts` (`@axe-core/playwright`, `wcag2a`/`wcag2aa` tagset).
+- **Visual regression:** `web/e2e/visual.spec.ts` captures full-page `toHaveScreenshot` baselines for the stable public pages; **CI-only** (`test.skip(!process.env.CI)`) with committed Linux/Chromium PNGs under `e2e/visual.spec.ts-snapshots/`. Refresh via `e2e.yml` `workflow_dispatch` (`update_snapshots=true`) → download the `visual-baselines` artifact → commit. Defaults (animations off, caret hidden, 2% tolerance) live in `playwright.config.ts`.
 - **Accessibility design guidance:** When adding pages or new components, check whether they share the inline-accent-link or muted-caption patterns fixed in the workstream — if so, add `underline` to inline links in body text and remove any `text-on-surface-variant/60` opacity on light surfaces.
 - **Light-mode cyan accent tokens — do not revert:** Nine tokens are intentionally overridden in the `html.theme-light` and `@media (prefers-color-scheme: light) html.theme-auto` blocks in `index.css` for WCAG AA contrast. Dark mode keeps the bright `@theme` cyan defaults. Protected set — primary fills: `primary-container`, `primary-fixed-dim`, `primary` (all `#006072`); companion fills: `secondary-fixed-dim` (`#00707f`), `primary-fixed` (`#004f5e`), `secondary-fixed` (`#005e6e`); ink tokens: `on-primary-fixed`, `on-primary-container`, `on-primary-fixed-variant` (all `#eafdff`). Do not revert these or add hardcoded bright-cyan text/icons on light surfaces — they will fail WCAG AA contrast.

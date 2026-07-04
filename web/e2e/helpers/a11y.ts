@@ -43,3 +43,9 @@ export async function auditA11y(page: Page, opts: A11yOptions = {}): Promise<voi
   const { violations } = await builder.analyze();
   expect(violations, formatViolations(violations)).toEqual([]);
 }
+
+/** Waits for the SPA route to render before auditing, so axe never sees a pre-mount frame. */
+export async function gotoAndSettle(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await page.locator('main, h1').first().waitFor({ state: 'visible' });
+}

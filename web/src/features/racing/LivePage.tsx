@@ -103,13 +103,17 @@ export default function LivePage() {
                   const startMs = new Date(r.startTime).getTime();
                   const endMs = new Date(r.endTime).getTime();
                   const live = startMs <= now && now < endMs;
+                  // Sentinel/stale guard: a session "live" for over a day has a bogus
+                  // start (the demo board's fixed window, or garbage data) — don't
+                  // render a misleading absolute start time for it.
+                  const staleStart = live && now - startMs > 24 * 60 * 60 * 1000;
                   return (
                     <tr
                       key={`${r.seriesId}-${r.startTime}`}
                       className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors"
                     >
                       <td className="td-p text-mono-fluid text-on-surface whitespace-nowrap">
-                        {startLabel(r.startTime)}
+                        {staleStart ? '—' : startLabel(r.startTime)}
                       </td>
                       <td className="td-p text-body-fluid text-on-surface max-w-0">
                         <span className="block truncate">{r.seriesName}</span>

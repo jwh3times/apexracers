@@ -105,4 +105,4 @@ Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or
 
 ## Seed data
 
-The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in CLAUDE.md (Commands). It seeds synthetic lap data for all 7 series.
+The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in CLAUDE.md (Commands). It seeds synthetic lap data for all 7 series.

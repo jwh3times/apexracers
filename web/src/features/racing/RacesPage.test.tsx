@@ -89,7 +89,7 @@ describe('RacesPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('+28')).toBeInTheDocument());
     expect(screen.getByText('+28')).toHaveClass('text-primary-container');
-    expect(screen.getByText('-53')).toHaveClass('text-red-400');
+    expect(screen.getByText('-53')).toHaveClass('text-error');
   });
 
   it('formats the SR delta with sign and two decimals', async () => {

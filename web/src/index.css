@@ -40,7 +40,7 @@ html.theme-light {
   --text: #13151a;
   --text-dim: #5b5e68;
   --text-faint: #9498a3;
-  --slow: #e23048;
+  --slow: #c81e39;
   --warn: #c98208;
   --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
   --accent-line: color-mix(in oklab, var(--accent) 55%, white);
@@ -83,7 +83,7 @@ html.theme-light {
     --text: #13151a;
     --text-dim: #5b5e68;
     --text-faint: #9498a3;
-    --slow: #e23048;
+    --slow: #c81e39;
     --warn: #c98208;
     --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
     --accent-line: color-mix(in oklab, var(--accent) 55%, white);
@@ -132,6 +132,9 @@ html.theme-light {
   --color-primary-fixed-dim: #00b8d4;
   --color-secondary-container: #14d1ff;
   --color-primary: #e0f9ff;
+
+  /* ── Gold — ELITE/premium tier accent (badges, trophies) ── */
+  --color-gold: #ffd700;
 
   /* ── Remaining MD3 tokens (not theme-switched) ──────────── */
   --color-on-tertiary-container: #746100;
@@ -399,25 +402,15 @@ html.theme-light {
   }
 
   .glow-gold {
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 30px color-mix(in oklab, var(--color-gold) 20%, transparent);
   }
 
   /* Gradient border that fades from dark to gold — apply alongside glass-panel */
   .gradient-border-gold {
     background:
       linear-gradient(#0f0f12, #0f0f12) padding-box,
-      linear-gradient(to bottom, rgba(15, 15, 18, 1), #ffd700) border-box;
+      linear-gradient(to bottom, rgba(15, 15, 18, 1), var(--color-gold)) border-box;
     border: 1px solid transparent;
-  }
-
-  .tier-badge-gold {
-    background-color: #ffd700;
-    color: #000;
-  }
-
-  .tier-badge-green {
-    background-color: #00e0ff;
-    color: #000;
   }
 }
 
@@ -453,7 +446,7 @@ html.theme-light {
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-weight: 600;
   margin-bottom: 13px;
 }
@@ -578,7 +571,7 @@ html.theme-light {
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-weight: 600;
   margin-bottom: 12px;
   display: block;
@@ -653,7 +646,7 @@ html.theme-light {
   opacity: 0.85;
 }
 .pcs-plus {
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-size: 15px;
   font-weight: 600;
   padding: 0 1px;

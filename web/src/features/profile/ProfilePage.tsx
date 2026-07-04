@@ -370,9 +370,10 @@ export default function ProfilePage() {
       .finally(() => setLapsLoading(false));
   }, []);
 
-  // When iracing-live is off we skip these iRacing fetches, so seriesLoading stays `true`
-  // and statsState/achState stay 'loading'. Safe only because every section reading them is
-  // also gated off below — if you un-gate one of those sections, restore its fetch too.
+  // When showIracing is false (neither iracing-live nor iracing-demo is on) we skip these
+  // iRacing fetches, so seriesLoading stays `true` and statsState/achState stay 'loading'.
+  // Safe only because every section reading them is also gated off below — if you un-gate
+  // one of those sections, restore its fetch too.
   useEffect(() => {
     if (!showIracing) return;
     api
@@ -448,7 +449,7 @@ export default function ProfilePage() {
                 person
               </span>
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-[#FFD700] text-black font-label-caps text-label-caps px-2 py-1 rounded shadow-[0_0_10px_rgba(255,215,0,0.5)]">
+            <div className="absolute -bottom-2 -right-2 bg-gold text-black font-label-caps text-label-caps px-2 py-1 rounded shadow-[0_0_10px] shadow-gold/50">
               PRO TIER
             </div>
           </div>
@@ -486,11 +487,11 @@ export default function ProfilePage() {
             </span>
           </div>
           <div className="glass-panel p-4 rounded-xl flex-1 md:w-36 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/5 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-br from-gold/5 to-transparent pointer-events-none" />
             <span className="font-label-caps text-label-caps text-on-surface-variant mb-1">
               PERSONAL BEST
             </span>
-            <span className="font-data-lg text-data-lg text-[#FFD700]">
+            <span className="font-data-lg text-data-lg text-gold">
               {lapsLoading ? '—' : bestLap ? formatLapTime(bestLap.bestLapSeconds) : '—'}
             </span>
           </div>

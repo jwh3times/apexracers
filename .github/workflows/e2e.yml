@@ -4,6 +4,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: "Regenerate visual-regression baselines"
+        type: boolean
+        default: false
 
 # Non-blocking for now: runs on PRs for signal but is intentionally NOT a required
 # status check. Promote to required once the suite proves stable.
@@ -16,8 +21,11 @@ concurrency:
 
 jobs:
   e2e:
+    # NOTE: branch protection will match this job by its display name ("Playwright E2E")
+    # when the workflow is promoted to a required check — renaming it breaks the gate.
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -39,6 +47,18 @@ jobs:
       ASPNETCORE_URLS: http://localhost:8080
       DATABASE_CONNECTION_STRING: "Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=postgres"
       JWT_SIGNING_KEY: ci-e2e-signing-key-not-a-secret-0123456789abcdef
+      # psql target for e2e/helpers/db.ts (ubuntu runners ship the psql client)
+      E2E_DATABASE_URL: postgresql://apexracers:postgres@localhost:5432/apexracers
+      # Tells a11y-gated.spec.ts the demo surface is seeded and enabled.
+      E2E_DEMO: "1"
+      # The Playwright suite is single-IP and serial (all specs share the runner's
+      # loopback address); raise the auth policy well above prod's default of 10/min
+      # so retries across specs don't exhaust it and cascade into unrelated failures.
+      AUTH_RATE_LIMIT_PERMIT_PER_MINUTE: "1000"
+      # Same reasoning as above: the serial single-IP suite makes many requests from
+      # one loopback IP, so raise the global cap well above prod's default (300/min)
+      # to keep it from throttling the run.
+      GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE: "10000"
 
     steps:
       - uses: actions/checkout@v7
@@ -67,12 +87,21 @@ jobs:
           cp -r dist/. ../src/ApexRacers.Api/wwwroot/
         working-directory: web
 
+      - name: Seed synthetic catalog + demo cache
+        run: dotnet run --project src/ApexRacers.Seeder -- --ci --demo
+
+      - name: Enable the iracing-demo flag for all roles
+        run: |
+          psql "$E2E_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "UPDATE iracing.\"FeatureFlags\" SET \"IsEnabled\" = true, \"MinimumRole\" = 'Standard' WHERE \"Key\" = 'iracing-demo';" \
+            | grep -q "UPDATE 1"
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
         working-directory: web
 
       - name: Run E2E tests
-        run: npx playwright test
+        run: npx playwright test ${{ github.event.inputs.update_snapshots == 'true' && '--update-snapshots' || '' }}
         working-directory: web
 
       - name: Upload Playwright report
@@ -81,4 +110,12 @@ jobs:
         with:
           name: playwright-report
           path: web/playwright-report/
+          retention-days: 7
+
+      - name: Upload refreshed visual baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.update_snapshots == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: web/e2e/visual.spec.ts-snapshots/
           retention-days: 7

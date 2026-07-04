@@ -155,7 +155,7 @@ export default function SettingsPage() {
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
               Account Settings
             </p>
-            <div className="mt-3 inline-flex items-center gap-2 bg-[#FFD700] text-black px-3 py-1 rounded-sm font-label-caps text-label-caps">
+            <div className="mt-3 inline-flex items-center gap-2 bg-gold text-black px-3 py-1 rounded-sm font-label-caps text-label-caps">
               <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
                 stars
               </span>

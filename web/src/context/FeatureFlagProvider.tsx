@@ -12,7 +12,9 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
   // Identity of the flag owner: changes on login/logout and on role change, which
   // is exactly when the eligible flag set can differ. Stored alongside the fetched
   // map so a stale map (from a previous user/role) reads as empty until refreshed.
-  const owner = userId == null ? null : `${userId}:${userRole}`;
+  // 'guest' is a real owner: anonymous visitors fetch the public flag set so
+  // flag-gated PUBLIC pages (e.g. /series at GA) render for signed-out users too.
+  const owner = userId == null ? 'guest' : `${userId}:${userRole}`;
 
   const [flags, setFlags] = useState<{ owner: string | null; map: Record<string, boolean> }>({
     owner: null,
@@ -20,7 +22,6 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    if (owner == null) return;
     let cancelled = false;
     api
       .getFeatureFlags()

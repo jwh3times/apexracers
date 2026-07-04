@@ -11,7 +11,10 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var seedDemo = args.Contains("--demo");
+var seedDemo       = args.Contains("--demo");
+var ciMode         = args.Contains("--ci");
+var verifyDemo     = args.Contains("--verify-demo");
+var verifyTeardown = args.Contains("--verify-teardown");
 
 var connectionString =
     config["DATABASE_CONNECTION_STRING"]
@@ -24,6 +27,42 @@ var options = new DbContextOptionsBuilder<AppDbContext>()
 await using var db = new AppDbContext(options);
 
 Console.WriteLine("ApexRacers Seeder — connecting to database…");
+
+// Ensure the schema exists before seeding (idempotent — the same migrations the API
+// applies at startup). Lets the Seeder run against a fresh database in CI before the
+// API has ever booted.
+await db.Database.MigrateAsync();
+
+// Verify-only modes never seed — they're the mechanical pre-enable / post-purge gate for
+// the prod demo rollout (deployTODO.md §14). Run against the target DB after seeding
+// (--verify-demo) or after running the demo purge script (--verify-teardown).
+if (verifyDemo || verifyTeardown)
+{
+    var checks = verifyDemo
+        ? await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None)
+        : await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyTeardownAsync(db, CancellationToken.None);
+    return ReportVerification(checks) == 0 ? 0 : 1;
+}
+
+if (ciMode)
+{
+    Console.WriteLine("CI mode (--ci): seeding a fully synthetic catalog (no response objects required)…");
+    await new CiCatalogSeeder(db).SeedAsync();
+
+    if (seedDemo)
+    {
+        Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
+        await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
+        Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+
+        Console.WriteLine("\nVerifying demo dataset (--verify-demo)…");
+        var demoChecks = await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None);
+        if (ReportVerification(demoChecks) > 0) return 1;
+    }
+
+    Console.WriteLine("\nCI seeding complete.");
+    return 0;
+}
 
 // ── Locate response objects ───────────────────────────────────────────────────
 var responseObjectsPath = FindResponseObjectsPath();
@@ -332,7 +371,7 @@ const int DriverStart = 100_001;
 const int DriverCount = 200;
 
 var driverSkillFactors = Enumerable.Range(0, DriverCount)
-    .ToDictionary(i => (long)(DriverStart + i), i => ComputeSkillFactor(DriverStart + i));
+    .ToDictionary(i => (long)(DriverStart + i), i => SyntheticLaps.ComputeSkillFactor(DriverStart + i));
 
 // ── Step 6: Seed subsessions and results ─────────────────────────────────────
 Console.WriteLine("Seeding subsessions and race results…");
@@ -382,7 +421,7 @@ foreach (var schedule in schedules)
             var mph       = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
             var baseLap   = trackLength / mph * 3600.0;
             var stdDev    = Math.Max(1.0, baseLap * 0.02);
-            var carOffset = GetCarOffset(carId);
+            var carOffset = SyntheticLaps.GetCarOffset(carId);
 
             carClassByCar.TryGetValue(carId, out var carClassId);
             if (carClassId == 0 || !dbCarClassIds.Contains(carClassId)) continue;
@@ -410,7 +449,7 @@ foreach (var schedule in schedules)
             var driverLaps = driverSkillFactors
                 .Select(kvp => (
                     CustId: kvp.Key,
-                    LapSeconds: GenerateLapTime(
+                    LapSeconds: SyntheticLaps.GenerateLapTime(
                         kvp.Key, carId, week.RaceWeekNum,
                         baseLap + carOffset, kvp.Value, stdDev)))
                 .OrderBy(x => x.LapSeconds)
@@ -593,9 +632,28 @@ if (seedDemo)
     Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
     await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
     Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+
+    Console.WriteLine("\nVerifying demo dataset (--verify-demo)…");
+    var demoChecks = await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None);
+    if (ReportVerification(demoChecks) > 0) return 1;
 }
 
+return 0;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Prints one line per verification check and a PASS/FAIL summary; returns the failed count.
+static int ReportVerification(List<ApexRacers.Seeder.Verification.VerificationCheck> checks)
+{
+    var failed = 0;
+    foreach (var c in checks)
+    {
+        Console.WriteLine($"  [{(c.Passed ? "PASS" : "FAIL")}] {c.Name} — {c.Detail}");
+        if (!c.Passed) failed++;
+    }
+    Console.WriteLine(failed == 0 ? "\nVerification PASSED." : $"\nVerification FAILED ({failed} check(s)).");
+    return failed;
+}
 
 // Serialize a slug list to a JSON array string for the catalog's CategoriesJson/CarTypesJson
 // columns; null when empty (mirrors CatalogIngest in the ingestion worker).
@@ -687,13 +745,6 @@ static (int Year, int Quarter) ParseSeasonYearQuarter(string seasonName)
     return (DateTimeOffset.UtcNow.Year, 1);
 }
 
-// Deterministic per-car offset: spreads cars ±1.5 s within the class.
-static double GetCarOffset(int carId)
-{
-    var rng = new Random(HashCode.Combine(carId, 0x5F3759DF));
-    return (rng.NextDouble() - 0.5) * 3.0;
-}
-
 // Display name for a synthetic driver — matches the demo cache builders (DemoMemberData)
 // so the demo driver/rival show consistent names on Race Detail + /compare suggestions.
 static string DemoDriverName(long custId) => custId switch
@@ -702,32 +753,3 @@ static string DemoDriverName(long custId) => custId switch
     ApexRacers.Core.DemoData.RivalCustId  => "Rival Racer",
     _ => $"Driver {custId}",
 };
-
-// Deterministic skill factor for a driver: 0 = fastest, 1 = slowest.
-static double ComputeSkillFactor(long driverId)
-{
-    var rng = new Random((int)(driverId ^ (driverId >> 16)));
-    return Math.Clamp(NextGaussian(rng, 0.55, 0.20), 0.0, 1.0);
-}
-
-// Generates a lap time from a base time, skill factor, and gaussian noise.
-static double GenerateLapTime(
-    long driverId, int carId, int weekNumber,
-    double baseLapSeconds, double skillFactor, double stdDev)
-{
-    int seed = HashCode.Combine((int)(driverId & 0x7FFFFFFF), carId, weekNumber);
-    var rng = new Random(seed);
-    double lapTime = baseLapSeconds
-        + ((skillFactor - 0.5) * stdDev * 5.0)
-        + NextGaussian(rng, 0.0, stdDev * 0.3);
-    return Math.Max(lapTime, baseLapSeconds * 0.97);
-}
-
-// Box-Muller transform.
-static double NextGaussian(Random rng, double mean, double stdDev)
-{
-    double u1 = 1.0 - rng.NextDouble();
-    double u2 = 1.0 - rng.NextDouble();
-    double z  = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
-    return mean + stdDev * z;
-}

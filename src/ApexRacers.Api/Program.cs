@@ -10,7 +10,9 @@ using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -45,6 +47,10 @@ var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
+
+// Liveness (/healthz) runs no checks; readiness (/ready) verifies the DB is reachable.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
 
 // ── iRacing Data API — on-demand per-user member fetches ─────────────────────
 // Unlike the ingestion worker (which requires these), the API registers the client
@@ -89,15 +95,44 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 // Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
 // layer of brute-force protection in front of the per-account lockout above.
+// Config-driven so CI/E2E (a single-IP serial Playwright suite) can raise the ceiling;
+// the production default stays 10.
+var authPermitLimit =
+    int.TryParse(builder.Configuration["AUTH_RATE_LIMIT_PERMIT_PER_MINUTE"], out var apl) && apl > 0
+        ? apl
+        : 10;
+// Config-driven so CI/E2E (a single-IP serial Playwright suite) can raise the ceiling;
+// the production default stays 300.
+var globalPermitLimit =
+    int.TryParse(builder.Configuration["GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE"], out var gpl) && gpl > 0
+        ? gpl
+        : 300;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Safety-net global cap per client IP: generous enough that a real user never
+    // hits it (a page load fires <10 API calls), but bounds scripted abuse on the
+    // otherwise-unthrottled endpoints. Health endpoints opt out via DisableRateLimiting().
+    // Config-driven via GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE (default 300); CI/E2E raises it.
+    // NOTE: behind the App Service front end, RemoteIpAddress is only the real client
+    // once ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is set (deployTODO.md §6).
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = globalPermitLimit,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            }));
+
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = authPermitLimit,
                 Window      = TimeSpan.FromMinutes(1),
                 QueueLimit  = 0,
             }));
@@ -223,6 +258,9 @@ using (var scope = app.Services.CreateScope())
 // unhandled exception into an RFC-7807 problem+json response.
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Before UseStaticFiles so SPA assets get the headers too.
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -238,6 +276,14 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Anonymous probe endpoints, exempt from the global rate limiter so aggressive
+// platform probes can't consume a client's budget (or get 429'd themselves).
+// App Service's Health check feature points at /healthz (deployTODO.md).
+app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
+    .DisableRateLimiting();
+app.MapHealthChecks("/ready")
+    .DisableRateLimiting();
 
 // Return index.html for any route not matched by a controller so React Router
 // can handle client-side navigation (e.g. /series/1/weeks/2).

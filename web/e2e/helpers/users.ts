@@ -28,3 +28,20 @@ export async function registerNewUser(page: Page): Promise<string> {
 
   return email;
 }
+
+/** Logs out via the TopNav profile menu and waits for the login page. */
+export async function logout(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'User menu' }).click();
+  await page.getByRole('button', { name: 'Logout' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+}
+
+/** Signs in through the UI with existing credentials, landing on the dashboard. */
+export async function login(page: Page, email: string, password: string): Promise<void> {
+  await page.goto('/login');
+  await page.getByRole('tab', { name: 'Sign In' }).click();
+  await page.getByLabel('Email Address').fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Access Telemetry' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+}

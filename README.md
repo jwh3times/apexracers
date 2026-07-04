@@ -80,10 +80,32 @@ Use [apex-iracing](https://github.com/tomtoday/apex-iracing) to fetch the requir
 Once the directory is populated:
 
 ```bash
-dotnet run --project src/ApexRacers.Seeder
+dotnet run --project src/ApexRacers.Seeder            # catalog + synthetic laps (needs the JSON above)
+dotnet run --project src/ApexRacers.Seeder -- --demo  # also seed the synthetic demo cache
+```
+
+If you don't have the response-object JSON (e.g. in CI), use `--ci` to seed a fully synthetic catalog
+instead — no captured shapes required. It also applies any pending migrations first:
+
+```bash
+dotnet run --project src/ApexRacers.Seeder -- --ci --demo
 ```
 
 The seeder is idempotent — safe to run multiple times.
+
+Before enabling the `iracing-demo` feature flag in an environment (or after purging the demo dataset
+with `src/ApexRacers.Data/Seeds/purge_demo_data.sql`), run the mechanical verification gate instead of
+eyeballing the DB:
+
+```bash
+dotnet run --project src/ApexRacers.Seeder -- --verify-demo      # exit 0 iff the demo surface is fully seeded
+dotnet run --project src/ApexRacers.Seeder -- --verify-teardown  # exit 0 iff no demo data remains (post-purge)
+```
+
+Both print one `[PASS]`/`[FAIL]` line per check (cache-key family, sentinel expiry, synthetic races,
+BoP/weather, the `iracing-demo` flag row) and exit non-zero on any failure — CI/deploy scripts can gate
+on the exit code. `--demo` runs `--verify-demo` automatically at the end of seeding and fails the run if
+it doesn't pass.
 
 ### 7. Run the ingestion worker (optional)
 

@@ -100,6 +100,7 @@ function UsersTab() {
                       <select
                         value={effectiveRole}
                         onChange={e => handleRoleChange(user.userId, e.target.value as Role)}
+                        aria-label="User role"
                         className="min-w-28 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                       >
                         {ROLES.filter(r => r !== 'Admin').map(r => (
@@ -260,6 +261,7 @@ function FlagsTab() {
             <select
               value={createForm.minimumRole}
               onChange={e => setCreateForm(p => ({ ...p, minimumRole: e.target.value as Role }))}
+              aria-label="Minimum role"
               className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim transition-colors"
             >
               {ROLES.map(r => (
@@ -349,6 +351,7 @@ function FlagsTab() {
                             onChange={e =>
                               setEditForm(p => ({ ...p, minimumRole: e.target.value as Role }))
                             }
+                            aria-label="Minimum role"
                             className="w-36 bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-1.5 focus:outline-none focus:border-primary-fixed-dim transition-colors"
                           >
                             {ROLES.map(r => (

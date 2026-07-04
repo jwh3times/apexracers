@@ -80,7 +80,7 @@ function CategoryCard({ cat }: { cat: CategoryProgression }) {
               {delta !== null && (
                 <span
                   className={`text-mono-fluid font-semibold ${
-                    delta >= 0 ? 'text-primary-container' : 'text-red-400'
+                    delta >= 0 ? 'text-primary-container' : 'text-error'
                   }`}
                 >
                   {`${delta >= 0 ? '+' : ''}${delta.toLocaleString()} iR`}

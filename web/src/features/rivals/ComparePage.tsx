@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   api,
+  ApiError,
   IRacingNotLinkedError,
   type Rival,
   type RivalSuggestion,
@@ -9,6 +10,7 @@ import {
   type DriverComparison,
   type ComparisonSide,
 } from '../../services/api';
+import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import IRatingCompareChart from '../../components/IRatingCompareChart';
 import { formatLapTime } from '../../utils/lapTime';
 
@@ -234,7 +236,7 @@ function HeadToHead({ data }: { data: DriverComparison }) {
                   <td className="td-p text-mono-fluid text-right">P{r.rivalFinish}</td>
                   <td
                     className={`td-p text-mono-fluid text-right ${
-                      r.yourIRatingDelta >= 0 ? 'text-primary-container' : 'text-red-400'
+                      r.yourIRatingDelta >= 0 ? 'text-primary-container' : 'text-error'
                     }`}
                   >
                     {r.yourIRatingDelta >= 0 ? '+' : ''}
@@ -242,7 +244,7 @@ function HeadToHead({ data }: { data: DriverComparison }) {
                   </td>
                   <td
                     className={`td-p text-mono-fluid text-right ${
-                      r.rivalIRatingDelta >= 0 ? 'text-primary-container' : 'text-red-400'
+                      r.rivalIRatingDelta >= 0 ? 'text-primary-container' : 'text-error'
                     }`}
                   >
                     {r.rivalIRatingDelta >= 0 ? '+' : ''}
@@ -285,11 +287,13 @@ function HeadToHead({ data }: { data: DriverComparison }) {
 }
 
 export default function ComparePage() {
+  const demoFlag = useFeatureFlag('iracing-demo');
   const [rivals, setRivals] = useState<Rival[]>([]);
   const [suggestions, setSuggestions] = useState<RivalSuggestion[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<DriverSearchResult[]>([]);
+  const [searchUnavailable, setSearchUnavailable] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [comparison, setComparison] = useState<ComparisonState>({ status: 'idle' });
 
@@ -319,12 +323,19 @@ export default function ComparePage() {
     const id = setTimeout(() => {
       if (q.length < 2) {
         setResults([]);
+        setSearchUnavailable(false);
         return;
       }
+      setSearchUnavailable(false);
       api
         .searchDrivers(q)
         .then(setResults)
-        .catch(() => setResults([]));
+        .catch((err: unknown) => {
+          setResults([]);
+          // 503 = search backend unavailable (live: no creds; demo: term not in the
+          // curated seed set) — worth telling apart from "no drivers matched".
+          if (err instanceof ApiError && err.status === 503) setSearchUnavailable(true);
+        });
     }, 300);
     return () => clearTimeout(id);
   }, [term]);
@@ -393,6 +404,16 @@ export default function ComparePage() {
               className="w-full btn-fluid-sm rounded-[7px] border border-line-2 bg-surface-container text-on-surface px-3"
               aria-label="Search drivers"
             />
+            {searchUnavailable && (
+              <p className="text-small-fluid text-on-surface-variant mt-2">
+                Driver search isn&apos;t available right now — pick a driver from the suggestions
+                below.
+                {/* "demo" / "rival" / "driver" are verified members of the backend's
+                    DemoDriverSearchData.Terms curated seed — keep in sync if it changes. */}
+                {demoFlag &&
+                  ' Demo mode: search covers sample drivers only — try "demo", "rival", or "driver".'}
+              </p>
+            )}
             {results.length > 0 && (
               <ul className="mt-3 flex flex-col gap-2">
                 {results.map(r => (

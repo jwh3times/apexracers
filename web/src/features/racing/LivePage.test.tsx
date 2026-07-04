@@ -78,6 +78,39 @@ describe('LivePage', () => {
     await waitFor(() => expect(screen.getByText(/in 1h/)).toBeInTheDocument());
   });
 
+  it('hides the bogus start time for a perpetually-live (stale) session but still shows Live', async () => {
+    mockGetRaceGuide.mockResolvedValue([
+      {
+        seriesId: 42,
+        seriesName: 'Demo Sentinel',
+        startTime: '2020-01-01T00:00:00Z', // fixed 2020→2099 window (demo race-guide sentinel)
+        endTime: '2099-01-01T00:00:00Z',
+        entryCount: 30,
+        raceWeekNum: 3,
+      },
+    ]);
+    render(<LivePage />);
+    await waitFor(() => expect(screen.getByText('Live')).toBeInTheDocument());
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('still renders a formatted start time and countdown for a session starting soon', async () => {
+    const now = Date.now();
+    mockGetRaceGuide.mockResolvedValue([
+      {
+        seriesId: 7,
+        seriesName: 'Sprint Soon',
+        startTime: new Date(now + 10 * 60_000).toISOString(),
+        endTime: new Date(now + 40 * 60_000).toISOString(),
+        entryCount: 12,
+        raceWeekNum: 2,
+      },
+    ]);
+    render(<LivePage />);
+    await waitFor(() => expect(screen.getByText(/^in \d/)).toBeInTheDocument());
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
+  });
+
   it('shows an empty-state message when nothing is starting soon', async () => {
     mockGetRaceGuide.mockResolvedValue([]);
     render(<LivePage />);

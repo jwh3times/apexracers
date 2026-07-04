@@ -83,12 +83,16 @@ public class AdminServiceTests
         var db = provider.GetRequiredService<AppDbContext>();
         db.FeatureFlags.AddRange(
             new FeatureFlag { Key = "std-flag", Name = "Std", MinimumRole = "Standard", IsEnabled = true },
+            new FeatureFlag { Key = "disabled-std-flag", Name = "Disabled Std", MinimumRole = "Standard", IsEnabled = false },
             new FeatureFlag { Key = "beta-flag", Name = "Beta", MinimumRole = "Beta", IsEnabled = true },
             new FeatureFlag { Key = "alpha-flag", Name = "Alpha", MinimumRole = "Alpha", IsEnabled = true }
         );
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var svc = BuildService(provider);
 
+        // Guest/public read path: returns the enabled Standard flag; excludes the
+        // disabled Standard flag and the enabled-but-Alpha-gated flag (the latter must
+        // never leak to anonymous callers even though it's IsEnabled).
         var result = await svc.GetFlagsForRoleAsync("Standard", TestContext.Current.CancellationToken);
 
         Assert.Single(result);

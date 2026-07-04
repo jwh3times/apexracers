@@ -694,6 +694,16 @@ export class IRacingNotLinkedError extends Error {
   }
 }
 
+/** HTTP failure carrying the response status, for status-aware handling (e.g. 503 = unavailable). */
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
+}
+
 function tryParseJson(raw: string): { code?: string; message?: string; detail?: string } | null {
   try {
     return raw ? (JSON.parse(raw) as { code?: string; message?: string; detail?: string }) : null;
@@ -713,7 +723,10 @@ async function throwForResponse(res: Response, path: string, method: string): Pr
     throw new IRacingNotLinkedError(parsed.message ?? 'iRacing account not linked.');
   }
   const detail = parsed?.detail ?? parsed?.message;
-  throw new Error(detail || raw || `${method} ${path} → ${res.status} ${res.statusText}`);
+  throw new ApiError(
+    res.status,
+    detail || raw || `${method} ${path} → ${res.status} ${res.statusText}`
+  );
 }
 
 type ReqInit = { method?: string; body?: BodyInit; json?: unknown };
@@ -1024,7 +1037,7 @@ export const api = {
       .catch(() => void 0);
   },
 
-  /** GET /api/feature-flags — flags the authenticated user is entitled to see */
+  /** GET /api/feature-flags — the caller's entitled flags (authenticated: their role set; anonymous: the public Standard set) */
   getFeatureFlags(): Promise<FeatureFlag[]> {
     return request('/api/feature-flags');
   },

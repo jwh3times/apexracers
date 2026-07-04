@@ -122,6 +122,14 @@ describe('AdminPage', () => {
     await waitFor(() => expect(screen.getByText(/failed to load users/i)).toBeInTheDocument());
   });
 
+  it('gives the per-user role dropdown an accessible name', async () => {
+    renderPage();
+    await waitFor(() => screen.getByText('alice@example.com'));
+
+    const roleSelects = screen.getAllByRole('combobox', { name: /user role/i });
+    expect(roleSelects).toHaveLength(mockUsers.length);
+  });
+
   // ── Feature Flags tab ───────────────────────────────────────────────────────
 
   async function switchToFlagsTab() {
@@ -178,6 +186,13 @@ describe('AdminPage', () => {
     await waitFor(() => expect(screen.getByText('dark.mode')).toBeInTheDocument());
   });
 
+  it('gives the create-flag minimum role dropdown an accessible name', async () => {
+    await switchToFlagsTab();
+    await waitFor(() => screen.getByText('new.ui'));
+
+    expect(screen.getByRole('combobox', { name: /minimum role/i })).toBeInTheDocument();
+  });
+
   it('shows create form error when createFeatureFlag fails', async () => {
     vi.mocked(api.createFeatureFlag).mockRejectedValue(new Error('Key exists'));
     const user = await switchToFlagsTab();
@@ -198,6 +213,16 @@ describe('AdminPage', () => {
     await user.click(screen.getByRole('button', { name: /^edit$/i }));
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+  });
+
+  it('gives the edit-flag minimum role dropdown an accessible name', async () => {
+    const user = await switchToFlagsTab();
+    await waitFor(() => screen.getByText('new.ui'));
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    // The always-visible create form's minimum-role select shares the same
+    // accessible name, so two "Minimum role" comboboxes are expected while editing.
+    expect(screen.getAllByRole('combobox', { name: /minimum role/i })).toHaveLength(2);
   });
 
   it('cancels edit and restores normal row', async () => {

@@ -7,12 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-04
+
+### Added
+
+- Baseline security response headers on every API and SPA response (content-type sniffing protection, frame denial, referrer and permissions policies, HSTS over HTTPS) via a unit-tested middleware.
+- Global per-IP API rate limit (300 requests/minute, fixed window) as a safety net in front of every endpoint; the stricter per-IP auth limit is unchanged.
+- Health endpoints: `/healthz` (liveness) and `/ready` (database readiness), both anonymous and exempt from rate limiting.
+- CI dependency-vulnerability audit workflow (npm audit + `dotnet list package --vulnerable`), running on PRs and weekly; non-blocking for now.
+- `/admin` accessibility audit in the E2E suite — the panel is provisioned by promoting an in-test-registered user to Admin, then audited with axe-core (zero WCAG 2.1 A/AA violations).
+- Seeder `--ci` mode that seeds a fully synthetic catalog (no captured iRacing response objects required) and auto-applies pending migrations, enabling demo-data seeding in CI.
+- Accessibility (axe-core WCAG 2.1 A/AA) audits across all 18 iRacing-gated routes, rendered against synthetic demo data in CI.
+- `/analytics` first-visit empty state now offers a "Compute my percentiles" action that computes and populates percentile data inline, instead of requiring a prior visit to Recommendations.
+- Typed `ApiError` (carrying the HTTP status) in the frontend API client, and a guided "search unavailable" hint on `/compare` that distinguishes a 503 (search backend unavailable) from "no drivers matched" — with demo mode naming the searchable sample drivers.
+- Seeder `--verify-demo` / `--verify-teardown` gates — mechanical exit-code checks that the demo surface is fully seeded (a prod `iracing-demo` rollout precondition) or fully torn down (the M2 purge check); `--demo` now self-verifies at the end.
+- E2E functional specs — logout/session-protection and password-reset (via the Development token echo) auth flows, and `.ibt` telemetry upload → My Laps — plus a feature-flag gating spec that restores the ComingSoonPage axe audit (asserting gated routes render synthetic demo content when the flag is on, and ComingSoon when off).
+- Anonymous/guest feature-flag read: `GET /api/feature-flags` is now public and returns the enabled Standard-tier flag set to signed-out visitors (a GA prerequisite so flag-gated public pages render for guests once `iracing-live` is enabled); the frontend flag provider fetches under a `guest` owner.
+- A `--color-gold` design token (Tailwind `text-gold`/`bg-gold`/`border-gold`/`shadow-gold`) replacing hardcoded `#FFD700` across the analytics/profile/settings UI.
+- CI-only Playwright visual-regression suite for the stable public pages (`/`, `/login`, `/terms`, `/privacy`) with committed Linux/Chromium screenshot baselines, refreshable via an `e2e.yml` `workflow_dispatch` input.
+
 ### Fixed
 
 - Extended light/dark WCAG 2.1 AA link-distinction — a persistent `underline` on inline accent links —
   across Profile, Progression, Analytics, Recommendations, Races, Percentile, and Compare (WCAG 1.4.1);
   extended full-strength muted-text contrast (`on-surface-variant`) to Admin, Series, and Percentile
   (WCAG 1.4.3); and added `/reset-password` and `/verify-email` to the axe audit set.
+- Corrected the PR-template coverage checklist figure (80% → 85%) and two stale demo-gating code comments
+  (Dashboard/Profile fetch guards reference the live-OR-demo flag check they actually use).
+- Admin panel role and minimum-role dropdowns now have accessible names (WCAG 2.1 select-name); the /admin E2E axe audit enforces this.
+- Accessibility on iRacing-gated pages — replaced hardcoded red iRating/SR deltas with the semantic error token (darkened for light-mode AA contrast) on Progression, Races, Race Detail, and Compare, and removed a low-contrast opacity on the Strategy weather line.
+- `/live` race board no longer shows misleading absolute start times for perpetually-live (sentinel/stale) sessions — a session "live" for over 24 hours renders `—` instead of a bogus start time.
+
+### Changed
+
+- Pinned the local pgAdmin image to a specific version tag (was `latest`) so Dependabot can track it.
+- The per-IP auth rate limit is now configurable via `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (default 10, unchanged in production).
+- The global per-IP rate limit is now configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (default 300, unchanged in production).
+
+### Removed
+
+- Retired `docs/IMPLEMENTATION_PLAN.md` — a committed roadmap snapshot now reconciled into the
+  maintainer's local planning docs.
+- Deleted the stale GT3 SQL seed scripts (`seed_gt3_series.sql`, `remove_gt3_seed.sql`) — they targeted
+  the pre-June-2026 `LapTimeEntries` schema and no longer run; the Seeder's `--ci` mode replaces them.
+- Removed the dead, unused `.tier-badge-gold` / `.tier-badge-green` CSS utility rules (zero usages).
 
 ## [0.2.0] - 2026-06-30
 
@@ -209,7 +247,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jwh3times/apexracers/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jwh3times/apexracers/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jwh3times/apexracers/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/jwh3times/apexracers/releases/tag/v0.0.1
