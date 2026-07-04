@@ -323,6 +323,7 @@ export default function ComparePage() {
     const id = setTimeout(() => {
       if (q.length < 2) {
         setResults([]);
+        setSearchUnavailable(false);
         return;
       }
       setSearchUnavailable(false);

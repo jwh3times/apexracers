@@ -375,6 +375,21 @@ describe('ComparePage', () => {
     );
   });
 
+  it('clears a stale "unavailable" hint when the term is shortened below 2 characters', async () => {
+    mockSearch.mockRejectedValueOnce(new ApiError(503, 'Service unavailable.'));
+    renderPage();
+    await screen.findByText('Max Power');
+
+    const box = screen.getByPlaceholderText(/search drivers/i);
+    fireEvent.change(box, { target: { value: 'apex' } });
+    await waitFor(() => expect(screen.getByText(/isn't available right now/i)).toBeInTheDocument());
+
+    fireEvent.change(box, { target: { value: 'a' } }); // too short → hint should clear too
+    await waitFor(() =>
+      expect(screen.queryByText(/isn't available right now/i)).not.toBeInTheDocument()
+    );
+  });
+
   it('resets the comparison when the currently-compared rival is removed', async () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
