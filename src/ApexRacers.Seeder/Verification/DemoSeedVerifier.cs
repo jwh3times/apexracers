@@ -85,7 +85,7 @@ public static class DemoSeedVerifier
 
         // 7. lap traces per demo-driver synthetic subsession
         var demoSubs = await db.SubsessionResults
-            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0)
+            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
             .Select(r => r.SubsessionId).Distinct().ToListAsync(ct);
         AddSetCheck(checks, "lap-data",
             demoSubs.Select(s => $"laps:{s}:{DemoData.DriverCustId}").ToList(), keySet);

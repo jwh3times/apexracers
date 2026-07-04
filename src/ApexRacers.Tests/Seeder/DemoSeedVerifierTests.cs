@@ -76,6 +76,30 @@ public class DemoSeedVerifierTests
     }
 
     [Fact]
+    public async Task ZeroBestLapDemoResult_DoesNotProduceSpuriousLapDataFailure()
+    {
+        await using var db = DbContextFactory.CreateInMemory();
+        await SeedHappyPathAsync(db);
+
+        // A second negative subsession for the demo driver with no valid best lap (e.g. a DNF).
+        // DemoCacheSeeder.SeedLapDataAsync skips these (its own BestLapSeconds > 0 filter), so it
+        // never writes a "laps:" cache row for -11. The verifier's expected-key derivation must
+        // apply the same filter or it will demand a key that was never seeded and spuriously fail.
+        db.Subsessions.Add(new Subsession { Id = -11, SeasonId = 6115, WeekNumber = 0, TrackId = 1 });
+        db.SubsessionResults.Add(new SubsessionResult
+        {
+            SubsessionId = -11,
+            CustId = DemoData.DriverCustId,
+            CarId = 132,
+            BestLapSeconds = 0,
+        });
+        await db.SaveChangesAsync(Ct);
+
+        var checks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
+        Assert.Contains(checks, c => c.Name == "lap-data" && c.Passed);
+    }
+
+    [Fact]
     public async Task CleanDatabase_PassesTeardown_And_SeededFailsIt()
     {
         await using var clean = DbContextFactory.CreateInMemory();

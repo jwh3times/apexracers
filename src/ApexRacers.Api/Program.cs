@@ -101,6 +101,12 @@ var authPermitLimit =
     int.TryParse(builder.Configuration["AUTH_RATE_LIMIT_PERMIT_PER_MINUTE"], out var apl) && apl > 0
         ? apl
         : 10;
+// Config-driven so CI/E2E (a single-IP serial Playwright suite) can raise the ceiling;
+// the production default stays 300.
+var globalPermitLimit =
+    int.TryParse(builder.Configuration["GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE"], out var gpl) && gpl > 0
+        ? gpl
+        : 300;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -108,6 +114,7 @@ builder.Services.AddRateLimiter(options =>
     // Safety-net global cap per client IP: generous enough that a real user never
     // hits it (a page load fires <10 API calls), but bounds scripted abuse on the
     // otherwise-unthrottled endpoints. Health endpoints opt out via DisableRateLimiting().
+    // Config-driven via GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE (default 300); CI/E2E raises it.
     // NOTE: behind the App Service front end, RemoteIpAddress is only the real client
     // once ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is set (deployTODO.md §6).
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
@@ -115,7 +122,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 300,
+                PermitLimit = globalPermitLimit,
                 Window      = TimeSpan.FromMinutes(1),
                 QueueLimit  = 0,
             }));

@@ -55,6 +55,10 @@ jobs:
       # loopback address); raise the auth policy well above prod's default of 10/min
       # so retries across specs don't exhaust it and cascade into unrelated failures.
       AUTH_RATE_LIMIT_PERMIT_PER_MINUTE: "1000"
+      # Same reasoning as above: the serial single-IP suite makes many requests from
+      # one loopback IP, so raise the global cap well above prod's default (300/min)
+      # to keep it from throttling the run.
+      GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE: "10000"
 
     steps:
       - uses: actions/checkout@v7

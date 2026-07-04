@@ -201,9 +201,10 @@ explicit results for non-exception outcomes needing a specific code (e.g. AuthCo
 **Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `ExceptionHandlingMiddleware`
 → `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
 referrer/permissions policy, `frame-ancestors` CSP, HSTS over HTTPS — full CSP deferred). Rate limiting: a
-global per-IP safety net (300/min) plus a stricter per-IP `auth` policy on `AuthController` whose limit is
-configurable via `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial
-suite shares one runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
+global per-IP safety net, configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 300**; CI/E2E
+raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit is configurable via
+`AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one
+runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
 dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
 limiting needs `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (see `deployTODO.md`).
 

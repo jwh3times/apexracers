@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Pinned the local pgAdmin image to a specific version tag (was `latest`) so Dependabot can track it.
 - The per-IP auth rate limit is now configurable via `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (default 10, unchanged in production).
+- The global per-IP rate limit is now configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (default 300, unchanged in production).
 
 ### Removed
 
