@@ -24,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (WCAG 1.4.3); and added `/reset-password` and `/verify-email` to the axe audit set.
 - Corrected the PR-template coverage checklist figure (80% → 85%) and two stale demo-gating code comments
   (Dashboard/Profile fetch guards reference the live-OR-demo flag check they actually use).
+- Admin panel role and minimum-role dropdowns now have accessible names (WCAG 2.1 select-name); the /admin E2E axe audit enforces this.
 
 ### Changed
 
 - Pinned the local pgAdmin image to a specific version tag (was `latest`) so Dependabot can track it.
+- The per-IP auth rate limit is now configurable via `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (default 10, unchanged in production).
 
 ### Removed
 

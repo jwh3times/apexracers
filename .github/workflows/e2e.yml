@@ -43,6 +43,10 @@ jobs:
       E2E_DATABASE_URL: postgresql://apexracers:postgres@localhost:5432/apexracers
       # Tells a11y-gated.spec.ts the demo surface is seeded and enabled.
       E2E_DEMO: "1"
+      # The Playwright suite is single-IP and serial (all specs share the runner's
+      # loopback address); raise the auth policy well above prod's default of 10/min
+      # so retries across specs don't exhaust it and cascade into unrelated failures.
+      AUTH_RATE_LIMIT_PERMIT_PER_MINUTE: "1000"
 
     steps:
       - uses: actions/checkout@v7

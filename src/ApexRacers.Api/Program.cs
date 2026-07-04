@@ -95,6 +95,12 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 // Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
 // layer of brute-force protection in front of the per-account lockout above.
+// Config-driven so CI/E2E (a single-IP serial Playwright suite) can raise the ceiling;
+// the production default stays 10.
+var authPermitLimit =
+    int.TryParse(builder.Configuration["AUTH_RATE_LIMIT_PERMIT_PER_MINUTE"], out var apl) && apl > 0
+        ? apl
+        : 10;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -119,7 +125,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = authPermitLimit,
                 Window      = TimeSpan.FromMinutes(1),
                 QueueLimit  = 0,
             }));
