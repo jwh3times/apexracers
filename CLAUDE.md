@@ -98,7 +98,7 @@ dotnet run --project src/ApexRacers.Api               # run the API (needs DATAB
 dotnet run --project src/ApexRacers.Ingestion         # run the ingestion worker (needs iRacing + DB env vars)
 dotnet run --project src/ApexRacers.Seeder            # seed catalog + synthetic laps for 7 series (idempotent)
 dotnet run --project src/ApexRacers.Seeder -- --demo  # + seed the synthetic demo cache (Plan 2)
-dotnet run --project src/ApexRacers.Seeder -- --ci    # fully synthetic catalog, no response objects needed (CI/E2E; add --demo for the cache). Also runs pending migrations first.
+dotnet run --project src/ApexRacers.Seeder -- --ci    # fully synthetic catalog, no response objects (CI/E2E; add --demo for the cache)
 
 # EF Core migrations — always target Data, startup project Api
 dotnet ef migrations add <Name> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
@@ -109,9 +109,11 @@ Seeder's default/`--demo` modes need `private/iracing-api-response-objects/` pop
 see README); `--ci` mode does **not** (it fabricates a fully synthetic catalog, so CI/E2E can seed without
 the captured shapes — see `CiCatalogSeeder`). All modes read `DATABASE_CONNECTION_STRING` (else fall back
 to the local Docker default) and auto-apply pending migrations on start. `dotnet-ef` must be
-installed globally and match EF Core (currently 10.0.9). SQL seed/cleanup scripts live in
-`src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`, `purge_demo_data.sql`),
+installed globally and match EF Core (currently 10.0.9). SQL cleanup scripts live in
+`src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
+(The old GT3 seed scripts were deleted 2026-07 — they targeted the pre-June-2026 `LapTimeEntries`
+schema; the Seeder's `--ci` mode replaces them.)
 
 ### Frontend (run from `web/`)
 
