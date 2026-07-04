@@ -107,7 +107,7 @@ dotnet ef database update      --project src/ApexRacers.Data --startup-project s
 Seeder needs `private/iracing-api-response-objects/` populated first (gitignored — see README) and
 `DATABASE_CONNECTION_STRING` (else falls back to the local Docker default). `dotnet-ef` must be
 installed globally and match EF Core (currently 10.0.9). SQL seed/cleanup scripts live in
-`src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`),
+`src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`, `purge_demo_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
 
 ### Frontend (run from `web/`)
@@ -338,8 +338,8 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
 - **`AdminGuard`** (wraps `/admin`): unauthenticated → `/login`; authed non-admin → `/dashboard`.
 - **`RequireFlag`** (wraps iRacing-dependent routes): renders `ComingSoonPage` when **both**
   `iracing-live` and `iracing-demo` are off; else renders the child. Both hooks called unconditionally
-  and OR-ed. Auth-independent. Dashboard/Profile degrade gracefully but their iRacing panels still gate
-  on `iracing-live` **only** (a known Plan-1 limitation — the dedicated routes render the demo data).
+  and OR-ed. Auth-independent. Dashboard/Profile degrade gracefully; their in-page iRacing panels
+  OR-gate the same way (`showIracing = liveFlag || demoFlag`), so they render under demo too.
 
 #### Components, contexts, utilities
 

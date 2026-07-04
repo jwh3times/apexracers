@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   across Profile, Progression, Analytics, Recommendations, Races, Percentile, and Compare (WCAG 1.4.1);
   extended full-strength muted-text contrast (`on-surface-variant`) to Admin, Series, and Percentile
   (WCAG 1.4.3); and added `/reset-password` and `/verify-email` to the axe audit set.
+- Corrected the PR-template coverage checklist figure (80% → 85%) and two stale demo-gating code comments
+  (Dashboard/Profile fetch guards reference the live-OR-demo flag check they actually use).
+
+### Changed
+
+- Pinned the local pgAdmin image to a specific version tag (was `latest`) so Dependabot can track it.
+
+### Removed
+
+- Retired `docs/IMPLEMENTATION_PLAN.md` — a committed roadmap snapshot now reconciled into the
+  maintainer's local planning docs.
 
 ## [0.2.0] - 2026-06-30
 
