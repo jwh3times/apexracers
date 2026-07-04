@@ -1,0 +1,61 @@
+name: Security Audit
+
+# Dependency-vulnerability scanning. Non-blocking for now (mirrors e2e.yml's rollout
+# pattern): runs on PRs + weekly for signal but is intentionally NOT a required status
+# check — promote once it has proven quiet. CodeQL static analysis already runs via
+# GitHub's default setup, so there is no CodeQL workflow file in this repo.
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 12:00 UTC — catches advisories published between PRs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm-audit:
+    name: npm audit (web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "26"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Audit dependencies (fail on high/critical)
+        run: npm audit --audit-level=high
+        working-directory: web
+
+  nuget-audit:
+    name: NuGet vulnerable-package scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.x"
+
+      - name: Restore
+        run: dotnet restore ApexRacers.sln
+
+      # `dotnet list package --vulnerable` exits 0 even when vulnerabilities exist,
+      # so grep the severity column. Moderate/Low are reported but don't fail the job.
+      - name: Scan for vulnerable packages (fail on High/Critical)
+        run: |
+          dotnet list ApexRacers.sln package --vulnerable --include-transitive | tee vulns.txt
+          if grep -Eq '\b(High|Critical)\b' vulns.txt; then
+            echo "::error::High/Critical vulnerable package(s) found — see log above"
+            exit 1
+          fi
