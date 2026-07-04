@@ -99,6 +99,8 @@ dotnet run --project src/ApexRacers.Ingestion         # run the ingestion worker
 dotnet run --project src/ApexRacers.Seeder            # seed catalog + synthetic laps for 7 series (idempotent)
 dotnet run --project src/ApexRacers.Seeder -- --demo  # + seed the synthetic demo cache (Plan 2)
 dotnet run --project src/ApexRacers.Seeder -- --ci    # fully synthetic catalog, no response objects (CI/E2E; add --demo for the cache)
+dotnet run --project src/ApexRacers.Seeder -- --verify-demo      # gate: exit 0 iff the demo surface is fully seeded (also auto-runs at the end of --demo)
+dotnet run --project src/ApexRacers.Seeder -- --verify-teardown  # gate: exit 0 iff no demo rows remain (M2 purge check)
 
 # EF Core migrations — always target Data, startup project Api
 dotnet ef migrations add <Name> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
@@ -171,7 +173,8 @@ Tests ← xUnit (references Api + Ingestion + Seeder + Core + Data)
 
 > **Coverage note:** because Tests references Seeder, the Seeder assembly is in the coverage denominator.
 > `coverage.runsettings` excludes the seeder orchestration/data (`Program`, `CiCatalogSeeder`, `CiCatalog`,
-> `Demo.DemoCacheSeeder`) as I/O infrastructure; pure logic like `SyntheticLaps` stays covered and tested.
+> `Demo.DemoCacheSeeder`) as I/O infrastructure; pure logic like `SyntheticLaps` and the
+> `Verification.DemoSeedVerifier` stay covered and tested.
 
 Package versions are centrally managed in `Directory.Packages.props` — **never** add `Version="…"` to a
 `.csproj`; use `dotnet add package`. `CentralPackageTransitivePinningEnabled=true` is intentional. Full
