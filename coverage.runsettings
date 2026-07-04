@@ -14,7 +14,8 @@
                                    lives in SubsessionIndexer (which IS covered)
               - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
                                    orchestration shells with no unit tests; the pure lap-gen
-                                   helpers they call (SyntheticLaps) stay covered
+                                   helpers they call (SyntheticLaps) stay covered, as does the
+                                   Verification namespace (DemoSeedVerifier — tested directly)
           -->
           <Exclude>
             [ApexRacers.Api]ApexRacers.Api.Controllers.*,

@@ -11,8 +11,10 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var seedDemo = args.Contains("--demo");
-var ciMode   = args.Contains("--ci");
+var seedDemo       = args.Contains("--demo");
+var ciMode         = args.Contains("--ci");
+var verifyDemo     = args.Contains("--verify-demo");
+var verifyTeardown = args.Contains("--verify-teardown");
 
 var connectionString =
     config["DATABASE_CONNECTION_STRING"]
@@ -31,6 +33,17 @@ Console.WriteLine("ApexRacers Seeder — connecting to database…");
 // API has ever booted.
 await db.Database.MigrateAsync();
 
+// Verify-only modes never seed — they're the mechanical pre-enable / post-purge gate for
+// the prod demo rollout (deployTODO.md §14). Run against the target DB after seeding
+// (--verify-demo) or after running the demo purge script (--verify-teardown).
+if (verifyDemo || verifyTeardown)
+{
+    var checks = verifyDemo
+        ? await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None)
+        : await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyTeardownAsync(db, CancellationToken.None);
+    return ReportVerification(checks) == 0 ? 0 : 1;
+}
+
 if (ciMode)
 {
     Console.WriteLine("CI mode (--ci): seeding a fully synthetic catalog (no response objects required)…");
@@ -41,10 +54,14 @@ if (ciMode)
         Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
         await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
         Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+
+        Console.WriteLine("\nVerifying demo dataset (--verify-demo)…");
+        var demoChecks = await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None);
+        if (ReportVerification(demoChecks) > 0) return 1;
     }
 
     Console.WriteLine("\nCI seeding complete.");
-    return;
+    return 0;
 }
 
 // ── Locate response objects ───────────────────────────────────────────────────
@@ -615,9 +632,28 @@ if (seedDemo)
     Console.WriteLine("\nSeeding synthetic demo dataset (--demo)…");
     await new ApexRacers.Seeder.Demo.DemoCacheSeeder(db).SeedAllAsync(CancellationToken.None);
     Console.WriteLine("Demo dataset seeded (ExternalDataCaches + BoP + weather).");
+
+    Console.WriteLine("\nVerifying demo dataset (--verify-demo)…");
+    var demoChecks = await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyDemoAsync(db, CancellationToken.None);
+    if (ReportVerification(demoChecks) > 0) return 1;
 }
 
+return 0;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Prints one line per verification check and a PASS/FAIL summary; returns the failed count.
+static int ReportVerification(List<ApexRacers.Seeder.Verification.VerificationCheck> checks)
+{
+    var failed = 0;
+    foreach (var c in checks)
+    {
+        Console.WriteLine($"  [{(c.Passed ? "PASS" : "FAIL")}] {c.Name} — {c.Detail}");
+        if (!c.Passed) failed++;
+    }
+    Console.WriteLine(failed == 0 ? "\nVerification PASSED." : $"\nVerification FAILED ({failed} check(s)).");
+    return failed;
+}
 
 // Serialize a slug list to a JSON array string for the catalog's CategoriesJson/CarTypesJson
 // columns; null when empty (mirrors CatalogIngest in the ingestion worker).
