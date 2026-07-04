@@ -4,6 +4,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: "Regenerate visual-regression baselines"
+        type: boolean
+        default: false
 
 # Non-blocking for now: runs on PRs for signal but is intentionally NOT a required
 # status check. Promote to required once the suite proves stable.
@@ -92,7 +97,7 @@ jobs:
         working-directory: web
 
       - name: Run E2E tests
-        run: npx playwright test
+        run: npx playwright test ${{ github.event.inputs.update_snapshots == 'true' && '--update-snapshots' || '' }}
         working-directory: web
 
       - name: Upload Playwright report
@@ -101,4 +106,12 @@ jobs:
         with:
           name: playwright-report
           path: web/playwright-report/
+          retention-days: 7
+
+      - name: Upload refreshed visual baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.update_snapshots == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: web/e2e/visual.spec.ts-snapshots/
           retention-days: 7

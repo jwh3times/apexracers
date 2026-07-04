@@ -10,6 +10,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
+  expect: {
+    // Visual-regression defaults: kill animation/caret noise; 2% pixel tolerance
+    // absorbs minor anti-aliasing drift. Tighten later if diffs stay quiet.
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.02 },
+  },
   use: {
     baseURL,
     trace: 'on-first-retry',
