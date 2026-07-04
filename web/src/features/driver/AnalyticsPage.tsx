@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Series, type CarAnalytics } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -304,6 +304,8 @@ export default function AnalyticsPage() {
     selectedCarId,
     error,
   } = state;
+  const [computing, setComputing] = useState(false);
+  const [computeError, setComputeError] = useState<string | null>(null);
 
   // Series list (for series mode chips)
   useEffect(() => {
@@ -313,14 +315,35 @@ export default function AnalyticsPage() {
       .catch(() => dispatch({ type: 'SERIES_LOADED', series: [] }));
   }, []);
 
+  // Fetches analytics for the given series and dispatches the result; shared by the
+  // effect below and the first-visit "Compute my percentiles" CTA's refetch.
+  const reloadAnalytics = (seriesId: number) =>
+    api
+      .getMyAnalytics(seriesId)
+      .then(a => dispatch({ type: 'ANALYTICS_LOADED', analytics: a }))
+      .catch((e: Error) => dispatch({ type: 'ANALYTICS_ERROR', message: e.message }));
+
   // Per-series analytics (series mode)
   useEffect(() => {
     if (!user || viewMode !== 'series' || selectedSeriesId === null) return;
-    api
-      .getMyAnalytics(selectedSeriesId)
-      .then(a => dispatch({ type: 'ANALYTICS_LOADED', analytics: a }))
-      .catch((e: Error) => dispatch({ type: 'ANALYTICS_ERROR', message: e.message }));
+    void reloadAnalytics(selectedSeriesId);
   }, [user, viewMode, selectedSeriesId]);
+
+  // Computing recommendations upserts the CarPercentileResult rows analytics reads,
+  // so one call populates a first-visit-empty view (works in demo and live modes).
+  const computePercentiles = async (series: Series) => {
+    if (series.currentWeekNumber == null) return;
+    setComputing(true);
+    setComputeError(null);
+    try {
+      await api.getRecommendations(series.id, series.currentWeekNumber);
+      await reloadAnalytics(series.id);
+    } catch {
+      setComputeError('Could not compute percentiles — try the Recommendations page.');
+    } finally {
+      setComputing(false);
+    }
+  };
 
   // All analytics (car mode) — fetched once on demand
   useEffect(() => {
@@ -367,6 +390,8 @@ export default function AnalyticsPage() {
     if (!acc.some(c => c.id === a.carId)) acc.push({ id: a.carId, name: a.carName });
     return acc;
   }, []);
+
+  const selectedSeries = series.find(s => s.id === selectedSeriesId) ?? null;
 
   return (
     <main className="page-wrap">
@@ -475,6 +500,27 @@ export default function AnalyticsPage() {
               </Link>{' '}
               and compute your percentile to start tracking trends.
             </p>
+            {selectedSeries && selectedSeries.currentWeekNumber != null && (
+              <>
+                <p className="text-body-fluid text-on-surface-variant">
+                  Analytics builds from your computed percentiles — nothing here yet.
+                </p>
+                <button
+                  onClick={() => void computePercentiles(selectedSeries)}
+                  disabled={computing}
+                  className="btn-fluid bg-primary-container text-on-primary-container rounded-lg font-semibold disabled:opacity-60"
+                >
+                  {computing ? 'Computing…' : 'Compute my percentiles'}
+                </button>
+                {computeError && <p className="text-small-fluid text-error">{computeError}</p>}
+                <Link
+                  to="/recommendations"
+                  className="text-small-fluid text-primary-container underline"
+                >
+                  Or open Recommendations
+                </Link>
+              </>
+            )}
           </div>
         )}
 
@@ -494,6 +540,9 @@ export default function AnalyticsPage() {
             </Link>{' '}
             and compute your percentile to start tracking trends.
           </p>
+          <Link to="/recommendations" className="text-small-fluid text-primary-container underline">
+            Or open Recommendations
+          </Link>
         </div>
       )}
 

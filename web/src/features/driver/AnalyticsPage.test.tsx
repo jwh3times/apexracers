@@ -22,11 +22,13 @@ vi.mock('../../services/api', () => ({
   api: {
     getSeries: vi.fn(),
     getMyAnalytics: vi.fn(),
+    getRecommendations: vi.fn(),
   },
 }));
 
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetMyAnalytics = vi.mocked(api.getMyAnalytics);
+const mockGetRecommendations = vi.mocked(api.getRecommendations);
 
 const MOCK_SERIES = [
   {
@@ -135,6 +137,7 @@ describe('AnalyticsPage', () => {
     };
     mockGetSeries.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);
+    mockGetRecommendations.mockResolvedValue([]);
   });
 
   it('shows sign-in prompt when user is not authenticated', () => {
@@ -207,6 +210,57 @@ describe('AnalyticsPage', () => {
       expect(screen.getByText(/no percentile data for this series/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('link', { name: /browse series/i })).toHaveClass('underline');
+  });
+
+  // ── First-visit "Compute my percentiles" CTA (T15) ─────────────────────────
+
+  it('empty series analytics shows the compute CTA and populates on click', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValueOnce([]).mockResolvedValueOnce(MOCK_ANALYTICS);
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /compute my percentiles/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
+
+    // MOCK_SERIES[0] has id 1 and currentWeekNumber 5
+    await waitFor(() => expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5));
+    await waitFor(() => {
+      expect(mockGetMyAnalytics).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
+    });
+  });
+
+  it('hides the compute CTA when the series has no current week', async () => {
+    mockGetSeries.mockResolvedValue([{ ...MOCK_SERIES[0], currentWeekNumber: null }]);
+    mockGetMyAnalytics.mockResolvedValue([]);
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/no percentile data for this series/i)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: /compute my percentiles/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an inline error when compute fails', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([]);
+    mockGetRecommendations.mockRejectedValue(new Error('compute boom'));
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /compute my percentiles/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not compute percentiles/i)).toBeInTheDocument();
+    });
   });
 
   it('calls getMyAnalytics with the new seriesId when a different series is selected', async () => {
