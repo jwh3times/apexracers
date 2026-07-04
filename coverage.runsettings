@@ -12,6 +12,9 @@
               - DesignTimeFactory: dotnet-ef dev tooling only
               - Ingestion Worker : I/O orchestration shell; its pure decision logic
                                    lives in SubsessionIndexer (which IS covered)
+              - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
+                                   orchestration shells with no unit tests; the pure lap-gen
+                                   helpers they call (SyntheticLaps) stay covered
           -->
           <Exclude>
             [ApexRacers.Api]ApexRacers.Api.Controllers.*,
@@ -22,7 +25,10 @@
             [ApexRacers.Ingestion]ApexRacers.Ingestion.Worker,
             [ApexRacers.Ingestion]Program,
             [ApexRacers.Ingestion]HyphenToUnderscoreSecretManager,
-            [ApexRacers.Seeder]Program
+            [ApexRacers.Seeder]Program,
+            [ApexRacers.Seeder]ApexRacers.Seeder.CiCatalogSeeder,
+            [ApexRacers.Seeder]ApexRacers.Seeder.CiCatalog,
+            [ApexRacers.Seeder]ApexRacers.Seeder.Demo.DemoCacheSeeder
           </Exclude>
           <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
         </Configuration>
