@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health endpoints: `/healthz` (liveness) and `/ready` (database readiness), both anonymous and exempt from rate limiting.
 - CI dependency-vulnerability audit workflow (npm audit + `dotnet list package --vulnerable`), running on PRs and weekly; non-blocking for now.
 - `/admin` accessibility audit in the E2E suite — the panel is provisioned by promoting an in-test-registered user to Admin, then audited with axe-core (zero WCAG 2.1 A/AA violations).
+- Seeder `--ci` mode that seeds a fully synthetic catalog (no captured iRacing response objects required) and auto-applies pending migrations, enabling demo-data seeding in CI.
 
 ### Fixed
 
