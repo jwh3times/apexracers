@@ -73,15 +73,36 @@ pages and 7 authenticated pages and asserts zero violations. The shared helper
 `wcag2a`/`wcag2aa` tagset) and `formatViolations(violations)` (human-readable summary for test
 failure output).
 
+**Functional specs:** `auth.spec.ts` (logout; password reset via the Development token echo),
+`telemetry.spec.ts` (`.ibt` upload → My Laps, from the committed `e2e/fixtures/demo-session.ibt`),
+`admin.spec.ts` (provisions an Admin, then axe-audits `/admin`), and `gating.spec.ts` (feature-flag
+gating — gated routes render synthetic demo content when `iracing-demo` is on, ComingSoon when off).
+
+**Visual regression:** `web/e2e/visual.spec.ts` captures full-page screenshot baselines for the
+stable public pages (`/`, `/login`, `/terms`, `/privacy`). It is **CI-only**
+(`test.skip(!process.env.CI)`) — the committed baselines under `e2e/visual.spec.ts-snapshots/` are
+Linux/Chromium PNGs, and screenshot defaults (animations off, caret hidden, 2% pixel tolerance) live
+in `playwright.config.ts`. Refresh them by running `e2e.yml` via `workflow_dispatch` with
+`update_snapshots=true`, downloading the `visual-baselines` artifact, and committing it.
+
 ## Project structure
 
 ```
 e2e/
+  fixtures/
+    demo-session.ibt  ← committed .ibt telemetry fixture (from FakeIbtBuilder)
   helpers/
     a11y.ts           ← auditA11y() / formatViolations() — shared axe-core helper
-    users.ts          ← registerNewUser() and test-user helpers
+    admin.ts          ← promoteToAdmin() — swaps a test user to the Admin role
+    db.ts             ← runSql() — psql / docker-compose SQL runner
+    users.ts          ← registerNewUser(), login(), logout() test-user helpers
   a11y.spec.ts        ← WCAG 2.1 A/AA audits: 5 public + 7 authed pages (axe-core)
+  admin.spec.ts       ← provisions an Admin and axe-audits /admin
+  auth.spec.ts        ← logout + password-reset auth flows
+  gating.spec.ts      ← feature-flag gating (demo content vs ComingSoon)
   smoke.spec.ts       ← register → dashboard smoke test
+  telemetry.spec.ts   ← .ibt upload → My Laps
+  visual.spec.ts      ← CI-only visual regression (baselines in visual.spec.ts-snapshots/)
 src/
   features/           ← feature-grouped pages, each with a colocated *.test.tsx sibling
     auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
