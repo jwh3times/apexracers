@@ -41,6 +41,8 @@ jobs:
       JWT_SIGNING_KEY: ci-e2e-signing-key-not-a-secret-0123456789abcdef
       # psql target for e2e/helpers/db.ts (ubuntu runners ship the psql client)
       E2E_DATABASE_URL: postgresql://apexracers:postgres@localhost:5432/apexracers
+      # Tells a11y-gated.spec.ts the demo surface is seeded and enabled.
+      E2E_DEMO: "1"
 
     steps:
       - uses: actions/checkout@v7
@@ -68,6 +70,15 @@ jobs:
           mkdir -p ../src/ApexRacers.Api/wwwroot
           cp -r dist/. ../src/ApexRacers.Api/wwwroot/
         working-directory: web
+
+      - name: Seed synthetic catalog + demo cache
+        run: dotnet run --project src/ApexRacers.Seeder -- --ci --demo
+
+      - name: Enable the iracing-demo flag for all roles
+        run: |
+          psql "$E2E_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "UPDATE iracing.\"FeatureFlags\" SET \"IsEnabled\" = true, \"MinimumRole\" = 'Standard' WHERE \"Key\" = 'iracing-demo';" \
+            | grep -q "UPDATE 1"
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
