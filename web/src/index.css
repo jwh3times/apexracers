@@ -133,6 +133,9 @@ html.theme-light {
   --color-secondary-container: #14d1ff;
   --color-primary: #e0f9ff;
 
+  /* ── Gold — ELITE/premium tier accent (badges, trophies) ── */
+  --color-gold: #ffd700;
+
   /* ── Remaining MD3 tokens (not theme-switched) ──────────── */
   --color-on-tertiary-container: #746100;
   --color-secondary: #a6e6ff;
@@ -399,25 +402,15 @@ html.theme-light {
   }
 
   .glow-gold {
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 30px color-mix(in oklab, var(--color-gold) 20%, transparent);
   }
 
   /* Gradient border that fades from dark to gold — apply alongside glass-panel */
   .gradient-border-gold {
     background:
       linear-gradient(#0f0f12, #0f0f12) padding-box,
-      linear-gradient(to bottom, rgba(15, 15, 18, 1), #ffd700) border-box;
+      linear-gradient(to bottom, rgba(15, 15, 18, 1), var(--color-gold)) border-box;
     border: 1px solid transparent;
-  }
-
-  .tier-badge-gold {
-    background-color: #ffd700;
-    color: #000;
-  }
-
-  .tier-badge-green {
-    background-color: #00e0ff;
-    color: #000;
   }
 }
 

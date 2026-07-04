@@ -141,7 +141,7 @@ function FeaturedCarCard({
   return (
     <div
       className={`card-r border bg-surface overflow-hidden ${
-        isGold ? 'border-[#FFD700]/40' : 'border-line-2'
+        isGold ? 'border-gold/40' : 'border-line-2'
       }`}
       style={cardStyle}
     >
@@ -164,13 +164,13 @@ function FeaturedCarCard({
         <div className="flex items-end gap-3">
           <div
             className={`font-mono text-[32px] font-bold leading-none tracking-[-0.02em] ${
-              isGold ? 'text-[#FFD700]' : 'text-primary-container'
+              isGold ? 'text-gold' : 'text-primary-container'
             }`}
           >
             {topPercentLabel(data.latestPercentileRank)}
           </div>
           {isGold && (
-            <span className="mb-1 px-2 py-0.5 rounded-[6px] bg-[#FFD700] text-black text-[11px] font-bold">
+            <span className="mb-1 px-2 py-0.5 rounded-[6px] bg-gold text-black text-[11px] font-bold">
               ELITE
             </span>
           )}

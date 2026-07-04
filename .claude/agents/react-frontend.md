@@ -123,6 +123,12 @@ const scanTexture: React.CSSProperties = {
 
 Icons use Material Symbols via `<span className="material-symbols-outlined" aria-hidden="true">icon_name</span>`. Always include `aria-hidden="true"` on decorative icons.
 
+### Color tokens
+
+| Token              | Utilities                             | Use                                                     |
+| ------------------ | ------------------------------------- | ------------------------------------------------------- |
+| `--color-gold`     | `text-gold` `bg-gold` `border-gold`   | ELITE/premium tier accent (badges, trophies); sanctioned gold only — never hardcode `#FFD700` |
+
 ## Testing
 
 - Framework: Vitest + React Testing Library; environment `jsdom`; setup file `src/test/setup.ts` (in `vite.config.ts`); `globals: true` (no need to import `describe`/`it`/`expect`).
