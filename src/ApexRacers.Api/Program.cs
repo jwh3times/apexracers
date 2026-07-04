@@ -92,6 +92,22 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Safety-net global cap per client IP: generous enough that a real user never
+    // hits it (a page load fires <10 API calls), but bounds scripted abuse on the
+    // otherwise-unthrottled endpoints. Health endpoints opt out via DisableRateLimiting().
+    // NOTE: behind the App Service front end, RemoteIpAddress is only the real client
+    // once ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is set (deployTODO.md §6).
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            }));
+
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
