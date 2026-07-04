@@ -43,4 +43,13 @@ test.describe('feature-flag gating', () => {
     await gotoAndSettle(page, `/tracks/${TRACK_ID}`);
     await expect(page.getByText('Cypress International Circuit').first()).toBeVisible();
   });
+
+  test('demo on: a signed-out guest also sees gated content (anonymous flag read)', async ({
+    page,
+  }) => {
+    // No registerNewUser — CI seeds iracing-demo enabled at MinimumRole=Standard, and the
+    // feature-flags endpoint is anonymous, so a guest resolves the flag true too.
+    await gotoAndSettle(page, '/series');
+    await expect(page.getByText(/demo data/i).first()).toBeVisible(); // DemoBanner
+  });
 });

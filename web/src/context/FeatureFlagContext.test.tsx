@@ -34,12 +34,33 @@ describe('FeatureFlagContext', () => {
     mockUser = null;
   });
 
-  it('isEnabled returns false when there is no user', async () => {
+  it('fetches the public flag set for a guest (no user) and resolves it', async () => {
+    vi.mocked(api.getFeatureFlags).mockResolvedValue([
+      {
+        id: 1,
+        key: 'test.flag',
+        name: 'Test',
+        description: null,
+        isEnabled: true,
+        minimumRole: 'Standard',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ]);
     await act(async () => {
-      renderWithProvider();
+      renderWithProvider('test.flag');
     });
+    await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('on'));
+    expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns false for a guest when the key is not in the public flag set', async () => {
+    vi.mocked(api.getFeatureFlags).mockResolvedValue([]);
+    await act(async () => {
+      renderWithProvider('test.flag');
+    });
+    await waitFor(() => expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalled());
     expect(screen.getByTestId('result')).toHaveTextContent('off');
-    expect(vi.mocked(api.getFeatureFlags)).not.toHaveBeenCalled();
   });
 
   it('fetches flags when a user is present and marks matching key as enabled', async () => {
@@ -97,7 +118,12 @@ describe('FeatureFlagContext', () => {
     expect(screen.getByTestId('result')).toHaveTextContent('off');
   });
 
-  it('clears flags and returns false after user logs out', async () => {
+  it('switches to the user set when a guest logs in', async () => {
+    vi.mocked(api.getFeatureFlags).mockResolvedValueOnce([]); // guest: public set lacks test.flag
+    const { rerender } = renderWithProvider('test.flag');
+    await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('off'));
+    expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalledTimes(1);
+
     mockUser = {
       token: 't',
       userId: 'u1',
@@ -106,7 +132,39 @@ describe('FeatureFlagContext', () => {
       iRacingCustomerId: null,
       role: 'Beta',
     };
-    vi.mocked(api.getFeatureFlags).mockResolvedValue([
+    vi.mocked(api.getFeatureFlags).mockResolvedValueOnce([
+      {
+        id: 1,
+        key: 'test.flag',
+        name: 'Test',
+        description: null,
+        isEnabled: true,
+        minimumRole: 'Beta',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ]);
+    await act(async () => {
+      rerender(
+        <FeatureFlagProvider>
+          <Consumer flagKey="test.flag" />
+        </FeatureFlagProvider>
+      );
+    });
+    await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('on'));
+    expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns to the guest set on logout', async () => {
+    mockUser = {
+      token: 't',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Beta',
+    };
+    vi.mocked(api.getFeatureFlags).mockResolvedValueOnce([
       {
         id: 1,
         key: 'test.flag',
@@ -122,6 +180,7 @@ describe('FeatureFlagContext', () => {
     await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('on'));
 
     mockUser = null;
+    vi.mocked(api.getFeatureFlags).mockResolvedValueOnce([]); // guest public set lacks test.flag
     await act(async () => {
       rerender(
         <FeatureFlagProvider>
@@ -129,7 +188,8 @@ describe('FeatureFlagContext', () => {
         </FeatureFlagProvider>
       );
     });
-    expect(screen.getByTestId('result')).toHaveTextContent('off');
+    await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('off'));
+    expect(vi.mocked(api.getFeatureFlags)).toHaveBeenCalledTimes(2); // confirms the guest refetch happened
   });
 
   it('handles API errors gracefully and leaves flags empty', async () => {
