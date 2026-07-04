@@ -453,7 +453,7 @@ html.theme-light {
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-weight: 600;
   margin-bottom: 13px;
 }
@@ -578,7 +578,7 @@ html.theme-light {
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-weight: 600;
   margin-bottom: 12px;
   display: block;
@@ -653,7 +653,7 @@ html.theme-light {
   opacity: 0.85;
 }
 .pcs-plus {
-  color: var(--pcs-text-faint);
+  color: var(--pcs-text-dim);
   font-size: 15px;
   font-weight: 600;
   padding: 0 1px;
