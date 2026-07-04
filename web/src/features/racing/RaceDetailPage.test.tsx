@@ -127,7 +127,7 @@ describe('RaceDetailPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('Winner')).toBeInTheDocument());
     expect(screen.getByText('+50')).toHaveClass('text-primary-container');
-    expect(screen.getByText('-53')).toHaveClass('text-red-400');
+    expect(screen.getByText('-53')).toHaveClass('text-error');
   });
 
   it("highlights the logged-in user's row", async () => {

@@ -234,7 +234,7 @@ function HeadToHead({ data }: { data: DriverComparison }) {
                   <td className="td-p text-mono-fluid text-right">P{r.rivalFinish}</td>
                   <td
                     className={`td-p text-mono-fluid text-right ${
-                      r.yourIRatingDelta >= 0 ? 'text-primary-container' : 'text-red-400'
+                      r.yourIRatingDelta >= 0 ? 'text-primary-container' : 'text-error'
                     }`}
                   >
                     {r.yourIRatingDelta >= 0 ? '+' : ''}
@@ -242,7 +242,7 @@ function HeadToHead({ data }: { data: DriverComparison }) {
                   </td>
                   <td
                     className={`td-p text-mono-fluid text-right ${
-                      r.rivalIRatingDelta >= 0 ? 'text-primary-container' : 'text-red-400'
+                      r.rivalIRatingDelta >= 0 ? 'text-primary-container' : 'text-error'
                     }`}
                   >
                     {r.rivalIRatingDelta >= 0 ? '+' : ''}

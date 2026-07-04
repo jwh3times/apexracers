@@ -295,7 +295,7 @@ export default function StrategyPage() {
               {data.weatherRisk.precipChancePct.toFixed(0)}% precip · {data.weatherRisk.note}
             </span>
             {data.weather && (
-              <span className="text-small-fluid font-mono opacity-80">
+              <span className="text-small-fluid font-mono">
                 {data.weather.tempLowC.toFixed(0)}–{data.weather.tempHighC.toFixed(0)}°C ·{' '}
                 {data.weather.windLowKph.toFixed(0)}–{data.weather.windHighKph.toFixed(0)} km/h ·{' '}
                 {SKIES[data.weather.skies] ?? 'Unknown'}

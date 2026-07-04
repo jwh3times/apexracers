@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 }
 
 function deltaClass(n: number): string {
-  return n >= 0 ? 'text-primary-container' : 'text-red-400';
+  return n >= 0 ? 'text-primary-container' : 'text-error';
 }
 
 function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {

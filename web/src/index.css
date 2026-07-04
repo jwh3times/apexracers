@@ -40,7 +40,7 @@ html.theme-light {
   --text: #13151a;
   --text-dim: #5b5e68;
   --text-faint: #9498a3;
-  --slow: #e23048;
+  --slow: #c81e39;
   --warn: #c98208;
   --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
   --accent-line: color-mix(in oklab, var(--accent) 55%, white);
@@ -83,7 +83,7 @@ html.theme-light {
     --text: #13151a;
     --text-dim: #5b5e68;
     --text-faint: #9498a3;
-    --slow: #e23048;
+    --slow: #c81e39;
     --warn: #c98208;
     --accent-soft: color-mix(in oklab, var(--accent) 20%, white);
     --accent-line: color-mix(in oklab, var(--accent) 55%, white);

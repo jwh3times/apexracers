@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { formatViolations, auditA11y, type Violation } from './helpers/a11y';
+import { formatViolations, auditA11y, gotoAndSettle, type Violation } from './helpers/a11y';
 import { registerNewUser } from './helpers/users';
 
 // Minimal fixture shaped like an axe violation — only the fields formatViolations reads.
@@ -38,8 +38,11 @@ const PUBLIC_PAGES = [
 
 /**
  * Authenticated pages that render real content without iRacing creds.
- * `/series` is flag-gated, so it renders ComingSoonPage inside the real AppShell
- * chrome — our single representative for every gated route.
+ * `/series` is flag-gated: in CI (where Task 9 enables `iracing-demo`) it renders the
+ * real SeriesPage over synthetic demo data; locally without the flag it falls back to
+ * ComingSoonPage inside the real AppShell chrome. Either way it's real, audited content.
+ * The full iRacing-gated surface (18 routes) is covered separately in a11y-gated.spec.ts,
+ * and ComingSoonPage itself is audited by Task 20's gating spec.
  */
 const AUTHED_PAGES = [
   '/dashboard',
@@ -50,12 +53,6 @@ const AUTHED_PAGES = [
   '/settings',
   '/series',
 ];
-
-/** Wait for the SPA route to render before auditing, so axe never sees a pre-mount frame. */
-async function gotoAndSettle(page: import('@playwright/test').Page, path: string) {
-  await page.goto(path);
-  await page.locator('main, h1').first().waitFor({ state: 'visible' });
-}
 
 test.describe('accessibility: public pages (WCAG 2.1 A/AA)', () => {
   for (const path of PUBLIC_PAGES) {
