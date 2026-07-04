@@ -10,7 +10,9 @@ using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -45,6 +47,10 @@ var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
+
+// Liveness (/healthz) runs no checks; readiness (/ready) verifies the DB is reachable.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
 
 // ── iRacing Data API — on-demand per-user member fetches ─────────────────────
 // Unlike the ingestion worker (which requires these), the API registers the client
@@ -257,6 +263,14 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Anonymous probe endpoints, exempt from the global rate limiter so aggressive
+// platform probes can't consume a client's budget (or get 429'd themselves).
+// App Service's Health check feature points at /healthz (deployTODO.md).
+app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
+    .DisableRateLimiting();
+app.MapHealthChecks("/ready")
+    .DisableRateLimiting();
 
 // Return index.html for any route not matched by a controller so React Router
 // can handle client-side navigation (e.g. /series/1/weeks/2).

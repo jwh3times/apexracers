@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Baseline security response headers on every API and SPA response (content-type sniffing protection, frame denial, referrer and permissions policies, HSTS over HTTPS) via a unit-tested middleware.
 - Global per-IP API rate limit (300 requests/minute, fixed window) as a safety net in front of every endpoint; the stricter per-IP auth limit is unchanged.
+- Health endpoints: `/healthz` (liveness) and `/ready` (database readiness), both anonymous and exempt from rate limiting.
 
 ### Fixed
 
