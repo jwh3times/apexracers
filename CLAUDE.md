@@ -98,14 +98,17 @@ dotnet run --project src/ApexRacers.Api               # run the API (needs DATAB
 dotnet run --project src/ApexRacers.Ingestion         # run the ingestion worker (needs iRacing + DB env vars)
 dotnet run --project src/ApexRacers.Seeder            # seed catalog + synthetic laps for 7 series (idempotent)
 dotnet run --project src/ApexRacers.Seeder -- --demo  # + seed the synthetic demo cache (Plan 2)
+dotnet run --project src/ApexRacers.Seeder -- --ci    # fully synthetic catalog, no response objects needed (CI/E2E; add --demo for the cache). Also runs pending migrations first.
 
 # EF Core migrations — always target Data, startup project Api
 dotnet ef migrations add <Name> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 dotnet ef database update      --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 ```
 
-Seeder needs `private/iracing-api-response-objects/` populated first (gitignored — see README) and
-`DATABASE_CONNECTION_STRING` (else falls back to the local Docker default). `dotnet-ef` must be
+Seeder's default/`--demo` modes need `private/iracing-api-response-objects/` populated first (gitignored —
+see README); `--ci` mode does **not** (it fabricates a fully synthetic catalog, so CI/E2E can seed without
+the captured shapes — see `CiCatalogSeeder`). All modes read `DATABASE_CONNECTION_STRING` (else fall back
+to the local Docker default) and auto-apply pending migrations on start. `dotnet-ef` must be
 installed globally and match EF Core (currently 10.0.9). SQL seed/cleanup scripts live in
 `src/ApexRacers.Data/Seeds/` (`seed_gt3_series.sql`, `remove_gt3_seed.sql`, `truncate_seed_data.sql`, `purge_demo_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
@@ -161,8 +164,12 @@ inventory, Key Vault map, and deploy commands live in the `azure-infrastructure`
 ```text
 Core  ← no deps          Data  ← EF Core, Npgsql (references Core)
 Api / Ingestion / Seeder ← reference Core + Data (Api and Ingestion never reference each other)
-Tests ← xUnit (references Api + Core + Data)
+Tests ← xUnit (references Api + Ingestion + Seeder + Core + Data)
 ```
+
+> **Coverage note:** because Tests references Seeder, the Seeder assembly is in the coverage denominator.
+> `coverage.runsettings` excludes the seeder orchestration/data (`Program`, `CiCatalogSeeder`, `CiCatalog`,
+> `Demo.DemoCacheSeeder`) as I/O infrastructure; pure logic like `SyntheticLaps` stays covered and tested.
 
 Package versions are centrally managed in `Directory.Packages.props` — **never** add `Version="…"` to a
 `.csproj`; use `dotnet add package`. `CentralPackageTransitivePinningEnabled=true` is intentional. Full
@@ -185,6 +192,15 @@ RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper
 `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503, else 500 with its message
 hidden). Services should just `throw`; don't catch to `BadRequest(string)`. Controllers still return
 explicit results for non-exception outcomes needing a specific code (e.g. AuthController's 423 lockout).
+
+**Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `ExceptionHandlingMiddleware`
+→ `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
+referrer/permissions policy, `frame-ancestors` CSP, HSTS over HTTPS — full CSP deferred). Rate limiting: a
+global per-IP safety net (300/min) plus a stricter per-IP `auth` policy on `AuthController` whose limit is
+configurable via `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial
+suite shares one runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
+dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
+limiting needs `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (see `deployTODO.md`).
 
 ### Controllers — use-case-oriented, NOT entity-CRUD
 

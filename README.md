@@ -80,7 +80,15 @@ Use [apex-iracing](https://github.com/tomtoday/apex-iracing) to fetch the requir
 Once the directory is populated:
 
 ```bash
-dotnet run --project src/ApexRacers.Seeder
+dotnet run --project src/ApexRacers.Seeder            # catalog + synthetic laps (needs the JSON above)
+dotnet run --project src/ApexRacers.Seeder -- --demo  # also seed the synthetic demo cache
+```
+
+If you don't have the response-object JSON (e.g. in CI), use `--ci` to seed a fully synthetic catalog
+instead — no captured shapes required. It also applies any pending migrations first:
+
+```bash
+dotnet run --project src/ApexRacers.Seeder -- --ci --demo
 ```
 
 The seeder is idempotent — safe to run multiple times.
