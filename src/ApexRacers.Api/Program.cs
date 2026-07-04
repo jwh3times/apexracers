@@ -223,6 +223,9 @@ using (var scope = app.Services.CreateScope())
 // unhandled exception into an RFC-7807 problem+json response.
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Before UseStaticFiles so SPA assets get the headers too.
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
