@@ -7,6 +7,7 @@ import {
   onTokenRefreshed,
   onSessionExpired,
   IRacingNotLinkedError,
+  ApiError,
 } from './api';
 
 // ── Fetch mock helpers ────────────────────────────────────────────────────────
@@ -60,6 +61,28 @@ describe('api', () => {
     it('throws with status info on non-ok response', async () => {
       mockFetchError({ status: 503, statusText: 'Unavailable' });
       await expect(api.getSeries()).rejects.toThrow('503');
+    });
+  });
+
+  // ── ApiError (T17) ──────────────────────────────────────────────────────────
+
+  describe('ApiError', () => {
+    it('throws an ApiError carrying the response status and problem detail on a non-ok response', async () => {
+      mockFetchError({
+        status: 503,
+        statusText: 'Service Unavailable',
+        body: JSON.stringify({ status: 503, title: 'Service Unavailable', detail: 'Try again.' }),
+      });
+      let caught: unknown;
+      try {
+        await api.getSeries();
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(ApiError);
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as ApiError).status).toBe(503);
+      expect((caught as ApiError).message).toBe('Try again.');
     });
   });
 

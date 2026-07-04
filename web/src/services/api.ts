@@ -694,6 +694,17 @@ export class IRacingNotLinkedError extends Error {
   }
 }
 
+/** HTTP failure carrying the response status, for status-aware handling (e.g. 503 = unavailable). */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 function tryParseJson(raw: string): { code?: string; message?: string; detail?: string } | null {
   try {
     return raw ? (JSON.parse(raw) as { code?: string; message?: string; detail?: string }) : null;
@@ -713,7 +724,10 @@ async function throwForResponse(res: Response, path: string, method: string): Pr
     throw new IRacingNotLinkedError(parsed.message ?? 'iRacing account not linked.');
   }
   const detail = parsed?.detail ?? parsed?.message;
-  throw new Error(detail || raw || `${method} ${path} → ${res.status} ${res.statusText}`);
+  throw new ApiError(
+    res.status,
+    detail || raw || `${method} ${path} → ${res.status} ${res.statusText}`
+  );
 }
 
 type ReqInit = { method?: string; body?: BodyInit; json?: unknown };

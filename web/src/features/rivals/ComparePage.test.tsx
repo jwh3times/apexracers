@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ComparePage from './ComparePage';
 import {
   api,
+  ApiError,
   IRacingNotLinkedError,
   type Rival,
   type RivalSuggestion,
@@ -19,6 +20,15 @@ vi.mock('../../services/api', () => {
       this.name = 'IRacingNotLinkedError';
     }
   }
+  class ApiError extends Error {
+    constructor(
+      public readonly status: number,
+      message: string
+    ) {
+      super(message);
+      this.name = 'ApiError';
+    }
+  }
   return {
     api: {
       getRivals: vi.fn(),
@@ -29,8 +39,14 @@ vi.mock('../../services/api', () => {
       compareRival: vi.fn(),
     },
     IRacingNotLinkedError,
+    ApiError,
   };
 });
+
+let mockDemoFlag = false;
+vi.mock('../../context/FeatureFlagContext', () => ({
+  useFeatureFlag: () => mockDemoFlag,
+}));
 
 const RIVALS: Rival[] = [
   { custId: 200, displayName: 'Max Power', createdAt: '2026-01-01T00:00:00Z' },
@@ -125,6 +141,7 @@ function renderPage() {
 describe('ComparePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockDemoFlag = false;
     mockGetRivals.mockResolvedValue(RIVALS);
     mockGetSuggestions.mockResolvedValue(SUGGESTIONS);
     mockSearch.mockResolvedValue(SEARCH);
@@ -311,6 +328,51 @@ describe('ComparePage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
     await waitFor(() => expect(mockSearch).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /add lee apex/i })).not.toBeInTheDocument();
+    // A plain (non-503) error stays silent — no "unavailable" hint.
+    expect(screen.queryByText(/isn't available right now/i)).not.toBeInTheDocument();
+  });
+
+  // ── Guided empty state for unavailable driver search (T17) ─────────────────
+
+  it('shows an "unavailable" hint when driver search fails with a 503 (live mode)', async () => {
+    mockDemoFlag = false;
+    mockSearch.mockRejectedValue(new ApiError(503, 'Service unavailable.'));
+    renderPage();
+    await screen.findByText('Max Power');
+
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
+
+    await waitFor(() => expect(screen.getByText(/isn't available right now/i)).toBeInTheDocument());
+    expect(screen.queryByText(/demo mode/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the demo-specific hint text when driver search 503s under the demo flag', async () => {
+    mockDemoFlag = true;
+    mockSearch.mockRejectedValue(new ApiError(503, 'Service unavailable.'));
+    renderPage();
+    await screen.findByText('Max Power');
+
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
+
+    await waitFor(() => expect(screen.getByText(/demo mode/i)).toBeInTheDocument());
+    expect(screen.getByText(/"demo", "rival", or "driver"/i)).toBeInTheDocument();
+  });
+
+  it('clears a stale "unavailable" hint once a search succeeds', async () => {
+    mockSearch.mockRejectedValueOnce(new ApiError(503, 'Service unavailable.'));
+    renderPage();
+    await screen.findByText('Max Power');
+
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
+    await waitFor(() => expect(screen.getByText(/isn't available right now/i)).toBeInTheDocument());
+
+    mockSearch.mockResolvedValue(SEARCH);
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), {
+      target: { value: 'apex2' },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText(/isn't available right now/i)).not.toBeInTheDocument()
+    );
   });
 
   it('resets the comparison when the currently-compared rival is removed', async () => {
