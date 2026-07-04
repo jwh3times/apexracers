@@ -696,11 +696,10 @@ export class IRacingNotLinkedError extends Error {
 
 /** HTTP failure carrying the response status, for status-aware handling (e.g. 503 = unavailable). */
 export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string
-  ) {
+  readonly status: number;
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
     this.name = 'ApiError';
   }
 }
