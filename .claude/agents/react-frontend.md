@@ -40,7 +40,7 @@ Module-level exports for `AuthContext` to wire in: `setRefreshToken`, `onTokenRe
 
 ## Feature flags
 
-`FeatureFlagContext` (`src/context/FeatureFlagContext.tsx`) fetches flags from `GET /api/feature-flags` and caches them; read them through the context hook (`useFeatureFlag(key)`). **Never inline flag logic or conditionally call flag APIs outside the context.**
+`FeatureFlagContext` (`src/context/FeatureFlagContext.tsx`) fetches flags from `GET /api/feature-flags` (public — signed-out visitors fetch the enabled Standard-tier set under a `guest` owner) and caches them; read them through the context hook (`useFeatureFlag(key)`). **Never inline flag logic or conditionally call flag APIs outside the context.**
 
 ## State management
 
