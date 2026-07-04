@@ -39,6 +39,8 @@ jobs:
       ASPNETCORE_URLS: http://localhost:8080
       DATABASE_CONNECTION_STRING: "Host=localhost;Port=5432;Database=apexracers;Username=apexracers;Password=postgres"
       JWT_SIGNING_KEY: ci-e2e-signing-key-not-a-secret-0123456789abcdef
+      # psql target for e2e/helpers/db.ts (ubuntu runners ship the psql client)
+      E2E_DATABASE_URL: postgresql://apexracers:postgres@localhost:5432/apexracers
 
     steps:
       - uses: actions/checkout@v7
