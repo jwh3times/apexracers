@@ -38,11 +38,9 @@ const PUBLIC_PAGES = [
 
 /**
  * Authenticated pages that render real content without iRacing creds.
- * `/series` is flag-gated: in CI (where Task 9 enables `iracing-demo`) it renders the
- * real SeriesPage over synthetic demo data; locally without the flag it falls back to
- * ComingSoonPage inside the real AppShell chrome. Either way it's real, audited content.
- * The full iRacing-gated surface (18 routes) is covered separately in a11y-gated.spec.ts,
- * and ComingSoonPage itself is audited by Task 20's gating spec.
+ * `/series` renders real (demo-seeded) content in CI since the gated-audit work;
+ * ComingSoonPage is audited by `gating.spec.ts`'s flag-off test.
+ * The full iRacing-gated surface (18 routes) is covered separately in a11y-gated.spec.ts.
  */
 const AUTHED_PAGES = [
   '/dashboard',

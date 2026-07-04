@@ -16,8 +16,11 @@ concurrency:
 
 jobs:
   e2e:
+    # NOTE: branch protection will match this job by its display name ("Playwright E2E")
+    # when the workflow is promoted to a required check — renaming it breaks the gate.
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
