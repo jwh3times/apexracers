@@ -198,7 +198,9 @@ RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper
 hidden). Services should just `throw`; don't catch to `BadRequest(string)`. Controllers still return
 explicit results for non-exception outcomes needing a specific code (e.g. AuthController's 423 lockout).
 
-**Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `ExceptionHandlingMiddleware`
+**Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `RequestLoggingMiddleware`
+(outermost — one structured log line per request: method, path, status code, elapsed ms, client IP;
+level scales with status; skips `/healthz` and `/ready`) → `ExceptionHandlingMiddleware`
 → `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
 referrer/permissions policy, `frame-ancestors` CSP, HSTS over HTTPS — full CSP deferred). Rate limiting: a
 global per-IP safety net, configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 300**; CI/E2E
@@ -206,7 +208,11 @@ raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit
 `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one
 runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
 dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
-limiting needs `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (see `deployTODO.md`).
+limiting needs `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (see `deployTODO.md`; applied in prod as of
+2026-07-06). The `apexracers-api` App Service already runs codeless Application Insights
+auto-instrumentation (requests, dependencies, exceptions, and `ILogger` traces) — that's the structured
+telemetry pipeline; `RequestLoggingMiddleware`'s per-request log line flows into it (and to the console)
+rather than a separate logging path.
 
 ### Controllers — use-case-oriented, NOT entity-CRUD
 
