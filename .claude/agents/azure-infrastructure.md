@@ -21,6 +21,7 @@ Resource group: **apexracers-rg**
 | `apexracers-env`             | Container Apps Environment | westus3 |                                           |
 | `apexracers-ingestion`       | Container App              | westus3 | iRacing ingestion worker                  |
 | `workspace-apexracersrg0n6Q` | Log Analytics Workspace    | westus3 |                                           |
+| `apexracers-api` (Application Insights) | `microsoft.insights/components` | westus3 | Codeless auto-instrumentation on the API App Service; workspace-based into `workspace-apexracersrg0n6Q`; 0.5 GB/day data cap (applied 2026-07-06) |
 | `apexracers.gg`              | SSL Certificate            | westus3 |                                           |
 
 ## Key Vault secrets
@@ -100,4 +101,14 @@ az monitor log-analytics query \
   --analytics-query "ContainerAppConsoleLogs_CL | order by TimeGenerated desc | limit 50"
 ```
 
-Or check Application Insights / Log stream in the Azure portal under `apexracers-api`.
+Application Insights is live on `apexracers-api` (codeless auto-instrumentation, workspace-based into
+`workspace-apexracersrg0n6Q`) — requests, dependencies, exceptions, and `ILogger` traces are captured with
+no code. It has a 0.5 GB/day data volume cap (applied 2026-07-06) as a cost guardrail, since ingestion
+(server-side) sampling has no Azure CLI knob. Check usage against the cap:
+
+```bash
+az monitor app-insights component quotastatus show -g apexracers-rg --resource-name apexracers-api
+```
+
+Full commands (cap set/verify) are in `deployTODO.md` §6. Or check Application Insights / Log stream in
+the Azure portal under `apexracers-api`.
