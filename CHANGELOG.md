@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Structured per-request logging middleware (method, path, status code, elapsed time, client IP; log level scales with status), complementing the Application Insights codeless auto-instrumentation already active on the API App Service.
+
+### Fixed
+
+- Per-IP rate limiting now partitions by the real client IP behind the App Service front end (via the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` forwarded-headers app setting), instead of collapsing all clients into one shared bucket.
+
 ## [0.3.0] - 2026-07-04
 
 ### Added

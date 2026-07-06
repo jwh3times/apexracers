@@ -18,6 +18,11 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Logging providers are left at the framework defaults on purpose: in Azure the App
+// Service Application Insights codeless agent injects its own ILogger provider, and
+// calling ClearProviders() here would remove it and suppress trace telemetry. App
+// Insights is the structured-telemetry pipeline (requests/dependencies/exceptions/traces);
+// RequestLoggingMiddleware adds a per-request log that flows to it and to the console.
 var keyVaultUrl = builder.Configuration["AZURE_KEY_VAULT_URL"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
@@ -253,6 +258,10 @@ using (var scope = app.Services.CreateScope())
     var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
     await authService.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30));
 }
+
+// Outermost middleware so it times the whole request and observes the final response
+// status code (after ExceptionHandlingMiddleware's exception → problem+json mapping).
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 // First in the pipeline so it wraps every downstream component and turns any
 // unhandled exception into an RFC-7807 problem+json response.
