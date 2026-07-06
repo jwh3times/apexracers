@@ -38,11 +38,12 @@ public class RequestLoggingMiddlewareTests
 {
     private static (FakeLogger<RequestLoggingMiddleware> Logger, DefaultHttpContext Context) InvokeWith(
         RequestDelegate next,
-        string path = "/api/foo")
+        string path = "/api/foo",
+        string method = "GET")
     {
         var logger = new FakeLogger<RequestLoggingMiddleware>();
         var context = new DefaultHttpContext();
-        context.Request.Method = "GET";
+        context.Request.Method = method;
         context.Request.Path = path;
 
         var middleware = new RequestLoggingMiddleware(next, logger);
@@ -121,6 +122,25 @@ public class RequestLoggingMiddlewareTests
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Warning, entry.Level);
         Assert.Contains("404", entry.Message);
+    }
+
+    [Fact]
+    public void CrlfInRequest_IsStrippedFromLogEntry()
+    {
+        // A crafted method/path carrying CR/LF must not forge extra log lines (CWE-117).
+        RequestDelegate next = ctx =>
+        {
+            ctx.Response.StatusCode = 200;
+            return Task.CompletedTask;
+        };
+
+        var (logger, _) = InvokeWith(next, method: "GET\r\nInjected-Line: evil");
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.DoesNotContain('\r', entry.Message);
+        Assert.DoesNotContain('\n', entry.Message);
+        // Only the newlines are removed; the surrounding content is preserved.
+        Assert.Contains("GETInjected-Line: evil", entry.Message);
     }
 
     [Fact]

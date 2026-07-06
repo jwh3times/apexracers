@@ -45,11 +45,18 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             logger.Log(
                 level,
                 "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs}ms from {ClientIp}",
-                context.Request.Method,
-                context.Request.Path,
+                StripNewlines(context.Request.Method),
+                StripNewlines(context.Request.Path.ToString()),
                 statusCode,
                 Math.Round(elapsedMs, 1),
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
         }
     }
+
+    // Strip CR/LF from request-derived strings before logging: a percent-encoded
+    // %0d%0a in the URL is decoded into Request.Path, so an unsanitized value could
+    // forge extra lines in the text log sink (CWE-117 / cs/log-forging). App Insights
+    // stores these as structured dimensions; the console/Log Analytics sink renders text.
+    private static string StripNewlines(string value) =>
+        value.Replace("\r", string.Empty).Replace("\n", string.Empty);
 }
