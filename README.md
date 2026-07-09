@@ -13,6 +13,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)                   |
 | `src/ApexRacers.Tests/`     | xUnit unit tests for services and domain helpers                           |
 | `web/`                      | Vite + React + TypeScript frontend                                         |
+| `docs/`                     | Public product, roadmap, and documentation-index pages                     |
 | `infra/`                    | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
 | `.github/workflows/`        | GitHub Actions CI/CD pipelines                                             |
 
@@ -21,7 +22,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 26+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- iRacing OAuth credentials (see note below)
+- iRacing OAuth credentials are optional and only needed for the ingestion worker.
 
 ## Local development setup
 
@@ -33,7 +34,8 @@ cd apexracers
 cp .env.example .env
 ```
 
-For local development, credentials are read from Azure Key Vault via `az login` (run `az login` once and `DefaultAzureCredential` handles the rest). Alternatively, open `.env` and fill in values directly for offline debugging.
+Open `.env` and fill in local values before running the API. `JWT_SIGNING_KEY` is
+required; live iRacing and email credentials are optional for most local development.
 
 ### 2. Start the database
 
@@ -124,7 +126,7 @@ All ports used across the project's config files (`docker-compose.yml`, `Dockerf
 | `8080` | API (Docker)             | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
 | `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example`                            | Default when running the API directly                                   |
 | `5173` | Vite dev server          | Vite default (not pinned in `vite.config.ts`)                                                       | Auto-increments if the port is taken                                    |
-| `443`  | API (Azure cloud)        | `web/.env.cloud`                                                                                    | `https://apexracers-api.azurewebsites.net`                              |
+| `443`  | API (cloud deployment)   | `web/.env.cloud`                                                                                    | Configure with the maintainer-provided cloud API base URL.              |
 
 The ingestion worker (`ingestion.Dockerfile`) exposes no port — it is a background worker with no HTTP listener.
 
@@ -142,7 +144,7 @@ Request flow by mode (the frontend always talks to Vite on `5173`, which proxies
 LOCAL   (npm run dev / dev:all)   :5173 ──/api──▶ :5000 (dotnet API) ──▶ :5432 (Postgres)
 DOCKER  (npm run dev:docker)      :5173 ──/api──▶ :8080 (API container) ──▶ :5432 (Postgres)
                                                   pgAdmin → :5050 → (container :80)
-CLOUD   (npm run dev:cloud)       :5173 ──/api──▶ :443  apexracers-api.azurewebsites.net
+CLOUD   (npm run dev:cloud)       :5173 --/api--> :443  configured cloud API host
 ```
 
 > **Note:** The OAuth redirect URI differs by environment file — `.env` targets `:8080` (Docker) while `.env.example` targets `:5000` (local). It must match wherever the API is actually listening.
@@ -153,12 +155,17 @@ iRacing does not have a self-service developer portal. To obtain OAuth 2.0 crede
 
 ## Transactional email
 
-Password-reset and email-change-verification emails are sent through Azure Communication Services. The API reads `ACS_CONNECTION_STRING` (from Key Vault in Azure), `ACS_SENDER_ADDRESS` (default `noreply@apexracers.gg`), and `APP_BASE_URL` (default `https://apexracers.gg`, used to build the links in emails). When `ACS_CONNECTION_STRING` is **not** set (e.g. local development), the app binds a logging email sender instead of sending real mail — the password-reset flow still works locally because the reset token is returned in the response body in the Development environment. See `private/deployTODO.md` §13 for the ACS provisioning runbook.
+Password-reset and email-change-verification emails are sent through the configured
+email provider when `ACS_CONNECTION_STRING` is set. The API also reads
+`ACS_SENDER_ADDRESS` and `APP_BASE_URL` to build account links. When
+`ACS_CONNECTION_STRING` is not set, local development uses a logging sender instead of
+sending real mail; password reset still works locally because the Development
+environment returns the reset token in the response body.
 
 ## Contributing & support
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and quality
-gates, and [CLAUDE.md](CLAUDE.md) for the architectural conventions PRs are expected to follow. By
+gates, [docs/](docs/README.md) for public project docs, and [CLAUDE.md](CLAUDE.md) for the architectural conventions PRs are expected to follow. By
 participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). For help, bug reports, and
 feature requests, see [SUPPORT.md](SUPPORT.md); report vulnerabilities privately per
 [SECURITY.md](SECURITY.md).

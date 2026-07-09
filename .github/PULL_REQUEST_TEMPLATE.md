@@ -40,6 +40,7 @@ Closes #
 - [ ] Added/updated documentation where relevant (README, CLAUDE.md, etc.)
 - [ ] Database changes include an EF Core migration (if applicable)
 - [ ] No secrets, credentials, or `.env` values are committed
+- [ ] Public docs do not link to private runbooks or expose live infrastructure identifiers
 
 ## Screenshots / notes
 

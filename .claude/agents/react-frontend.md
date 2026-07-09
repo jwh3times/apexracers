@@ -125,9 +125,9 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 
 ### Color tokens
 
-| Token              | Utilities                             | Use                                                     |
-| ------------------ | ------------------------------------- | ------------------------------------------------------- |
-| `--color-gold`     | `text-gold` `bg-gold` `border-gold`   | ELITE/premium tier accent (badges, trophies); sanctioned gold only — never hardcode `#FFD700` |
+| Token          | Utilities                           | Use                                                                                           |
+| -------------- | ----------------------------------- | --------------------------------------------------------------------------------------------- |
+| `--color-gold` | `text-gold` `bg-gold` `border-gold` | ELITE/premium tier accent (badges, trophies); sanctioned gold only — never hardcode `#FFD700` |
 
 ## Testing
 

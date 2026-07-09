@@ -13,7 +13,7 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 
 **JWT configuration**
 
-- Algorithm: HS256. `JWT_SIGNING_KEY` from Key Vault.
+- Algorithm: HS256. `JWT_SIGNING_KEY` comes from environment/configuration.
 - `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`, **15-minute access token expiry**.
 - Test: can a token with `alg: none` or a mismatched algorithm be accepted?
 - Test: does the API reject expired tokens promptly (no clock skew buffer)?
@@ -115,9 +115,9 @@ Test cases:
 
 ## Infrastructure and configuration
 
-**Key Vault secret name collisions**
+**Secret-name mapping collisions**
 
-- `HyphenToUnderscoreSecretManager` replaces hyphens with underscores. Check: could a secret named `JWT-SIGNING-KEY` collide with `JWT_SIGNING-KEY` or similar after transformation?
+- `HyphenToUnderscoreSecretManager` replaces hyphens with underscores. Check: could two configured secret names collide after transformation?
 
 **CORS**
 

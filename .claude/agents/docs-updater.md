@@ -14,12 +14,16 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | File                                     | Audience                      | What it covers                                                                                                                                                  |
 | ---------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CLAUDE.md`                              | Claude agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the authoritative guide agents read on every task                               |
-| `README.md`                              | Human developers (setup)      | Prerequisites, local dev setup steps, seed/ingestion instructions                                                                                               |
-| `web/README.md`                      | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
-| `private/ROADMAP.md`                     | Remaining work (canonical)    | What remains / is blocked / parked + active milestones. Carries **no** completed record (that's `archive.md`).                                                  |
-| `private/archive.md`                     | Completed work (canonical)    | Single chronological log of shipped work, newest first; build-era detail merged in at the bottom. Prepend new dated entries at the **top**.                     |
+| `README.md`                              | Human developers (setup)      | Public prerequisites, local dev setup steps, seed/ingestion instructions                                                                                        |
+| `docs/README.md`                         | Public docs readers           | Public/private/agent/generated documentation taxonomy                                                                                                           |
+| `docs/features.md`                       | Public docs readers           | Public product capability overview                                                                                                                              |
+| `docs/roadmap.md`                        | Public docs readers           | Public high-level project status and roadmap                                                                                                                    |
+| `web/README.md`                          | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
+| `private/ROADMAP.md`                     | Maintainers                   | Detailed remaining work / blockers / active milestones. Carries **no** completed record (that's `archive.md`).                                                  |
+| `private/archive.md`                     | Maintainers                   | Detailed completed-work log, newest first; build-era detail merged in at the bottom. Prepend new dated entries at the **top**.                                  |
 | `CHANGELOG.md` (repo root)               | Public release notes          | Keep a Changelog + SemVer. Add shipped work under `[Unreleased]`; version tags/GitHub Releases are automated on merges to `main`. The one **shipped** doc here. |
-| `private/PRD.md`                         | Product context               | Features, user stories, what is and isn't implemented                                                                                                           |
+| `private/PRD.md`                         | Maintainers                   | Full product spec, implementation context, and internal detail                                                                                                  |
+| `private/azure-deployment-runbook.md`    | Maintainers                   | Exact Azure resource names, command targets, and deployment details that should not be published.                                                               |
 | `.claude/agents/dotnet-api.md`           | dotnet-api subagent           | .NET patterns, JWT/auth configuration, EF Core rules, test rules                                                                                                |
 | `.claude/agents/react-frontend.md`       | react-frontend subagent       | API client patterns, auth flow, design token system, test rules                                                                                                 |
 | `.claude/agents/postgres-specialist.md`  | postgres-specialist subagent  | Full schema (both schemas, all tables, PKs, indexes), query patterns                                                                                            |
@@ -34,6 +38,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 - `private/ROADMAP.md`: remove the shipped item (or update its status if parked/cancelled). ROADMAP carries no completed record.
 - `private/archive.md`: **prepend** a new dated entry (newest first) summarizing what shipped — this is the canonical completed-work log. Leave the bottom build-era sections alone; add new work at the top.
 - `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date during ordinary feature/fix work. `.github/workflows/version.yml` creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases automatically on merges to `main`; `web/package.json` selects the major/minor line, and `x.y.0` is valid for a fresh major/minor bump.
+- `docs/features.md` / `docs/roadmap.md`: update only when public-facing capabilities or high-level status change.
 
 **New controller or endpoint added**
 
@@ -72,8 +77,14 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 **New Azure resource or Key Vault secret**
 
-- `azure-infrastructure.md`: resource inventory table and/or Key Vault secrets table
-- `CLAUDE.md`: Azure resource table (in the Commands section)
+- `private/` deployment runbook: exact resource names, secret names, and provisioning commands
+- `azure-infrastructure.md`: only update public-safe patterns or required runtime configuration invariants
+- Do not add live resource names, credentials, personal account identifiers, or private runbook links to tracked docs
+
+**Local Superpowers/spec planning docs**
+
+- `docs/superpowers/` and `.superpowers/` are local planning workspaces. They stay on disk but are ignored by git.
+- Do not add links from public docs to `docs/superpowers/` implementation plans.
 
 **New agent file created**
 
@@ -99,7 +110,8 @@ Linux, and web sessions, and never require permission approval:
 - Do not touch `README.md` setup steps unless a prerequisite, command, or port actually changed.
 - Do not update `private/PRD.md` for implementation details — only for feature-level changes (new capability added, planned feature cancelled, user story revised).
 - Do not add aspirational features or roadmap items to `CLAUDE.md` — it describes what is implemented, not what is planned.
-- Do not edit `azure-infrastructure.md` based on local changes — only after confirmed Azure resource changes.
+- Do not edit `azure-infrastructure.md` based on local changes — only after confirmed deployment-pattern changes.
+- Do not add secrets, connection strings, personal email addresses, subscription IDs, or live resource names to tracked docs. Tracked agent indexes may mention private runbook paths for discoverability, but must not duplicate their operational contents.
 
 ## Output
 

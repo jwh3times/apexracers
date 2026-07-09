@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Public documentation taxonomy, feature overview, and high-level roadmap pages under `docs/`.
 - Structured per-request logging middleware (method, path, status code, elapsed time, client IP; log level scales with status), complementing the Application Insights codeless auto-instrumentation already active on the API App Service.
 
 ### Fixed
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public and agent docs now separate public setup/product guidance from maintainer-only planning, deployment, and security runbooks.
 - Main-branch release automation now creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases, auto-incrementing the build per major/minor line while preserving intentional `x.y.0` bumps.
 
 ## [0.3.0] - 2026-07-04

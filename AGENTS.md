@@ -14,7 +14,7 @@ working in that area instead of duplicating its detailed instructions here.
 | React pages/components, design tokens, Vitest/Playwright rules | `.claude/agents/react-frontend.md`       |
 | Schema, indexes, query patterns, migrations                    | `.claude/agents/postgres-specialist.md`  |
 | Dockerfiles, Compose, image builds                             | `.claude/agents/docker-containers.md`    |
-| Azure resources, Key Vault map, deploy commands                | `.claude/agents/azure-infrastructure.md` |
+| Cloud deployment patterns and runtime configuration            | `.claude/agents/azure-infrastructure.md` |
 | Reviewing a diff for correctness/security before merging       | `.claude/agents/code-reviewer.md`        |
 | Security testing: JWT/auth flows, data isolation, CORS, admin  | `.claude/agents/penetration-tester.md`   |
 | Documentation sync after changes                               | `.claude/agents/docs-updater.md`         |
@@ -38,26 +38,30 @@ working in that area instead of duplicating its detailed instructions here.
 - `// TODO:` stubs are acceptable during scaffolding, but they must state what needs to
   be implemented.
 
-## Planning And Project Docs
+## Project Docs
 
-Planning and status docs live in `private/` and are gitignored. The shipped exception is
-the root `CHANGELOG.md`.
+Public docs live in the repo root and `docs/`. Maintainer-only planning, raw samples,
+deployment runbooks, security findings, and implementation archives live in
+`private/`, which is gitignored.
 
-| Doc                                     | Purpose                                                                                |
-| --------------------------------------- | -------------------------------------------------------------------------------------- |
-| `private/ROADMAP.md`                    | Canonical remaining work: blockers, milestones, backlog. Read first for "what's next". |
-| `private/archive.md`                    | Canonical completed work log, newest first.                                            |
-| `CHANGELOG.md`                          | Public release notes using Keep a Changelog and SemVer.                                |
-| `private/PRD.md`                        | Product spec, feature definitions, screens, API and data-model summaries.              |
-| `private/deployTODO.md`                 | Azure deployment runbook.                                                              |
-| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes. Read before mapping endpoints.            |
+| Doc                                     | Purpose                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------- |
+| `docs/README.md`                        | Public documentation map and ownership rules.                                    |
+| `docs/features.md`                      | Public product capabilities and workflows.                                       |
+| `docs/roadmap.md`                       | Public high-level status and roadmap.                                            |
+| `CHANGELOG.md`                          | Public release notes using Keep a Changelog and SemVer.                          |
+| `private/ROADMAP.md`                    | Maintainer-only detailed remaining work and blockers.                            |
+| `private/archive.md`                    | Maintainer-only detailed completed-work log.                                     |
+| `private/PRD.md`                        | Maintainer-only full product specification.                                      |
+| `private/azure-deployment-runbook.md`   | Maintainer-only Azure resource names, command targets, and deployment details.   |
+| `private/iracing-api-response-objects/` | Local captured iRacing API shapes. Read before mapping endpoints when available. |
 
 After completing a feature or fix:
 
-- Remove the shipped item from `private/ROADMAP.md`.
-- Prepend its summary to `private/archive.md`.
+- Update public docs when product capabilities, setup, or contribution workflow changes.
+- Update private planning docs when maintainer-only roadmap or archive detail changes.
 - Add an entry under the correct `[Unreleased]` category in `CHANGELOG.md`.
-- Update `private/PRD.md`, `CLAUDE.md`, this `AGENTS.md`, and `README.md` when relevant.
+- Update `CLAUDE.md`, this `AGENTS.md`, and `README.md` when their guidance changes.
 
 Merges to `main` automatically create a standard SemVer tag and GitHub Release in
 `<major>.<minor>.<build>` form. `web/package.json` selects the major/minor release
@@ -68,13 +72,13 @@ a versioned changelog section remains a separate docs step.
 
 ## iRacing Feature Flags
 
-The deployed app lacks iRacing OAuth credentials, so iRacing-data features are
-non-functional in production unless gated appropriately.
+Live iRacing-backed features are gated so environments without service credentials
+can still present a functional app.
 
 - `iracing-live`: real credentials. When off, iRacing routes render `ComingSoonPage` and
   nav items are hidden.
 - `iracing-demo`: Alpha-gated synthetic demo data. It is fully functional only after a DB
-  is seeded with `ApexRacers.Seeder --demo`; do not enable it in prod before then.
+  is seeded with `ApexRacers.Seeder --demo`.
 
 `RequireFlag` and `visibleNav` gate on `iracing-live || iracing-demo`. `MemberContext`
 resolves demo users to `DemoData.DriverCustId`.
@@ -251,8 +255,9 @@ Test database guidance:
 ## Documentation Discipline
 
 If behavior, commands, architecture, feature flags, routes, or workflows change, update
-the docs in the same task. At minimum, consider `CHANGELOG.md`, `private/ROADMAP.md`,
-`private/archive.md`, `private/PRD.md`, `README.md`, `CLAUDE.md`, and this file.
+the docs in the same task. At minimum, consider `CHANGELOG.md`, `docs/`,
+`README.md`, `CLAUDE.md`, and this file. Update `private/` docs only for
+maintainer-only planning, deployment, security, or archive detail.
 
 Keep this file concise. Put detailed, domain-specific guidance in the existing specialist
 files under `.claude/agents/` and keep `CLAUDE.md` as the full-session map.
