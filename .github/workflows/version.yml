@@ -1,16 +1,23 @@
 name: Version
 
-# Stamps every merge to main with an auto-incrementing build number.
+# Stamps every merge to main with a standard SemVer release.
 #
-# On each push to main this reads the base semantic version from the web/package.json `version` field,
-# computes the next build number for that base from the existing build tags, and pushes
-# an annotated tag `v<base>.<build>` (e.g. v1.2.3.7) pointing at the merge commit.
+# On each push to main this reads the release line from web/package.json `version`,
+# computes the next build number for that major/minor from existing three-part SemVer tags,
+# pushes an annotated tag `v<major>.<minor>.<build>`, and creates a GitHub Release.
 #
-# Why a tag instead of committing a bump back to main:
+# Why a tag/release instead of committing a bump back to main:
 #   - it works identically on protected branches (no bypass actor or bump-commit needed);
 #   - it never re-triggers CI or needs [skip ci] loops;
-#   - build numbers restart at 1 whenever the base version is bumped, and 4-part build
-#     tags (v1.2.3.7) can never collide with 3-part release tags (v1.2.3).
+#   - build numbers restart whenever the major/minor line is bumped.
+#
+# Version source rules:
+#   - web/package.json must contain a plain x.y.z SemVer version.
+#   - x.y selects the release line.
+#   - If no vX.Y.N three-part tag exists yet, z is accepted as the first build. This
+#     intentionally allows vX.Y.0 for a major/minor bump.
+#   - Once any vX.Y.N tag exists, the next merge stamps max(N)+1.
+#   - Legacy four-part build tags such as v0.3.0.6 are ignored.
 #
 # To see which build a checkout corresponds to: git describe --tags
 
@@ -28,31 +35,82 @@ concurrency:
 
 jobs:
   tag-build:
-    name: Tag build number
+    name: Tag release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history + tags, needed to compute the next build number
 
-      - name: Compute next build number and push tag
+      - name: Compute release version, push tag, and create release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          base=$(jq -r .version web/package.json)
-          if ! echo "$base" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Base version '$base' is not a plain x.y.z semver."
+          declared=$(jq -r .version web/package.json)
+          if ! echo "$declared" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Declared version '$declared' is not a plain x.y.z SemVer version."
             exit 1
           fi
-          last=$(git tag --list "v${base}.*" | sed "s/^v${base}\.//" | grep -E '^[0-9]+$' | sort -n | tail -1)
-          build=$(( ${last:-0} + 1 ))
-          tag="v${base}.${build}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" -m "Build ${build} of v${base}"
-          git push origin "refs/tags/${tag}"
+
+          major=$(echo "$declared" | cut -d. -f1)
+          minor=$(echo "$declared" | cut -d. -f2)
+          declared_build=$(echo "$declared" | cut -d. -f3)
+          line="${major}.${minor}"
+
+          existing_for_commit=$(
+            git tag --points-at "$GITHUB_SHA" |
+              grep -E "^v${major}\.${minor}\.[0-9]+$" |
+              sort -t. -k3,3n |
+              tail -1 || true
+          )
+
+          if [ -n "$existing_for_commit" ]; then
+            tag="$existing_for_commit"
+            build=$(echo "$tag" | cut -d. -f3)
+            stamped="false"
+          else
+            last=$(
+              git tag --list "v${major}.${minor}.*" |
+                sed "s/^v${major}\.${minor}\.//" |
+                grep -E '^[0-9]+$' |
+                sort -n |
+                tail -1 || true
+            )
+
+            if [ -z "$last" ]; then
+              build="$declared_build"
+            else
+              build=$(( last + 1 ))
+            fi
+
+            tag="v${major}.${minor}.${build}"
+
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              echo "::error::Computed tag '${tag}' already exists but does not point at ${GITHUB_SHA}."
+              exit 1
+            fi
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "Release ${tag}"
+            git push origin "refs/tags/${tag}"
+            stamped="true"
+          fi
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            release_created="false"
+          else
+            gh release create "$tag" --title "$tag" --generate-notes --latest --verify-tag
+            release_created="true"
+          fi
+
           {
-            echo "### Build stamped: \`${tag}\`"
+            echo "### Release stamped: \`${tag}\`"
             echo ""
-            echo "- Base version: \`${base}\`"
+            echo "- Declared version: \`${declared}\`"
+            echo "- Release line: \`${line}\`"
             echo "- Build number: \`${build}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Tag created by this run: \`${stamped}\`"
+            echo "- GitHub Release created by this run: \`${release_created}\`"
           } >> "$GITHUB_STEP_SUMMARY"
