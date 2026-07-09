@@ -20,25 +20,25 @@ Two schemas in one database:
 
 **`iracing` schema** (default via `HasDefaultSchema("iracing")`) — all domain tables:
 
-| Table                  | Key         | Notes                                                                                                                    |
-| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `Series`               | int PK      | A racing series (e.g., GT3 Cup)                                                                                          |
-| `Seasons`              | int PK      | Belongs to Series; `Active` bool                                                                                         |
-| `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                      |
-| `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                 |
-| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK                                                                                          |
-| `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)  |
-| `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                    |
-| `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                     |
-| `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                            |
-| `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum) |
-| `SubsessionResults`    | composite   | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …) |
-| `SeasonCarBops`        | composite   | Per-week BoP for one car (SeasonId, WeekNumber, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)  |
-| `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                          |
-| `PersonalLaps`         | Guid PK     | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness`            |
-| `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                    |
+| Table                  | Key         | Notes                                                                                                                                                        |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Series`               | int PK      | A racing series (e.g., GT3 Cup)                                                                                                                              |
+| `Seasons`              | int PK      | Belongs to Series; `Active` bool                                                                                                                             |
+| `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                                                          |
+| `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                                                     |
+| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK                                                                                                                              |
+| `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)                                      |
+| `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                                                        |
+| `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                                                         |
+| `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                                                                |
+| `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum)                                     |
+| `SubsessionResults`    | composite   | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …)                                     |
+| `SeasonCarBops`        | composite   | Per-week BoP for one car (SeasonId, WeekNumber, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
+| `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                                                              |
+| `PersonalLaps`         | Guid PK     | User's personal best per (UserId, CarId, TrackId); includes `SessionType`, `TrackTempCelsius`, `TrackWetness`                                                |
+| `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
 | `ExternalDataCaches`   | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on `CacheKey` (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
-| `Rivals`               | Guid PK     | A driver a user follows; unique index on (UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`        |
+| `Rivals`               | Guid PK     | A driver a user follows; unique index on (UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens:
 

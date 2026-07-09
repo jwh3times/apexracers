@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | React pages/components, design tokens, Vitest/Playwright rules     | `react-frontend`       |
 | Schema, indexes, query patterns, migrations                        | `postgres-specialist`  |
 | Dockerfiles, Compose, image builds                                 | `docker-containers`    |
-| Azure resources, Key Vault map, deploy commands                    | `azure-infrastructure` |
+| Cloud deployment patterns and runtime configuration                | `azure-infrastructure` |
 | Reviewing a diff for correctness/security before merging           | `code-reviewer`        |
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 | Documentation sync after changes (CHANGELOG, CLAUDE.md, README, …) | `docs-updater`         |
@@ -52,24 +52,28 @@ to fix exactly that drift.
 
 ---
 
-## Planning & project docs
+## Project docs
 
-Planning/status docs live in `private/` (gitignored — local working docs); the one **shipped** exception is the root `CHANGELOG.md`.
+Public docs live in the repo root and `docs/`. Maintainer-only planning, raw API samples, deployment
+runbooks, security findings, and implementation archives live in `private/`, which is gitignored.
 
-| Doc                                     | What it is                                                                                                           |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `private/ROADMAP.md`                    | **Canonical** record of **remaining** work — blockers, milestones, backlog. Read first for "what's next".            |
-| `private/archive.md`                    | **Canonical** record of **completed** work (single chronological log, newest first; build-era detail at the bottom). |
-| `CHANGELOG.md` (repo root)              | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section.               |
-| `private/PRD.md`                        | Product spec — feature definitions, screen inventory, API & data-model summaries.                                    |
-| `private/deployTODO.md`                 | Azure deployment runbook (resource creation, Key Vault, GitHub Actions, DNS/SSL).                                    |
-| `private/iracing-api-response-objects/` | Authoritative iRacing API JSON field shapes — read before mapping any endpoint.                                      |
+| Doc                                     | What it is                                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `docs/README.md`                        | Public documentation map and ownership rules.                                                          |
+| `docs/features.md`                      | Public product capabilities and workflows.                                                             |
+| `docs/roadmap.md`                       | Public high-level status and roadmap.                                                                  |
+| `CHANGELOG.md` (repo root)              | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
+| `private/ROADMAP.md`                    | Maintainer-only detailed remaining work, blockers, and active milestones.                              |
+| `private/archive.md`                    | Maintainer-only detailed completed-work log.                                                           |
+| `private/PRD.md`                        | Maintainer-only full product spec.                                                                     |
+| `private/azure-deployment-runbook.md`   | Maintainer-only Azure resource names, command targets, and deployment details.                         |
+| `private/iracing-api-response-objects/` | Local captured iRacing API JSON field shapes — read before mapping any endpoint when available.        |
 
-**After completing a feature/fix:** remove the shipped item from `private/ROADMAP.md`, **prepend** its
-summary to `private/archive.md` (newest first), and add a bullet under the `CHANGELOG.md` `[Unreleased]`
-section (correct `Added`/`Changed`/`Fixed`/`Removed`/`Security` category); update `private/PRD.md`,
-this `CLAUDE.md`, and `README.md` as relevant. ROADMAP tracks only what remains; `archive.md` is the
-record of what shipped. Releases are automatic on merges to `main`: `.github/workflows/version.yml`
+**After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
+workflow changes; update private planning docs when maintainer-only roadmap/archive detail changes; and
+add a bullet under the `CHANGELOG.md` `[Unreleased]` section (correct
+`Added`/`Changed`/`Fixed`/`Removed`/`Security` category). Releases are automatic on merges to `main`:
+`.github/workflows/version.yml`
 creates a standard SemVer tag/GitHub Release in `<major>.<minor>.<build>` form, where
 `web/package.json` selects the major/minor release line and the build auto-increments from existing
 three-part tags. For an intentional major/minor bump, set `web/package.json` to `x.y.0`; if no `vX.Y.0`
@@ -77,9 +81,8 @@ tag exists yet, build `0` is valid and is not advanced to `1`. Rolling `[Unrelea
 changelog section remains a separate, deliberate docs step. (The `docs-updater` agent owns the full
 doc-update matrix.)
 
-> **iRacing blocker (canonical note — referenced elsewhere).** The deployed app lacks iRacing OAuth
-> credentials, so iRacing-data features are non-functional in production. Two seeded-**disabled**
-> feature flags gate that surface:
+> **iRacing-data gating.** Live iRacing-backed features are gated so environments without service
+> credentials can still present a functional app. Two feature flags gate that surface:
 >
 > - `iracing-live` (M1, shipped) — real creds. When off, iRacing routes render `ComingSoonPage` and nav
 >   items are hidden.
@@ -87,8 +90,7 @@ doc-update matrix.)
 >   data. `MemberContext` resolves demo users to `DemoData.DriverCustId`.
 >
 > `RequireFlag` / `visibleNav` gate on `iracing-live` **OR** `iracing-demo`. `iracing-demo` is fully
-> functional **only** once a DB is seeded with `ApexRacers.Seeder --demo` (Plan 2) — do **not** enable it
-> in prod before then (cached pages would 503). See `private/deployTODO.md` §14 for the prod rollout.
+> functional **only** once a DB is seeded with `ApexRacers.Seeder --demo`.
 
 ---
 
@@ -128,7 +130,7 @@ npm install
 npm run dev          # Vite :5173, proxies /api → http://localhost:5000 (local dotnet API)
 npm run dev:all      # starts dotnet API + Vite together
 npm run dev:docker   # proxies /api → http://localhost:8080 (API in Docker)
-npm run dev:cloud    # proxies /api → https://apexracers-api.azurewebsites.net
+npm run dev:cloud    # proxies /api to the configured cloud API host
 npm run build        # tsc + Vite production build
 npm run lint         # ESLint
 npm run test         # Vitest one-shot   (test:watch for watch mode)
@@ -156,12 +158,13 @@ pre-filled for the Docker network. See the **Ports** table in [README.md](README
 5432, pgAdmin 5050, API 8080/5000, Vite 5173). For Dockerfile/Compose work see the `docker-containers`
 agent.
 
-### Azure
+### Cloud Deployment
 
-API = App Service (`apexracers-api`), ingestion worker = Container App (`apexracers-ingestion`), both
-in resource group `apexracers-rg`. Key Vault secret names use hyphens (`JWT-SIGNING-KEY`) and are mapped
-to underscore env vars by `HyphenToUnderscoreSecretManager` in both `Program.cs` files. Full resource
-inventory, Key Vault map, and deploy commands live in the `azure-infrastructure` agent.
+The API is deployed as a containerized web app that serves the React SPA from `wwwroot`; the ingestion
+worker is deployed as a separate background container. Runtime secrets are provided through the cloud
+secret store and mapped into app configuration. Secret names use hyphens in the store and are mapped to
+underscore env vars by `HyphenToUnderscoreSecretManager` in both `Program.cs` files. Public docs should
+describe the pattern, not exact maintainer resource names or private deployment runbooks.
 
 ---
 
@@ -212,11 +215,9 @@ raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit
 `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one
 runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
 dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
-limiting needs `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (see `deployTODO.md`; applied in prod as of
-2026-07-06). The `apexracers-api` App Service already runs codeless Application Insights
-auto-instrumentation (requests, dependencies, exceptions, and `ILogger` traces) — that's the structured
-telemetry pipeline; `RequestLoggingMiddleware`'s per-request log line flows into it (and to the console)
-rather than a separate logging path.
+limiting needs forwarded headers enabled in deployed reverse-proxy environments. The hosted API uses
+platform telemetry for requests, dependencies, exceptions, and `ILogger` traces; `RequestLoggingMiddleware`
+adds one structured per-request log line that flows into that telemetry pipeline and the console.
 
 ### Controllers — use-case-oriented, NOT entity-CRUD
 
@@ -401,10 +402,10 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   helpers directly; controllers are excluded. Measure with `dotnet-coverage collect "dotnet test" -f xml`
   then `reportgenerator`.
 - **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
-  full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across 5 public
-  - 7 authed pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
-    (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
-    in the `react-frontend` agent.
+  full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across public
+  and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
+  (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
+  in the `react-frontend` agent.
 - **Test DB provider:** `Helpers/DbContextFactory.Create()` uses **in-memory SQLite** (a real relational
   provider — queries must translate), with `Foreign Keys=False` so tests use minimal partial fixtures.
   Narrow exception `CreateInMemory()` is for the few production queries valid on Npgsql but untranslatable
