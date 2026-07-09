@@ -18,7 +18,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `web/README.md`                      | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
 | `private/ROADMAP.md`                     | Remaining work (canonical)    | What remains / is blocked / parked + active milestones. Carries **no** completed record (that's `archive.md`).                                                  |
 | `private/archive.md`                     | Completed work (canonical)    | Single chronological log of shipped work, newest first; build-era detail merged in at the bottom. Prepend new dated entries at the **top**.                     |
-| `CHANGELOG.md` (repo root)               | Public release notes          | Keep a Changelog + SemVer. Add shipped work under `[Unreleased]`; roll into a versioned section only on a deliberate release cut. The one **shipped** doc here. |
+| `CHANGELOG.md` (repo root)               | Public release notes          | Keep a Changelog + SemVer. Add shipped work under `[Unreleased]`; version tags/GitHub Releases are automated on merges to `main`. The one **shipped** doc here. |
 | `private/PRD.md`                         | Product context               | Features, user stories, what is and isn't implemented                                                                                                           |
 | `.claude/agents/dotnet-api.md`           | dotnet-api subagent           | .NET patterns, JWT/auth configuration, EF Core rules, test rules                                                                                                |
 | `.claude/agents/react-frontend.md`       | react-frontend subagent       | API client patterns, auth flow, design token system, test rules                                                                                                 |
@@ -33,7 +33,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 - `private/ROADMAP.md`: remove the shipped item (or update its status if parked/cancelled). ROADMAP carries no completed record.
 - `private/archive.md`: **prepend** a new dated entry (newest first) summarizing what shipped — this is the canonical completed-work log. Leave the bottom build-era sections alone; add new work at the top.
-- `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date — that happens only on a deliberate release cut (roll `[Unreleased]` into `[x.y.z] - DATE`, add the compare/tag links; a human creates the git tag). Versioning is SemVer, baseline `0.0.1`.
+- `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date during ordinary feature/fix work. `.github/workflows/version.yml` creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases automatically on merges to `main`; `web/package.json` selects the major/minor line, and `x.y.0` is valid for a fresh major/minor bump.
 
 **New controller or endpoint added**
 

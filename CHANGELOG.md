@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Per-IP rate limiting now partitions by the real client IP behind the App Service front end (via the `ASPNETCORE_FORWARDEDHEADERS_ENABLED` forwarded-headers app setting), instead of collapsing all clients into one shared bucket.
 
+### Changed
+
+- Main-branch release automation now creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases, auto-incrementing the build per major/minor line while preserving intentional `x.y.0` bumps.
+
 ## [0.3.0] - 2026-07-04
 
 ### Added

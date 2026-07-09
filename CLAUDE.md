@@ -6,15 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > reads; the per-domain rules live in `.claude/agents/` and load only when that subagent runs. Pointers
 > below say which agent owns what — don't duplicate their content back into this file.
 
-| Work type                                                           | Agent                  |
-| -------------------------------------------------------------------- | ---------------------- |
-| .NET/EF features, services, auth, ingestion patterns                | `dotnet-api`           |
-| React pages/components, design tokens, Vitest/Playwright rules      | `react-frontend`       |
-| Schema, indexes, query patterns, migrations                         | `postgres-specialist`  |
-| Dockerfiles, Compose, image builds                                  | `docker-containers`    |
-| Azure resources, Key Vault map, deploy commands                     | `azure-infrastructure` |
-| Reviewing a diff for correctness/security before merging            | `code-reviewer`        |
-| Security testing (JWT/auth flows, data isolation, CORS, admin)      | `penetration-tester`   |
+| Work type                                                          | Agent                  |
+| ------------------------------------------------------------------ | ---------------------- |
+| .NET/EF features, services, auth, ingestion patterns               | `dotnet-api`           |
+| React pages/components, design tokens, Vitest/Playwright rules     | `react-frontend`       |
+| Schema, indexes, query patterns, migrations                        | `postgres-specialist`  |
+| Dockerfiles, Compose, image builds                                 | `docker-containers`    |
+| Azure resources, Key Vault map, deploy commands                    | `azure-infrastructure` |
+| Reviewing a diff for correctness/security before merging           | `code-reviewer`        |
+| Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 | Documentation sync after changes (CHANGELOG, CLAUDE.md, README, …) | `docs-updater`         |
 
 Docs freshness is auto-checked at the end of every response turn by a read-only Stop hook in
@@ -69,9 +69,13 @@ Planning/status docs live in `private/` (gitignored — local working docs); the
 summary to `private/archive.md` (newest first), and add a bullet under the `CHANGELOG.md` `[Unreleased]`
 section (correct `Added`/`Changed`/`Fixed`/`Removed`/`Security` category); update `private/PRD.md`,
 this `CLAUDE.md`, and `README.md` as relevant. ROADMAP tracks only what remains; `archive.md` is the
-record of what shipped. **Cutting a release** — rolling `[Unreleased]` into a versioned `[x.y.z]` section
-and tagging — is a separate, deliberate step (SemVer; currently `0.2.0`). (The `docs-updater` agent owns
-the full doc-update matrix.)
+record of what shipped. Releases are automatic on merges to `main`: `.github/workflows/version.yml`
+creates a standard SemVer tag/GitHub Release in `<major>.<minor>.<build>` form, where
+`web/package.json` selects the major/minor release line and the build auto-increments from existing
+three-part tags. For an intentional major/minor bump, set `web/package.json` to `x.y.0`; if no `vX.Y.0`
+tag exists yet, build `0` is valid and is not advanced to `1`. Rolling `[Unreleased]` into a versioned
+changelog section remains a separate, deliberate docs step. (The `docs-updater` agent owns the full
+doc-update matrix.)
 
 > **iRacing blocker (canonical note — referenced elsewhere).** The deployed app lacks iRacing OAuth
 > credentials, so iRacing-data features are non-functional in production. Two seeded-**disabled**
@@ -398,9 +402,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   then `reportgenerator`.
 - **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
   full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across 5 public
-  + 7 authed pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
-  (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
-  in the `react-frontend` agent.
+  - 7 authed pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
+    (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
+    in the `react-frontend` agent.
 - **Test DB provider:** `Helpers/DbContextFactory.Create()` uses **in-memory SQLite** (a real relational
   provider — queries must translate), with `Foreign Keys=False` so tests use minimal partial fixtures.
   Narrow exception `CreateInMemory()` is for the few production queries valid on Npgsql but untranslatable
