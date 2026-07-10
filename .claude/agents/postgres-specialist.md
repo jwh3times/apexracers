@@ -87,7 +87,7 @@ Rules:
 
 ## Migrations
 
-The `dotnet ef migrations add` / `database update` commands are in CLAUDE.md (Commands); auto-apply-at-startup and the `DesignTimeDbContextFactory` fallback are the `dotnet-api` agent's. The DB-side concern that's yours: for **additive** changes (new columns with defaults, new tables) migrations are safe to run while the app starts; for **destructive** changes (column drops, renames), coordinate a deployment window.
+The `dotnet ef migrations add` / `database update` commands are in AGENTS.md (Commands); auto-apply-at-startup and the `DesignTimeDbContextFactory` fallback are the `dotnet-api` agent's. The DB-side concern that's yours: for **additive** changes (new columns with defaults, new tables) migrations are safe to run while the app starts; for **destructive** changes (column drops, renames), coordinate a deployment window.
 
 ## Query patterns in services
 
@@ -105,4 +105,4 @@ Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or
 
 ## Seed data
 
-The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in CLAUDE.md (Commands). It seeds synthetic lap data for all 7 series.
+The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in AGENTS.md (Commands). It seeds synthetic lap data for all 7 series.

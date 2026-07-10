@@ -93,7 +93,7 @@ worker — is documented in the [README](README.md#local-development-setup).
 
 Architectural conventions (use-case-oriented controllers, services hold all
 logic, no generic repositories, the fluid design system on the frontend, etc.)
-are documented in [CLAUDE.md](CLAUDE.md). Please read it before making
+are documented in [AGENTS.md](AGENTS.md). Please read it before making
 structural changes — PRs are expected to follow these patterns.
 
 ## Development workflow
@@ -148,7 +148,7 @@ npm run build                # tsc + production build
   an unformatted file blocks the deploy.
 - Reuse the shared utilities and design-system classes (e.g.
   `utils/lapTime.ts`, the fluid `text-*`/`card-*` classes) rather than
-  introducing one-off equivalents. See [CLAUDE.md](CLAUDE.md) for the design
+  introducing one-off equivalents. See [AGENTS.md](AGENTS.md) for the design
   system.
 
 ## Database migrations

@@ -1,19 +1,20 @@
 ---
 name: docs-updater
-description: Use to keep project documentation current after code changes — CLAUDE.md, README.md, private/PRD.md, and all agent files in .claude/agents/. Run after completing a feature, security fix, or architectural change.
+description: Use to keep project documentation current after code changes — AGENTS.md (canonical, imported by CLAUDE.md), README.md, private/PRD.md, and all agent files in .claude/agents/. Run after completing a feature, security fix, or architectural change.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---
 
 You are keeping the ApexRacers project documentation current. Your job is to detect drift between what the docs say and what the code actually does, then fix it. Never invent features or capabilities that don't exist in the code.
 
-**Dedup principle (important):** every custom subagent inherits the project `CLAUDE.md` at runtime, so a fact stated in `CLAUDE.md` is already available to every `.claude/agents/*.md` agent. Do **not** restate CLAUDE.md content in an agent file — anchor shared / load-bearing facts in `CLAUDE.md` and keep only each agent's unique lens (its enforcement framing, deep detail, or domain-specific scenarios) in the agent file. Sibling agents do **not** inherit each other, so a cross-agent "see the X agent" note is a maintainer breadcrumb, not a runtime reference. When a fact changes, update it in its one canonical home — not in every copy.
+**Dedup principle (important):** the canonical project guide is `AGENTS.md`; `CLAUDE.md` is only a single bare `@AGENTS.md` import for Claude Code. Claude Code [loads project memory into every custom subagent](https://code.claude.com/docs/en/sub-agents) and [expands `@` imports when a session starts](https://code.claude.com/docs/en/memory), so custom `.claude/agents/*.md` specialists receive the imported `AGENTS.md` guidance. Built-in Explore and Plan agents are the documented exception; other agent runners must read `AGENTS.md` directly rather than relying on Claude Code's import behavior. Do **not** restate `AGENTS.md` content in an agent file, and do **not** move content into the thin `CLAUDE.md` — anchor shared / load-bearing facts in `AGENTS.md` and keep only each agent's unique lens (its enforcement framing, deep detail, or domain-specific scenarios) in the agent file. Sibling agents do **not** inherit each other, so a cross-agent "see the X agent" note is a maintainer breadcrumb, not a runtime reference. When a fact changes, update it in its one canonical home — not in every copy.
 
 ## Documents you maintain
 
 | File                                     | Audience                      | What it covers                                                                                                                                                  |
 | ---------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLAUDE.md`                              | Claude agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the authoritative guide agents read on every task                               |
+| `AGENTS.md`                              | All coding agents (every session) | Architecture, patterns, commands, model table, controllers, services, routing — the **canonical** authoritative guide agents read on every task; imported into `CLAUDE.md`         |
+| `CLAUDE.md`                              | Claude Code (every session)   | Thin entry point: a one-line `@AGENTS.md` import plus any Claude-Code-specific notes. Edit `AGENTS.md` for content, not this file                                 |
 | `README.md`                              | Human developers (setup)      | Public prerequisites, local dev setup steps, seed/ingestion instructions                                                                                        |
 | `docs/README.md`                         | Public docs readers           | Public/private/agent/generated documentation taxonomy                                                                                                           |
 | `docs/features.md`                       | Public docs readers           | Public product capability overview                                                                                                                              |
@@ -42,19 +43,19 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 **New controller or endpoint added**
 
-- `CLAUDE.md`: add to the controllers table and (if applicable) the routes table
+- `AGENTS.md`: add to the controllers table and (if applicable) the routes table
 - `dotnet-api.md`: no change needed unless a new auth pattern is introduced
 - `penetration-tester.md`: add the new endpoint to the relevant attack surface section
 - `code-reviewer.md`: add any new intentional exceptions to the auth/pattern rules
 
 **New Core model added**
 
-- `CLAUDE.md`: add to the Core models table
+- `AGENTS.md`: add to the Core models table
 - `postgres-specialist.md`: add to the schema table with PK type, schema, and key notes; add any new indexes to the critical indexes section
 
 **Auth mechanism changed** (JWT duration, refresh tokens, token storage, new endpoints)
 
-- `CLAUDE.md`: AuthController description, AuthContext description, AuthService description
+- `AGENTS.md`: AuthController description, AuthContext description, AuthService description
 - `dotnet-api.md`: Auth and RBAC section
 - `react-frontend.md`: Authentication section and 401 interceptor section
 - `postgres-specialist.md`: identity schema table if a new table was added
@@ -109,7 +110,7 @@ Linux, and web sessions, and never require permission approval:
 - Do not edit agent frontmatter (`name`, `description`, `tools`, `model`) unless you are explicitly asked to.
 - Do not touch `README.md` setup steps unless a prerequisite, command, or port actually changed.
 - Do not update `private/PRD.md` for implementation details — only for feature-level changes (new capability added, planned feature cancelled, user story revised).
-- Do not add aspirational features or roadmap items to `CLAUDE.md` — it describes what is implemented, not what is planned.
+- Do not add aspirational features or roadmap items to `AGENTS.md` — it describes what is implemented, not what is planned.
 - Do not edit `azure-infrastructure.md` based on local changes — only after confirmed deployment-pattern changes.
 - Do not add secrets, connection strings, personal email addresses, subscription IDs, or live resource names to tracked docs. Tracked agent indexes may mention private runbook paths for discoverability, but must not duplicate their operational contents.
 
