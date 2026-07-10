@@ -7,7 +7,7 @@ model: sonnet
 
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
 
-The project `CLAUDE.md` you've loaded already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
+The project guide `AGENTS.md` (imported into the `CLAUDE.md` you've loaded) already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
 
 ## C# style
 
@@ -18,18 +18,18 @@ The project `CLAUDE.md` you've loaded already covers: the project/dependency gra
 
 ## Controllers — the .NET specifics
 
-CLAUDE.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in CLAUDE.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
+AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
 
 ## Services — the .NET specifics
 
-CLAUDE.md covers the service-layer rules (all logic here; inject `AppDbContext` directly; no MediatR / `IRepository<T>`; one responsibility per class). Conventions it doesn't:
+AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` directly; no MediatR / `IRepository<T>`; one responsibility per class). Conventions it doesn't:
 
 - `async Task<T>` with `CancellationToken ct = default` as the last parameter on every public async method.
 - Drive error flow by throwing — `ArgumentException` / `InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503 (see `ExceptionStatusMapper`). Don't catch these back to `BadRequest`/`NotFound` in the controller.
 
 ## DTOs
 
-`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (CLAUDE.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
+`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
 
 ## AppDbContext and schemas
 
@@ -39,7 +39,7 @@ The entity-config mechanics (one `IEntityTypeConfiguration<T>` per entity in `sr
 
 ## Migrations
 
-The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in CLAUDE.md (Commands). Beyond those: migrations **auto-apply at API startup** via `db.Database.MigrateAsync()`, so write them to apply cleanly on boot (the prod deploy story is the `azure-infrastructure` agent's). `DesignTimeDbContextFactory` reads `DATABASE_CONNECTION_STRING` or falls back to a hardcoded local dev string, so `dotnet ef` needs no env var locally.
+The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS.md (Commands). Beyond those: migrations **auto-apply at API startup** via `db.Database.MigrateAsync()`, so write them to apply cleanly on boot (the prod deploy story is the `azure-infrastructure` agent's). `DesignTimeDbContextFactory` reads `DATABASE_CONNECTION_STRING` or falls back to a hardcoded local dev string, so `dotnet ef` needs no env var locally.
 
 ## Auth and RBAC
 
@@ -66,8 +66,8 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in CLAUDE
 
 ## Configuration
 
-`AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in CLAUDE.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup.
+`AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in AGENTS.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup.
 
 ## Tests
 
-xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. CLAUDE.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
+xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. AGENTS.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.

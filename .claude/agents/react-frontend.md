@@ -7,7 +7,7 @@ model: sonnet
 
 You are working inside the ApexRacers React frontend (`web/`). Know these patterns and enforce them without deviation.
 
-React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/build/lint/test/format commands are in CLAUDE.md (Commands → Frontend); CLAUDE.md also carries the routing map, the design-system summary, and the `request<T>` API-client contract. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
+React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/build/lint/test/format commands are in AGENTS.md (Commands → Frontend); AGENTS.md also carries the routing map, the design-system summary, and the `request<T>` API-client contract. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
 
 ## API calls — always go through api.ts
 
@@ -135,7 +135,7 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 - Every new source file needs a corresponding test file, colocated as a `*.test.ts(x)` sibling next to the source (pages in `features/`, components, contexts, services, and utils all follow this). The only remaining `__tests__/` directories are `src/pages/__tests__/` (static pages) and `src/__tests__/` (App-level route guards).
 - Test behavior, not implementation: prefer `getByRole`, `getByText`, `findBy*` over snapshot tests.
 - Mock `src/services/api.ts` with `vi.mock('../services/api')` in tests that call API methods; mock `src/context/AuthContext.tsx` when testing pages that call `useAuth()`.
-- The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in CLAUDE.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
+- The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in AGENTS.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
 - **End-to-end (Playwright):** tests live in `web/e2e/` and run against the full stack at `http://localhost:8080` (e.g. `docker compose up`). Config is `web/playwright.config.ts` (single Chromium project; `reuseExistingServer: !process.env.CI`). Run with `npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive). Vitest excludes `e2e/` via `include: ['src/**']` in `vite.config.ts` — E2E tests never count toward the coverage gate. A non-blocking per-PR GitHub Actions workflow (`.github/workflows/e2e.yml`) also runs the suite (Postgres service + builds SPA into API wwwroot + Playwright); it is not yet a required check.
 - **Accessibility audits:** `web/e2e/a11y.spec.ts` asserts zero WCAG 2.1 A/AA violations across 5 public + 7 authed pages via `auditA11y(page)` from `web/e2e/helpers/a11y.ts` (`@axe-core/playwright`, `wcag2a`/`wcag2aa` tagset).
 - **Visual regression:** `web/e2e/visual.spec.ts` captures full-page `toHaveScreenshot` baselines for the stable public pages; **CI-only** (`test.skip(!process.env.CI)`) with committed Linux/Chromium PNGs under `e2e/visual.spec.ts-snapshots/`. Refresh via `e2e.yml` `workflow_dispatch` (`update_snapshots=true`) → download the `visual-baselines` artifact → commit. Defaults (animations off, caret hidden, 2% tolerance) live in `playwright.config.ts`.

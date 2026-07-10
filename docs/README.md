@@ -21,7 +21,8 @@ intentionally gitignored and must not be required for normal external contributi
 
 ## Agent docs
 
-`AGENTS.md`, `CLAUDE.md`, and `.claude/agents/` contain coding-agent guidance. Keep
-them focused on repo behavior and implementation conventions. Do not add secrets,
-live credentials, personal account data, or private deployment runbooks to tracked
-agent docs.
+`AGENTS.md` is the canonical coding-agent guide, and `.claude/agents/` contains
+specialist guidance. `CLAUDE.md` is only a thin `@AGENTS.md` import shim for Claude
+Code; edit shared guidance in `AGENTS.md`, not the shim. Keep tracked agent docs
+focused on repo behavior and implementation conventions. Do not add secrets, live
+credentials, personal account data, or private deployment runbooks to them.

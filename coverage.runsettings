@@ -6,7 +6,7 @@
         <Configuration>
           <!--
             Exclude generated/infrastructure code that has no business logic:
-              - Controllers      : parameter binding + Ok() only, per CLAUDE.md
+              - Controllers      : parameter binding + Ok() only, per AGENTS.md
               - EF Migrations    : auto-generated schema code
               - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
               - DesignTimeFactory: dotnet-ef dev tooling only
