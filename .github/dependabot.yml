@@ -18,6 +18,7 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+      - "nuget"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -39,6 +40,7 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+      - "npm"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -106,6 +108,7 @@ updates:
       timezone: "America/New_York"
     labels:
       - "dependencies"
+      - "github-actions"
     commit-message:
       prefix: "chore"
     groups:
@@ -127,6 +130,7 @@ updates:
       timezone: "America/New_York"
     labels:
       - "dependencies"
+      - "docker"
     commit-message:
       prefix: "chore"
     groups:
@@ -146,6 +150,7 @@ updates:
       timezone: "America/New_York"
     labels:
       - "dependencies"
+      - "docker-compose"
     commit-message:
       prefix: "chore"
     groups:
