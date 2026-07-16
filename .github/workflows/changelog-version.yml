@@ -6,10 +6,17 @@ name: Changelog Version
 # release, so the prediction and the eventual tag share one source of truth.
 #
 # A PR that only touches [Unreleased] (e.g. dependabot, docs-only) is exempt:
-# the script passes when the top dated section is already a released tag.
+# the script passes when the top dated section already exists on main, i.e. this
+# branch introduces no new dated section.
 #
-# Make this a required status check in branch protection to block merges whose
-# dated CHANGELOG section has drifted out of sync with the next build number.
+# To actually block drift, set BOTH in branch protection for main:
+#   - "Verify changelog version" as a required status check, and
+#   - "Require branches to be up to date before merging".
+# The second matters: `pull_request` does not re-fire when main moves, so a green
+# result from before someone else's merge would otherwise stay green even though
+# that merge consumed the build number this PR's section names. Requiring an
+# up-to-date branch forces a `synchronize` event, which re-runs this check
+# against the new tag set.
 
 on:
   pull_request:
