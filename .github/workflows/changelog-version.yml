@@ -9,14 +9,18 @@ name: Changelog Version
 # the script passes when the top dated section already exists on main, i.e. this
 # branch introduces no new dated section.
 #
-# To actually block drift, set BOTH in branch protection for main:
-#   - "Verify changelog version" as a required status check, and
-#   - "Require branches to be up to date before merging".
-# The second matters: `pull_request` does not re-fire when main moves, so a green
-# result from before someone else's merge would otherwise stay green even though
-# that merge consumed the build number this PR's section names. Requiring an
-# up-to-date branch forces a `synchronize` event, which re-runs this check
-# against the new tag set.
+# Blocking drift needs BOTH of these on main, and the "Main/Release branch rules"
+# ruleset sets both today:
+#   - "Verify changelog version" listed as a required status check, and
+#   - strict_required_status_checks_policy (Require branches to be up to date).
+# The second is load-bearing: `pull_request` does not re-fire when main moves, so a
+# green result from before someone else's merge would otherwise stay green even
+# though that merge consumed the build number this PR's section names. Requiring an
+# up-to-date branch forces a `synchronize` event, which re-runs this check against
+# the new tag set. Dropping either one silently reopens that gap.
+#
+# Note the ruleset targets branches, not tags, so version.yml's tag push is
+# unaffected by it.
 
 on:
   pull_request:
