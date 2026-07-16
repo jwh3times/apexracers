@@ -1,0 +1,43 @@
+name: Changelog Version
+
+# Verifies that the CHANGELOG's top dated section names the version this PR's
+# merge will mint. It calls scripts/verify-changelog-version.sh, which in turn
+# calls scripts/next-version.sh — the same script version.yml uses to stamp the
+# release, so the prediction and the eventual tag share one source of truth.
+#
+# A PR that only touches [Unreleased] (e.g. dependabot, docs-only) is exempt:
+# the script passes when the top dated section already exists on main, i.e. this
+# branch introduces no new dated section.
+#
+# Blocking drift needs BOTH of these on main, and the "Main/Release branch rules"
+# ruleset sets both today:
+#   - "Verify changelog version" listed as a required status check, and
+#   - strict_required_status_checks_policy (Require branches to be up to date).
+# The second is load-bearing: `pull_request` does not re-fire when main moves, so a
+# green result from before someone else's merge would otherwise stay green even
+# though that merge consumed the build number this PR's section names. Requiring an
+# up-to-date branch forces a `synchronize` event, which re-runs this check against
+# the new tag set. Dropping either one silently reopens that gap.
+#
+# Note the ruleset targets branches, not tags, so version.yml's tag push is
+# unaffected by it.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify changelog version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history + tags, needed to compute the next build number
+
+      - name: Verify CHANGELOG matches the next mint version
+        run: bash scripts/verify-changelog-version.sh

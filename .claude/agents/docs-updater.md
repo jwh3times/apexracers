@@ -38,7 +38,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 - `private/ROADMAP.md`: remove the shipped item (or update its status if parked/cancelled). ROADMAP carries no completed record.
 - `private/archive.md`: **prepend** a new dated entry (newest first) summarizing what shipped — this is the canonical completed-work log. Leave the bottom build-era sections alone; add new work at the top.
-- `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date during ordinary feature/fix work. `.github/workflows/version.yml` creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases automatically on merges to `main`; `web/package.json` selects the major/minor line, and `x.y.0` is valid for a fresh major/minor bump.
+- `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date during ordinary feature/fix work. `.github/workflows/version.yml` creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases automatically on merges to `main`; `web/package.json` selects the major/minor line, and `x.y.0` is valid for a fresh major/minor bump. The [`/ship` skill](../skills/ship/SKILL.md) is the deliberate later step that rolls `[Unreleased]` into a dated section for the version its merge will mint — if you were invoked from `/ship`, leave that roll (and `CHANGELOG.md`'s dated sections) to it and only touch `[Unreleased]`.
 - `docs/features.md` / `docs/roadmap.md`: update only when public-facing capabilities or high-level status change.
 
 **New controller or endpoint added**
