@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.4.15] - 2026-07-16
+
 ### Added
 
 - Public documentation taxonomy, feature overview, and high-level roadmap pages under `docs/`.
@@ -20,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Public and agent docs now separate public setup/product guidance from maintainer-only planning, deployment, and security runbooks.
 - Main-branch release automation now creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases, auto-incrementing the build per major/minor line while preserving intentional `x.y.0` bumps.
+- Contributor workflow: added a `/ship` skill (`.claude/skills/ship/`) that refreshes docs, rolls `[Unreleased]` into a CHANGELOG section dated for the version the merge will mint, runs the fast checks (Prettier, ESLint, `npm run build`, `dotnet build`), and opens or updates the PR. The mint version now comes from a single `scripts/next-version.sh` helper that the release workflow (`version.yml`) also calls, and a new **Changelog Version** CI check (`.github/workflows/changelog-version.yml`) fails a PR whose dated CHANGELOG section has drifted from that version. This replaces the per-turn docs-freshness Stop hook, which has been removed.
 
 ## [0.3.0] - 2026-07-04
 
@@ -261,7 +266,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.15...HEAD
+[0.4.15]: https://github.com/jwh3times/apexracers/compare/v0.4.14...v0.4.15
 [0.3.0]: https://github.com/jwh3times/apexracers/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jwh3times/apexracers/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jwh3times/apexracers/compare/v0.0.1...v0.1.0
