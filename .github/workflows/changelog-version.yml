@@ -1,0 +1,32 @@
+name: Changelog Version
+
+# Verifies that the CHANGELOG's top dated section names the version this PR's
+# merge will mint. It calls scripts/verify-changelog-version.sh, which in turn
+# calls scripts/next-version.sh — the same script version.yml uses to stamp the
+# release, so the prediction and the eventual tag share one source of truth.
+#
+# A PR that only touches [Unreleased] (e.g. dependabot, docs-only) is exempt:
+# the script passes when the top dated section is already a released tag.
+#
+# Make this a required status check in branch protection to block merges whose
+# dated CHANGELOG section has drifted out of sync with the next build number.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify changelog version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history + tags, needed to compute the next build number
+
+      - name: Verify CHANGELOG matches the next mint version
+        run: bash scripts/verify-changelog-version.sh

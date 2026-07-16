@@ -54,7 +54,6 @@ jobs:
 
           major=$(echo "$declared" | cut -d. -f1)
           minor=$(echo "$declared" | cut -d. -f2)
-          declared_build=$(echo "$declared" | cut -d. -f3)
           line="${major}.${minor}"
 
           existing_for_commit=$(
@@ -69,21 +68,14 @@ jobs:
             build=$(echo "$tag" | cut -d. -f3)
             stamped="false"
           else
-            last=$(
-              git tag --list "v${major}.${minor}.*" |
-                sed "s/^v${major}\.${minor}\.//" |
-                grep -E '^[0-9]+$' |
-                sort -n |
-                tail -1 || true
-            )
-
-            if [ -z "$last" ]; then
-              build="$declared_build"
-            else
-              build=$(( last + 1 ))
-            fi
-
-            tag="v${major}.${minor}.${build}"
+            # Compute the next build with the SAME script /ship uses, so the
+            # version /ship predicts and the version stamped here can never drift.
+            # (scripts/next-version.sh derives the x.y line from web/package.json
+            # and returns x.y.<max build + 1>, or x.y.<declared build> if the line
+            # has no tags yet.)
+            version="$(bash scripts/next-version.sh)"
+            build="${version##*.}"
+            tag="v${version}"
 
             if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
               echo "::error::Computed tag '${tag}' already exists but does not point at ${GITHUB_SHA}."

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Public and agent docs now separate public setup/product guidance from maintainer-only planning, deployment, and security runbooks.
 - Main-branch release automation now creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases, auto-incrementing the build per major/minor line while preserving intentional `x.y.0` bumps.
+- Contributor workflow: added a `/ship` skill (`.claude/skills/ship/`) that refreshes docs, rolls `[Unreleased]` into a CHANGELOG section dated for the version the merge will mint, runs the fast checks (Prettier, ESLint, `npm run build`, `dotnet build`), and opens or updates the PR. The mint version now comes from a single `scripts/next-version.sh` helper that the release workflow (`version.yml`) also calls, and a new **Changelog Version** CI check (`.github/workflows/changelog-version.yml`) fails a PR whose dated CHANGELOG section has drifted from that version. This replaces the per-turn docs-freshness Stop hook, which has been removed.
 
 ## [0.3.0] - 2026-07-04
 
