@@ -182,6 +182,10 @@ html.theme-light {
   --spacing-container-max: 1440px;
 
   /* Font families */
+  /* Pin the base sans stack: the app's default font is Inter and must not
+     inherit Tailwind's Preflight default, whose value changed in 4.3.3 and
+     shifted rendering on every element that sets no family of its own. */
+  --font-sans: Inter, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
   --font-label-caps: Inter;
   --font-headline-sm: Sora;
   --font-headline-md: Sora;
