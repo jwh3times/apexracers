@@ -182,10 +182,15 @@ html.theme-light {
   --spacing-container-max: 1440px;
 
   /* Font families */
-  /* Pin the base sans stack: the app's default font is Inter and must not
-     inherit Tailwind's Preflight default, whose value changed in 4.3.3 and
-     shifted rendering on every element that sets no family of its own. */
+  /* Pin the base sans + mono stacks so the app's default fonts are app-owned and
+     never inherit Tailwind's Preflight defaults, whose values can change between
+     releases (the sans default changed in 4.3.3 and shifted rendering on every
+     element that sets no family of its own). Mono keeps the current generic
+     stack — locked against churn, not restyled. */
   --font-sans: Inter, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
   --font-label-caps: Inter;
   --font-headline-sm: Sora;
   --font-headline-md: Sora;
