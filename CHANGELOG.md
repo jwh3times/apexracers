@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Pinned the app's base sans-serif font (`--font-sans` → Inter) so the default typeface no longer inherits Tailwind's Preflight default, whose value changed in `tailwindcss` 4.3.3 and shifted rendering on every element that sets no font family of its own (notably the public landing, terms, and privacy pages).
+- Pinned the base monospace font (`--font-mono`) to the generic stack it already resolved to, so — like `--font-sans` — it is app-owned and immune to future changes in Tailwind's Preflight default. No visual change; purely defensive.
+- Fixed the public Terms of Service and Privacy Policy pages, whose title and body text used typography utility classes (`font-display-sm`/`text-display-sm` and `font-body-md`/`text-body-md`) that have no matching design-system tokens and therefore emitted no CSS — the text rendered with no defined size or font family. Remapped the page titles to the shared `.text-page-title` style and the body copy to the existing `body-lg` token.
 
 ## [0.4.15] - 2026-07-16
 
