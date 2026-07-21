@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Cleared both high-severity advisories failing the `npm audit (web)` job, which is now back to zero vulnerabilities. Both dependencies are dev-only and never shipped to users:
+  - `shell-quote` forced to the patched `^1.9.0` via an npm `overrides` entry, resolving a quadratic-complexity DoS in `parse()` (GHSA-395f-4hp3-45gv). The advisory reaches the tree through `concurrently`, which exact-pins `shell-quote@1.8.4` on its 10.x line, so no bump of `concurrently` could resolve it; the override keeps `concurrently` current instead of downgrading it to 9.2.4 as `npm audit fix --force` proposes.
+  - `brace-expansion` updated 5.0.6 → 5.0.7, resolving a DoS via exponential-time expansion of consecutive non-expanding `{}` groups (GHSA-3jxr-9vmj-r5cp). It reaches the tree through `eslint` → `minimatch`.
+
 ### Fixed
 
 - Pinned the app's base sans-serif font (`--font-sans` → Inter) so the default typeface no longer inherits Tailwind's Preflight default, whose value changed in `tailwindcss` 4.3.3 and shifted rendering on every element that sets no font family of its own (notably the public landing, terms, and privacy pages).
