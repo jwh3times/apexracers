@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Forced the dev-only transitive `shell-quote` dependency to the patched `^1.9.0` via an npm `overrides` entry, clearing the high-severity quadratic-complexity DoS advisory (GHSA-395f-4hp3-45gv) that failed the `npm audit (web)` job. The advisory reaches the tree through `concurrently`, which exact-pins `shell-quote@1.8.4` on its 10.x line; the override keeps `concurrently` current instead of downgrading it to 9.2.4 as `npm audit fix --force` proposes.
+
 ### Fixed
 
 - Pinned the app's base sans-serif font (`--font-sans` → Inter) so the default typeface no longer inherits Tailwind's Preflight default, whose value changed in `tailwindcss` 4.3.3 and shifted rendering on every element that sets no font family of its own (notably the public landing, terms, and privacy pages).

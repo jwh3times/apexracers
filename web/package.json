@@ -26,6 +26,9 @@
   "engines": {
     "node": ">=26"
   },
+  "overrides": {
+    "shell-quote": "^1.9.0"
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
