@@ -96,9 +96,12 @@ Edit the source, re-run the script, and commit both.
 - `docs/superpowers/` and `.superpowers/` are local planning workspaces. They stay on disk but are ignored by git.
 - Do not add links from public docs to `docs/superpowers/` implementation plans.
 
-**New agent file created**
+**New agent file created (or an existing one edited)**
 
-- No other doc needs updating; just ensure the new agent file is accurate
+- No other doc needs updating beyond ensuring the agent file itself is accurate.
+- Run `node scripts/sync-agent-configs.mjs` and commit the regenerated `.codex/agents/<name>.toml` (same
+  for a `.claude/skills/*/SKILL.md` or `.claude/hooks/*` change → `.agents/skills/` / `.codex/hooks/`) —
+  otherwise the **Agent Config Sync** CI check fails the PR on drift.
 
 ## How to detect drift
 

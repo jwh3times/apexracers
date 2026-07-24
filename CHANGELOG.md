@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.4.25] - 2026-07-24
+
 ### Added
 
 - Codex parity for the repo's agent tooling, generated from the existing Claude Code sources so the two tools cannot drift. `scripts/sync-agent-configs.mjs` renders `.claude/agents/*.md` to `.codex/agents/*.toml`, and mirrors `.claude/skills/*/SKILL.md` and `.claude/hooks/*` to the paths Codex discovers (`.agents/skills/`, `.codex/hooks/`). A `tools:` list without `Write`/`Edit` becomes `sandbox_mode = "read-only"`; `model:` is dropped, since Claude model names are not Codex model names. The generator self-validates: it round-trips each generated TOML through an independent parser to catch an escaping regression, and lints the mirrored prose for `claude`→`Codex` substitution artifacts and relative links that would break at the mirrored path depth.
@@ -287,7 +291,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.15...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.25...HEAD
+[0.4.25]: https://github.com/jwh3times/apexracers/compare/v0.4.24...v0.4.25
 [0.4.15]: https://github.com/jwh3times/apexracers/compare/v0.4.14...v0.4.15
 [0.3.0]: https://github.com/jwh3times/apexracers/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jwh3times/apexracers/compare/v0.1.0...v0.2.0
