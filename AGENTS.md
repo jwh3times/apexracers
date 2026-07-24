@@ -24,6 +24,39 @@ opening a PR it invokes `docs-updater` scoped to the branch diff, then rolls `[U
 CHANGELOG section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a
 branch is ready for review.
 
+## Agent config parity (Claude Code ↔ Codex)
+
+Both tools run the same agents, skills, and session hooks from **one** set of sources. Claude Code's
+files are canonical; the Codex tree is **generated**:
+
+| Source (edit this)               | Generated (never edit)           |
+| -------------------------------- | -------------------------------- |
+| `.claude/agents/<name>.md`       | `.codex/agents/<name>.toml`      |
+| `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
+| `.claude/hooks/<file>`           | `.codex/hooks/<file>`            |
+
+Regenerate with `node scripts/sync-agent-configs.mjs` and commit both sides; the **Agent Config Sync**
+CI check (`.github/workflows/agent-config-sync.yml`) fails a PR whose generated tree has drifted or
+that leaves an orphaned generated file behind. The generator copies prose **verbatim** — it never
+rewrites wording — so keep agent and skill bodies **tool-neutral**: don't name one tool's entry-point
+file where "the project guide" will do, and write repo-root-relative paths as plain text rather than
+relative Markdown links (a relative link resolves differently from the mirrored location).
+
+Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
+becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model
+names, so Codex uses its session default). The generator also self-checks: it round-trips every
+generated TOML through an independent parser (catching an escaping regression before it ships) and
+lints the mirrored prose for substitution artifacts and depth-fragile relative links.
+
+`.codex/hooks.json` and `.codex/config.toml` are **hand-maintained**, not generated. `config.toml` is
+the Codex counterpart to `.claude/settings.json` permissions — Codex has no per-command allowlist, so
+it sets `sandbox_mode = "workspace-write"` + `approval_policy = "on-request"` with
+`network_access = true` (the .NET/npm dev loop needs the network). Lifecycle hooks are defined in
+`.codex/hooks.json` and need no feature flag. The shared session hook
+(`.claude/hooks/session-start.sh` → `.codex/hooks/session-start.sh`) is capability-gated (runs only
+where `apt-get` exists and .NET 10 is absent), so the one verbatim-mirrored script is correct for both
+Claude Code's web sandbox and Codex cloud.
+
 ---
 
 ## Ground Rules
@@ -163,6 +196,17 @@ Copy `.env.example` to `.env` and set `JWT_SIGNING_KEY` first; `DATABASE_CONNECT
 pre-filled for the Docker network. See the **Ports** table in [README.md](README.md#ports) (Postgres
 5432, pgAdmin 5050, API 8080/5000, Vite 5173). For Dockerfile/Compose work see the `docker-containers`
 agent.
+
+### Agent config (run from repo root)
+
+```bash
+node scripts/sync-agent-configs.mjs           # regenerate the Codex tree from the Claude Code sources
+node scripts/sync-agent-configs.mjs --check   # what CI runs; exits 1 on drift or orphaned files
+```
+
+Needs only Node (no install step — the script has no dependencies). Run it after editing anything under
+`.claude/agents/`, `.claude/skills/`, or `.claude/hooks/`, and commit the regenerated files. See
+[Agent config parity](#agent-config-parity-claude-code--codex) for what maps to what.
 
 ### Cloud Deployment
 

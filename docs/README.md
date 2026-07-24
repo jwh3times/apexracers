@@ -26,3 +26,11 @@ specialist guidance. `CLAUDE.md` is only a thin `@AGENTS.md` import shim for Cla
 Code; edit shared guidance in `AGENTS.md`, not the shim. Keep tracked agent docs
 focused on repo behavior and implementation conventions. Do not add secrets, live
 credentials, personal account data, or private deployment runbooks to them.
+
+The Claude Code agent sources are the single source of truth; the Codex equivalents
+(`.codex/agents/*.toml`, `.agents/skills/*/SKILL.md`, `.codex/hooks/*`) are
+**generated** from them by `node scripts/sync-agent-configs.mjs` and must not be
+hand-edited — an `Agent Config Sync` CI check fails a PR whose generated tree has
+drifted. Edit `.claude/agents/`, `.claude/skills/`, or `.claude/hooks/`, re-run the
+script, and commit both sides. See the **Agent config parity** section in `AGENTS.md`
+for the full mapping.
