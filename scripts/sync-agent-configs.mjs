@@ -65,15 +65,20 @@ function tomlString(value) {
 /**
  * Escape a value for a TOML multi-line basic string.
  *
- * Backslashes would otherwise read as escape sequences and throw on parse. Runs of
- * 3+ quotes, and any trailing quote, would collide with the closing delimiter.
+ * Backslashes must be escaped first (else they read as escape sequences and throw on
+ * parse). Runs of 3+ quotes, and any trailing quote, would collide with the closing
+ * delimiter, so each quote in such a run is emitted as `\"`. The run matched by
+ * `/"{3,}/` and `/"+$/` is only ever quote characters — never a backslash — so it is
+ * rebuilt directly with `repeat` rather than a nested escape that would imply a
+ * backslash could sneak through.
  */
 function tomlMultiline(value) {
+  const escapedQuoteRun = (run) => '\\"'.repeat(run.length);
   const escaped = escapeControlChars(
     value
       .replace(/\\/g, '\\\\')
-      .replace(/"{3,}/g, (run) => run.replace(/"/g, '\\"'))
-      .replace(/"+$/, (run) => run.replace(/"/g, '\\"')),
+      .replace(/"{3,}/g, escapedQuoteRun)
+      .replace(/"+$/, escapedQuoteRun),
     { keepNewlines: true },
   );
   return `"""\n${escaped}\n"""`;
