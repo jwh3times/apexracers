@@ -1,10 +1,10 @@
----
-name: dotnet-api
-description: Use for any work in ApexRacers.Api, ApexRacers.Core, ApexRacers.Data, ApexRacers.Ingestion, or ApexRacers.Tests — controllers, services, EF Core models, entity configurations, DTOs, migrations, and xUnit tests.
-tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
----
+# GENERATED FILE — DO NOT EDIT.
+# Source: .claude/agents/dotnet-api.md
+# Regenerate: node scripts/sync-agent-configs.mjs
 
+name = "dotnet-api"
+description = "Use for any work in ApexRacers.Api, ApexRacers.Core, ApexRacers.Data, ApexRacers.Ingestion, or ApexRacers.Tests — controllers, services, EF Core models, entity configurations, DTOs, migrations, and xUnit tests."
+developer_instructions = """
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
 
 The project guide `AGENTS.md` (already loaded into this session) already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
@@ -71,3 +71,4 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 ## Tests
 
 xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. AGENTS.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
+"""

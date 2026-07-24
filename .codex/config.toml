@@ -1,0 +1,20 @@
+# Project-scoped Codex configuration for ApexRacers.
+#
+# This is the Codex counterpart to Claude Code's .claude/settings.json permissions.
+# Codex has no per-command allowlist; it governs autonomy with a sandbox mode plus an
+# approval policy. This file is a project layer that merges over each developer's
+# ~/.codex/config.toml (the project layer wins for the keys set here).
+#
+# Hand-maintained — NOT produced by scripts/sync-agent-configs.mjs. Lifecycle hooks
+# are defined separately in .codex/hooks.json and need no feature flag here.
+
+# Let Codex read, edit, build, and test within the repo without approving every step,
+# while still prompting before anything that reaches outside the workspace.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+# Load-bearing for this repo: `dotnet restore`, `npm install`, and NuGet/npm fetches
+# need the network. With workspace-write's default (network off) the dev loop would
+# stall on every restore until manually approved.
+network_access = true

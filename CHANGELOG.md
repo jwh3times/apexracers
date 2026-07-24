@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Codex parity for the repo's agent tooling, generated from the existing Claude Code sources so the two tools cannot drift. `scripts/sync-agent-configs.mjs` renders `.claude/agents/*.md` to `.codex/agents/*.toml`, and mirrors `.claude/skills/*/SKILL.md` and `.claude/hooks/*` to the paths Codex discovers (`.agents/skills/`, `.codex/hooks/`). A `tools:` list without `Write`/`Edit` becomes `sandbox_mode = "read-only"`; `model:` is dropped, since Claude model names are not Codex model names. The generator self-validates: it round-trips each generated TOML through an independent parser to catch an escaping regression, and lints the mirrored prose for `claude`→`Codex` substitution artifacts and relative links that would break at the mirrored path depth.
+- An **Agent Config Sync** CI check (`.github/workflows/agent-config-sync.yml`) that re-runs the generator with `--check` and fails a PR whose generated tree has drifted from its sources or that leaves an orphaned generated file behind.
+- `.codex/config.toml`, the Codex counterpart to Claude Code's `.claude/settings.json` permissions: `sandbox_mode = "workspace-write"` + `approval_policy = "on-request"` with `network_access = true` so the .NET/npm dev loop (restore, install) works while Codex still prompts before acting outside the workspace.
+
+### Changed
+
+- Agent and skill prose is now tool-neutral, so the generator can copy it verbatim instead of find/replacing tool names — the previous hand-made Codex files had been produced by a blind `claude`→`Codex` substitution that emitted broken paths (`.Codex/agents/*.md`), broken doc links (`code.Codex.com`), and self-referential sentences ("the canonical guide is `AGENTS.md`; `AGENTS.md` is only a bare `@AGENTS.md` import").
+- The shared agent session-start hook now gates on capability (`apt-get` present and .NET 10 absent) instead of the Claude-specific `CLAUDE_CODE_REMOTE` env var, so the one script correctly bootstraps the .NET 10 SDK under both Claude Code's web sandbox and Codex cloud, and no-ops on local machines. Codex exposes no cloud/remote indicator to key off, and the capability gate needs none.
+
 ### Security
 
 - Cleared both high-severity advisories failing the `npm audit (web)` job, which is now back to zero vulnerabilities. Both dependencies are dev-only and never shipped to users:

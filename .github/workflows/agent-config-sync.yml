@@ -1,0 +1,47 @@
+name: Agent Config Sync
+
+# Prevents drift between the Claude Code agent sources and their Codex counterparts.
+#
+# `.claude/agents/*.md`, `.claude/skills/*/SKILL.md`, and `.claude/hooks/*` are the
+# single source of truth. `scripts/sync-agent-configs.mjs` generates the Codex tree
+# from them (`.codex/agents/*.toml`, `.agents/skills/*/SKILL.md`, `.codex/hooks/*`).
+#
+# This check re-runs the generator with --check, which fails when a generated file's
+# content differs from what the sources produce, or when a generated file no longer
+# has a source (an orphan left behind after a rename or delete). Both cases mean
+# someone edited a generated file by hand or forgot to re-run the script.
+#
+# The generator normalizes CRLF on both read and compare, so a Windows working copy
+# and a Linux runner agree.
+#
+# Fix locally with:  node scripts/sync-agent-configs.mjs   (then commit the result)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.claude/**'
+      - '.codex/**'
+      - '.agents/**'
+      - 'scripts/sync-agent-configs.mjs'
+      - '.github/workflows/agent-config-sync.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify generated agent config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Check generated agent config matches its sources
+        run: node scripts/sync-agent-configs.mjs --check
