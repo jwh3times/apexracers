@@ -588,14 +588,24 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RevokeAsync_UnknownToken_DoesNotThrow()
+    public async Task RevokeAsync_UnknownToken_IsIgnoredAndLeavesValidTokensUsable()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        // Should complete without throwing — unknown tokens are silently ignored
+        await svc.RegisterAsync(
+            new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(
+            new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var refreshToken = login.Auth!.RefreshToken!;
+
+        // Unknown tokens are silently ignored. Holding a live session across the call is
+        // what gives that meaning: without it the test asserted only "did not throw", and
+        // would have passed against a RevokeAsync that revoked every token it could find.
         await svc.RevokeAsync("garbage", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(await svc.RefreshAsync(refreshToken, TestContext.Current.CancellationToken));
     }
 
     // ── PurgeExpiredRefreshTokensAsync ────────────────────────────────────────

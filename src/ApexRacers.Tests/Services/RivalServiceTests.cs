@@ -129,9 +129,20 @@ public class RivalServiceTests
     public async Task RemoveAsync_NonExistent_IsNoOp()
     {
         await using var db = DbContextFactory.Create();
+        var me = Guid.NewGuid();
+        db.Rivals.Add(new Rival
+        {
+            Id = Guid.NewGuid(), UserId = me, RivalCustId = 7, DisplayName = "Mine", CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync(Ct);
         var service = Build(db);
 
-        await service.RemoveAsync(Guid.NewGuid(), 999, Ct); // does not throw
+        // A custId this user does not follow: the call must complete quietly AND delete
+        // nothing. Seeding a row is what makes "no-op" verifiable — with an empty table
+        // this test passed even against a RemoveAsync that wiped every row.
+        await service.RemoveAsync(me, 999, Ct);
+
+        Assert.Single(db.Rivals.Where(r => r.UserId == me));
     }
 
     // ── SearchDrivers ────────────────────────────────────────────────────────
