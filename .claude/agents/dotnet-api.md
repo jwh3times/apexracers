@@ -27,6 +27,7 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - `async Task<T>` with `CancellationToken ct = default` as the last parameter on every public async method.
 - Drive error flow by throwing — `ArgumentException` / `InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503 (see `ExceptionStatusMapper`). Don't catch these back to `BadRequest`/`NotFound` in the controller.
 - Don't swallow `OperationCanceledException` to "clean up" cancellation noise. Let it propagate: `ClientDisconnectDetector` already distinguishes a client disconnect (token signalled → Debug + 499) from a real server-side cancellation (→ Error + 500), and catching it in a service destroys the distinction.
+- When a controller returns a bare status result the **user will see**, give it a message: `Problem(detail: "…", statusCode: …)`, not `Unauthorized()`/`NotFound()`. ASP.NET Core's automatic ProblemDetails carries only type/title/status/traceId, and the web client renders `detail` — a bare result leaves it with nothing human-readable. Keep the wording non-enumerating for auth failures ("Invalid email or password.", never "no such account"). Internal guards that can't reach a user (e.g. an unparseable `sub` claim) can stay bare.
 
 ## DTOs
 

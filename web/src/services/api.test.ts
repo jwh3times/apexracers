@@ -84,6 +84,78 @@ describe('api', () => {
       expect((caught as ApiError).status).toBe(503);
       expect((caught as ApiError).message).toBe('Try again.');
     });
+
+    it('never surfaces a raw ProblemDetails body when it carries no detail', async () => {
+      // ASP.NET Core's automatic ProblemDetails for a bare status result (e.g.
+      // `Unauthorized()`) is a well-formed object with only type/title/status/traceId.
+      // Falling back to the raw body printed that whole blob — traceId included — in
+      // front of the user on every failed login.
+      mockFetchError({
+        status: 401,
+        statusText: 'Unauthorized',
+        body: JSON.stringify({
+          type: 'https://tools.ietf.org/html/rfc9110#section-15.5.2',
+          title: 'Unauthorized',
+          status: 401,
+          traceId: '00-fcbe51ceeccbb4ca69132acfb040a028-de2b766d85701147-00',
+        }),
+      });
+
+      let caught: unknown;
+      try {
+        await api.getSeries();
+      } catch (err) {
+        caught = err;
+      }
+
+      const message = (caught as ApiError).message;
+      expect(message).not.toContain('traceId');
+      expect(message).not.toContain('{');
+      expect(message).toBe('Unauthorized');
+    });
+
+    it('prefers detail over title when both are present', async () => {
+      mockFetchError({
+        status: 401,
+        statusText: 'Unauthorized',
+        body: JSON.stringify({
+          title: 'Unauthorized',
+          status: 401,
+          detail: 'Invalid email or password.',
+        }),
+      });
+      await expect(api.getSeries()).rejects.toThrow('Invalid email or password.');
+    });
+
+    it('unwraps a JSON-encoded string body without leaving quotes in the message', async () => {
+      // AuthController returns the 423 lockout as a bare string; if it is serialized as
+      // JSON rather than text/plain, the raw body carries surrounding quotes.
+      mockFetchError({
+        status: 423,
+        statusText: 'Locked',
+        body: JSON.stringify('Account temporarily locked. Try again later.'),
+      });
+
+      let caught: unknown;
+      try {
+        await api.getSeries();
+      } catch (err) {
+        caught = err;
+      }
+
+      expect((caught as ApiError).message).toBe('Account temporarily locked. Try again later.');
+    });
+
+    it('still surfaces a plain-text (non-JSON) error body as-is', async () => {
+      // Regression guard: the raw fallback is only unsafe for JSON objects that lack a
+      // human-readable field. A text/plain body is already the message.
+      mockFetchError({
+        status: 423,
+        statusText: 'Locked',
+        body: 'Account temporarily locked. Try again later.',
+      });
+      await expect(api.getSeries()).rejects.toThrow('Account temporarily locked. Try again later.');
+    });
   });
 
   // ── getCarsForWeek ──────────────────────────────────────────────────────────

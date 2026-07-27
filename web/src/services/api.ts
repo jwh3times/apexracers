@@ -704,29 +704,56 @@ export class ApiError extends Error {
   }
 }
 
-function tryParseJson(raw: string): { code?: string; message?: string; detail?: string } | null {
+type ProblemBody = { code?: string; message?: string; detail?: string; title?: string };
+
+function tryParseJson(raw: string): unknown {
   try {
-    return raw ? (JSON.parse(raw) as { code?: string; message?: string; detail?: string }) : null;
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
+function asProblemBody(value: unknown): ProblemBody | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as ProblemBody)
+    : null;
+}
+
+/**
+ * Picks the most useful *human-readable* message from an error response.
+ *
+ * The raw body is only a safe fallback when it is not a JSON object. ASP.NET Core fills in
+ * automatic ProblemDetails for a bare status result (e.g. `Unauthorized()`), producing a
+ * well-formed object carrying only type/title/status/traceId — printing that verbatim put a
+ * raw JSON blob, traceId and all, in front of the user on every failed login. For a JSON
+ * object we therefore stop at `title`; for valid JSON in any other shape we show nothing but
+ * the status line.
+ */
+function humanMessageFor(parsed: unknown, raw: string, statusLine: string): string {
+  const problem = asProblemBody(parsed);
+  if (problem) return problem.detail || problem.message || problem.title || statusLine;
+  // A JSON string body is itself the message (AuthController's 423 lockout).
+  if (typeof parsed === 'string') return parsed.trim() || statusLine;
+  // Not JSON at all — a text/plain body is already human-readable.
+  if (parsed === null) return raw.trim() || statusLine;
+  return statusLine;
+}
+
 // Maps a non-ok response to the right thrown error: a typed IRacingNotLinkedError
-// for the 409 not-linked contract, otherwise an Error carrying the most useful
-// message available — an RFC-7807 ProblemDetails `detail`, then the raw body, then
-// the status line.
+// for the 409 not-linked contract, otherwise an ApiError carrying the message chosen
+// by humanMessageFor.
 async function throwForResponse(res: Response, path: string, method: string): Promise<never> {
   const raw = await res.text().catch(() => '');
   const parsed = tryParseJson(raw);
-  if (res.status === 409 && parsed?.code === 'IRACING_NOT_LINKED') {
-    throw new IRacingNotLinkedError(parsed.message ?? 'iRacing account not linked.');
+  const problem = asProblemBody(parsed);
+
+  if (res.status === 409 && problem?.code === 'IRACING_NOT_LINKED') {
+    throw new IRacingNotLinkedError(problem.message ?? 'iRacing account not linked.');
   }
-  const detail = parsed?.detail ?? parsed?.message;
-  throw new ApiError(
-    res.status,
-    detail || raw || `${method} ${path} → ${res.status} ${res.statusText}`
-  );
+
+  const statusLine = `${method} ${path} → ${res.status} ${res.statusText}`;
+  throw new ApiError(res.status, humanMessageFor(parsed, raw, statusLine));
 }
 
 type ReqInit = { method?: string; body?: BodyInit; json?: unknown };
