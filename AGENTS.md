@@ -263,7 +263,10 @@ referrer/permissions policy, `frame-ancestors` CSP, HSTS over HTTPS — full CSP
 global per-IP safety net, configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 300**; CI/E2E
 raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit is configurable via
 `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one
-runner IP). Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
+runner IP). Those are the **API** defaults — `docker-compose.yml` raises both for the local stack too
+(1000 / 10000), because the documented local E2E loop drives it in parallel from one loopback IP and at
+the API defaults the limiter starts returning 429 mid-run, which reads as unrelated test failures rather
+than as throttling. Set either var in `.env` to exercise the limiter locally. Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
 dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
 limiting needs forwarded headers enabled in deployed reverse-proxy environments. The hosted API uses
 platform telemetry for requests, dependencies, exceptions, and `ILogger` traces; `RequestLoggingMiddleware`
