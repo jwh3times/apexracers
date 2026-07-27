@@ -26,6 +26,7 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 - `async Task<T>` with `CancellationToken ct = default` as the last parameter on every public async method.
 - Drive error flow by throwing — `ArgumentException` / `InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503 (see `ExceptionStatusMapper`). Don't catch these back to `BadRequest`/`NotFound` in the controller.
+- Don't swallow `OperationCanceledException` to "clean up" cancellation noise. Let it propagate: `ClientDisconnectDetector` already distinguishes a client disconnect (token signalled → Debug + 499) from a real server-side cancellation (→ Error + 500), and catching it in a service destroys the distinction.
 
 ## DTOs
 
