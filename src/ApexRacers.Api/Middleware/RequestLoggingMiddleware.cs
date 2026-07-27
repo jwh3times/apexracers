@@ -37,6 +37,10 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             var statusCode = context.Response.StatusCode;
             var level = statusCode switch
             {
+                // Client-initiated, not a server fault — a browser navigating away from a
+                // page with requests in flight produces these routinely. Without this case
+                // it would land in the >= 400 Warning bucket and read as investigable.
+                ClientDisconnectDetector.StatusClientClosedRequest => LogLevel.Information,
                 >= 500 => LogLevel.Error,
                 >= 400 => LogLevel.Warning,
                 _ => LogLevel.Information,
