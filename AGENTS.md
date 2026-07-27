@@ -254,6 +254,13 @@ RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper
 `UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503, else 500 with its message
 hidden). Services should just `throw`; don't catch to `BadRequest(string)`. Controllers still return
 explicit results for non-exception outcomes needing a specific code (e.g. AuthController's 423 lockout).
+**Client disconnects are handled ahead of that mapping:** the pure `ClientDisconnectDetector` matches an
+`OperationCanceledException` or `BadHttpRequestException` raised while `HttpContext.RequestAborted` is
+signalled, and the middleware records it at Debug, sets **499** (nginx's "Client Closed Request"), and
+writes no body — there is no client left to receive one. Both types are matched only alongside the
+cancellation token, so a server-side timeout or a genuinely malformed request keeps its 500/400 and its
+Error log. Browsers navigating away mid-request produce these constantly; without the branch they read
+as server faults (an E2E run logged 15).
 
 **Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `RequestLoggingMiddleware`
 (outermost — one structured log line per request: method, path, status code, elapsed ms, client IP;

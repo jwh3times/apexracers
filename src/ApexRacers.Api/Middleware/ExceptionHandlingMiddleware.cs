@@ -24,6 +24,21 @@ public class ExceptionHandlingMiddleware(
         }
         catch (Exception ex)
         {
+            // Checked before the HasStarted branch below: a disconnect must never take the
+            // rethrow-at-Error path either. There is no client left to answer, so this is
+            // recorded and swallowed rather than escalated. Kept at Debug because
+            // RequestLoggingMiddleware already emits the per-request line (at 499, and at
+            // Information) — this only carries the exception detail for anyone who wants it.
+            if (ClientDisconnectDetector.IsClientDisconnect(ex, context.RequestAborted.IsCancellationRequested))
+            {
+                logger.LogDebug(ex, "Client disconnected before the response completed.");
+
+                if (!context.Response.HasStarted)
+                    context.Response.StatusCode = ClientDisconnectDetector.StatusClientClosedRequest;
+
+                return;
+            }
+
             if (context.Response.HasStarted)
             {
                 logger.LogError(ex, "Exception thrown after the response started; cannot write ProblemDetails.");

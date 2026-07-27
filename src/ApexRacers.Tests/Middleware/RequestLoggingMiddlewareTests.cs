@@ -125,6 +125,24 @@ public class RequestLoggingMiddlewareTests
     }
 
     [Fact]
+    public void ClientClosedRequestResponse_LogsAtInformationLevel()
+    {
+        // 499 is client-initiated, not a server fault. Without an explicit case it would
+        // fall into the >= 400 Warning bucket and still read as something to investigate.
+        RequestDelegate next = ctx =>
+        {
+            ctx.Response.StatusCode = 499;
+            return Task.CompletedTask;
+        };
+
+        var (logger, _) = InvokeWith(next);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Contains("499", entry.Message);
+    }
+
+    [Fact]
     public void CrlfInRequest_IsStrippedFromLogEntry()
     {
         // A crafted method/path carrying CR/LF must not forge extra log lines (CWE-117).
