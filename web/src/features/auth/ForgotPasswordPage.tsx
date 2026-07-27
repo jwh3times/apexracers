@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { api, type ForgotPasswordResult } from '../../services/api';
 
 export default function ForgotPasswordPage() {

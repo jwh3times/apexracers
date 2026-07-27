@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { GUEST_NAV, AUTH_NAV, visibleNav } from './navItems';
 import { useFeatureFlag } from '../context/FeatureFlagContext';

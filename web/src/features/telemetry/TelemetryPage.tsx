@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { api, type PersonalLap, type TelemetryUploadResult } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 

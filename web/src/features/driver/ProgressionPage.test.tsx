@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProgressionPage from './ProgressionPage';
 import { api, IRacingNotLinkedError, type MemberProgression } from '../../services/api';

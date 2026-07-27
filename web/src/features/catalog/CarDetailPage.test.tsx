@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CarDetailPage from './CarDetailPage';
 import { api, type CarCatalogDetail } from '../../services/api';

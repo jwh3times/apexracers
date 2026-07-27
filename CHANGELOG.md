@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Migrated the frontend router from `react-router-dom` to `react-router` v8. This is a package swap plus an import rewrite across 62 files, not a version bump: React Router v8 **dropped** `react-router-dom`, which had existed only to re-export the DOM APIs during the v6→v7 upgrade, and no 8.x of it was ever published — so the advisory below could not be cleared by bumping the package the app actually depended on. Every export in use (`BrowserRouter`, `MemoryRouter`, `Routes`, `Route`, `Outlet`, `Navigate`, `Link`, `NavLink`, `useNavigate`, `useLocation`, `useParams`, `useSearchParams`) keeps its name, and the app uses no `RouterProvider`/`HydratedRouter`, so nothing needed the `react-router/dom` subpath. v8's floors were already met (React ≥ 19.2.7 against the app's 19.2.8; Node ≥ 22.22.0 against the repo-wide 26).
+- Removed the `shell-quote` npm `overrides` entry added in 0.4.25. `concurrently` 10.0.4 depends on the patched `shell-quote@1.9.0` directly, so the override no longer affects resolution and only obscured the real dependency graph.
+
+### Security
+
+- Cleared the two remaining high-severity advisories failing the `npm audit (web)` job, returning it to zero vulnerabilities:
+  - `react-router` updated to 8.3.0, resolving an RSC-mode CSRF bypass that allows action execution before the 400 response (GHSA-qwww-vcr4-c8h2; affects ≥ 7.12.0, < 8.3.0). The advisory only reaches applications using the unstable RSC APIs — ApexRacers is a client-side SPA (`BrowserRouter`, no framework mode, no server actions), so it was never exposed. The upgrade clears the audit gate rather than closing a reachable hole.
+  - `brace-expansion` updated 5.0.7 → 5.0.8, resolving a DoS via unbounded expansion length causing an out-of-memory crash (GHSA-mh99-v99m-4gvg). Dev-only, reaching the tree through `minimatch`. The 0.4.25 bump to 5.0.7 did not clear it: the advisory's affected range was later widened to include that version.
 
 ## [0.4.25] - 2026-07-24
 

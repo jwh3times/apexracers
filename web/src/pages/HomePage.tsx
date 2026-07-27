@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { formatLapTime } from '../utils/lapTime';
 
 const MAKE_COLOR: Record<string, string> = {

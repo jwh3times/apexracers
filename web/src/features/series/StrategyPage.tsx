@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { api, type CarStrategy, type WeekStrategy } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';

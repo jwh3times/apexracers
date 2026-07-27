@@ -21,13 +21,10 @@
   "dependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.1"
+    "react-router": "^8.3.0"
   },
   "engines": {
     "node": ">=26"
-  },
-  "overrides": {
-    "shell-quote": "^1.9.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

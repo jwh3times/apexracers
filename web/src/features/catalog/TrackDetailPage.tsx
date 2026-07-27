@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { api, type TrackCatalogDetail } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 
