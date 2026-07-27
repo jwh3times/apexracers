@@ -40,10 +40,18 @@ public class ClientDisconnectDetectorTests
     [Fact]
     public void KestrelBadHttpRequestException_DerivesFromTheAbstractionsType() =>
         // The detector matches on Microsoft.AspNetCore.Http.BadHttpRequestException, but
-        // production throws the Kestrel subclass. If that hierarchy ever changes, the
-        // detector silently stops matching the real disconnect — pin it here.
+        // production still throws the Kestrel subclass ("Unexpected end of request
+        // content."). If that hierarchy ever changes, the detector silently stops matching
+        // the real disconnect — pin it here.
+        //
+        // The Kestrel type is [Obsolete] precisely because it moved to the Http.Abstractions
+        // namespace the detector already targets, so naming it is the point of this test
+        // rather than an oversight. Should it eventually be deleted, this stops compiling —
+        // which is the signal we want, not a silent behaviour change.
+#pragma warning disable CS0618 // Type is obsolete — deliberately referenced, see above.
         Assert.True(typeof(BadHttpRequestException).IsAssignableFrom(
             typeof(Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException)));
+#pragma warning restore CS0618
 
     [Fact]
     public void OperationCanceled_WithoutRequestAborted_IsNotDisconnect() =>

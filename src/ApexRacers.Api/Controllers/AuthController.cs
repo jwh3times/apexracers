@@ -24,7 +24,15 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
         if (result.LockedOut)
             return StatusCode(StatusCodes.Status423Locked,
                 "Account temporarily locked due to repeated failed sign-in attempts. Try again later.");
-        return result.Auth is null ? Unauthorized() : Ok(result.Auth);
+        // Carries an explicit Detail rather than a bare Unauthorized(): the client renders
+        // ProblemDetails.detail, and an automatic ProblemDetails has none. Deliberately
+        // ambiguous about which half was wrong, so this cannot be used to enumerate accounts.
+        return result.Auth is null
+            ? Problem(
+                detail: "Invalid email or password.",
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized")
+            : Ok(result.Auth);
     }
 
     [HttpPut("profile")]
