@@ -50,6 +50,16 @@ services:
       DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY}
       ADMIN_SEED_EMAILS: ${ADMIN_SEED_EMAILS}
+      # Per-IP rate limits, raised well above the production defaults (auth 10/min,
+      # global 300/min) because the documented local E2E loop — `docker compose up`
+      # then `npm run test:e2e` — drives this stack in parallel from a single
+      # loopback IP. At the production values the limiter starts returning 429
+      # partway through the run, which surfaces as unrelated-looking test failures
+      # (a registration that silently stays on /login) rather than as throttling.
+      # These mirror the values .github/workflows/e2e.yml sets for the same reason.
+      # Set either in .env to exercise the limiter itself.
+      AUTH_RATE_LIMIT_PERMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PERMIT_PER_MINUTE:-1000}
+      GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE: ${GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE:-10000}
       # On-demand per-user iRacing fetches. Optional locally — the API boots
       # without them and live-data endpoints return 503 until all four are set.
       IRACING_USERNAME: ${IRACING_USERNAME}

@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import TrackDetailPage from './TrackDetailPage';
 import { api, type TrackCatalogDetail } from '../../services/api';

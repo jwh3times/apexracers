@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { api, type WeekDetail, type WeekCar } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { useAuth } from '../../context/AuthContext';

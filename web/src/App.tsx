@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router';
 import { useAuth } from './context/AuthContext';
 import { useFeatureFlag } from './context/FeatureFlagContext';
 import { AuthProvider } from './context/AuthProvider';

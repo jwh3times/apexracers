@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import type { ReactElement } from 'react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RequireAuth, AdminGuard, RequireFlag } from '../App';
