@@ -23,7 +23,7 @@ services:
 
   pgadmin:
     # Pinned (not :latest) so Dependabot's docker-compose ecosystem can track updates.
-    image: dpage/pgadmin4:9.16
+    image: dpage/pgadmin4:9.17
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@apexracers.gg
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
