@@ -1,0 +1,8 @@
+{
+  "name": "apexracers",
+  "private": true,
+  "description": "Repo-root tooling scripts (agent/skill config sync). The application lives in web/ and src/.",
+  "scripts": {
+    "sync:agents": "node scripts/sync-agent-configs.mjs"
+  }
+}
