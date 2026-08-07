@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cleared the two remaining high-severity advisories failing the `npm audit (web)` job, returning it to zero vulnerabilities:
   - `react-router` updated to 8.3.0, resolving an RSC-mode CSRF bypass that allows action execution before the 400 response (GHSA-qwww-vcr4-c8h2; affects ≥ 7.12.0, < 8.3.0). The advisory only reaches applications using the unstable RSC APIs — ApexRacers is a client-side SPA (`BrowserRouter`, no framework mode, no server actions), so it was never exposed. The upgrade clears the audit gate rather than closing a reachable hole.
   - `brace-expansion` updated 5.0.7 → 5.0.8, resolving a DoS via unbounded expansion length causing an out-of-memory crash (GHSA-mh99-v99m-4gvg). Dev-only, reaching the tree through `minimatch`. The 0.4.25 bump to 5.0.7 did not clear it: the advisory's affected range was later widened to include that version.
+- `brace-expansion` updated 5.0.8 → 5.0.9, resolving a further DoS via unbounded intermediate arrays that bypasses the CVE-2026-14257 mitigation the 5.0.8 bump above relied on (GHSA-rgw5-rvv9-x895; affected range 4.0.0 – 5.0.8, so the previous fix landed squarely inside it). Same dev-only path through `eslint` → `minimatch`. `npm audit fix` resolved it entirely within the existing `package.json` semver range — only `package-lock.json` changed.
 
 ## [0.4.25] - 2026-07-24
 
