@@ -9,7 +9,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 
 **Dedup principle (important):** the canonical project guide is `AGENTS.md`. Every agent tool reaches it through a thin entry point that adds no content of its own — Claude Code via a single bare `@AGENTS.md` import in `CLAUDE.md`, Codex by reading `AGENTS.md` natively — and both load it into every custom subagent, so a specialist agent already has that guidance before its own file is read. (Claude Code [loads project memory into every custom subagent](https://code.claude.com/docs/en/sub-agents) and [expands `@` imports at session start](https://code.claude.com/docs/en/memory); its built-in Explore and Plan agents are the documented exception and must read `AGENTS.md` directly.) Do **not** restate `AGENTS.md` content in an agent file, and do **not** move content into a thin entry point — anchor shared / load-bearing facts in `AGENTS.md` and keep only each agent's unique lens (its enforcement framing, deep detail, or domain-specific scenarios) in the agent file. Sibling agents do **not** inherit each other, so a cross-agent "see the X agent" note is a maintainer breadcrumb, not a runtime reference. When a fact changes, update it in its one canonical home — not in every copy.
 
-**Agent sources are generated to a second target.** Author every agent only in `.claude/agents/<name>.md`; `node scripts/sync-agent-configs.mjs` regenerates `.codex/agents/<name>.toml` from it, and skills in `.claude/skills/<name>/SKILL.md` regenerate `.agents/skills/<name>/SKILL.md`. Never hand-edit a generated file — CI (`Agent Config Sync`) fails the PR if the generated tree has drifted. Because the generator copies prose verbatim with no rewriting, keep agent and skill bodies **tool-neutral**: prefer "the project guide" over naming one tool's entry-point file, and write repo-root-relative paths as plain text rather than relative Markdown links (a relative link resolves differently from the mirrored location).
+**Agent sources are generated to a second target — skills run the opposite direction.** Author every agent only in `.claude/agents/<name>.md`; `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`) regenerates `.codex/agents/<name>.toml` from it. Skills are authored the other way around, under `.agents/skills/<name>/**` — that's where third-party skill installers write — and the whole tree regenerates into `.claude/skills/<name>/**`, with a `# GENERATED — DO NOT EDIT` banner injected into each `SKILL.md`. Never hand-edit a generated file, and never replace a generated directory with a symlink back to its source — CI (`Agent Config Sync`) fails the PR if the generated tree has drifted, and a symlink defeats the generator two ways: `readdirSync` reports it as `isSymbolicLink()` rather than `isDirectory()` (so the walk sees no sources and deletes the mirrored files as orphaned), and on a Windows checkout with `core.symlinks` false, `git add` stages the link target's file contents under the link's path instead of a link. Because the generator copies prose verbatim with no rewriting, keep agent and skill bodies **tool-neutral**: prefer "the project guide" over naming one tool's entry-point file, and write repo-root-relative paths as plain text rather than relative Markdown links (a relative link resolves differently from the mirrored location).
 
 ## Documents you maintain
 
@@ -35,11 +35,13 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `.claude/agents/azure-infrastructure.md` | azure-infrastructure subagent | Resource inventory, Key Vault secrets, deployment commands                                                                                                      |
 | `.claude/agents/docker-containers.md`    | docker-containers subagent    | Dockerfile / Compose / image-build patterns                                                                                                                     |
 | `.claude/agents/docs-updater.md`         | docs-updater subagent         | This file — the doc-update matrix itself                                                                                                                        |
-| `.claude/skills/*/SKILL.md`              | skill authors                 | Workflow skills (e.g. `ship`). Authored here; mirrored to `.agents/skills/` by the sync script                                                                   |
+| `.agents/skills/*/**`                    | skill authors                 | Workflow skills (e.g. `ship`) and third-party installed skills. Authored here (the skill-installer target); mirrored to `.claude/skills/` by the sync script     |
+| `docs/agents/*.md`                       | installed engineering skills  | Tracker/label/domain-doc conventions those skills (`triage`, `to-tickets`, `domain-modeling`, `wayfinder`, …) read before acting. Referenced from `AGENTS.md`'s "Agent skills" section |
 
-The last two blocks are **sources**, not deliverables: `.codex/agents/*.toml` and
-`.agents/skills/*/SKILL.md` are generated from them by `node scripts/sync-agent-configs.mjs`.
-Edit the source, re-run the script, and commit both.
+The `.claude/agents/*.md` block above is a **source**, not a deliverable: `.codex/agents/*.toml` is
+generated from it by `node scripts/sync-agent-configs.mjs`. The `.agents/skills/*/**` block runs the
+opposite way — it is the **source**, and `.claude/skills/*/**` is generated from it. Edit the source
+side in either case, re-run the script, and commit both.
 
 ## What triggers what update
 
@@ -99,9 +101,10 @@ Edit the source, re-run the script, and commit both.
 **New agent file created (or an existing one edited)**
 
 - No other doc needs updating beyond ensuring the agent file itself is accurate.
-- Run `node scripts/sync-agent-configs.mjs` and commit the regenerated `.codex/agents/<name>.toml` (same
-  for a `.claude/skills/*/SKILL.md` or `.claude/hooks/*` change → `.agents/skills/` / `.codex/hooks/`) —
-  otherwise the **Agent Config Sync** CI check fails the PR on drift.
+- Run `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`) and commit the regenerated
+  output: a `.claude/agents/*.md` or `.claude/hooks/*` change regenerates `.codex/agents/<name>.toml`
+  or `.codex/hooks/*`; an `.agents/skills/*/**` change regenerates `.claude/skills/*/**` (the opposite
+  direction) — otherwise the **Agent Config Sync** CI check fails the PR on drift.
 
 ## How to detect drift
 

@@ -19,27 +19,54 @@ not `CLAUDE.md` — when project guidance changes.
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 | Documentation sync after changes (CHANGELOG, AGENTS.md, README, …) | `docs-updater`         |
 
-Docs are refreshed at **ship time** by the [`/ship` skill](.claude/skills/ship/SKILL.md): before
+Docs are refreshed at **ship time** by the [`/ship` skill](.agents/skills/ship/SKILL.md): before
 opening a PR it invokes `docs-updater` scoped to the branch diff, then rolls `[Unreleased]` into a
 CHANGELOG section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a
 branch is ready for review.
 
 ## Agent config parity (Claude Code ↔ Codex)
 
-Both tools run the same agents, skills, and session hooks from **one** set of sources. Claude Code's
-files are canonical; the Codex tree is **generated**:
+Both tools run the same agents, skills, and session hooks from **one** set of sources per row below.
+Agents and hooks are authored for Claude Code, with Codex generated from them; **skills run the
+opposite direction** — authored under `.agents/skills/`, with the Claude Code tree generated from
+that:
 
 | Source (edit this)               | Generated (never edit)           |
-| -------------------------------- | -------------------------------- |
+| --------------------------------- | ---------------------------------- |
 | `.claude/agents/<name>.md`       | `.codex/agents/<name>.toml`      |
-| `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
+| `.agents/skills/<name>/**`       | `.claude/skills/<name>/**`       |
 | `.claude/hooks/<file>`           | `.codex/hooks/<file>`            |
 
-Regenerate with `node scripts/sync-agent-configs.mjs` and commit both sides; the **Agent Config Sync**
-CI check (`.github/workflows/agent-config-sync.yml`) fails a PR whose generated tree has drifted or
-that leaves an orphaned generated file behind. The generator copies prose **verbatim** — it never
-rewrites wording — so keep agent and skill bodies **tool-neutral**: don't name one tool's entry-point
-file where "the project guide" will do, and write repo-root-relative paths as plain text rather than
+Skills are authored under `.agents/skills/` — not `.claude/skills/` — because that is where
+third-party skill installers write; keeping the install target as the authored source means
+installing or updating a skill stays a one-way drop-in with no manual copying afterward. The whole
+skill directory is mirrored, not just `SKILL.md` — references, `scripts/*.sh`, `agents/*.yaml`, and
+any other files a skill carries are all drift-controlled. Each generated `SKILL.md` gets a
+`# GENERATED — DO NOT EDIT` banner injected as a YAML comment on line 2 (line 1 stays `---`, so the
+frontmatter still parses); every other file in the tree is copied byte-for-byte with no banner and no
+text transformation.
+
+**Never replace the generated `.claude/skills/` tree with a symlink back to `.agents/skills/`** (or
+any generated path with a symlink to its source) — two independent failure modes rule that out, both
+hit for real while building this generator:
+
+1. `readdirSync(dir, { withFileTypes: true })` reports a symlink as `isSymbolicLink()`, not
+   `isDirectory()`. A directory-walking generator like this one would see zero skill sources through
+   the link and, on the next run, delete every real generated file underneath it as "orphaned."
+2. Git may not even be able to store the link: when `git config core.symlinks` is `false` (common on
+   a Windows checkout), `git add` walks through the symlink and stages the **target file's contents**
+   under the link's path instead of recording a link — duplicating every file rather than linking it.
+   `git add -n .claude/skills/<name>` listing individual files (instead of one link entry) confirms
+   this is happening. Worse, if the generated directory is left as a stale symlink into the source
+   tree while the generator still runs against it, every "generated" write actually lands back on the
+   authored source file, silently corrupting it.
+
+Regenerate with `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`; add `-- --check` /
+`--check` to verify without writing) and commit every side that changed; the **Agent Config Sync** CI
+check (`.github/workflows/agent-config-sync.yml`) fails a PR whose generated tree has drifted or that
+leaves an orphaned generated file behind. The generator copies prose **verbatim** — it never rewrites
+wording — so keep agent and skill bodies **tool-neutral**: don't name one tool's entry-point file
+where "the project guide" will do, and write repo-root-relative paths as plain text rather than
 relative Markdown links (a relative link resolves differently from the mirrored location).
 
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
@@ -47,6 +74,13 @@ becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model name
 names, so Codex uses its session default). The generator also self-checks: it round-trips every
 generated TOML through an independent parser (catching an escaping regression before it ships) and
 lints the mirrored prose for substitution artifacts and depth-fragile relative links.
+
+No formatter currently runs over `.agents/skills/` or `.claude/agents/` (Prettier in this repo is
+scoped to the `web/` tree only — see Commands below), so there is no format-before-sync ordering
+requirement today. If a formatter is ever pointed at those trees, run it before
+`sync-agent-configs.mjs`, not after: regenerating first would mirror unformatted content and drift
+again on the next format pass. In that case also point the formatter's ignore file at the generated
+tree (`.claude/skills/`), not the authored one.
 
 `.codex/hooks.json` and `.codex/config.toml` are **hand-maintained**, not generated. `config.toml` is
 the Codex counterpart to `.claude/settings.json` permissions — Codex has no per-command allowlist, so
@@ -200,13 +234,17 @@ agent.
 ### Agent config (run from repo root)
 
 ```bash
-node scripts/sync-agent-configs.mjs           # regenerate the Codex tree from the Claude Code sources
+node scripts/sync-agent-configs.mjs           # regenerate the generated trees from the authored sources
 node scripts/sync-agent-configs.mjs --check   # what CI runs; exits 1 on drift or orphaned files
+npm run sync:agents                           # same as the plain command above
+npm run sync:agents -- --check                # same, check mode
 ```
 
-Needs only Node (no install step — the script has no dependencies). Run it after editing anything under
-`.claude/agents/`, `.claude/skills/`, or `.claude/hooks/`, and commit the regenerated files. See
-[Agent config parity](#agent-config-parity-claude-code--codex) for what maps to what.
+Needs only Node (no install step — the script has no dependencies; the root `package.json` exists only
+to expose these two scripts). Run it after editing anything under `.claude/agents/`, `.agents/skills/`,
+or `.claude/hooks/`, and commit every side that changed. See
+[Agent config parity](#agent-config-parity-claude-code--codex) for what maps to what — note skills run
+the opposite direction from agents/hooks.
 
 ### Cloud Deployment
 
@@ -472,6 +510,22 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   by SQLite (**`DateTimeOffset` range filters/ordering** — `ExternalDataCacheCleanupService`,
   `RivalService.ListAsync`). **Order/project by entity columns before constructing a DTO** — ordering by
   a positional-record DTO property doesn't translate on Npgsql or SQLite.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (jwh3times/apexracers), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ---
 
