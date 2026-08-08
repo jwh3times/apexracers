@@ -1,20 +1,39 @@
 #!/usr/bin/env node
-// Generates the Codex-flavored agent/skill configuration from the Claude Code sources.
+// Generates the Claude-Code/Codex agent configuration trees from their authored sources.
 //
 //   .claude/agents/<name>.md        ->  .codex/agents/<name>.toml
-//   .claude/skills/<name>/SKILL.md  ->  .agents/skills/<name>/SKILL.md
+//   .agents/skills/<name>/**        ->  .claude/skills/<name>/**   (whole tree, not just SKILL.md)
 //   .claude/hooks/<file>            ->  .codex/hooks/<file>
 //
-// The sources are the single source of truth. Prose is copied VERBATIM — this script
-// never rewrites wording — so agent and skill bodies must stay tool-neutral.
+// Skills are authored under .agents/skills/ — not .claude/skills/ — because that is where
+// third-party skill installers write, so installing or updating a skill stays a one-way
+// operation with no manual copying. .claude/skills/ is generated: every SKILL.md there gets
+// a "GENERATED — do not edit" banner injected as a YAML comment on line 2 (line 1 stays `---`
+// so frontmatter still parses); every other file in a skill directory (references, scripts/*.sh,
+// agents/*.yaml, ...) is copied byte-for-byte with no banner and no text transformation.
 //
-//   node scripts/sync-agent-configs.mjs           # write the generated tree
-//   node scripts/sync-agent-configs.mjs --check   # exit 1 if the tree has drifted (CI)
+// Agents and hooks stay tool-neutral prose copied VERBATIM — this script never rewrites wording.
+//
+//   node scripts/sync-agent-configs.mjs           # write the generated trees
+//   node scripts/sync-agent-configs.mjs --check   # exit 1 if either tree has drifted (CI)
+//   npm run sync:agents                           # same, via the root package.json script
+//   npm run sync:agents -- --check                # same, check mode
 //
 // Run from anywhere; paths resolve against the repo root.
+//
+// Never reintroduce symlinks in place of this generator (e.g. `.claude/skills/<name>` ->
+// `.agents/skills/<name>`). Two independent failure modes rule that out:
+//   1. `readdirSync(dir, { withFileTypes: true })` reports a symlink as `isSymbolicLink()`,
+//      not `isDirectory()` — a directory-walking generator like this one would see zero skill
+//      sources and treat every real generated file as extraneous, deleting it on the next run.
+//   2. Git may not even be able to store the link: when `core.symlinks` is `false` (common on
+//      Windows), `git add` walks through the symlink and stages the target file's contents
+//      under the link's path instead of recording a link — duplicating every file rather than
+//      linking it. Check with `git config core.symlinks`; `git add -n .claude/skills/<name>`
+//      listing individual files (instead of one link entry) confirms it.
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, existsSync, statSync } from 'node:fs';
-import { join, dirname, relative, sep } from 'node:path';
+import { join, dirname, relative, sep, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,15 +41,19 @@ const CHECK = process.argv.includes('--check');
 
 const AGENT_SRC = join(ROOT, '.claude', 'agents');
 const AGENT_OUT = join(ROOT, '.codex', 'agents');
-const SKILL_SRC = join(ROOT, '.claude', 'skills');
-const SKILL_OUT = join(ROOT, '.agents', 'skills');
+const SKILL_SRC = join(ROOT, '.agents', 'skills');
+const SKILL_OUT = join(ROOT, '.claude', 'skills');
 const HOOK_SRC = join(ROOT, '.claude', 'hooks');
 const HOOK_OUT = join(ROOT, '.codex', 'hooks');
 
 const BANNER = '# GENERATED FILE — DO NOT EDIT.\n# Source: .claude/agents/%s.md\n# Regenerate: node scripts/sync-agent-configs.mjs\n';
 
-/** Files this run intends to own, so anything else under a generated dir is pruned. */
-const produced = new Map(); // absolute output path -> content string
+/**
+ * Files this run intends to own, so anything else under a generated dir is pruned.
+ * Value is either a string (text content, compared/written as utf8) or a Buffer
+ * (binary/byte-for-byte content, compared/written raw).
+ */
+const produced = new Map(); // absolute output path -> string | Buffer
 const srcOf = new Map(); // absolute output path -> absolute source path (for link resolution)
 
 // ---------------------------------------------------------------- TOML encoding
@@ -197,13 +220,9 @@ function buildAgents() {
   }
 }
 
-// ---------------------------------------------------------------- skills & hooks
+// ---------------------------------------------------------------- hooks
 
-/**
- * Skills are Markdown in both tools — Codex discovers `.agents/skills/<name>/SKILL.md`.
- * Copy the whole tree verbatim; no banner, because a comment above the YAML
- * frontmatter would stop it being frontmatter at all.
- */
+/** Hook scripts are copied verbatim as text (CRLF normalized so Windows edits don't drift). */
 function copyTree(srcDir, outDir) {
   if (!existsSync(srcDir)) return;
 
@@ -214,6 +233,55 @@ function copyTree(srcDir, outDir) {
     } else {
       const out = join(outDir, entry);
       produced.set(out, readFileSync(src, 'utf8').replace(/\r\n/g, '\n'));
+      srcOf.set(out, src);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- skills
+
+const SKILL_BANNER_FILE = 'SKILL.md';
+
+/**
+ * Insert a "GENERATED — do not edit" YAML comment as line 2 of a SKILL.md, keeping
+ * `---` on line 1 so the frontmatter still parses. Text-mode (CRLF normalized) since
+ * this file is parsed as YAML + Markdown, not compared byte-for-byte.
+ */
+function injectSkillBanner(content, relSrcPath) {
+  const normalized = content.replace(/\r\n/g, '\n');
+  const lines = normalized.split('\n');
+  if (lines[0] !== '---') {
+    throw new Error(`${relSrcPath}: expected SKILL.md to start with '---' frontmatter`);
+  }
+  lines.splice(1, 0, `# GENERATED — DO NOT EDIT. Source: ${relSrcPath}. Regenerate: npm run sync:agents`);
+  return lines.join('\n');
+}
+
+/**
+ * Mirrors the whole authored skill tree (.agents/skills/<name>/**) into the generated
+ * one (.claude/skills/<name>/**) — not just SKILL.md, so references, scripts/*.sh, and
+ * agents/*.yaml stay drift-controlled too. SKILL.md gets the generated banner injected
+ * as text; every other file is read/written as a raw Buffer so it copies byte-for-byte
+ * with no transformation (no CRLF normalization either — .gitattributes' `eol=lf`
+ * already normalizes both the authored and generated trees identically on checkout,
+ * so a generator-side transform would only add a second, potentially inconsistent,
+ * source of normalization).
+ */
+function copySkillTree(srcDir, outDir) {
+  if (!existsSync(srcDir)) return;
+
+  for (const entry of readdirSync(srcDir).sort()) {
+    const src = join(srcDir, entry);
+    if (statSync(src).isDirectory()) {
+      copySkillTree(src, join(outDir, entry));
+    } else {
+      const out = join(outDir, entry);
+      if (entry === SKILL_BANNER_FILE) {
+        const relSrcPath = relative(ROOT, src).split(sep).join(posix.sep);
+        produced.set(out, injectSkillBanner(readFileSync(src, 'utf8'), relSrcPath));
+      } else {
+        produced.set(out, readFileSync(src));
+      }
       srcOf.set(out, src);
     }
   }
@@ -233,13 +301,16 @@ function copyTree(srcDir, outDir) {
  *     which does not exist). Root-relative links that land in the same place from
  *     both locations pass, so this never false-positives on a working link.
  *
- * Only agent and skill files are linted (Markdown/prose); hook scripts are not.
+ * Only agent files and SKILL.md files are linted (Markdown/prose); hook scripts and
+ * byte-for-byte skill assets (scripts/*.sh, agents/*.yaml, ...) are not — they are
+ * copied as raw Buffers, not prose, so they're skipped here rather than coerced to text.
  */
 function lintNeutrality() {
   const problems = [];
   const rel = (p) => relative(ROOT, p).split(sep).join('/');
 
   for (const [out, content] of produced) {
+    if (typeof content !== 'string') continue;
     const isAgent = out.startsWith(AGENT_OUT + sep);
     const isSkill = out.startsWith(SKILL_OUT + sep);
     if (!isAgent && !isSkill) continue;
@@ -256,7 +327,11 @@ function lintNeutrality() {
       const link = m[1].replace(/#.*$/, '');
       const fromSource = join(srcDir, link);
       const fromOutput = join(outDir, link);
-      if (existsSync(fromSource) && !existsSync(fromOutput)) {
+      // Check the in-memory produced set first: on the very first generation (nothing
+      // written to the output tree yet, e.g. bootstrapping a new source directory),
+      // a sibling file this same run is about to write still exists only in `produced`,
+      // not yet on disk — existsSync alone would misreport that as a broken link.
+      if (existsSync(fromSource) && !produced.has(fromOutput) && !existsSync(fromOutput)) {
         problems.push(`${rel(out)}: relative link \`${m[1]}\` resolves in the source tree but breaks when mirrored here — write it as a plain repo-root-relative path`);
       }
     }
@@ -280,9 +355,18 @@ function existingFiles(dir, acc = []) {
   return acc;
 }
 
+/** True if two produced values (each a string or a Buffer) are identical. */
+function contentEquals(a, b) {
+  if (a === null || b === null) return a === b;
+  const aIsBuffer = Buffer.isBuffer(a);
+  const bIsBuffer = Buffer.isBuffer(b);
+  if (aIsBuffer !== bIsBuffer) return false;
+  return aIsBuffer ? a.equals(b) : a === b;
+}
+
 function main() {
   buildAgents();
-  copyTree(SKILL_SRC, SKILL_OUT);
+  copySkillTree(SKILL_SRC, SKILL_OUT);
   copyTree(HOOK_SRC, HOOK_OUT);
   lintNeutrality();
 
@@ -292,8 +376,13 @@ function main() {
 
   const drifted = [];
   for (const [path, content] of produced) {
-    const current = existsSync(path) ? readFileSync(path, 'utf8').replace(/\r\n/g, '\n') : null;
-    if (current !== content) drifted.push(path);
+    const isBuffer = Buffer.isBuffer(content);
+    const current = existsSync(path)
+      ? isBuffer
+        ? readFileSync(path)
+        : readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
+      : null;
+    if (!contentEquals(current, content)) drifted.push(path);
   }
 
   const rel = (p) => relative(ROOT, p).split(sep).join('/');
@@ -312,7 +401,7 @@ function main() {
 
   for (const [path, content] of produced) {
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, content, 'utf8');
+    writeFileSync(path, content, Buffer.isBuffer(content) ? undefined : 'utf8');
   }
   for (const path of stale) rmSync(path);
 

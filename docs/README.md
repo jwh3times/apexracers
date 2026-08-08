@@ -27,10 +27,14 @@ Code; edit shared guidance in `AGENTS.md`, not the shim. Keep tracked agent docs
 focused on repo behavior and implementation conventions. Do not add secrets, live
 credentials, personal account data, or private deployment runbooks to them.
 
-The Claude Code agent sources are the single source of truth; the Codex equivalents
-(`.codex/agents/*.toml`, `.agents/skills/*/SKILL.md`, `.codex/hooks/*`) are
-**generated** from them by `node scripts/sync-agent-configs.mjs` and must not be
+Agents and hooks are authored for Claude Code, with the Codex equivalents
+(`.codex/agents/*.toml`, `.codex/hooks/*`) **generated** from them. Skills run the
+opposite direction: `.agents/skills/<name>/**` is authored (that's where third-party
+skill installers write), and the whole tree is **generated** into
+`.claude/skills/<name>/**` for Claude Code. Either way, `node scripts/sync-agent-configs.mjs`
+(or `npm run sync:agents`) is the one generator, and generated files must not be
 hand-edited — an `Agent Config Sync` CI check fails a PR whose generated tree has
-drifted. Edit `.claude/agents/`, `.claude/skills/`, or `.claude/hooks/`, re-run the
-script, and commit both sides. See the **Agent config parity** section in `AGENTS.md`
-for the full mapping.
+drifted. Edit the authored side (`.claude/agents/`, `.agents/skills/`, or
+`.claude/hooks/`), re-run the script, and commit every side that changed. Never
+replace a generated directory with a symlink back to its source — see the **Agent
+config parity** section in `AGENTS.md` for why, and for the full mapping.
