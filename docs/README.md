@@ -27,6 +27,14 @@ Code; edit shared guidance in `AGENTS.md`, not the shim. Keep tracked agent docs
 focused on repo behavior and implementation conventions. Do not add secrets, live
 credentials, personal account data, or private deployment runbooks to them.
 
+`docs/agents/` holds the tracker/label/domain-doc conventions that this repo's
+installed engineering skills (`triage`, `to-tickets`, `domain-modeling`,
+`wayfinder`, and related flows) read before acting — issue-tracker conventions,
+the triage label vocabulary, and how those skills should consume this repo's
+domain docs. `AGENTS.md`'s "Agent skills" section links each one; edit the
+`docs/agents/` file itself when the underlying convention (tracker, label
+strings, doc layout) changes, not `AGENTS.md`.
+
 Agents and hooks are authored for Claude Code, with the Codex equivalents
 (`.codex/agents/*.toml`, `.codex/hooks/*`) **generated** from them. Skills run the
 opposite direction: `.agents/skills/<name>/**` is authored (that's where third-party

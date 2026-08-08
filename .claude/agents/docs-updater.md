@@ -36,6 +36,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `.claude/agents/docker-containers.md`    | docker-containers subagent    | Dockerfile / Compose / image-build patterns                                                                                                                     |
 | `.claude/agents/docs-updater.md`         | docs-updater subagent         | This file — the doc-update matrix itself                                                                                                                        |
 | `.agents/skills/*/**`                    | skill authors                 | Workflow skills (e.g. `ship`) and third-party installed skills. Authored here (the skill-installer target); mirrored to `.claude/skills/` by the sync script     |
+| `docs/agents/*.md`                       | installed engineering skills  | Tracker/label/domain-doc conventions those skills (`triage`, `to-tickets`, `domain-modeling`, `wayfinder`, …) read before acting. Referenced from `AGENTS.md`'s "Agent skills" section |
 
 The `.claude/agents/*.md` block above is a **source**, not a deliverable: `.codex/agents/*.toml` is
 generated from it by `node scripts/sync-agent-configs.mjs`. The `.agents/skills/*/**` block runs the
