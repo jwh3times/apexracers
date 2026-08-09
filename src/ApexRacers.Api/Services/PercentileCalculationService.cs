@@ -1,5 +1,6 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Core.Models;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -66,18 +67,16 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         if (driverBest is null) return null;
 
-        bool driverInField = driverRaceBest.HasValue;
         var total = fieldByDriver.Count;
 
-        // Compare only against other drivers' race laps so the driver's own slower
-        // race result cannot inflate slowerCount when a personal lap supersedes it.
-        var slowerCount = fieldByDriver
+        // Rank against other drivers' race laps only: the driver's own slower race result would
+        // otherwise count as one more driver beaten whenever a personal lap supersedes it.
+        var otherDriversLaps = fieldByDriver
             .Where(d => d.CustId != customerId)
-            .Count(d => d.BestLap > driverBest.Value);
+            .Select(d => d.BestLap)
+            .ToList();
 
-        var percentileRank = driverInField
-            ? (total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0)
-            : (total > 0 ? slowerCount * 100.0 / total : 100.0);
+        var percentileRank = FieldPercentile.Rank(driverBest.Value, otherDriversLaps);
 
         var computedAt = DateTimeOffset.UtcNow;
 
@@ -113,10 +112,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         // Field stats and distribution
         var sortedLaps = fieldByDriver.Select(d => d.BestLap).OrderBy(x => x).ToList();
         var fieldBest = sortedLaps[0];
-        int mid = sortedLaps.Count / 2;
-        var fieldMedian = sortedLaps.Count % 2 == 0
-            ? (sortedLaps[mid - 1] + sortedLaps[mid]) / 2.0
-            : sortedLaps[mid];
+        var fieldMedian = FieldPercentile.MedianOfSorted(sortedLaps);
         var distribution = BuildDistribution(sortedLaps, driverBest.Value);
 
         // World-record overlay (best-effort; null when iRacing isn't configured).

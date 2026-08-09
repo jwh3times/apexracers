@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,10 +60,7 @@ public class WeekCarStatsService(AppDbContext db)
             .Select(g =>
             {
                 var sorted = g.Select(r => r.BestLap).Order().ToList();
-                int mid = sorted.Count / 2;
-                double median = sorted.Count % 2 == 0
-                    ? (sorted[mid - 1] + sorted[mid]) / 2.0
-                    : sorted[mid];
+                double median = FieldPercentile.MedianOfSorted(sorted);
                 return new WeekCarDto(g.Key.CarId, g.Key.CarName, g.Key.ClassName, sorted.Count, sorted[0], median);
             })
             .OrderBy(d => d.FastestLapSeconds)
