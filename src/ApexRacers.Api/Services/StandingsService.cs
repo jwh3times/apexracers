@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.EntityFrameworkCore;
@@ -110,15 +111,18 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
             week, availableWeeks, results);
     }
 
-    /// <summary>Latest week whose start date is on/before today, else the first known week, else 0.</summary>
+    /// <summary>
+    /// The week in progress, falling back to the first known week before the season starts —
+    /// a standings page has to render some week, so unlike the series list it cannot show nothing.
+    /// The selection rule itself lives in <see cref="SeasonCalendar"/>.
+    /// </summary>
     private static int CurrentWeek(IEnumerable<(int WeekNumber, DateOnly StartDate)> weeks)
     {
         var list = weeks.ToList();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var past = list.Where(w => w.StartDate <= today).ToList();
-        if (past.Count > 0)
-            return past.Max(w => w.WeekNumber);
-        return list.Count > 0 ? list.Min(w => w.WeekNumber) : 0;
+
+        return SeasonCalendar.CurrentWeekNumber(list, today)
+            ?? (list.Count > 0 ? list.Min(w => w.WeekNumber) : 0);
     }
 
     private sealed record ResolvedContext(
@@ -127,17 +131,8 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
 
     private async Task<ResolvedContext> ResolveAsync(int seriesId, int? carClassId, CancellationToken ct)
     {
-        var season = await db.Seasons
-            .Where(s => s.SeriesId == seriesId && s.Active)
-            .OrderByDescending(s => s.Year)
-            .ThenByDescending(s => s.Quarter)
-            .FirstOrDefaultAsync(ct)
-            ?? throw new KeyNotFoundException($"No active season for series {seriesId}.");
-
-        var seriesName = await db.Series
-            .Where(s => s.Id == seriesId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(ct) ?? string.Empty;
+        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         // Order by the CarClass column *before* projecting to the DTO. Ordering by a positional
         // record's property after projection doesn't translate to SQL (the provider can't map the

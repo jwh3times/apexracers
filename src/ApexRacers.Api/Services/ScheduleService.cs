@@ -18,17 +18,8 @@ public class ScheduleService(AppDbContext db)
     public async Task<SeasonScheduleDto> GetScheduleAsync(
         int seriesId, Guid? userId, CancellationToken ct)
     {
-        var season = await db.Seasons
-            .Where(s => s.SeriesId == seriesId && s.Active)
-            .OrderByDescending(s => s.Year)
-            .ThenByDescending(s => s.Quarter)
-            .FirstOrDefaultAsync(ct)
-            ?? throw new KeyNotFoundException($"No active season for series {seriesId}.");
-
-        var seriesName = await db.Series
-            .Where(s => s.Id == seriesId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(ct) ?? string.Empty;
+        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         var weeks = await db.Weeks
             .Where(w => w.SeasonId == season.Id)
