@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.43] - 2026-08-09
+
+### Changed
+
+- The signed-in session is now one module, `web/src/services/session.ts`, owning the token pair, the claims decoded from it, its persistence and the silent refresh behind `restore`/`adopt`/`clear`/`refresh`/`subscribe`. It previously lived in two places — `api.ts` held `_token`/`_refreshToken`/`tryRefresh` while `AuthProvider` held `user.token`/`refreshTokenRef` and the IndexedDB writes — kept in step by five imperative setters called from ten sites plus two global callback slots. Neither half was a pass-through, so neither could simply be deleted: they were one concept wearing two hats, and the bug surface was the handshake between them, which nothing tested. `AuthProvider` drops 197 → 134 lines and is now a thin React binding; `api.ts` drops 1031 → 975.
+- Storage sits behind a `KeyValueStore` seam with two real adapters: IndexedDB in the app, in-memory in tests. The refresh transport is injected too, so `session.ts` has no dependency on `api.ts` — and, more importantly, the refresh call cannot be routed through the intercepting HTTP client, which would call back into `refresh()` on a 401 and recurse.
+
+### Fixed
+
+- Registering a second `AuthProvider` silently disabled the first. `onTokenRefreshed`/`onSessionExpired` were single callback slots, so the last registration won globally and there was no way to deregister — meaning a React StrictMode double-invoke, a multi-provider test, or an unmounted provider all left the app listening on the wrong instance. `subscribe()` now keeps a list and returns an unsubscribe, which `AuthProvider` calls on unmount.
+- A request issued during app boot could get a 401 with no retry. The refresh token was installed inside a `.then()` on an asynchronous IndexedDB read, so anything that raced that read found no refresh token and skipped the silent-refresh retry entirely. `restore()` is awaitable, so callers can order themselves against it.
+- `login`, `updateSession` and `logout` each wrote a different subset of the session (five things, three, and two respectively), so a caller had to know which — the shape that let the refresh token fall out of step with the access token. `adopt` and `clear` are now the only writers.
+- Silent-refresh mechanics — dedup of concurrent attempts, listener notification, refresh-token rotation, and clearing the session when a refresh token is spent — are covered by 29 direct tests instead of being reachable only through an `api` method. `AuthContext.test.tsx` now drives the real session against a mocked storage adapter and asserts the provider follows, rather than reaching in to invoke a captured callback slot.
+
 ## [0.4.42] - 2026-08-09
 
 ### Changed
@@ -347,7 +361,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.42...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.43...HEAD
+[0.4.43]: https://github.com/jwh3times/apexracers/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/jwh3times/apexracers/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/jwh3times/apexracers/compare/v0.4.40...v0.4.41
 [0.4.39]: https://github.com/jwh3times/apexracers/compare/v0.4.38...v0.4.39

@@ -109,8 +109,11 @@ src/
   pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
   pages/__tests__/    ← Vitest tests for the static pages
   components/         ← shared UI (Sidebar, TopNav, Footer, Sparkline, …) + colocated *.test.tsx siblings
-  context/            ← AuthContext, ThemeContext, FeatureFlagContext + colocated *.test.tsx siblings
-  services/           ← api.ts (typed fetch client), http.ts (request core + error classes), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
+  context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext + colocated
+                          *.test.tsx siblings
+  services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
+                          session.ts (signed-in session: tokens, claims, persistence, silent
+                          refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
   utils/              ← formatLapTime, topPercentLabel, deriveAlerts, breadcrumbs + colocated *.test.ts siblings
   test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory for tests)
   App.tsx             ← route definitions, AppShell layout
@@ -125,17 +128,17 @@ The client includes a **401 interceptor**: on a 401 response, it silently exchan
 
 ## Authentication
 
-Auth state is managed by `AuthContext` (`src/context/AuthContext.tsx`). Use the `useAuth()` hook — never read tokens or decode JWT claims outside the context.
+The signed-in session — tokens, decoded claims, persistence, and the silent refresh — is owned by `src/services/session.ts`, not by a React context. `AuthContext` (`src/context/AuthContext.tsx` + `AuthProvider.tsx`) is a thin binding over it. Use the `useAuth()` hook — never read tokens or decode JWT claims outside `session.ts`.
 
 - **Access token** (15-min JWT) and **refresh token** (7-day, rotating) are both stored in IndexedDB via `src/services/db.ts` under keys `ar_token` and `ar_refresh_token`.
-- On app load, `AuthContext` checks whether the stored JWT is expired. If it is but a refresh token exists, it silently calls the refresh endpoint to restore the session without re-login.
-- `logout()` revokes the refresh token server-side (`POST /api/auth/logout`) before clearing local state.
+- On app load, `AuthProvider` awaits `session.restore()`, which checks whether the stored JWT is expired. If it is but a refresh token exists, it silently calls the refresh endpoint to restore the session without re-login.
+- `logout()` revokes the refresh token server-side (`POST /api/auth/logout`) before clearing local state via `session.clear()`.
 
 ## Contexts
 
 | Context              | Hook                | Purpose                                                                                                            |
 | -------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `AuthContext`        | `useAuth()`         | User session, JWT + refresh token, login/logout, profile updates, role, alerts toggle                              |
+| `AuthContext`        | `useAuth()`         | User (binding over `session.ts`), login/logout, profile updates, role, alerts toggle                               |
 | `ThemeContext`       | `useTheme()`        | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API                                            |
 | `FeatureFlagContext` | `useFeatureFlags()` | Fetches flags from `/api/feature-flags` (public; signed-out visitors get the Standard set); exposes `hasFlag(key)` |
 

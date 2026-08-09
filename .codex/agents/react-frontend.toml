@@ -13,32 +13,57 @@ React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/buil
 
 **Never call `fetch()` directly in pages or components.** Every call goes through `request<T>(path, init)`, exported from `src/services/api.ts` and built on `createHttpClient(...)` in `src/services/http.ts` — it attaches auth headers, retries once after a silent token refresh on 401, returns `undefined` for 204s, and maps RFC-7807 errors. Add a new endpoint as a method on the `api` export object: call `request` with `{ method, json }` (JSON body) or `{ method, body }` (raw/FormData), with a JSDoc comment naming the controller route. Do **not** reintroduce per-verb helpers (`get`/`postJson`/`putJson`/…) — they were removed in favor of `request<T>`.
 
-`services/http.ts` owns the request core itself plus the `ApiError` / `IRacingNotLinkedError` classes and the RFC-7807 message-picking logic (`throwForResponse`, `humanMessageFor`) — `api.ts` re-exports the error classes rather than redeclaring them, so there is exactly one class identity across the app. `http.ts` takes `fetch`, `getAccessToken`, and `refresh` as injected dependencies; `api.ts` is the only place that supplies real ones (module-level token state and the refresh-token exchange stay in `api.ts`, not `http.ts`). Because those three are injected, `createHttpClient` is directly unit-testable — including the 401-retry branch — without touching global `fetch`; prefer adding a test against `createHttpClient` itself in `http.test.ts` over exercising retry behavior indirectly through an `api` method.
+`services/http.ts` owns the request core itself plus the `ApiError` / `IRacingNotLinkedError` classes and the RFC-7807 message-picking logic (`throwForResponse`, `humanMessageFor`) — `api.ts` re-exports the error classes rather than redeclaring them, so there is exactly one class identity across the app. `http.ts` takes `fetch`, `getAccessToken`, and `refresh` as injected dependencies and knows nothing about where tokens live; `api.ts` is the only place that supplies real ones, wiring both to the `session` singleton (`services/session.ts` — see Authentication below) rather than holding any token state itself. Because those three are injected, `createHttpClient` is directly unit-testable — including the 401-retry branch — without touching global `fetch`; prefer adding a test against `createHttpClient` itself in `http.test.ts` over exercising retry behavior indirectly through an `api` method.
 
 When adding a new endpoint, update both `ResponseDtos.cs` (backend) and `api.ts` (frontend) — the TypeScript interfaces must mirror the C# records exactly: camelCase field names, `number | null` for `double?`, `string` for `DateTimeOffset` (ISO 8601). A `409` carrying `code: "IRACING_NOT_LINKED"` is surfaced as the typed `IRacingNotLinkedError` so pages can prompt to link an iRacing account.
 
 ## Authentication
 
-Auth state lives entirely in `AuthContext` (`src/context/AuthContext.tsx`):
+The signed-in session — the token pair, the claims decoded from it, its persistence, and the silent
+refresh — is owned by one module, `src/services/session.ts`, not by a context. It exposes an
+app-wide `session` singleton built with `createSession(deps)`, behind `restore()` / `adopt()` /
+`clear()` / `refresh()` / `subscribe()`. `AuthContext` (`src/context/AuthContext.tsx` +
+`AuthProvider.tsx`) is a thin React binding over it — it holds no token state of its own:
 
-- JWT (15 min) + refresh token (7 days) — both persisted in IndexedDB via `dbGet`/`dbSet`/`dbRemove` (`src/services/db.ts`), keys `ar_token` and `ar_refresh_token`.
-- Claims decoded client-side by `decodeJwt()`: `sub`, `email`, `name`, `role`, `iracing_id`, `exp`.
+- `AuthProvider` subscribes to `session.subscribe()` on mount (unsubscribing on unmount) and awaits
+  `session.restore()` once to settle `loading`; `login`/`logout`/`updateSession` call
+  `session.adopt(tokens)` / `session.clear()` and derive the displayed `user` from
+  `session.claims`.
+- Storage is a `KeyValueStore` **seam** (`get`/`set`/`remove`) with two real adapters: `indexedDbStore`
+  in the app (wrapping `dbGet`/`dbSet`/`dbRemove` from `src/services/db.ts`) and an in-memory one
+  built inline in tests. Keys are `ar_token` and `ar_refresh_token`; JWT is 15 min, refresh token
+  7 days.
+- Claims are decoded client-side by the pure `decodeJwt()` / `isTokenExpired()` exported from
+  `session.ts`: `sub`, `email`, `name`, `role`, `iracing_id`, `theme_preference`, `exp`.
 - Roles: `Standard` | `Beta` | `Alpha` | `Admin`.
 - `useAuth()` hook returns `{ user, loading, login, logout, updateSession, alertsEnabled, setAlertsEnabled }`.
-- `login()` accepts `AuthResult + email`; persists refresh token if present. `updateSession()` refreshes JWT after profile/role changes. `logout()` calls `api.revokeToken` then clears both tokens.
-- On mount, `AuthContext` silently calls `api.refreshTokens` if the stored JWT is expired but a valid refresh token exists — so the session survives between visits without re-login.
-- **Never read the JWT or decode claims outside of `AuthContext`.** Never store either token in `localStorage` or component state.
+- The refresh transport is **injected** into `createSession` — the app wires it to a raw `fetch`
+  call, deliberately bypassing the intercepting http client: routing it through `http.ts` would call
+  back into `session.refresh()` on a 401 and recurse. `session.refresh()` dedupes concurrent callers
+  behind one in-flight promise, whichever caller triggered it (boot-time `restore()` or the 401
+  interceptor below).
+- `session.subscribe(listener)` returns an unsubscribe. It's a list, not a single slot — a second
+  subscriber (StrictMode's double-invoke, a multi-provider test) adds a listener instead of silently
+  replacing the first.
+- **Never read the JWT or decode claims outside of `session.ts`.** Never store either token in
+  `localStorage` or component state.
 
-### 401 interceptor in api.ts
+### 401 interceptor
 
-The `request<T>` helper intercepts 401 responses:
+`http.ts`'s `request<T>` calls the injected `refresh()` dependency on a 401 and retries the original
+request once if it resolves `true`. `api.ts` wires that dependency straight to `session.refresh()` —
+`http.ts` itself knows nothing about tokens, so there is no `AuthContext`-facing refresh API to keep
+in sync; a successful or failed refresh reaches `AuthContext` the same way any other session change
+does, through `session.subscribe()`.
 
-1. Call `tryRefresh()` — exchanges the stored refresh token for a new JWT + refresh token via `POST /api/auth/refresh`.
-2. `tryRefresh` deduplicates concurrent 401s: the first call sets `_refreshPromise`; all subsequent callers await the same promise.
-3. On success: call `_onTokenRefreshed(newToken, newRefreshToken)` (registered by `AuthContext` to persist both to IndexedDB) and retry the original request once.
-4. On failure: call `_onSessionExpired()` (registered by `AuthContext` to clear user state) then throw.
+### Testing session state
 
-Module-level exports for `AuthContext` to wire in: `setRefreshToken`, `onTokenRefreshed`, `onSessionExpired`. `clearToken` clears both access and refresh tokens.
+`session` is an **app-wide singleton** — any test that touches it, directly or indirectly through
+`AuthProvider`, must `await session.clear()` in `beforeEach`, or state leaks between tests (see
+`AuthContext.test.tsx`). `session.test.ts` exercises `createSession` directly against an in-memory
+store and a stub refresh transport; `AuthContext.test.tsx` mocks `services/db` (the storage seam's
+real adapter) and drives the real `session` singleton through `AuthProvider`, asserting the React
+binding follows it — it does not mock `session.ts` itself.
 
 ## Feature flags
 
@@ -56,8 +81,9 @@ src/features/<area>/    ← feature-grouped route pages, each with a colocated *
 src/pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
 src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
-src/context/            ← React contexts (AuthContext, FeatureFlagContext), each with a colocated *.test.tsx sibling
-src/services/           ← api.ts, http.ts, db.ts, each with a colocated *.test.ts sibling
+src/context/            ← React contexts (AuthContext, FeatureFlagContext) + their Provider components
+                          (AuthProvider, …), each with a colocated *.test.tsx sibling
+src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
 ```
@@ -146,7 +172,7 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
   });
   ```
 
-  Then reject with the real class: `vi.mocked(api.getX).mockRejectedValue(new ApiError(404, 'Not Found'))`. The dynamic import inside the factory is required because `vi.mock` is hoisted above the file's own imports. Two files intentionally keep bespoke factories instead: `context/AuthContext.test.tsx` (mocks module-level token setters `mockApiModule` doesn't cover) and `context/ThemeContext.test.tsx` (needs a capturing `updateTheme` implementation, not a bare stub).
+  Then reject with the real class: `vi.mocked(api.getX).mockRejectedValue(new ApiError(404, 'Not Found'))`. The dynamic import inside the factory is required because `vi.mock` is hoisted above the file's own imports. Two files intentionally keep bespoke factories instead: `context/AuthContext.test.tsx` (mocks only `api.revokeToken` plus `services/db` — the session's storage seam — so it can drive the real `session` singleton through `AuthProvider` rather than a stand-in) and `context/ThemeContext.test.tsx` (needs a capturing `updateTheme` implementation, not a bare stub).
 - The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in AGENTS.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
 - **End-to-end (Playwright):** tests live in `web/e2e/` and run against the full stack at `http://localhost:8080` (e.g. `docker compose up`). Config is `web/playwright.config.ts` (single Chromium project; `reuseExistingServer: !process.env.CI`). Run with `npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive). Vitest excludes `e2e/` via `include: ['src/**']` in `vite.config.ts` — E2E tests never count toward the coverage gate. A non-blocking per-PR GitHub Actions workflow (`.github/workflows/e2e.yml`) also runs the suite (Postgres service + builds SPA into API wwwroot + Playwright); it is not yet a required check.
 - **Accessibility audits:** `web/e2e/a11y.spec.ts` asserts zero WCAG 2.1 A/AA violations across 5 public + 7 authed pages via `auditA11y(page)` from `web/e2e/helpers/a11y.ts` (`@axe-core/playwright`, `wcag2a`/`wcag2aa` tagset).

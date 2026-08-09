@@ -1,4 +1,5 @@
 import { createHttpClient } from './http';
+import { session } from './session';
 
 // Types matching the backend controller response shapes
 
@@ -622,78 +623,18 @@ export interface TrackCatalogDetail extends TrackCatalogItem {
   yourBestLaps: PersonalLap[];
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Internal helpers ─────────────────────────────────────────────────────────────
 
-let _token: string | null = null;
-let _refreshToken: string | null = null;
-let _onTokenRefreshed: ((token: string, refreshToken: string) => void) | null = null;
-let _onSessionExpired: (() => void) | null = null;
-let _refreshPromise: Promise<boolean> | null = null;
-
-export function setToken(token: string): void {
-  _token = token;
-}
-export function setRefreshToken(token: string | null): void {
-  _refreshToken = token;
-}
-export function clearToken(): void {
-  _token = null;
-  _refreshToken = null;
-}
-export function onTokenRefreshed(cb: (token: string, refreshToken: string) => void): void {
-  _onTokenRefreshed = cb;
-}
-export function onSessionExpired(cb: () => void): void {
-  _onSessionExpired = cb;
-}
-
-function authHeaders(): Record<string, string> {
-  return _token ? { Authorization: `Bearer ${_token}` } : {};
-}
-
-async function tryRefresh(): Promise<boolean> {
-  if (!_refreshToken) return false;
-  if (_refreshPromise) return _refreshPromise;
-
-  _refreshPromise = (async (): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: _refreshToken }),
-      });
-      if (!res.ok) {
-        _onSessionExpired?.();
-        return false;
-      }
-      const data = (await res.json()) as AuthResult;
-      _token = data.token;
-      if (data.refreshToken) _refreshToken = data.refreshToken;
-      _onTokenRefreshed?.(data.token, data.refreshToken ?? '');
-      return true;
-    } catch {
-      _onSessionExpired?.();
-      return false;
-    } finally {
-      _refreshPromise = null;
-    }
-  })();
-
-  return _refreshPromise;
-}
-
-// The request core lives in ./http — see that module for why it is separate and injectable.
-// Re-exported here so the ~90 existing `from '../services/api'` imports keep working and the
-// error classes have exactly one identity across the app.
+// The request core lives in ./http and the session in ./session — see those modules. Re-exported
+// here so the ~90 existing `from '../services/api'` imports keep working and the error classes
+// have exactly one identity across the app.
 export { ApiError, IRacingNotLinkedError } from './http';
+export { session } from './session';
 
-// Token state and refresh mechanics stay in this module for now; `createHttpClient` only asks
-// for the current token and whether a refresh succeeded. Consolidating them with AuthProvider
-// into one session module is a separate change.
 const http = createHttpClient({
   fetch: (input, init) => fetch(input, init),
-  getAccessToken: () => _token,
-  refresh: tryRefresh,
+  getAccessToken: () => session.accessToken,
+  refresh: () => session.refresh(),
 });
 
 const request = http.request;
@@ -971,7 +912,10 @@ export const api = {
   revokeToken(refreshToken: string): Promise<void> {
     return fetch('/api/auth/logout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}),
+      },
       body: JSON.stringify({ refreshToken }),
     })
       .then(() => void 0)
