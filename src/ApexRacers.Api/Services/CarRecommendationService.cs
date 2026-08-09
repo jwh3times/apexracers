@@ -17,8 +17,7 @@ public class CarRecommendationService(AppDbContext db)
         CancellationToken ct = default)
     {
         var week = await db.Weeks
-            .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
-            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
+            .InActiveSeason(seriesId, weekNumber)
             .Select(w => new { w.Id, SeriesId = w.Season.SeriesId, w.WeekNumber, w.TrackId })
             .FirstOrDefaultAsync(ct);
 

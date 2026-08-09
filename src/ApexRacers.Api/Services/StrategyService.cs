@@ -19,17 +19,8 @@ public class StrategyService(AppDbContext db, CarRecommendationService recommend
     public async Task<WeekStrategyDto> GetStrategyAsync(
         int seriesId, int weekNumber, Guid? userId, CancellationToken ct)
     {
-        var season = await db.Seasons
-            .Where(s => s.SeriesId == seriesId && s.Active)
-            .OrderByDescending(s => s.Year)
-            .ThenByDescending(s => s.Quarter)
-            .FirstOrDefaultAsync(ct)
-            ?? throw new KeyNotFoundException($"No active season for series {seriesId}.");
-
-        var seriesName = await db.Series
-            .Where(s => s.Id == seriesId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(ct) ?? string.Empty;
+        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         var week = await db.Weeks
             .Where(w => w.SeasonId == season.Id && w.WeekNumber == weekNumber)

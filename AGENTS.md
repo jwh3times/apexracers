@@ -353,7 +353,7 @@ One responsibility per class; pure heuristics/mappers/parsers are extracted and 
 Field-percentile rank and field median are one such extraction, shared across services and the Seeder
 as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 
-- `SeriesService`, `WeekCarStatsService` — series list; per-car week lap stats (median via `Core.FieldPercentile`).
+- `SeriesService`, `WeekCarStatsService` — series list; per-car week lap stats (median via `Core.FieldPercentile`). Active-season/active-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate; "which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller.
 - `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
 - `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`).
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.

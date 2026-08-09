@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.48] - 2026-08-09
+
+### Changed
+
+- Resolving "which season and week does this series mean right now" now has one owner. The active-season lookup and its exception wording were written verbatim three times, the series-name lookup three times, and the active-week lookup with its Year/Quarter tie-break four times. `SeasonQueries` holds them as composable query fragments rather than methods returning a fixed record, because the duplication was in the filter and the ordering rather than the shape — each of the four week lookups projects different columns, so a record would have forced every caller to fetch the union of them and given up the projection pushdown. The Year/Quarter ordering is the load-bearing part: a series can have more than one season flagged active during a changeover, and getting the order wrong silently reads last quarter's data.
+- **"Which week is the season in" had two different answers, and now has one.** The series list took the week with the latest start date; the standings page took the highest week number. Those coincide only while start dates and week numbers run in the same order, which nothing enforces — a duplicated or out-of-order start date would have made the two pages disagree about what week it is, with no shared code to fix. `ApexRacers.Core.SeasonCalendar` settles it as start date first, week number only to break a tie: strictly more defined than either original and identical on well-ordered data.
+- What happens *before* a season starts is deliberately still the caller's choice, because the two surfaces want different things and both are right — the series list shows a blank cell, while the standings page has to render some week and falls back to the first. Both behaviours are unchanged.
+- `SeriesService` now runs three queries instead of one containing six correlated subqueries per row. It repeated the same "weeks that have started, latest first" subquery six times over, and expressed the current-week rule in SQL where it could not be shared with the standings page answering the same question; resolving the week once fixes both.
+- **No behaviour changes.** The 513 pre-existing tests passed against the refactor before any new test was added. The current-week rule now has direct coverage — previously it was reachable only through a three-week database fixture on one side and a full query projection on the other.
+
 ## [0.4.47] - 2026-08-09
 
 ### Changed
@@ -404,7 +414,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.47...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.48...HEAD
+[0.4.48]: https://github.com/jwh3times/apexracers/compare/v0.4.47...v0.4.48
 [0.4.47]: https://github.com/jwh3times/apexracers/compare/v0.4.46...v0.4.47
 [0.4.46]: https://github.com/jwh3times/apexracers/compare/v0.4.45...v0.4.46
 [0.4.45]: https://github.com/jwh3times/apexracers/compare/v0.4.44...v0.4.45

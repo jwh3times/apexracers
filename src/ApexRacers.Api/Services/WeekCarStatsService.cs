@@ -10,8 +10,7 @@ public class WeekCarStatsService(AppDbContext db)
     public async Task<List<WeekCarDto>> GetCarsForWeekAsync(int seriesId, int weekNumber, CancellationToken ct = default)
     {
         var weekDbId = await db.Weeks
-            .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
-            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
+            .InActiveSeason(seriesId, weekNumber)
             .Select(w => (Guid?)w.Id)
             .FirstOrDefaultAsync(ct);
 
@@ -21,8 +20,7 @@ public class WeekCarStatsService(AppDbContext db)
     public async Task<WeekDetailDto?> GetWeekDetailAsync(int seriesId, int weekNumber, CancellationToken ct = default)
     {
         var weekInfo = await db.Weeks
-            .Where(w => w.WeekNumber == weekNumber && w.Season.SeriesId == seriesId && w.Season.Active)
-            .OrderByDescending(w => w.Season.Year).ThenByDescending(w => w.Season.Quarter)
+            .InActiveSeason(seriesId, weekNumber)
             .Select(w => new
             {
                 WeekId           = w.Id,
