@@ -375,7 +375,7 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
   order), used by `PersonalLapService` and the catalog services' PB overlays instead of each holding
   its own copy. See `dotnet-api` for the two invariants it enforces.
 - `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired cache rows every 6 h.
-- `AuthService` — registration, login (JWT + rotating refresh token), profile/password/email-change, reset. Caps active refresh tokens at 5 per user; revokes all on password/email change. Needs `AddDefaultTokenProviders()`.
+- `AuthService` — registration, login (JWT + rotating refresh token), profile/password/email-change, reset. Caps active refresh tokens at 5 per user; revokes all on password/email change. Needs `AddDefaultTokenProviders()`. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`) and injected into both the issuing side (`AuthService`) and the validating side (`TokenValidationParameters`) — see `dotnet-api` for the rule.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
 - `TelemetryUploadService`, `PersonalLapService` — parse `.ibt` → `PersonalLap`; query personal bests.
 - `AdminService` — role + flag CRUD. Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`); flag eligibility is hierarchical (`MinimumRole` level ≤ user level).

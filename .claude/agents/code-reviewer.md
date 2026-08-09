@@ -65,6 +65,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any new admin endpoint that lacks `[Authorize(Policy = "AdminOnly")]`.
 - Flag use of `[Authorize(Roles = "...")]` — this project uses claim-based policies (`RequireClaim("role", ...)`), not role-based authorization.
 - Flag any hardcoded JWT key, password, or secret in source code.
+- Flag any direct `config["JWT_SIGNING_KEY"]`/`config["JWT_ISSUER"]`/`config["JWT_AUDIENCE"]` read outside `JwtSettings` — the issuing and validating sides must derive the identical key/issuer/audience from one binding (`JwtSettings.FromConfiguration`, bound once in `Program.cs`), and a second, independent read is exactly how the two sides silently drift.
 - Flag self-assignable role changes that include `Admin` — self-service role changes must be limited to `Standard`, `Beta`, `Alpha`.
 
 **Tests**

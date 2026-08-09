@@ -69,6 +69,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 - JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
 - Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
+- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, AppDbContext db, IEmailSender emailSender)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` argument; build it with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration` rather than hand-rolling one, so the test exercises the real `DefaultIssuer`/`DefaultAudience` fallbacks instead of a second, divergent set of literals.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
 - RBAC policies use `RequireClaim("role", ...)`, **not** `RequireRole`. Existing policies:
   - `AdminOnly` → `RequireClaim("role", "Admin")`
@@ -90,7 +91,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 ## Configuration
 
-`AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in AGENTS.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup.
+`AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in AGENTS.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup (`JWT_SIGNING_KEY`'s check lives in `JwtSettings.FromConfiguration`, called once in `Program.cs`).
 
 ## Tests
 

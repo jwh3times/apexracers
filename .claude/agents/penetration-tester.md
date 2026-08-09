@@ -13,11 +13,12 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 
 **JWT configuration**
 
-- Algorithm: HS256. `JWT_SIGNING_KEY` comes from environment/configuration.
+- Algorithm: HS256. `JWT_SIGNING_KEY` (plus `JWT_ISSUER`/`JWT_AUDIENCE`, defaulting to `ApexRacers.Api`/`ApexRacers.Web`) is bound once as `JwtSettings` and shared by both the issuing side (`AuthService`) and the validating side (`Program.cs`'s `TokenValidationParameters`) — a single source of truth by construction, not just convention, so there's no "one side updated, one side didn't" drift to probe for in this codebase.
 - `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`, **15-minute access token expiry**.
 - Test: can a token with `alg: none` or a mismatched algorithm be accepted?
 - Test: does the API reject expired tokens promptly (no clock skew buffer)?
 - Test: are tokens from one environment (dev key) rejected by another?
+- Test: is a token with the correct signature but a wrong `iss` or `aud` claim rejected (`ValidateIssuer`/`ValidateAudience` are both on)?
 
 **Refresh token endpoints**
 
