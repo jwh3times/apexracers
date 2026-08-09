@@ -29,6 +29,10 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - Don't swallow `OperationCanceledException` to "clean up" cancellation noise. Let it propagate: `ClientDisconnectDetector` already distinguishes a client disconnect (token signalled → Debug + 499) from a real server-side cancellation (→ Error + 500), and catching it in a service destroys the distinction.
 - When a controller returns a bare status result the **user will see**, give it a message: `Problem(detail: "…", statusCode: …)`, not `Unauthorized()`/`NotFound()`. ASP.NET Core's automatic ProblemDetails carries only type/title/status/traceId, and the web client renders `detail` — a bare result leaves it with nothing human-readable. Keep the wording non-enumerating for auth failures ("Invalid email or password.", never "no such account"). Internal guards that can't reach a user (e.g. an unparseable `sub` claim) can stay bare.
 
+### `CachedIRacingClient` — the get-or-fetch seam
+
+`CachedIRacingClient(AppDbContext db, IDataClient? client)` — `GetOrFetchAsync<T>(CacheSpec spec, Func<IDataClient, Task<T>> fetch, CancellationToken ct)`. `CacheSpec` (`Key` + `Ttl`) always comes from a factory on `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the sole author of every key string and its TTL; adding a cache-backed read path means adding a factory there, never interpolating a key at the call site. `client` is nullable rather than resolved from an `IServiceProvider`: it's registered in `Program.cs` via an explicit factory lambda (`sp.GetService<IDataClient>()`) because the SDK client itself is only registered when all four `IRACING_*` credentials are present; a null `client` on a cache miss throws `IRacingNotConfiguredException`. There is no `IsConfigured` property — check for a 503 by attempting the call, not by probing state first.
+
 ## DTOs
 
 `record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
@@ -73,3 +77,9 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 ## Tests
 
 xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. AGENTS.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
+
+A single `AppDbContext` serializes everything through one change tracker, so it cannot express two
+callers racing the same row. For that case only, `DbContextFactory.CreateShared()` returns a
+`SharedSqliteDatabase` holding one in-memory SQLite connection that hands out multiple independent
+`AppDbContext` instances (`NewContext()`) over it — the connection, not any one context, owns the
+database's lifetime, since in-memory SQLite drops it when its last connection closes.

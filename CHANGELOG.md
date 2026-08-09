@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.44] - 2026-08-09
+
+### Changed
+
+- The iRacing cache key now has one owner, `IRacingCacheKeys`, returning a `CacheSpec(Key, Ttl)` for each of the 15 key families. The key is the interface between the API read paths and the demo seeder, and it was previously a bare interpolated string authored independently in three trees — the services, `DemoCacheSeeder`, and `DemoSeedVerifier` — with test literals as a fourth transcription, kept in step by a doc-comment asking editors to "keep the two in lockstep". That comment named only two of the three authors, and not the one that actually matters: the service that reads. The arrangement had already cost a bug, where the verifier derived expected `laps:` keys with a different filter than the seeder wrote them with and demanded a key that was never seeded. Key and TTL travel together because they are one decision — passing them as separate parameters let a caller take a key from one family and a TTL from another. The per-key TTL guidance that lived in prose is now code.
+- `IRacingCacheKeys.DriverSearch` owns the driver-search normalization (trim, lowercase, two-character minimum) and returns null for a term too short to search, so a caller cannot cache a search it should have refused. That rule previously lived as code in `RivalService` and as a doc-comment in the demo seed data asking the author to hand-lowercase every dictionary key, with nothing enforcing that the two matched.
+- `CachedIRacingClient` takes `IDataClient?` directly instead of resolving it from an `IServiceProvider`. Nullability already expressed "credentials absent", which was the only reason for service location, so the seam now sits on `IDataClient` — where NSubstitute already operates. **Twelve test files deleted an identical private stub** that returned the same object for any requested type. `IsConfigured`, which had no production callers, is gone. `Program.cs` constructs the client by hand because the SDK client is registered only when all four iRacing credentials are present, and container auto-wiring would fail to resolve the nullable parameter rather than pass null.
+
+### Fixed
+
+- A cold cache could return a 500 under concurrent load. Two callers that both read-missed a key with no row yet both reached the insert, and `CacheKey` is unique, so the loser took a `DbUpdateException` that `ExceptionStatusMapper` has no case for. The most exposed instance was the public `/live` board, whose single global `race-guide` key is uncached on a cold or freshly-purged cache. `GetOrFetchAsync` now handles the conflict for the insert case only — an expiry updates an existing row and cannot collide — and returns the value the losing caller fetched. Reproduced by a test before fixing: with the guard removed it fails with `UNIQUE constraint failed: ExternalDataCaches.CacheKey`.
+- Added the round-trip test the seeder suite was missing: seed the demo surface, then read it back through the **real** services constructed with no iRacing client, so a cache miss throws instead of silently falling through to a live fetch. Every other seeder test asserts a hardcoded key literal — a transcription of the format rather than a check against the code that consumes it — so a typo in a service's key would have left them all green while the demo page returned 503. Verified by mutation: pointing one service at a different key fails it. A fourth case asserts an unseeded key throws, so the others cannot pass vacuously against an empty cache.
+
 ## [0.4.43] - 2026-08-09
 
 ### Changed
@@ -361,7 +374,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.43...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.44...HEAD
+[0.4.44]: https://github.com/jwh3times/apexracers/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/jwh3times/apexracers/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/jwh3times/apexracers/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/jwh3times/apexracers/compare/v0.4.40...v0.4.41

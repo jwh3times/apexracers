@@ -1,3 +1,4 @@
+using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Seeder.Demo;
@@ -28,11 +29,11 @@ public class DemoCacheSeederAllTests
 
         await new DemoCacheSeeder(db).SeedAllAsync(Ct);
 
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"profile:{DemoData.DriverCustId}", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.Profile(DemoData.DriverCustId).Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "leaderboard:5", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "race-guide", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.RaceGuide.Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "wr:132:1", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == $"laps:-10:{DemoData.DriverCustId}", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.LapData(-10, DemoData.DriverCustId).Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:rival", Ct));
         // Every seeded cache row carries the far-future sentinel (purge marker + never-miss).
         Assert.All(await db.ExternalDataCaches.ToListAsync(Ct), r => Assert.Equal(DemoCache.Sentinel, r.ExpiresAt));

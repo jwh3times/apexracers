@@ -19,10 +19,6 @@ public class RivalComparisonServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static MemberProfile ProfileNamed(long custId, string name) => new()
     {
@@ -43,7 +39,7 @@ public class RivalComparisonServiceTests
         client.GetMemberChartDataAsync(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<MemberChartType>(), Arg.Any<CancellationToken>())
             .Returns(new DataResponse<MemberChart> { Data = new MemberChart { CategoryId = 5, Points = [] } });
 
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return new RivalComparisonService(new MemberStatsService(cached), db);
     }
 

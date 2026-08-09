@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
@@ -51,7 +52,7 @@ public class DemoCacheSeederCompletionTests
         await new DemoCacheSeeder(db).SeedLapDataAsync(Ct);
 
         var row = await db.ExternalDataCaches
-            .SingleAsync(c => c.CacheKey == $"laps:-10:{DemoData.DriverCustId}", Ct);
+            .SingleAsync(c => c.CacheKey == IRacingCacheKeys.LapData(-10, DemoData.DriverCustId).Key, Ct);
         var dto = JsonSerializer.Deserialize<ApexRacers.Api.Dtos.DriverLapsDto>(row.Payload)!;
         Assert.Equal(-10, dto.SubsessionId);
         Assert.Equal(DemoData.DriverCustId, dto.CustId);

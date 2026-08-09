@@ -19,7 +19,7 @@ public class WorldRecordService(CachedIRacingClient cached)
         try
         {
             return await cached.GetOrFetchAsync<double?>(
-                $"wr:{carId}:{trackId}", TimeSpan.FromHours(24),
+                IRacingCacheKeys.WorldRecord(carId, trackId),
                 async c => FastestLapSeconds(
                     (await c.GetWorldRecordsAsync(carId, trackId, null, null, ct)).Data.Item2),
                 ct);

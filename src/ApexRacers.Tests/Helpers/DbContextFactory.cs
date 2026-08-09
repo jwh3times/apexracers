@@ -47,4 +47,35 @@ public static class DbContextFactory
         new(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
+
+    /// <summary>
+    /// One in-memory SQLite database that several <see cref="AppDbContext"/> instances share, for
+    /// tests that need two callers racing the same rows — a single context serializes everything
+    /// through one change tracker and so cannot express a concurrent write at all.
+    ///
+    /// The connection is owned here rather than by any context, because in-memory SQLite drops the
+    /// database when its last connection closes: letting a context own it would tear the database
+    /// down as soon as that one context was disposed.
+    /// </summary>
+    public static SharedSqliteDatabase CreateShared() => new();
+
+    public sealed class SharedSqliteDatabase : IAsyncDisposable
+    {
+        private readonly SqliteConnection _connection;
+
+        internal SharedSqliteDatabase()
+        {
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
+            _connection.Open();
+            using var seed = NewContext();
+            seed.Database.EnsureCreated();
+        }
+
+        public AppDbContext NewContext() =>
+            new(new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(_connection, contextOwnsConnection: false)
+                .Options);
+
+        public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
+    }
 }

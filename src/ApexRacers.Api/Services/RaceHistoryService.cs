@@ -17,7 +17,7 @@ public class RaceHistoryService(CachedIRacingClient cached, AppDbContext db)
         long custId, CancellationToken ct)
     {
         var rows = await cached.GetOrFetchAsync(
-            $"recent:{custId}", TimeSpan.FromMinutes(10),
+            IRacingCacheKeys.RecentRaces(custId),
             async c =>
             {
                 var data = (await c.GetMemberRecentRacesAsync((int)custId, ct)).Data;

@@ -16,7 +16,7 @@ public class LeaderboardService(CachedIRacingClient cached)
     public Task<IReadOnlyList<GlobalLeaderboardEntryDto>> GetLeaderboardAsync(
         int categoryId, CancellationToken ct) =>
         cached.GetOrFetchAsync<IReadOnlyList<GlobalLeaderboardEntryDto>>(
-            $"leaderboard:{categoryId}", TimeSpan.FromHours(24),
+            IRacingCacheKeys.Leaderboard(categoryId),
             async c =>
             {
                 var file = await c.GetDriverStatisticsByCategoryCsvAsync(categoryId, ct);

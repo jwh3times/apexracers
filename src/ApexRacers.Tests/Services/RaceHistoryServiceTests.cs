@@ -16,10 +16,6 @@ public class RaceHistoryServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static Race Race(
         int subsessionId, string when, string seriesName, int trackId, string trackName,
@@ -53,7 +49,7 @@ public class RaceHistoryServiceTests
             });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new RaceHistoryService(cached, db), client, db);
     }
 

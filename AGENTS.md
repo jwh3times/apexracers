@@ -421,14 +421,17 @@ stat lookups displayed roughly as-is (the common member/season-stat case). Don't
 copy of something that already has an entity (e.g. the car/track catalog).
 
 **Cache rules (#2):** cache mapped DTOs, **never** raw Aydsko SDK types (their wire shape drifts and
-carries `[Obsolete]` fields). TTL guidance: race guide 60 s; recent races 10 min; driver search 30 min;
-member profile/career/chart 6 h; world records / leaderboards / standings 24 h. Eviction is TTL-only
-(lazy); `ExternalDataCacheCleanupService` purges long-expired rows.
+carries `[Obsolete]` fields). Every cache key and its TTL is authored once, as a `CacheSpec` factory on
+`IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the single
+source of truth for key format and freshness window, not this prose; a new cache-backed read path adds
+a factory there rather than interpolating a key at the call site. Eviction is TTL-only (lazy);
+`ExternalDataCacheCleanupService` purges long-expired rows.
 
 **Demo cache seeding** (`ApexRacers.Seeder --demo` → `DemoCacheSeeder`): seeds `ExternalDataCache` rows
-with synthetic mapped DTOs under each service's **exact** runtime cache keys, with a far-future
-`ExpiresAt` sentinel (`>= 9000-01-01`) so cleanup never evicts them; also seeds synthetic `SeasonCarBop`,
-`Week.WeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
+with synthetic mapped DTOs under each service's **exact** runtime cache keys — enforced by both trees
+calling the same `IRacingCacheKeys` factories rather than by hand-matching interpolated strings — with
+a far-future `ExpiresAt` sentinel (`>= 9000-01-01`) so cleanup never evicts them; also seeds synthetic
+`SeasonCarBop`, `Week.WeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;

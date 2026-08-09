@@ -15,7 +15,7 @@ public class LapDataService(CachedIRacingClient cached)
         // Cache the fully-mapped DTO (laps + computed pace stats), not the raw SDK lap rows, so the
         // cached JSON is decoupled from the Aydsko wire shape. Race data is immutable → 24-hour TTL.
         await cached.GetOrFetchAsync(
-            $"laps:{subsessionId}:{custId}", TimeSpan.FromHours(24),
+            IRacingCacheKeys.LapData(subsessionId, custId),
             async c =>
             {
                 var raw = (await c.GetSingleDriverSubsessionLapsAsync(

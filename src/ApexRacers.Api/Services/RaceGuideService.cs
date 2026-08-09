@@ -19,7 +19,7 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
     public async Task<IReadOnlyList<RaceGuideEntryDto>> GetGuideAsync(CancellationToken ct)
     {
         var sessions = await cached.GetOrFetchAsync(
-            "race-guide", TimeSpan.FromSeconds(60),
+            IRacingCacheKeys.RaceGuide,
             async c =>
             {
                 var raw = (await c.GetRaceGuideAsync(DateTimeOffset.UtcNow, true, ct)).Data.Sessions ?? [];

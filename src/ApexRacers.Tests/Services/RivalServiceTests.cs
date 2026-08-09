@@ -14,13 +14,9 @@ public class RivalServiceTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static RivalService Build(AppDbContext db, IDataClient? client = null) =>
-        new(db, new CachedIRacingClient(db, new StubServiceProvider(client)));
+        new(db, new CachedIRacingClient(db, client));
 
     private static void SeedResult(AppDbContext db, int subsessionId, long custId, string name,
         int finish = 1, double bestLap = -1)

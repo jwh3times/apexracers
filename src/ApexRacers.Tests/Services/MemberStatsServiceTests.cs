@@ -16,10 +16,6 @@ public class MemberStatsServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static MemberProfile Profile(params LicenseHistory[] licenses) =>
         new() { LicenseHistory = licenses, CustomerId = (int)CustId };
@@ -63,7 +59,7 @@ public class MemberStatsServiceTests
         }
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new MemberStatsService(cached), client, db);
     }
 
@@ -184,7 +180,7 @@ public class MemberStatsServiceTests
             .Returns(new DataResponse<MemberRecap> { Data = recap });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new MemberStatsService(cached), client, db);
     }
 
@@ -348,7 +344,7 @@ public class MemberStatsServiceTests
         }
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new MemberStatsService(cached), client, db);
     }
 

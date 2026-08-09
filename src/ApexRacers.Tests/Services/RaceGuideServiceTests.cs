@@ -12,10 +12,6 @@ public class RaceGuideServiceTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static Aydsko.iRacingData.Series.RaceGuideSession Session(
         int seriesId, double startOffsetMin, double endOffsetMin, int entries = 40) => new()
@@ -41,7 +37,7 @@ public class RaceGuideServiceTests
                 Data = new Aydsko.iRacingData.Series.RaceGuideResults { Sessions = sessions },
             });
 
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new RaceGuideService(cached, db), client, db);
     }
 

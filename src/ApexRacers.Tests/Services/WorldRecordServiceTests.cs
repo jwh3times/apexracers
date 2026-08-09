@@ -15,10 +15,6 @@ public class WorldRecordServiceTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static WorldRecordEntry Entry(
         double? qual = null, double? race = null, double? tt = null, double? practice = null) => new()
@@ -65,7 +61,7 @@ public class WorldRecordServiceTests
     public async Task GetWorldRecordLapSecondsAsync_NotConfigured_ReturnsNullWithoutFetch()
     {
         await using var db = DbContextFactory.Create();
-        var service = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(null)));
+        var service = new WorldRecordService(new CachedIRacingClient(db, null));
 
         Assert.Null(await service.GetWorldRecordLapSecondsAsync(132, 532, Ct));
     }
@@ -81,7 +77,7 @@ public class WorldRecordServiceTests
             {
                 Data = (new WorldRecordsHeader(), [Entry(qual: 66.3, race: 66.8), Entry(tt: 65.95)]),
             });
-        var service = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(client)));
+        var service = new WorldRecordService(new CachedIRacingClient(db, client));
 
         var first = await service.GetWorldRecordLapSecondsAsync(132, 532, Ct);
         var second = await service.GetWorldRecordLapSecondsAsync(132, 532, Ct);
@@ -104,7 +100,7 @@ public class WorldRecordServiceTests
             ExpiresAt = new DateTimeOffset(9999, 1, 1, 0, 0, 0, TimeSpan.Zero),
         });
         await db.SaveChangesAsync(Ct);
-        var service = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(null)));
+        var service = new WorldRecordService(new CachedIRacingClient(db, null));
 
         Assert.Equal(65.5, (await service.GetWorldRecordLapSecondsAsync(132, 532, Ct))!.Value, precision: 3);
     }

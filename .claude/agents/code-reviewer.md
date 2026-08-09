@@ -35,6 +35,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag obvious N+1 patterns: a `foreach` over a collection that issues a query per iteration.
 - Flag async EF Core methods called without `await` or `CancellationToken` where one is available.
 
+**iRacing cache keys**
+
+- Flag any `ExternalDataCache` key built by interpolating a string at the call site (in a service, in `DemoCacheSeeder`, or in `DemoSeedVerifier`) instead of calling a factory on `IRacingCacheKeys`. That module is the sole author of every key and its paired TTL — a call site should never construct its own `CacheSpec`.
+
 **Auth and RBAC**
 
 - Flag any new endpoint that handles user-specific data and lacks `[Authorize]`. **Exception**: `POST /api/auth/refresh` and `POST /api/auth/logout` intentionally have no `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT has expired.

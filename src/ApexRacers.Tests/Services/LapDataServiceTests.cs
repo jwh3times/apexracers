@@ -16,10 +16,6 @@ public class LapDataServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static SubsessionLap Lap(int n, double? seconds, bool incident = false) => new()
     {
@@ -40,7 +36,7 @@ public class LapDataServiceTests
             });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new LapDataService(cached), client, db);
     }
 

@@ -18,7 +18,7 @@ public class AchievementsService(CachedIRacingClient cached)
     public async Task<AchievementsDto> GetAchievementsAsync(long custId, CancellationToken ct)
     {
         var awards = await cached.GetOrFetchAsync(
-            $"awards:{custId}", TimeSpan.FromHours(6),
+            IRacingCacheKeys.Awards(custId),
             async c => ((await c.GetDriverAwardsAsync((int)custId, ct)).Data ?? [])
                 .Select(AchievementsMapper.MapAward)
                 .OrderByDescending(a => a.AwardDate)
