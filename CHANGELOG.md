@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.45] - 2026-08-09
+
+### Changed
+
+- The two iRacing unit converters are now one module, `ApexRacers.Core.IRacingUnits`. The same Fahrenheit/Celsius and mph/m·s⁻¹→km/h conversions were written twice — once beside the subsession read path, once beside the schedule read path — each carrying the identical doc-comment ("0 = Fahrenheit, otherwise Celsius. Pure + testable") and each with its own tests. Both sets passed, because each was written against the copy it sat beside: the arithmetic was tested, but the load-bearing knowledge (the unit encoding, the constants) was stored twice. **No behaviour changes** — the two implementations differed in whether the already-metric branch rounded, but `Math.Round` on the integer input that branch received is a no-op, so the divergence was latent rather than live and no wrong temperature was ever served.
+- `Subsession.WeatherJson` and `Week.WeatherSummaryJson` now hold owned `WeatherSnapshot`/`WeatherForecastSnapshot` records instead of raw Aydsko SDK types. The project's rule — cache mapped DTOs, never raw SDK types, because their wire shape drifts and they carry `[Obsolete]` fields — was enforced on the `ExternalDataCache` path but not on the persisted one, which is strictly worse: cache rows expire within 24 hours, but these persist forever and a subsession is ingested exactly once. An SDK upgrade renaming a `[JsonPropertyName]` would make every historical row deserialize into a default-valued object — a *successful* parse with zeros, not an exception — so the readers' `catch (JsonException)` would never fire and every historical race would silently report 0 °C. `ResultsWeather` already ships alias pairs (`TempValue`/`TemperatureValue`, `RelHumidity`/`RelativeHumidity`), which is that drift mid-flight.
+- The snapshots pin their JSON property names to the SDK's existing snake_case wire names rather than inventing PascalCase ones. **Every row already written stays readable — no migration or backfill is required** — while ownership of the format moves from the SDK to this codebase. A wire-shape change now surfaces as a compile error in the new pure `WeatherIngest` mapper (the seam where the SDK stops, mirroring `CatalogIngest`) instead of as silent zeros years later. Neither read path imports an Aydsko namespace any more, and the demo seeder — previously a fourth author of the SDK shape — builds the snapshot too.
+
+### Fixed
+
+- Added the round-trip coverage this mapping never had: SDK wire type → owned snapshot → JSON → read path, for both weather blocks. The mapping previously lived inline in the ingestion worker, which is excluded from coverage as an I/O shell, so the code most likely to break on an SDK upgrade was the code nothing verified. Two further tests read byte-for-byte legacy payloads to hold the persisted contract; verified by mutation, where renaming a single `JsonPropertyName` fails both the format assertion and the legacy read.
+
 ## [0.4.44] - 2026-08-09
 
 ### Changed
@@ -374,7 +386,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.44...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.45...HEAD
+[0.4.45]: https://github.com/jwh3times/apexracers/compare/v0.4.44...v0.4.45
 [0.4.44]: https://github.com/jwh3times/apexracers/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/jwh3times/apexracers/compare/v0.4.42...v0.4.43
 [0.4.42]: https://github.com/jwh3times/apexracers/compare/v0.4.41...v0.4.42

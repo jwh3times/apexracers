@@ -385,10 +385,10 @@ indexes, FK/`OnDelete` behavior).
 | Model                                           | Purpose                                                                                        |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `ApplicationUser`                               | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId`, `ThemePreference`      |
-| `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON)                |
+| `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`) |
 | `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership                                                         |
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
-| `Subsession` / `SubsessionResult`               | one race session + per-driver result (+ race context, weather/track-state JSON)                |
+| `Subsession` / `SubsessionResult`               | one race session + per-driver result (+ race context, weather as an owned `WeatherSnapshot`, track-state JSON) |
 | `PersonalLap`                                   | user's personal best per track+car (from telemetry)                                            |
 | `CarPercentileResult`                           | cached percentile rank per (UserId, CarId, SeriesId, WeekId)                                   |
 | `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
@@ -409,7 +409,11 @@ Three ways iRacing data reaches a read path. Pick deliberately:
 
 1. **Persist into typed entities** (worker/seeder → Postgres): `Series`, `Season`, `Week`, `Track`,
    `Car`, `Subsession`, `SubsessionResult`, `SeasonCarBop`, … Read paths query with SQL/joins. Pure
-   SDK→entity mapping goes in a tested helper (mirror `SubsessionIndexer` / `CatalogIngest`).
+   SDK→entity mapping goes in a tested helper (mirror `SubsessionIndexer` / `CatalogIngest`). This
+   includes JSON columns nested inside a persisted row — `Subsession.WeatherJson` and
+   `Week.WeatherSummaryJson` serialize the owned `WeatherSnapshot` / `WeatherForecastSnapshot`
+   (`ApexRacers.Core.Models`), mapped at ingest by the pure, tested `WeatherIngest`
+   (`ApexRacers.Ingestion`), the same seam pattern as `CatalogIngest`.
 2. **On-demand cache** (`CachedIRacingClient` → `ExternalDataCache`): fetch live per request, memoize
    **mapped DTOs** as JSON with a per-call TTL. Backs progression, profile, race history, lap data,
    world records, leaderboards, standings, race guide, driver search.
@@ -420,8 +424,13 @@ you need point-in-time history. Choose **cache (#2)** for read-mostly, staleness
 stat lookups displayed roughly as-is (the common member/season-stat case). Don't keep a second cached
 copy of something that already has an entity (e.g. the car/track catalog).
 
-**Cache rules (#2):** cache mapped DTOs, **never** raw Aydsko SDK types (their wire shape drifts and
-carries `[Obsolete]` fields). Every cache key and its TTL is authored once, as a `CacheSpec` factory on
+**Cache and persisted-JSON rules (#1 and #2):** cache/persist mapped DTOs or owned Core types,
+**never** raw Aydsko SDK types (their wire shape drifts and carries `[Obsolete]` fields) — for a
+persisted column this matters more than for the cache, since a cache row expires but a persisted row
+does not: an SDK rename doesn't just break a fresh fetch, it silently deserializes a historical row
+into a default-valued (zeroed) object with no exception.
+
+Every cache key and its TTL is authored once, as a `CacheSpec` factory on
 `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the single
 source of truth for key format and freshness window, not this prose; a new cache-backed read path adds
 a factory there rather than interpolating a key at the call site. Eviction is TTL-only (lazy);
