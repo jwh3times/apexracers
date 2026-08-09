@@ -350,12 +350,14 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 ### Services (`src/ApexRacers.Api/Services/`)
 
 One responsibility per class; pure heuristics/mappers/parsers are extracted and unit-tested directly.
+Field-percentile rank and field median are one such extraction, shared across services and the Seeder
+as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 
-- `SeriesService`, `WeekCarStatsService` — series list; per-car week lap stats.
-- `PercentileCalculationService` — compute + cache percentile; overlays world-record via `WorldRecordService`.
-- `CarRecommendationService` — ranked recommendations from personal percentile data.
+- `SeriesService`, `WeekCarStatsService` — series list; per-car week lap stats (median via `Core.FieldPercentile`).
+- `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
+- `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`).
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
-- `UserAnalyticsService` — per-car percentile history/stats.
+- `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`).
 - `MemberStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
 - `AchievementsService` (+ pure `AchievementsMapper`) — awards trophy case (6 h).
 - `RaceHistoryService` — recent official races (10 min); resolves car names from local catalog.

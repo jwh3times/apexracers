@@ -41,6 +41,11 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any `JsonSerializer.Serialize`/`Deserialize` of a raw Aydsko SDK type into or out of a persisted (non-cache) column. A JSON column that outlives a single request must serialize an **owned** Core record mapped through a pure, tested ingest helper (mirror `WeatherIngest`/`CatalogIngest`) — never the SDK type directly.
 - Flag any change to the `[JsonPropertyName]` values on `WeatherSnapshot` or `WeatherForecastSnapshot` (`ApexRacers.Core.Models`). They're pinned to the SDK's existing snake_case wire names so historical `Subsession.WeatherJson`/`Week.WeatherSummaryJson` rows keep deserializing — renaming one is a persisted-contract break, not a refactor.
 
+**Field percentile / median**
+
+- Flag any hand-rolled percentile-rank arithmetic (`slower * 100.0 / total` or a `driverInField ? total - 1 : total` denominator branch) instead of a call to `ApexRacers.Core.FieldPercentile.Rank`. Flag any inline even/odd median midpoint calculation instead of a call to `FieldPercentile.MedianOfSorted`.
+- Flag a `Rank` call whose `otherDriversLaps` argument wasn't filtered to exclude the ranked driver's own lap (e.g. passing the raw field instead of `.Where(d => d.CustId != customerId)`) — that silently inflates the rank by one driver when a personal lap supersedes their race result.
+
 **iRacing cache keys**
 
 - Flag any `ExternalDataCache` key built by interpolating a string at the call site (in a service, in `DemoCacheSeeder`, or in `DemoSeedVerifier`) instead of calling a factory on `IRacingCacheKeys`. That module is the sole author of every key and its paired TTL — a call site should never construct its own `CacheSpec`.
