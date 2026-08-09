@@ -54,7 +54,10 @@ public class AuthServiceTests
                 ["APP_BASE_URL"]    = "https://test.apexracers.gg"
             })
             .Build();
-        return new AuthService(userManager, config, db, emailSender ?? new FakeEmailSender());
+        // Bound the same way production binds it, so the tests exercise the real defaults rather
+        // than a second set invented here.
+        var jwt = JwtSettings.FromConfiguration(config);
+        return new AuthService(userManager, config, jwt, db, emailSender ?? new FakeEmailSender());
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
