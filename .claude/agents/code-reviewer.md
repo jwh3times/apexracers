@@ -50,6 +50,11 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any hand-rolled per-car-and-track personal-best grouping (`PersonalLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `PersonalBestQuery.RunAsync`.
 - Flag a caller's `scope` argument to `PersonalBestQuery.RunAsync` that already filters on `IsValidLap` — harmless (the module re-applies its own filter), but a sign the caller doesn't know the module owns that invariant.
 
+**Season / week resolution**
+
+- Flag any hand-rolled active-season or active-week predicate (`Where(s => s.Active).OrderByDescending(Year).ThenByDescending(Quarter)`, on either `Season` or `Week`) instead of a call to the `SeasonQueries` extensions (`ActiveForSeries`, `InActiveSeason`, `ActiveSeasonOrThrowAsync`, `SeriesNameAsync`). A missed or reordered `Year`/`Quarter` sort silently reads the wrong season when more than one is flagged active during a changeover.
+- Flag any new inline "current week" derivation (comparing `Week.StartDate`/`WeekNumber` by hand) instead of a call to `ApexRacers.Core.SeasonCalendar.CurrentWeekNumber`. It's fine for the caller to choose its own pre-season fallback when the result is `null` — that's by design — but the selection rule itself (start date first, week number to break a tie) must not be reimplemented per call site.
+
 **iRacing cache keys**
 
 - Flag any `ExternalDataCache` key built by interpolating a string at the call site (in a service, in `DemoCacheSeeder`, or in `DemoSeedVerifier`) instead of calling a factory on `IRacingCacheKeys`. That module is the sole author of every key and its paired TTL — a call site should never construct its own `CacheSpec`.
