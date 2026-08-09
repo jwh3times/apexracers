@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ApexRacers.Core.Models;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using ApexRacers.Seeder;
 using Microsoft.EntityFrameworkCore;
@@ -566,9 +567,11 @@ else
             .Select(g => new { g.Key.CustId, g.Key.CarId, g.Key.WeekId, BestLap = g.Min(r => r.BestLapSeconds) })
             .ToListAsync();
 
+        // Grouped with CustId retained so each driver can be ranked against the *others* —
+        // see FieldPercentile.Rank.
         var fieldByCarWeek = fieldResults
             .GroupBy(r => (r.CarId, r.WeekId))
-            .ToDictionary(g => g.Key, g => g.Select(r => r.BestLap).OrderBy(t => t).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         // Load existing CarPercentileResult rows for upsert
         var userIds = appUsers.Select(u => u.Id).ToList();
@@ -585,11 +588,11 @@ else
         foreach (var entry in userBestByGroup)
         {
             if (!custIdToUser.TryGetValue(entry.CustId, out var appUser)) continue;
-            if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldLaps)) continue;
+            if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldRows)) continue;
 
-            var total          = fieldLaps.Count;
-            var slowerCount    = fieldLaps.Count(t => t > entry.BestLap);
-            var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
+            var total          = fieldRows.Count;
+            var otherLaps      = fieldRows.Where(r => r.CustId != entry.CustId).Select(r => r.BestLap).ToList();
+            var percentileRank = FieldPercentile.Rank(entry.BestLap, otherLaps);
 
             // Simulate the timestamp as the final day of the race week at 20:00 UTC.
             var weekStart  = weekStartDates.TryGetValue(entry.WeekId, out var sd) ? sd : DateOnly.FromDateTime(DateTime.UtcNow);

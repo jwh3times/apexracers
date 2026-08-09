@@ -1,5 +1,6 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Core.Models;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -112,22 +113,23 @@ public class CarRecommendationService(AppDbContext db)
                              && histCarIds.Contains(r.CarId)
                              && r.BestLapSeconds > 0)
                     .GroupBy(r => new { r.CustId, r.CarId, WeekId = r.Subsession.WeekId!.Value })
-                    .Select(g => new { g.Key.CarId, g.Key.WeekId, BestLap = g.Min(r => r.BestLapSeconds) })
+                    .Select(g => new { g.Key.CustId, g.Key.CarId, g.Key.WeekId, BestLap = g.Min(r => r.BestLapSeconds) })
                     .ToListAsync(ct);
 
+                // Keyed on the *other* drivers' laps — see FieldPercentile.Rank.
                 var fieldByCarWeek = fieldHistorical
                     .GroupBy(r => (r.CarId, r.WeekId))
-                    .ToDictionary(g => g.Key, g => g.Select(r => r.BestLap).ToList());
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList());
 
                 foreach (var carGroup in driverHistorical.GroupBy(r => r.CarId))
                 {
                     double? best = null;
                     foreach (var entry in carGroup)
                     {
-                        if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldLaps)) continue;
-                        var total = fieldLaps.Count;
-                        var slower = fieldLaps.Count(t => t > entry.BestLap);
-                        var pct = total > 1 ? slower * 100.0 / (total - 1) : 100.0;
+                        if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var otherLaps)) continue;
+                        var pct = FieldPercentile.Rank(entry.BestLap, otherLaps);
                         if (best is null || pct > best) best = pct;
                     }
                     if (best is not null)
@@ -153,8 +155,8 @@ public class CarRecommendationService(AppDbContext db)
                     driverBest = pb;
 
                 var total = carField.Count;
-                var slowerCount = carField.Count(r => r.CustId != customerId && r.BestLap > driverBest);
-                var percentileRank = total > 1 ? slowerCount * 100.0 / (total - 1) : 100.0;
+                var otherLaps = carField.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList();
+                var percentileRank = FieldPercentile.Rank(driverBest, otherLaps);
 
                 // Fold this week's reading into the running average and upsert the cache row.
                 var newAvg = RecordPercentileReading(
@@ -179,8 +181,8 @@ public class CarRecommendationService(AppDbContext db)
                 // no SubsessionResult for it this week. Compute a fresh percentile against the
                 // current field; user is not in the race, so denominator is the full field size.
                 var total = carField.Count;
-                var slowerCount = carField.Count(r => r.BestLap > personalLap);
-                var percentileRank = total > 0 ? slowerCount * 100.0 / total : 100.0;
+                var otherLaps = carField.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList();
+                var percentileRank = FieldPercentile.Rank(personalLap, otherLaps);
 
                 var newAvg = RecordPercentileReading(
                     user, cachedPercentiles, existingCacheThisWeek,

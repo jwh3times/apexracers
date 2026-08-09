@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.46] - 2026-08-09
+
+### Changed
+
+- The field-percentile rank now has one owner, `ApexRacers.Core.FieldPercentile`. The formula was written five times under **two incompatible conventions**: two sites excluded the ranked driver by customer id, three counted against a bare list of lap times with no exclusion at all. Those two conventions produce the same number today *only because `>` is strict* — a driver's own lap is never slower than itself, so leaving it in the count happens to be harmless. Changing any one site to `>=`, to count a tie as beaten, would have made the unfiltered sites start counting the driver as slower than themselves while the filtered ones stayed correct, with nothing in the type system or the tests connecting them.
+- The module takes the **other** drivers' laps rather than the whole field, which removes a parameter and a branch: once the ranked driver is excluded, the "is the driver in the field?" distinction disappears, because the old `driverInField ? total - 1 : total` denominator is just "how many other drivers are there" in both arms. The exclusion is now the first thing the signature asks for instead of something each caller has to remember — and it is not cosmetic, since a driver's own lap can be *slower* than the value being ranked when a personal lap supersedes their race result, in which case leaving it in the field counts as one more driver beaten.
+- `FieldPercentile.MedianOfSorted` replaces three copies of the same even/odd midpoint code. The sorted precondition is stated in the name rather than enforced, because all three callers already sort for other reasons.
+- **No behaviour changes.** The refactor is equivalent at all eight call sites; the 493 pre-existing tests passed against it before any new test was added. The arithmetic is now covered directly rather than only through full database fixtures — the percentile service tests previously documented it in comments precisely because it could not be asserted any other way.
+
 ## [0.4.45] - 2026-08-09
 
 ### Changed
@@ -386,7 +395,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.45...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.46...HEAD
+[0.4.46]: https://github.com/jwh3times/apexracers/compare/v0.4.45...v0.4.46
 [0.4.45]: https://github.com/jwh3times/apexracers/compare/v0.4.44...v0.4.45
 [0.4.44]: https://github.com/jwh3times/apexracers/compare/v0.4.43...v0.4.44
 [0.4.43]: https://github.com/jwh3times/apexracers/compare/v0.4.42...v0.4.43

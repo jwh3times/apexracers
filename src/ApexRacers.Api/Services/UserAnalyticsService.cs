@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -116,12 +117,7 @@ public class UserAnalyticsService(AppDbContext db)
 
                 double? median = null;
                 if (medianLapsByWeekCar.TryGetValue((bestWeek.CarId, bestWeek.WeekId), out var weekLaps) && weekLaps.Count > 0)
-                {
-                    var mid = weekLaps.Count / 2;
-                    median = weekLaps.Count % 2 == 0
-                        ? (weekLaps[mid - 1] + weekLaps[mid]) / 2.0
-                        : weekLaps[mid];
-                }
+                    median = FieldPercentile.MedianOfSorted(weekLaps);
 
                 var history = ordered
                     .Select(r => new WeeklyPercentileDto(
