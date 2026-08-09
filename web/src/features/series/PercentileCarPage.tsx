@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import {
   api,
+  ApiError,
   type DistributionBin,
   type PercentileResult,
   type RecommendationOptions,
@@ -118,15 +119,27 @@ export default function PercentileCarPage() {
       includePersonalLaps: blended,
       personalLapTypes: blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
     };
+    let active = true;
     dispatch({ type: 'start' });
     api
       .getPercentile(Number(seriesId), Number(weekNumber), Number(carId), effectiveId, options)
-      .then(data => dispatch({ type: 'success', result: data }))
+      .then(data => {
+        if (active) dispatch({ type: 'success', result: data });
+      })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : '';
-        if (msg.includes('→ 404')) dispatch({ type: 'not_found' });
-        else dispatch({ type: 'error', message: msg || 'Failed to load percentile.' });
+        if (!active) return;
+        // Branch on the status, not the message: a bare NotFound() is filled in by ASP.NET as
+        // ProblemDetails, so the thrown message is its title ("Not Found"), never a status line.
+        if (err instanceof ApiError && err.status === 404) dispatch({ type: 'not_found' });
+        else
+          dispatch({
+            type: 'error',
+            message: (err instanceof Error ? err.message : '') || 'Failed to load percentile.',
+          });
       });
+    return () => {
+      active = false;
+    };
   }, [effectiveId, seriesId, weekNumber, carId, paceSource]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {

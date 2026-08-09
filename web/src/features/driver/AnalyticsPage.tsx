@@ -309,24 +309,46 @@ export default function AnalyticsPage() {
 
   // Series list (for series mode chips)
   useEffect(() => {
+    let active = true;
     api
       .getSeries()
-      .then(s => dispatch({ type: 'SERIES_LOADED', series: s }))
-      .catch(() => dispatch({ type: 'SERIES_LOADED', series: [] }));
+      .then(s => {
+        if (active) dispatch({ type: 'SERIES_LOADED', series: s });
+      })
+      .catch(() => {
+        if (active) dispatch({ type: 'SERIES_LOADED', series: [] });
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Fetches analytics for the given series and dispatches the result; shared by the
   // effect below and the first-visit "Compute my percentiles" CTA's refetch.
-  const reloadAnalytics = (seriesId: number) =>
+  // `isActive` lets the effect below drop a result that landed after unmount; the CTA's
+  // refetch passes nothing and always applies.
+  const reloadAnalytics = (seriesId: number, isActive: () => boolean = () => true) =>
     api
       .getMyAnalytics(seriesId)
-      .then(a => dispatch({ type: 'ANALYTICS_LOADED', analytics: a }))
-      .catch((e: Error) => dispatch({ type: 'ANALYTICS_ERROR', message: e.message }));
+      .then(a => {
+        if (isActive()) dispatch({ type: 'ANALYTICS_LOADED', analytics: a });
+      })
+      .catch((e: unknown) => {
+        if (isActive())
+          dispatch({
+            type: 'ANALYTICS_ERROR',
+            message: e instanceof Error ? e.message : 'Failed to load analytics.',
+          });
+      });
 
   // Per-series analytics (series mode)
   useEffect(() => {
     if (!user || viewMode !== 'series' || selectedSeriesId === null) return;
-    void reloadAnalytics(selectedSeriesId);
+    let active = true;
+    void reloadAnalytics(selectedSeriesId, () => active);
+    return () => {
+      active = false;
+    };
   }, [user, viewMode, selectedSeriesId]);
 
   // Computing recommendations upserts the CarPercentileResult rows analytics reads,
@@ -348,10 +370,22 @@ export default function AnalyticsPage() {
   // All analytics (car mode) — fetched once on demand
   useEffect(() => {
     if (!user || !allAnalyticsLoading) return;
+    let active = true;
     api
       .getMyAnalytics()
-      .then(a => dispatch({ type: 'ALL_ANALYTICS_LOADED', analytics: a }))
-      .catch((e: Error) => dispatch({ type: 'ANALYTICS_ERROR', message: e.message }));
+      .then(a => {
+        if (active) dispatch({ type: 'ALL_ANALYTICS_LOADED', analytics: a });
+      })
+      .catch((e: unknown) => {
+        if (active)
+          dispatch({
+            type: 'ANALYTICS_ERROR',
+            message: e instanceof Error ? e.message : 'Failed to load analytics.',
+          });
+      });
+    return () => {
+      active = false;
+    };
   }, [user, allAnalyticsLoading]);
 
   if (!user) {
