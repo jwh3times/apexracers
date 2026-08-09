@@ -2,7 +2,6 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
-using Aydsko.iRacingData.Member;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Seeder.Demo;
@@ -14,8 +13,6 @@ namespace ApexRacers.Seeder.Demo;
 /// </summary>
 public sealed class DemoCacheSeeder(AppDbContext db)
 {
-    private static readonly int IRatingChart = (int)MemberChartType.IRating;
-
     /// <summary>profile/career/chart for demo driver + rival; summary/recap for the demo driver only.</summary>
     public async Task SeedMembersAsync(CancellationToken ct)
     {

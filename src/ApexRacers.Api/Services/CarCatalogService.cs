@@ -37,28 +37,10 @@ public class CarCatalogService(AppDbContext db)
         return CarCatalogMapper.ToDetail(car, carClasses, bests);
     }
 
-    private async Task<List<PersonalLapDto>> PersonalBestsForCarAsync(
-        Guid userId, int carId, CancellationToken ct)
-    {
-        var rows = await db.PersonalLaps
-            .Where(l => l.UserId == userId && l.CarId == carId && l.IsValidLap)
-            .Select(l => new
-            {
-                l.CarId,
-                CarName = l.Car.Name,
-                TrackName = l.Track.Name,
-                ConfigName = l.Track.ConfigName,
-                l.LapTimeSeconds,
-                l.RecordedAt,
-            })
-            .ToListAsync(ct);
-
-        return rows
-            .GroupBy(l => new { l.CarId, l.CarName, l.TrackName, l.ConfigName })
-            .Select(g => new PersonalLapDto(
-                g.Key.CarId, g.Key.CarName, g.Key.TrackName, g.Key.ConfigName,
-                g.Min(l => l.LapTimeSeconds), g.Count(), g.Max(l => l.RecordedAt)))
-            .OrderBy(d => d.BestLapSeconds)
-            .ToList();
-    }
+    private Task<List<PersonalLapDto>> PersonalBestsForCarAsync(
+        Guid userId, int carId, CancellationToken ct) =>
+        PersonalBestQuery.RunAsync(
+            db.PersonalLaps.Where(l => l.UserId == userId && l.CarId == carId),
+            PersonalBestOrder.FastestFirst,
+            ct);
 }
