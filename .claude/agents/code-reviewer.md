@@ -53,12 +53,12 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 
 **API calls**
 
-- Flag any `fetch()` call outside of `src/services/api.ts`. All network calls go through the typed helpers in `api.ts`.
+- Flag any `fetch()` call outside of `src/services/api.ts`. All network calls go through the typed helpers in `api.ts`. **Exception**: `src/services/session.ts`'s refresh-token exchange calls raw `fetch` directly and intentionally — routing it through the intercepting http client would call back into the session's own `refresh()` on a 401 and recurse.
 - Flag API calls added to `api.ts` that don't have a corresponding JSDoc comment with the route.
 
 **Auth state**
 
-- Flag any component or page that reads the JWT directly from IndexedDB, localStorage, or by calling `decodeJwt` outside of `AuthContext`.
+- Flag any component or page that reads the JWT directly from IndexedDB, localStorage, or by calling `decodeJwt` outside of `src/services/session.ts` — the session module is the sole owner of the token pair and its claims; `AuthContext`/`AuthProvider` only bind to it.
 - Flag any access control decision (hiding UI, redirecting) based on decoded JWT claims read outside of `useAuth()`.
 - Flag the JWT being stored in `localStorage` — it belongs in IndexedDB via `dbSet`/`dbGet`.
 

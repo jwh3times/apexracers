@@ -480,8 +480,9 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   `deriveAlerts`), `DemoBanner` (shows while `iracing-demo` on), `Footer`, and the SVG charts
   `Sparkline` / `PercentileBadge` / `LapTraceChart` / `IRatingCompareChart` (each returns `null` below
   its minimum data points — guard the wrapper).
-- **Contexts** (`web/src/context/`): `AuthContext` (session, JWT + refresh, silent refresh,
-  `alertsEnabled`), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
+- **Contexts** (`web/src/context/`): `AuthContext` (signed-in user, login/logout, `alertsEnabled` — a
+  thin React binding over the session module, which owns the token pair, claims, persistence, and
+  silent refresh), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
   `FeatureFlagContext` (`useFeatureFlag(key)`).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `topPercentLabel`,
   `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
