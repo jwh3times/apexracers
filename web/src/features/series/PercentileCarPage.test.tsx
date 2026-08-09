@@ -2,12 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import PercentileCarPage from './PercentileCarPage';
-import { api } from '../../services/api';
+import { api, ApiError } from '../../services/api';
 import type { PercentileResult } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { getPercentile: vi.fn() },
-}));
+// Keep the real error classes: the page branches on `instanceof ApiError`, so a hand-rolled
+// stand-in would make the test pass against itself rather than against the module's contract.
+vi.mock('../../services/api', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../services/api')>();
+  return { ...actual, api: { getPercentile: vi.fn() } };
+});
 
 // Auth mock — iRacingCustomerId drives which code path the page takes
 let mockIRacingCustomerId: number | null = null;
@@ -112,7 +115,9 @@ describe('PercentileCarPage', () => {
 
   it('shows not-found message on 404 during auto-fetch', async () => {
     mockIRacingCustomerId = 100001;
-    mockGetPercentile.mockRejectedValue(new Error('GET ... → 404 Not Found'));
+    // What the API actually throws: ASP.NET fills a bare NotFound() in as ProblemDetails, so
+    // humanMessageFor stops at its title — the message is "Not Found", never a status line.
+    mockGetPercentile.mockRejectedValue(new ApiError(404, 'Not Found'));
 
     renderPage({ state: { carName: 'Porsche GT3' } });
 
@@ -206,7 +211,7 @@ describe('PercentileCarPage', () => {
   });
 
   it('shows not-found message on 404 after manual submit', async () => {
-    mockGetPercentile.mockRejectedValue(new Error('GET /api/... → 404 Not Found'));
+    mockGetPercentile.mockRejectedValue(new ApiError(404, 'Not Found'));
     renderPage();
 
     fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {

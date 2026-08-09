@@ -131,13 +131,21 @@ export default function SeriesPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     api
       .getSeries()
-      .then(setSeries)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load series.')
-      )
-      .finally(() => setLoading(false));
+      .then(rows => {
+        if (active) setSeries(rows);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Failed to load series.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (loading) {

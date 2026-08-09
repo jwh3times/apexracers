@@ -74,13 +74,21 @@ export default function WeekDetailPage() {
 
   useEffect(() => {
     if (!seriesId || !weekNumber) return;
+    let active = true;
     api
       .getWeekDetail(Number(seriesId), Number(weekNumber))
-      .then(setDetail)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load week data.')
-      )
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (active) setDetail(data);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Failed to load week data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [seriesId, weekNumber]);
 
   // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the

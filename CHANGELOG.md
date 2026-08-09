@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.41] - 2026-08-09
+
+### Changed
+
+- The `react-frontend` agent's testing rules now warn against hand-rolling a stand-in `ApiError`/`IRacingNotLinkedError` inside a `vi.mock` factory. Replacing the whole `services/api` module resolves a page's `instanceof` check against the mock's class rather than the real one, so such a test can pass for the wrong reason — which is precisely how the 404 bug below survived two dedicated tests. The rule documents the `importOriginal` spread that keeps the real error exports.
+
+### Fixed
+
+- The percentile page's "no race lap found" state never rendered. `PercentileCarPage` decided a 404 by string-matching `'→ 404'` against the thrown error's message, but that status-line text is only produced when the response body is **not** a JSON object. `PercentileController` returns a bare `NotFound()`, which `[ApiController]` fills in as automatic ProblemDetails, so `humanMessageFor` stops at its `title` and the message is `"Not Found"` — the substring is never present. Every genuine 404 therefore fell through to the generic error branch and showed the bare words "Not Found" instead of the dedicated empty state. It now branches on `err instanceof ApiError && err.status === 404`, using the status `ApiError` has always carried; `ComparePage` already handled its 503 this way. This is the same automatic-ProblemDetails behaviour that produced the raw-JSON login error fixed in 0.4.39 — the second bug from that one root cause.
+- The two tests covering that branch could not have caught it: they mocked the rejection as `new Error('GET ... → 404 Not Found')`, a hand-written string the client never actually throws. Because `vi.mock` replaced the whole `services/api` module, the page's `instanceof` check was resolving against the mock rather than the real class, so the test asserted the author's recollection of the contract instead of the contract. The mock now uses `importOriginal` to keep the **real** `ApiError`/`IRacingNotLinkedError` exports and rejects with `new ApiError(404, 'Not Found')` — what the client genuinely produces. Verified by mutation: both tests fail against the old string-matching branch and pass against the fix.
+- Twelve data-fetching effects across eight pages could update state after unmount, because they had no cancellation guard — navigating away from a page with a request in flight left the response to resolve into an unmounted component. Fixed in `SeriesPage`, `WeekDetailPage`, `PercentileCarPage`, `MyLapsPage`, `AdminPage` (both effects), `AnalyticsPage` (all three), `DashboardPage` (both, the second covering three parallel fetches), and `ComparePage`. Twenty other effects already used the `let active = true` + cleanup pattern; these had simply been written without it, which is what a convention with no owning module tends to produce.
+- `ComparePage`'s debounced driver search had a subtler form of the same defect: its cleanup called only `clearTimeout`, which stops a timer that has not fired yet but does nothing about a search already in flight. It now clears the timer **and** drops a late result.
+- `AnalyticsPage` typed two rejection handlers as `.catch((e: Error) => …)`. A rejection is `unknown`, so that annotation was unsound — a non-`Error` rejection would have read `.message` off whatever was thrown. Both now narrow with `instanceof` and fall back to a message.
+
 ## [0.4.39] - 2026-08-08
 
 ### Added
@@ -324,7 +338,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.39...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.41...HEAD
+[0.4.41]: https://github.com/jwh3times/apexracers/compare/v0.4.40...v0.4.41
 [0.4.39]: https://github.com/jwh3times/apexracers/compare/v0.4.38...v0.4.39
 [0.4.25]: https://github.com/jwh3times/apexracers/compare/v0.4.24...v0.4.25
 [0.4.15]: https://github.com/jwh3times/apexracers/compare/v0.4.14...v0.4.15

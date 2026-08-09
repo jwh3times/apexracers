@@ -297,29 +297,45 @@ export default function ComparePage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [comparison, setComparison] = useState<ComparisonState>({ status: 'idle' });
 
-  const reloadRivals = () =>
+  // `isActive` lets the mount effect drop a result that landed after unmount; the add/remove
+  // handlers pass nothing and always apply.
+  const reloadRivals = (isActive: () => boolean = () => true) =>
     api
       .getRivals()
-      .then(setRivals)
-      .catch((e: unknown) =>
-        setLoadError(e instanceof Error ? e.message : 'Failed to load rivals.')
-      );
+      .then(rows => {
+        if (isActive()) setRivals(rows);
+      })
+      .catch((e: unknown) => {
+        if (isActive()) setLoadError(e instanceof Error ? e.message : 'Failed to load rivals.');
+      });
 
-  const reloadSuggestions = () =>
+  const reloadSuggestions = (isActive: () => boolean = () => true) =>
     api
       .getRivalSuggestions()
-      .then(setSuggestions)
-      .catch(() => setSuggestions([])); // not-linked / unavailable → no suggestions
+      .then(rows => {
+        if (isActive()) setSuggestions(rows);
+      })
+      .catch(() => {
+        if (isActive()) setSuggestions([]); // not-linked / unavailable → no suggestions
+      });
 
   useEffect(() => {
-    void reloadRivals();
-    void reloadSuggestions();
+    let active = true;
+    const isActive = () => active;
+    void reloadRivals(isActive);
+    void reloadSuggestions(isActive);
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Debounced driver name search. All state updates happen inside the timer (never
   // synchronously in the effect body) so short/cleared terms also settle after the debounce.
   useEffect(() => {
     const q = term.trim();
+    // `active` as well as clearTimeout: clearing only stops a timer that hasn't fired yet,
+    // so a search already in flight would still land its result after unmount.
+    let active = true;
     const id = setTimeout(() => {
       if (q.length < 2) {
         setResults([]);
@@ -329,15 +345,21 @@ export default function ComparePage() {
       setSearchUnavailable(false);
       api
         .searchDrivers(q)
-        .then(setResults)
+        .then(rows => {
+          if (active) setResults(rows);
+        })
         .catch((err: unknown) => {
+          if (!active) return;
           setResults([]);
           // 503 = search backend unavailable (live: no creds; demo: term not in the
           // curated seed set) — worth telling apart from "no drivers matched".
           if (err instanceof ApiError && err.status === 503) setSearchUnavailable(true);
         });
     }, 300);
-    return () => clearTimeout(id);
+    return () => {
+      active = false;
+      clearTimeout(id);
+    };
   }, [term]);
 
   const followedIds = useMemo(() => new Set(rivals.map(r => r.custId)), [rivals]);

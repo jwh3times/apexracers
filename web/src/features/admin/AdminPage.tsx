@@ -15,11 +15,21 @@ function UsersTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     api
       .getAdminUsers()
-      .then(setUsers)
-      .catch(() => setError('Failed to load users.'))
-      .finally(() => setLoading(false));
+      .then(rows => {
+        if (active) setUsers(rows);
+      })
+      .catch(() => {
+        if (active) setError('Failed to load users.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   function handleRoleChange(userId: string, role: Role) {
@@ -158,11 +168,21 @@ function FlagsTab() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let active = true;
     api
       .getAdminFeatureFlags()
-      .then(setFlags)
-      .catch(() => setError('Failed to load feature flags.'))
-      .finally(() => setLoading(false));
+      .then(rows => {
+        if (active) setFlags(rows);
+      })
+      .catch(() => {
+        if (active) setError('Failed to load feature flags.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleCreate(e: React.FormEvent) {

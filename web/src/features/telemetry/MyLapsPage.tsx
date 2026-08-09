@@ -70,13 +70,21 @@ export default function MyLapsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    let active = true;
     api
       .getMyLaps()
-      .then(setLaps)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load laps.')
-      )
-      .finally(() => setLoading(false));
+      .then(rows => {
+        if (active) setLaps(rows);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Failed to load laps.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const uniqueCars = new Set(laps.map(l => l.carId)).size;

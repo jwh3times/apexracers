@@ -43,11 +43,19 @@ export default function DashboardPage() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     api
       .getMyLaps()
-      .then(setLaps)
+      .then(rows => {
+        if (active) setLaps(rows);
+      })
       .catch(() => {})
-      .finally(() => setLapsLoading(false));
+      .finally(() => {
+        if (active) setLapsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // When showIracing is false (neither iracing-live nor iracing-demo is on) we skip these
@@ -56,23 +64,41 @@ export default function DashboardPage() {
   // widgets, restore its fetch too.
   useEffect(() => {
     if (!showIracing) return;
+    let active = true;
+
     api
       .getSeries()
-      .then(setSeries)
+      .then(rows => {
+        if (active) setSeries(rows);
+      })
       .catch(() => {})
-      .finally(() => setSeriesLoading(false));
+      .finally(() => {
+        if (active) setSeriesLoading(false);
+      });
 
     api
       .getProfileStats()
-      .then(setProfile)
+      .then(data => {
+        if (active) setProfile(data);
+      })
       .catch(() => {})
-      .finally(() => setProfileLoading(false));
+      .finally(() => {
+        if (active) setProfileLoading(false);
+      });
 
     api
       .getMyAnalytics()
-      .then(setAnalytics)
+      .then(data => {
+        if (active) setAnalytics(data);
+      })
       .catch(() => {})
-      .finally(() => setAnalyticsLoading(false));
+      .finally(() => {
+        if (active) setAnalyticsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [showIracing]);
 
   const recentLaps = laps.slice(0, 5);
