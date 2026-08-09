@@ -5,11 +5,11 @@ using Aydsko.iRacingData.Series;
 namespace ApexRacers.Seeder.Demo;
 
 /// <summary>Pure builders for the persisted schedule gaps: per-week weather (a serialized
-/// Aydsko WeatherSummary, matching ScheduleService.MapWeather) and per-car BoP rows.</summary>
+/// owned WeatherForecastSnapshot, matching ScheduleService.MapWeather) and per-car BoP rows.</summary>
 public static class DemoScheduleData
 {
     /// <summary>A fixed warm-dry forecast serialized exactly as the worker stores it.</summary>
-    public static string WeatherJson() => JsonSerializer.Serialize(new WeatherSummary
+    public static string WeatherJson() => JsonSerializer.Serialize(new WeatherForecastSnapshot
     {
         TemperatureHigh = 26.0m,
         TemperatureLow = 21.0m,
@@ -19,7 +19,6 @@ public static class DemoScheduleData
         WindUnits = 1, // m/s
         PrecipitationChance = 10m,
         SkiesHigh = 1,
-        SkiesLow = 1,
     });
 
     /// <summary>Deterministic per-car BoP: spreads weight/power a little by car id.</summary>

@@ -134,16 +134,4 @@ public class SubsessionDetailServiceTests
     [InlineData("not json")]
     public void MapWeather_MissingOrInvalid_ReturnsNull(string? json) =>
         Assert.Null(SubsessionDetailService.MapWeather(json));
-
-    [Theory]
-    [InlineData(19, 1, 19.0)] // Celsius units → as-is
-    [InlineData(50, 0, 10.0)] // 50°F → 10°C
-    public void TempToCelsius_ConvertsByUnits(int value, int units, double expected) =>
-        Assert.Equal(expected, SubsessionDetailService.TempToCelsius(value, units), precision: 1);
-
-    [Theory]
-    [InlineData(5, 1, 18.0)] // 5 m/s → 18 km/h
-    [InlineData(10, 0, 16.1)] // 10 mph → 16.09 km/h
-    public void WindToKph_ConvertsByUnits(int value, int units, double expected) =>
-        Assert.Equal(expected, SubsessionDetailService.WindToKph(value, units), precision: 1);
 }

@@ -136,16 +136,4 @@ public class ScheduleServiceTests
     [InlineData("not json")]
     public void MapWeather_MissingOrInvalid_ReturnsNull(string? json) =>
         Assert.Null(ScheduleService.MapWeather(json));
-
-    [Theory]
-    [InlineData(28.9, 1, 28.9)]
-    [InlineData(50.0, 0, 10.0)] // 50°F → 10°C
-    public void ToCelsius_ConvertsByUnits(double value, int units, double expected) =>
-        Assert.Equal(expected, ScheduleService.ToCelsius(value, units), precision: 1);
-
-    [Theory]
-    [InlineData(5.6, 1, 20.2)] // m/s → km/h
-    [InlineData(10.0, 0, 16.1)] // mph → km/h
-    public void ToKph_ConvertsByUnits(double value, int units, double expected) =>
-        Assert.Equal(expected, ScheduleService.ToKph(value, units), precision: 1);
 }

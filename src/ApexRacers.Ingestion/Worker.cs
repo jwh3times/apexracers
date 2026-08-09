@@ -205,9 +205,9 @@ public sealed class Worker(
             }
 
             // Weather forecast summary for the week (serialized as-is; normalized on read).
-            var weatherJson = item.Weather?.WeatherSummary is null
-                ? null
-                : JsonSerializer.Serialize(item.Weather.WeatherSummary);
+            var weatherJson = WeatherIngest.ToSnapshot(item.Weather?.WeatherSummary) is { } forecast
+                ? JsonSerializer.Serialize(forecast)
+                : null;
 
             var week = await db.Weeks
                 .FirstOrDefaultAsync(
@@ -406,7 +406,7 @@ public sealed class Worker(
                     EventAverageLapSeconds = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventAverageLap),
                     EventBestLapSeconds    = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventBestLapTime),
                     EventLapsComplete      = data.EventLapsComplete,
-                    WeatherJson            = data.Weather is null ? null : JsonSerializer.Serialize(data.Weather),
+                    WeatherJson            = WeatherIngest.ToSnapshot(data.Weather) is { } w ? JsonSerializer.Serialize(w) : null,
                     TrackStateJson         = data.TrackState is null ? null : JsonSerializer.Serialize(data.TrackState),
                 };
                 db.Subsessions.Add(subsession);

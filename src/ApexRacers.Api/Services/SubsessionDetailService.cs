@@ -1,7 +1,8 @@
 using System.Text.Json;
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
+using ApexRacers.Core.Models;
 using ApexRacers.Data;
-using Aydsko.iRacingData.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
@@ -71,10 +72,10 @@ public class SubsessionDetailService(AppDbContext db)
         if (string.IsNullOrWhiteSpace(weatherJson))
             return null;
 
-        ResultsWeather? w;
+        WeatherSnapshot? w;
         try
         {
-            w = JsonSerializer.Deserialize<ResultsWeather>(weatherJson);
+            w = JsonSerializer.Deserialize<WeatherSnapshot>(weatherJson);
         }
         catch (JsonException)
         {
@@ -85,18 +86,10 @@ public class SubsessionDetailService(AppDbContext db)
             return null;
 
         return new WeatherDto(
-            TempToCelsius(w.TemperatureValue, w.TemperatureUnits),
+            IRacingUnits.ToCelsius(w.TemperatureValue, w.TemperatureUnits),
             w.RelativeHumidity,
-            WindToKph(w.WindValue, w.WindUnits),
+            IRacingUnits.ToKph(w.WindValue, w.WindUnits),
             w.Skies,
             (double)w.PrecipitationTimePercentage);
     }
-
-    /// <summary>iRacing temp units: 0 = Fahrenheit, otherwise Celsius. Pure + testable.</summary>
-    public static double TempToCelsius(int tempValue, int tempUnits) =>
-        tempUnits == 0 ? Math.Round((tempValue - 32) * 5.0 / 9.0, 1) : tempValue;
-
-    /// <summary>iRacing wind units: 0 = mph, otherwise m/s. Returns km/h. Pure + testable.</summary>
-    public static double WindToKph(int windValue, int windUnits) =>
-        windUnits == 0 ? Math.Round(windValue * 1.60934, 1) : Math.Round(windValue * 3.6, 1);
 }
