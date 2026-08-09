@@ -371,6 +371,9 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
 - `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + PB overlay; no creds at read time.
+- `PersonalBestQuery` — shared per-car-and-track personal-best projection (fastest or most-recent
+  order), used by `PersonalLapService` and the catalog services' PB overlays instead of each holding
+  its own copy. See `dotnet-api` for the two invariants it enforces.
 - `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired cache rows every 6 h.
 - `AuthService` — registration, login (JWT + rotating refresh token), profile/password/email-change, reset. Caps active refresh tokens at 5 per user; revokes all on password/email change. Needs `AddDefaultTokenProviders()`.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.47] - 2026-08-09
+
+### Changed
+
+- The personal-best projection now has one owner, `PersonalBestQuery`. The same twenty-line query — project the lap rows, materialize, group by car and track configuration, then aggregate into `PersonalLapDto` — was written three times, for the My Laps page and the car and track catalog detail pages, differing only in the filter and the sort. `PersonalLapDto` is a positional record with seven fields, so adding one meant editing three places, and a mis-ordered argument at any of them would have been a runtime data bug rather than a compile error. Callers now pass their already-scoped query and the ordering they want.
+- Two invariants that all three copies carried, and that none of them stated, now belong to the module. **Only valid laps count**: the `IsValidLap` filter is applied inside, so a caller cannot omit it and quietly report an invalidated lap as a personal best — a rule that previously existed as three lines of code and, as it turns out, zero tests, since nothing in the suite had ever seeded an invalid lap. And **the grouping must not be pushed into SQL**: its key spans navigation properties alongside the aggregates, which neither Npgsql nor SQLite can translate, so getting it wrong throws at runtime instead of failing to compile.
+- Ordering is a required argument rather than something the caller applies afterwards. Grouping produces no guaranteed order, so leaving it optional would turn an omission into a silently arbitrary result; requiring it makes the choice explicit at each of the three call sites.
+- **No behaviour changes.** The 505 pre-existing tests passed against the refactor before any new test was added. Also removed two pieces of dead code left behind by the 0.4.44 cache-key change: `DemoCacheSeeder`'s now-unused `IRatingChart` field and its SDK import.
+
 ## [0.4.46] - 2026-08-09
 
 ### Changed
@@ -395,7 +404,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.46...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.47...HEAD
+[0.4.47]: https://github.com/jwh3times/apexracers/compare/v0.4.46...v0.4.47
 [0.4.46]: https://github.com/jwh3times/apexracers/compare/v0.4.45...v0.4.46
 [0.4.45]: https://github.com/jwh3times/apexracers/compare/v0.4.44...v0.4.45
 [0.4.44]: https://github.com/jwh3times/apexracers/compare/v0.4.43...v0.4.44
