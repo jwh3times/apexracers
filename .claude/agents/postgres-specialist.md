@@ -26,12 +26,12 @@ Two schemas in one database:
 | `Seasons`              | int PK      | Belongs to Series; `Active` bool                                                                                                                             |
 | `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                                                          |
 | `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                                                     |
-| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK                                                                                                                              |
+| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK; `WeatherSummaryJson` is a serialized `WeatherForecastSnapshot`                                                              |
 | `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)                                      |
 | `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                                                        |
 | `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                                                         |
 | `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                                                                |
-| `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum)                                     |
+| `Subsessions`          | int PK      | iRacing race session (SeasonId, WeekNumber, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitNum); `WeatherJson` is a serialized `WeatherSnapshot`; `TrackStateJson` is still a raw Aydsko `TrackState` (no reader today — see note below) |
 | `SubsessionResults`    | composite   | One driver result per subsession (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …)                                     |
 | `SeasonCarBops`        | composite   | Per-week BoP for one car (SeasonId, WeekNumber, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
 | `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                                                              |
@@ -47,6 +47,12 @@ Two schemas in one database:
 `ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?`, and `ThemePreference string`.
 
 `RefreshTokens`: `Id` (Guid PK), `UserId` (Guid FK → Users, cascade delete), `TokenHash` (unique index — SHA-256 hex of the raw token, raw token is never stored), `ExpiresAt`, `CreatedAt`, `RevokedAt?`. A token is active when `RevokedAt` is null and `ExpiresAt > UtcNow`.
+
+## Persisted JSON columns hold owned Core types, not SDK types
+
+`Weeks.WeatherSummaryJson` and `Subsessions.WeatherJson` serialize `ApexRacers.Core.Models.WeatherForecastSnapshot` / `WeatherSnapshot`, mapped from the Aydsko SDK at ingest by `ApexRacers.Ingestion.WeatherIngest` — never the raw SDK `WeatherSummary`/`ResultsWeather` types. **Their `[JsonPropertyName]` values are pinned to the SDK's existing snake_case wire names on purpose** (`temp_value`, `wind_units`, `skies_high`, …) so every row already on disk still deserializes; do not rename them — that's a persisted-contract change, not a refactor, and it would silently zero out every historical row rather than throw. This is the pattern for any future persisted JSON column: define an owned Core record and a pure, tested mapper (mirror `WeatherIngest`/`CatalogIngest`), never serialize an SDK type straight into a column that outlives a single request.
+
+`Subsessions.TrackStateJson` does **not** yet follow this pattern — it's still `JsonSerializer.Serialize(data.TrackState)`, a raw Aydsko `TrackState`, because nothing reads it today. There's no live bug (no reader means no silent-zeros failure mode yet), but the trap is armed: give it a `TrackStateSnapshot` + mapper the moment a reader is added, rather than deserializing the SDK type back out of a column that already has years of rows on disk by then.
 
 ## Week.Id is a Guid
 

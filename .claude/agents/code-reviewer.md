@@ -35,6 +35,11 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag obvious N+1 patterns: a `foreach` over a collection that issues a query per iteration.
 - Flag async EF Core methods called without `await` or `CancellationToken` where one is available.
 
+**Persisted JSON columns**
+
+- Flag any `JsonSerializer.Serialize`/`Deserialize` of a raw Aydsko SDK type into or out of a persisted (non-cache) column. A JSON column that outlives a single request must serialize an **owned** Core record mapped through a pure, tested ingest helper (mirror `WeatherIngest`/`CatalogIngest`) — never the SDK type directly.
+- Flag any change to the `[JsonPropertyName]` values on `WeatherSnapshot` or `WeatherForecastSnapshot` (`ApexRacers.Core.Models`). They're pinned to the SDK's existing snake_case wire names so historical `Subsession.WeatherJson`/`Week.WeatherSummaryJson` rows keep deserializing — renaming one is a persisted-contract break, not a refactor.
+
 **iRacing cache keys**
 
 - Flag any `ExternalDataCache` key built by interpolating a string at the call site (in a service, in `DemoCacheSeeder`, or in `DemoSeedVerifier`) instead of calling a factory on `IRacingCacheKeys`. That module is the sole author of every key and its paired TTL — a call site should never construct its own `CacheSpec`.

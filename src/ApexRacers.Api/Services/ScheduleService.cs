@@ -1,7 +1,8 @@
 using System.Text.Json;
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
+using ApexRacers.Core.Models;
 using ApexRacers.Data;
-using Aydsko.iRacingData.Series;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
@@ -89,10 +90,10 @@ public class ScheduleService(AppDbContext db)
         if (string.IsNullOrWhiteSpace(weatherJson))
             return null;
 
-        WeatherSummary? w;
+        WeatherForecastSnapshot? w;
         try
         {
-            w = JsonSerializer.Deserialize<WeatherSummary>(weatherJson);
+            w = JsonSerializer.Deserialize<WeatherForecastSnapshot>(weatherJson);
         }
         catch (JsonException)
         {
@@ -103,19 +104,11 @@ public class ScheduleService(AppDbContext db)
             return null;
 
         return new WeatherSummaryDto(
-            ToCelsius((double)w.TemperatureHigh, w.TemperatureUnits),
-            ToCelsius((double)w.TemperatureLow, w.TemperatureUnits),
+            IRacingUnits.ToCelsius((double)w.TemperatureHigh, w.TemperatureUnits),
+            IRacingUnits.ToCelsius((double)w.TemperatureLow, w.TemperatureUnits),
             (double)w.PrecipitationChance,
-            ToKph((double)w.WindHigh, w.WindUnits),
-            ToKph((double)w.WindLow, w.WindUnits),
+            IRacingUnits.ToKph((double)w.WindHigh, w.WindUnits),
+            IRacingUnits.ToKph((double)w.WindLow, w.WindUnits),
             w.SkiesHigh);
     }
-
-    /// <summary>iRacing temp units: 0 = Fahrenheit, otherwise Celsius. Pure + testable.</summary>
-    public static double ToCelsius(double value, int units) =>
-        units == 0 ? Math.Round((value - 32) * 5.0 / 9.0, 1) : Math.Round(value, 1);
-
-    /// <summary>iRacing wind units: 0 = mph, otherwise m/s. Returns km/h. Pure + testable.</summary>
-    public static double ToKph(double value, int units) =>
-        units == 0 ? Math.Round(value * 1.60934, 1) : Math.Round(value * 3.6, 1);
 }
