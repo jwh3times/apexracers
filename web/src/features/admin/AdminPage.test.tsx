@@ -5,16 +5,10 @@ import AdminPage from './AdminPage';
 import { api } from '../../services/api';
 import type { AdminUser, FeatureFlag } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getAdminUsers: vi.fn(),
-    setAdminUserRole: vi.fn(),
-    getAdminFeatureFlags: vi.fn(),
-    createFeatureFlag: vi.fn(),
-    updateFeatureFlag: vi.fn(),
-    deleteFeatureFlag: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockUsers: AdminUser[] = [
   { userId: 'u1', email: 'alice@example.com', displayName: 'Alice', role: 'Standard' },

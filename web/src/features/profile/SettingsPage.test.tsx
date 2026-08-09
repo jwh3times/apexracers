@@ -24,15 +24,10 @@ vi.mock('../../context/AuthContext', () => ({
   }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: {
-    updateProfile: vi.fn(),
-    updateRole: vi.fn(),
-    updateTheme: vi.fn(),
-    changePassword: vi.fn(),
-    requestEmailChange: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 vi.mock('../../context/ThemeContext', () => ({
   useTheme: () => ({ theme: 'auto', setTheme: vi.fn() }),

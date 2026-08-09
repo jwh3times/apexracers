@@ -4,18 +4,9 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProgressionPage from './ProgressionPage';
 import { api, IRacingNotLinkedError, type MemberProgression } from '../../services/api';
 
-vi.mock('../../services/api', () => {
-  class IRacingNotLinkedError extends Error {
-    code = 'IRACING_NOT_LINKED';
-    constructor(message: string) {
-      super(message);
-      this.name = 'IRacingNotLinkedError';
-    }
-  }
-  return {
-    api: { getProgression: vi.fn() },
-    IRacingNotLinkedError,
-  };
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
 });
 
 const mockGetProgression = vi.mocked(api.getProgression);

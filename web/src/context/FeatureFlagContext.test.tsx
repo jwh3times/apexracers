@@ -11,9 +11,10 @@ vi.mock('./AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../services/api', () => ({
-  api: { getFeatureFlags: vi.fn() },
-}));
+vi.mock('../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 function Consumer({ flagKey }: { flagKey: string }) {
   const enabled = useFeatureFlag(flagKey);

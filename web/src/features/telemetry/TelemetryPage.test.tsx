@@ -5,9 +5,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import TelemetryPage from './TelemetryPage';
 import { api } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { uploadTelemetry: vi.fn(), getMyLaps: vi.fn().mockResolvedValue([]) },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockUpload = vi.mocked(api.uploadTelemetry);
 const mockGetMyLaps = vi.mocked(api.getMyLaps);

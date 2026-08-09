@@ -18,13 +18,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getSeries: vi.fn(),
-    getMyAnalytics: vi.fn(),
-    getRecommendations: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetMyAnalytics = vi.mocked(api.getMyAnalytics);

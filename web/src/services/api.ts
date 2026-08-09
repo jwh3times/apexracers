@@ -1,3 +1,5 @@
+import { createHttpClient } from './http';
+
 // Types matching the backend controller response shapes
 
 export interface AuthResult {
@@ -680,109 +682,21 @@ async function tryRefresh(): Promise<boolean> {
   return _refreshPromise;
 }
 
-/**
- * Error thrown when a per-user endpoint reports the caller has not linked an
- * iRacing customer ID (HTTP 409 with code IRACING_NOT_LINKED). Pages catch this to
- * show a "link your iRacing account" prompt instead of a generic error or an empty
- * result.
- */
-export class IRacingNotLinkedError extends Error {
-  readonly code = 'IRACING_NOT_LINKED';
-  constructor(message: string) {
-    super(message);
-    this.name = 'IRacingNotLinkedError';
-  }
-}
+// The request core lives in ./http — see that module for why it is separate and injectable.
+// Re-exported here so the ~90 existing `from '../services/api'` imports keep working and the
+// error classes have exactly one identity across the app.
+export { ApiError, IRacingNotLinkedError } from './http';
 
-/** HTTP failure carrying the response status, for status-aware handling (e.g. 503 = unavailable). */
-export class ApiError extends Error {
-  readonly status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-    this.name = 'ApiError';
-  }
-}
+// Token state and refresh mechanics stay in this module for now; `createHttpClient` only asks
+// for the current token and whether a refresh succeeded. Consolidating them with AuthProvider
+// into one session module is a separate change.
+const http = createHttpClient({
+  fetch: (input, init) => fetch(input, init),
+  getAccessToken: () => _token,
+  refresh: tryRefresh,
+});
 
-type ProblemBody = { code?: string; message?: string; detail?: string; title?: string };
-
-function tryParseJson(raw: string): unknown {
-  try {
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function asProblemBody(value: unknown): ProblemBody | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as ProblemBody)
-    : null;
-}
-
-/**
- * Picks the most useful *human-readable* message from an error response.
- *
- * The raw body is only a safe fallback when it is not a JSON object. ASP.NET Core fills in
- * automatic ProblemDetails for a bare status result (e.g. `Unauthorized()`), producing a
- * well-formed object carrying only type/title/status/traceId — printing that verbatim put a
- * raw JSON blob, traceId and all, in front of the user on every failed login. For a JSON
- * object we therefore stop at `title`; for valid JSON in any other shape we show nothing but
- * the status line.
- */
-function humanMessageFor(parsed: unknown, raw: string, statusLine: string): string {
-  const problem = asProblemBody(parsed);
-  if (problem) return problem.detail || problem.message || problem.title || statusLine;
-  // A JSON string body is itself the message (AuthController's 423 lockout).
-  if (typeof parsed === 'string') return parsed.trim() || statusLine;
-  // Not JSON at all — a text/plain body is already human-readable.
-  if (parsed === null) return raw.trim() || statusLine;
-  return statusLine;
-}
-
-// Maps a non-ok response to the right thrown error: a typed IRacingNotLinkedError
-// for the 409 not-linked contract, otherwise an ApiError carrying the message chosen
-// by humanMessageFor.
-async function throwForResponse(res: Response, path: string, method: string): Promise<never> {
-  const raw = await res.text().catch(() => '');
-  const parsed = tryParseJson(raw);
-  const problem = asProblemBody(parsed);
-
-  if (res.status === 409 && problem?.code === 'IRACING_NOT_LINKED') {
-    throw new IRacingNotLinkedError(problem.message ?? 'iRacing account not linked.');
-  }
-
-  const statusLine = `${method} ${path} → ${res.status} ${res.statusText}`;
-  throw new ApiError(res.status, humanMessageFor(parsed, raw, statusLine));
-}
-
-type ReqInit = { method?: string; body?: BodyInit; json?: unknown };
-
-/**
- * Single fetch wrapper for the whole API surface: attaches auth headers, retries
- * once after a silent token refresh on 401, maps errors via throwForResponse, and
- * returns undefined for 204 responses. Pass a JSON payload via `json`; pass a raw
- * body (e.g. FormData) via `body`.
- */
-async function request<T>(path: string, init: ReqInit = {}): Promise<T> {
-  const build = (): RequestInit => {
-    const headers: Record<string, string> = { ...authHeaders() };
-    let body = init.body;
-    if (init.json !== undefined) {
-      headers['Content-Type'] = 'application/json';
-      body = JSON.stringify(init.json);
-    }
-    return { method: init.method ?? 'GET', headers, body };
-  };
-
-  let res = await fetch(path, build());
-  if (res.status === 401 && (await tryRefresh())) {
-    res = await fetch(path, build());
-  }
-  if (!res.ok) return throwForResponse(res, path, init.method ?? 'GET');
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
+const request = http.request;
 
 // ── Public API surface ────────────────────────────────────────────────────────
 

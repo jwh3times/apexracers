@@ -12,34 +12,9 @@ import {
   type DriverComparison,
 } from '../../services/api';
 
-vi.mock('../../services/api', () => {
-  class IRacingNotLinkedError extends Error {
-    code = 'IRACING_NOT_LINKED';
-    constructor(message: string) {
-      super(message);
-      this.name = 'IRacingNotLinkedError';
-    }
-  }
-  class ApiError extends Error {
-    readonly status: number;
-    constructor(status: number, message: string) {
-      super(message);
-      this.status = status;
-      this.name = 'ApiError';
-    }
-  }
-  return {
-    api: {
-      getRivals: vi.fn(),
-      getRivalSuggestions: vi.fn(),
-      searchDrivers: vi.fn(),
-      addRival: vi.fn(),
-      removeRival: vi.fn(),
-      compareRival: vi.fn(),
-    },
-    IRacingNotLinkedError,
-    ApiError,
-  };
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
 });
 
 let mockDemoFlag = false;

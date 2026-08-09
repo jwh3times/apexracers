@@ -3,9 +3,10 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import LivePage from './LivePage';
 import { api, type RaceGuideEntry } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { getRaceGuide: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetRaceGuide = vi.mocked(api.getRaceGuide);
 

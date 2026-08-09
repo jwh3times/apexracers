@@ -24,23 +24,9 @@ vi.mock('../../context/FeatureFlagContext', () => ({
   useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
 }));
 
-vi.mock('../../services/api', () => {
-  class IRacingNotLinkedError extends Error {
-    code = 'IRACING_NOT_LINKED';
-    constructor(message: string) {
-      super(message);
-      this.name = 'IRacingNotLinkedError';
-    }
-  }
-  return {
-    api: {
-      getMyLaps: vi.fn(),
-      getSeries: vi.fn(),
-      getProfileStats: vi.fn(),
-      getAchievements: vi.fn(),
-    },
-    IRacingNotLinkedError,
-  };
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
 });
 
 const mockGetMyLaps = vi.mocked(api.getMyLaps);

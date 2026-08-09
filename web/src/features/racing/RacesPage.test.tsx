@@ -4,18 +4,9 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RacesPage from './RacesPage';
 import { api, IRacingNotLinkedError, type RaceHistoryRow } from '../../services/api';
 
-vi.mock('../../services/api', () => {
-  class IRacingNotLinkedError extends Error {
-    code = 'IRACING_NOT_LINKED';
-    constructor(message: string) {
-      super(message);
-      this.name = 'IRacingNotLinkedError';
-    }
-  }
-  return {
-    api: { getRaceHistory: vi.fn() },
-    IRacingNotLinkedError,
-  };
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
 });
 
 const mockGetRaceHistory = vi.mocked(api.getRaceHistory);
