@@ -63,7 +63,7 @@ Two schemas in one database:
 
 `FeatureFlag.Key` has a unique index — enforced at DB level, not just application level.
 
-`ExternalDataCache.CacheKey` has a unique index (max length 200) — the only lookup path for `CachedIRacingClient`'s get-or-fetch.
+`ExternalDataCache.CacheKey` has a unique index (max length 200) — the only lookup path for `CachedIRacingClient`'s get-or-fetch. Two concurrent misses on the same missing key both read null and both attempt an insert; the loser hits this unique index and `SaveChangesAsync` throws `DbUpdateException`, which `GetOrFetchAsync` catches (only when its own read was null, so a genuine update failure still surfaces) and returns the value it fetched rather than re-querying — the winner's row is already correct.
 
 `Rival` has a unique index on `(UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
 
