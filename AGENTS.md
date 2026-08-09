@@ -436,13 +436,14 @@ after a Recommendations/percentile visit; the race-guide board shows static "in-
 
 ### Frontend (`web/`)
 
-The typed API client is `web/src/services/api.ts` — **all** fetch calls route through one private
-`request<T>(path, init)` helper (attaches auth headers, retries once after silent refresh on 401, maps
-RFC-7807 errors, throws typed `IRacingNotLinkedError` on the `409`). Add endpoints by calling `request`
-with `{ method, json }` or `{ method, body }` — don't reintroduce per-verb helpers. `api.ts` response
-types must stay in sync with `ResponseDtos.cs`. Full frontend patterns (auth/`AuthContext`, 401
-interceptor, feature flags, **design-token system + card pattern**, Vitest rules) are in the
-`react-frontend` agent — don't duplicate the design-token tables here.
+The typed API client is `web/src/services/api.ts`, built on the HTTP core in
+`web/src/services/http.ts`'s `createHttpClient(...).request<T>(path, init)` (attaches auth headers,
+retries once after silent refresh on 401, maps RFC-7807 errors, throws typed `IRacingNotLinkedError`
+on the `409`). Add endpoints by calling `request` with `{ method, json }` or `{ method, body }` —
+don't reintroduce per-verb helpers. `api.ts` response types must stay in sync with `ResponseDtos.cs`.
+Full frontend patterns (auth/`AuthContext`, 401 interceptor, feature flags, **design-token system +
+card pattern**, Vitest rules) are in the `react-frontend` agent — don't duplicate the design-token
+tables here.
 
 **Design system:** all sizing is fluid via `clamp()` utility classes in `web/src/index.css` (not
 Tailwind breakpoints); use those classes for new UI. Primary accent is **cyan** —

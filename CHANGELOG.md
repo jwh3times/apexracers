@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.4.42] - 2026-08-09
+
 ### Changed
 
 - Extracted the HTTP core of the web client into a new `web/src/services/http.ts`, exposed as `createHttpClient({ fetch, getAccessToken, refresh })`. Auth headers, the single silent-refresh retry on 401, RFC-7807 error mapping, the typed 409 not-linked contract and 204 handling all move behind one `request<T>` method, with `fetch` and `refresh` injected rather than reached for. `ApiError`, `IRacingNotLinkedError`, `humanMessageFor` and `throwForResponse` move with it; `api.ts` re-exports the error classes, so all ~90 existing `from '…/services/api'` imports and the entire public `api` surface are unchanged. The full 616-test suite passed against the extraction before any test was touched — this is a refactor, not a rewrite. No runtime behaviour changes.
@@ -343,7 +347,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.41...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.42...HEAD
+[0.4.42]: https://github.com/jwh3times/apexracers/compare/v0.4.41...v0.4.42
 [0.4.41]: https://github.com/jwh3times/apexracers/compare/v0.4.40...v0.4.41
 [0.4.39]: https://github.com/jwh3times/apexracers/compare/v0.4.38...v0.4.39
 [0.4.25]: https://github.com/jwh3times/apexracers/compare/v0.4.24...v0.4.25
