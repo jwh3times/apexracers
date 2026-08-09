@@ -4,7 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import VerifyEmailPage from './VerifyEmailPage';
 import { api } from '../../services/api';
 
-vi.mock('../../services/api', () => ({ api: { confirmEmailChange: vi.fn() } }));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 function renderAt(search: string) {
   return render(

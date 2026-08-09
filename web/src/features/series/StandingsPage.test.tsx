@@ -9,13 +9,10 @@ import {
   type SeasonQualifyResults,
 } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getStandings: vi.fn(),
-    getTtStandings: vi.fn(),
-    getQualifyResults: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 let mockIRacingCustomerId: number | null = null;
 vi.mock('../../context/AuthContext', () => ({

@@ -5,9 +5,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ForgotPasswordPage from './ForgotPasswordPage';
 import { api } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { forgotPassword: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 function renderPage() {
   render(

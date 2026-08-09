@@ -4,9 +4,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import StrategyPage from './StrategyPage';
 import { api, type CarStrategy, type WeekStrategy } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { getWeekStrategy: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGet = vi.mocked(api.getWeekStrategy);
 

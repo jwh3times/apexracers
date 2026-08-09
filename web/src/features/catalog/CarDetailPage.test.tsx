@@ -4,7 +4,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CarDetailPage from './CarDetailPage';
 import { api, type CarCatalogDetail } from '../../services/api';
 
-vi.mock('../../services/api', () => ({ api: { getCar: vi.fn() } }));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetCar = vi.mocked(api.getCar);
 

@@ -11,9 +11,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: { getSubsession: vi.fn(), getDriverLaps: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetSubsession = vi.mocked(api.getSubsession);
 const mockGetDriverLaps = vi.mocked(api.getDriverLaps);

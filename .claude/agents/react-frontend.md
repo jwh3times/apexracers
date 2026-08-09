@@ -11,7 +11,9 @@ React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/buil
 
 ## API calls — always go through api.ts
 
-**Never call `fetch()` directly in pages or components.** Every call goes through the single private `request<T>(path, init)` helper in `src/services/api.ts` — it attaches auth headers, retries once after a silent token refresh on 401, returns `undefined` for 204s, and maps RFC-7807 errors. Add a new endpoint as a method on the `api` export object: call `request` with `{ method, json }` (JSON body) or `{ method, body }` (raw/FormData), with a JSDoc comment naming the controller route. Do **not** reintroduce per-verb helpers (`get`/`postJson`/`putJson`/…) — they were removed in favor of `request<T>`.
+**Never call `fetch()` directly in pages or components.** Every call goes through `request<T>(path, init)`, exported from `src/services/api.ts` and built on `createHttpClient(...)` in `src/services/http.ts` — it attaches auth headers, retries once after a silent token refresh on 401, returns `undefined` for 204s, and maps RFC-7807 errors. Add a new endpoint as a method on the `api` export object: call `request` with `{ method, json }` (JSON body) or `{ method, body }` (raw/FormData), with a JSDoc comment naming the controller route. Do **not** reintroduce per-verb helpers (`get`/`postJson`/`putJson`/…) — they were removed in favor of `request<T>`.
+
+`services/http.ts` owns the request core itself plus the `ApiError` / `IRacingNotLinkedError` classes and the RFC-7807 message-picking logic (`throwForResponse`, `humanMessageFor`) — `api.ts` re-exports the error classes rather than redeclaring them, so there is exactly one class identity across the app. `http.ts` takes `fetch`, `getAccessToken`, and `refresh` as injected dependencies; `api.ts` is the only place that supplies real ones (module-level token state and the refresh-token exchange stay in `api.ts`, not `http.ts`). Because those three are injected, `createHttpClient` is directly unit-testable — including the 401-retry branch — without touching global `fetch`; prefer adding a test against `createHttpClient` itself in `http.test.ts` over exercising retry behavior indirectly through an `api` method.
 
 When adding a new endpoint, update both `ResponseDtos.cs` (backend) and `api.ts` (frontend) — the TypeScript interfaces must mirror the C# records exactly: camelCase field names, `number | null` for `double?`, `string` for `DateTimeOffset` (ISO 8601). A `409` carrying `code: "IRACING_NOT_LINKED"` is surfaced as the typed `IRacingNotLinkedError` so pages can prompt to link an iRacing account.
 
@@ -55,8 +57,9 @@ src/pages/              ← public/static pages only (Home, Terms, Privacy, Comi
 src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext), each with a colocated *.test.tsx sibling
-src/services/           ← api.ts, db.ts, each with a colocated *.test.ts sibling
+src/services/           ← api.ts, http.ts, db.ts, each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
+src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
 ```
 
 ## Styling
@@ -134,7 +137,16 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 - Framework: Vitest + React Testing Library; environment `jsdom`; setup file `src/test/setup.ts` (in `vite.config.ts`); `globals: true` (no need to import `describe`/`it`/`expect`).
 - Every new source file needs a corresponding test file, colocated as a `*.test.ts(x)` sibling next to the source (pages in `features/`, components, contexts, services, and utils all follow this). The only remaining `__tests__/` directories are `src/pages/__tests__/` (static pages) and `src/__tests__/` (App-level route guards).
 - Test behavior, not implementation: prefer `getByRole`, `getByText`, `findBy*` over snapshot tests.
-- Mock `src/services/api.ts` with `vi.mock('../services/api')` in tests that call API methods; mock `src/context/AuthContext.tsx` when testing pages that call `useAuth()`. If the page under test does an `instanceof ApiError` / `instanceof IRacingNotLinkedError` check, don't hand-roll a stand-in error class inside the mock factory — replacing the whole module resolves that check against the mock's class, not the real one, so the test can pass for the wrong reason (or hide a real 404/409-handling bug, as `PercentileCarPage.test.tsx` did). Use `vi.mock('../../services/api', async importOriginal => ({ ...(await importOriginal()), api: { /* stub methods */ } }))` to keep the real error exports and reject with the real class (e.g. `new ApiError(404, 'Not Found')`).
+- Mock `src/services/api.ts` in tests that call API methods; mock `src/context/AuthContext.tsx` when testing pages that call `useAuth()`. If the page under test does an `instanceof ApiError` / `instanceof IRacingNotLinkedError` check, don't hand-roll a stand-in error class inside the mock factory — replacing the whole module resolves that check against the mock's class, not the real one, so the test can pass for the wrong reason (or hide a real 404/409-handling bug, as `PercentileCarPage.test.tsx` did). The standard way to mock `api.ts` is the shared `mockApiModule` helper (`src/test/apiMock.ts`): it keeps every real export — crucially the error classes — and auto-stubs every method on the `api` object, so a page adding a new call doesn't require touching its test's mock factory:
+
+  ```ts
+  vi.mock('../../services/api', async importOriginal => {
+    const { mockApiModule } = await import('../../test/apiMock');
+    return mockApiModule(importOriginal);
+  });
+  ```
+
+  Then reject with the real class: `vi.mocked(api.getX).mockRejectedValue(new ApiError(404, 'Not Found'))`. The dynamic import inside the factory is required because `vi.mock` is hoisted above the file's own imports. Two files intentionally keep bespoke factories instead: `context/AuthContext.test.tsx` (mocks module-level token setters `mockApiModule` doesn't cover) and `context/ThemeContext.test.tsx` (needs a capturing `updateTheme` implementation, not a bare stub).
 - The **85%** coverage gate (statements/branches/functions/lines) and the prettier-check CI step are in AGENTS.md (Testing). Run `npx vitest run --coverage` and `npx prettier --check .` before pushing.
 - **End-to-end (Playwright):** tests live in `web/e2e/` and run against the full stack at `http://localhost:8080` (e.g. `docker compose up`). Config is `web/playwright.config.ts` (single Chromium project; `reuseExistingServer: !process.env.CI`). Run with `npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive). Vitest excludes `e2e/` via `include: ['src/**']` in `vite.config.ts` — E2E tests never count toward the coverage gate. A non-blocking per-PR GitHub Actions workflow (`.github/workflows/e2e.yml`) also runs the suite (Postgres service + builds SPA into API wwwroot + Playwright); it is not yet a required check.
 - **Accessibility audits:** `web/e2e/a11y.spec.ts` asserts zero WCAG 2.1 A/AA violations across 5 public + 7 authed pages via `auditA11y(page)` from `web/e2e/helpers/a11y.ts` (`@axe-core/playwright`, `wcag2a`/`wcag2aa` tagset).

@@ -15,9 +15,10 @@ vi.mock('../context/FeatureFlagContext', () => ({
   useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
 }));
 
-vi.mock('../services/api', () => ({
-  api: { getRaceGuide: vi.fn(), getMyAnalytics: vi.fn() },
-}));
+vi.mock('../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetRaceGuide = vi.mocked(api.getRaceGuide);
 const mockGetMyAnalytics = vi.mocked(api.getMyAnalytics);

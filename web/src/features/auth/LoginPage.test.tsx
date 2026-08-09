@@ -12,9 +12,10 @@ vi.mock('react-router', async importOriginal => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../../services/api', () => ({
-  api: { login: vi.fn(), register: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ login: mockLogin }),

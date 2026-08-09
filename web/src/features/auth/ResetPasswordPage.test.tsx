@@ -5,9 +5,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ResetPasswordPage from './ResetPasswordPage';
 import { api } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { resetPassword: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 function renderPage(search = '?email=driver%40example.com&token=tok-1') {
   render(

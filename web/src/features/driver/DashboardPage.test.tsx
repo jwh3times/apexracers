@@ -9,14 +9,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Jerry', token: 't', userId: 'u1', email: 'j@j.com' } }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: {
-    getSeries: vi.fn(),
-    getMyLaps: vi.fn(),
-    getProfileStats: vi.fn(),
-    getMyAnalytics: vi.fn(),
-  },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 let mockLiveFlag = true;
 let mockDemoFlag = false;

@@ -11,9 +11,10 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
-vi.mock('../../services/api', () => ({
-  api: { getWeekDetail: vi.fn(), getCarsForWeek: vi.fn(), getMyWeekPercentiles: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetWeekDetail = vi.mocked(api.getWeekDetail);
 const mockGetMyWeekPercentiles = vi.mocked(api.getMyWeekPercentiles);

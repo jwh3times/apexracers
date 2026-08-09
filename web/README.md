@@ -110,16 +110,16 @@ src/
   pages/__tests__/    ← Vitest tests for the static pages
   components/         ← shared UI (Sidebar, TopNav, Footer, Sparkline, …) + colocated *.test.tsx siblings
   context/            ← AuthContext, ThemeContext, FeatureFlagContext + colocated *.test.tsx siblings
-  services/           ← api.ts (typed fetch client), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
+  services/           ← api.ts (typed fetch client), http.ts (request core + error classes), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
   utils/              ← formatLapTime, topPercentLabel, deriveAlerts, breadcrumbs + colocated *.test.ts siblings
-  test/               ← setup.ts (Vitest global setup)
+  test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory for tests)
   App.tsx             ← route definitions, AppShell layout
   index.css           ← Tailwind base + fluid design token utilities
 ```
 
 ## API client
 
-All fetch calls go through `src/services/api.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
+All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
 
 The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
 

@@ -4,7 +4,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import TrackDetailPage from './TrackDetailPage';
 import { api, type TrackCatalogDetail } from '../../services/api';
 
-vi.mock('../../services/api', () => ({ api: { getTrack: vi.fn() } }));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 const mockGetTrack = vi.mocked(api.getTrack);
 

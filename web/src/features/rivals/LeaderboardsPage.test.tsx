@@ -3,9 +3,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import LeaderboardsPage from './LeaderboardsPage';
 import { api, type GlobalLeaderboardEntry } from '../../services/api';
 
-vi.mock('../../services/api', () => ({
-  api: { getLeaderboard: vi.fn() },
-}));
+vi.mock('../../services/api', async importOriginal => {
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
+});
 
 let mockIRacingCustomerId: number | null = null;
 vi.mock('../../context/AuthContext', () => ({

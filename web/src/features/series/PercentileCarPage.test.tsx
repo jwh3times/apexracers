@@ -5,11 +5,11 @@ import PercentileCarPage from './PercentileCarPage';
 import { api, ApiError } from '../../services/api';
 import type { PercentileResult } from '../../services/api';
 
-// Keep the real error classes: the page branches on `instanceof ApiError`, so a hand-rolled
+// Keeps the real error classes — the page branches on `instanceof ApiError`, so a hand-rolled
 // stand-in would make the test pass against itself rather than against the module's contract.
 vi.mock('../../services/api', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../services/api')>();
-  return { ...actual, api: { getPercentile: vi.fn() } };
+  const { mockApiModule } = await import('../../test/apiMock');
+  return mockApiModule(importOriginal);
 });
 
 // Auth mock — iRacingCustomerId drives which code path the page takes
