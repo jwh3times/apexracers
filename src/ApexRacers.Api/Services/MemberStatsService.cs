@@ -59,7 +59,7 @@ public class MemberStatsService(CachedIRacingClient cached)
         var career = await GetCareerAsync(custId, ct);
 
         var thisYear = await cached.GetOrFetchAsync(
-            $"summary:{custId}", Ttl,
+            IRacingCacheKeys.Summary(custId),
             async c =>
             {
                 var y = (await c.GetMemberSummaryAsync((int)custId, ct)).Data.YearStatistics;
@@ -69,7 +69,7 @@ public class MemberStatsService(CachedIRacingClient cached)
             }, ct);
 
         var recap = await cached.GetOrFetchAsync(
-            $"recap:{custId}", Ttl,
+            IRacingCacheKeys.Recap(custId),
             async c =>
             {
                 var stats = (await c.GetMemberRecapAsync((int)custId, null, null, ct)).Data.Statistics;
@@ -128,7 +128,7 @@ public class MemberStatsService(CachedIRacingClient cached)
 
     private Task<ProfileSnapshot> GetProfileAsync(long custId, CancellationToken ct) =>
         cached.GetOrFetchAsync(
-            $"profile:{custId}", Ttl,
+            IRacingCacheKeys.Profile(custId),
             async c =>
             {
                 var p = (await c.GetMemberProfileAsync((int)custId, ct)).Data;
@@ -145,7 +145,7 @@ public class MemberStatsService(CachedIRacingClient cached)
 
     private Task<List<CategoryCareerDto>> GetCareerAsync(long custId, CancellationToken ct) =>
         cached.GetOrFetchAsync(
-            $"career:{custId}", Ttl,
+            IRacingCacheKeys.Career(custId),
             // Career "Category" is already a display name (e.g. "Sports Car") — no prettify.
             async c => ((await c.GetCareerStatisticsAsync((int)custId, ct)).Data.Statistics ?? [])
                 .Select(s => new CategoryCareerDto(
@@ -157,7 +157,7 @@ public class MemberStatsService(CachedIRacingClient cached)
     private Task<List<TimeSeriesPointDto>> GetIRatingHistoryAsync(
         long custId, int categoryId, CancellationToken ct) =>
         cached.GetOrFetchAsync(
-            $"chart:{custId}:{categoryId}:{(int)MemberChartType.IRating}", Ttl,
+            IRacingCacheKeys.IRatingChart(custId, categoryId),
             async c => ((await c.GetMemberChartDataAsync(
                     (int)custId, categoryId, MemberChartType.IRating, ct)).Data.Points ?? [])
                 .Select(p => new TimeSeriesPointDto(

@@ -275,10 +275,6 @@ public class PercentileCalculationServiceTests
 
     // ── World-record overlay ──────────────────────────────────────────────────
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     [Fact]
     public async Task ComputeAndCacheAsync_PopulatesWorldRecordLapAndGap()
@@ -296,7 +292,7 @@ public class PercentileCalculationServiceTests
                 Data = (new Aydsko.iRacingData.Stats.WorldRecordsHeader(),
                     [new Aydsko.iRacingData.Stats.WorldRecordEntry { QualifyLapTime = TimeSpan.FromSeconds(66) }]),
             });
-        var worldRecords = new WorldRecordService(new CachedIRacingClient(db, new StubServiceProvider(client)));
+        var worldRecords = new WorldRecordService(new CachedIRacingClient(db, client));
 
         var result = await new PercentileCalculationService(db, worldRecords)
             .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,

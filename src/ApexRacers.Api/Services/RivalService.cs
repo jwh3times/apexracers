@@ -58,11 +58,13 @@ public class RivalService(AppDbContext db, CachedIRacingClient cached)
     /// <summary>Name search via iRacing, cached per normalized term. Short terms skip the API.</summary>
     public async Task<IReadOnlyList<DriverSearchResultDto>> SearchDriversAsync(string term, CancellationToken ct)
     {
+        // The key module owns the normalization (trim + lowercase) and the minimum length, so the
+        // demo seeder's curated terms cannot drift out of step with what this writes.
+        if (IRacingCacheKeys.DriverSearch(term) is not { } spec) return [];
         var normalized = (term ?? string.Empty).Trim();
-        if (normalized.Length < 2) return [];
 
         return await cached.GetOrFetchAsync(
-            $"driversearch:{normalized.ToLowerInvariant()}", SearchTtl,
+            spec,
             async c =>
             {
                 var hits = (await c.SearchDriversAsync(normalized, null, ct)).Data ?? [];

@@ -21,30 +21,30 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     {
         foreach (var custId in new[] { DemoData.DriverCustId, DemoData.RivalCustId })
         {
-            await DemoCache.UpsertAsync(db, $"profile:{custId}", DemoMemberData.BuildProfile(custId), ct);
-            await DemoCache.UpsertAsync(db, $"career:{custId}", DemoMemberData.BuildCareer(custId), ct);
+            await DemoCache.UpsertAsync(db, IRacingCacheKeys.Profile(custId).Key, DemoMemberData.BuildProfile(custId), ct);
+            await DemoCache.UpsertAsync(db, IRacingCacheKeys.Career(custId).Key, DemoMemberData.BuildCareer(custId), ct);
             foreach (var cat in DemoMemberData.Categories)
                 await DemoCache.UpsertAsync(
-                    db, $"chart:{custId}:{cat.Id}:{IRatingChart}", DemoMemberData.BuildChart(custId, cat.Id), ct);
+                    db, IRacingCacheKeys.IRatingChart(custId, cat.Id).Key, DemoMemberData.BuildChart(custId, cat.Id), ct);
         }
 
         // Profile-stats extras only the demo driver's /profile reads.
-        await DemoCache.UpsertAsync(db, $"summary:{DemoData.DriverCustId}", DemoMemberData.BuildSummary(DemoData.DriverCustId), ct);
-        await DemoCache.UpsertAsync(db, $"recap:{DemoData.DriverCustId}", DemoMemberData.BuildRecap(DemoData.DriverCustId), ct);
+        await DemoCache.UpsertAsync(db, IRacingCacheKeys.Summary(DemoData.DriverCustId).Key, DemoMemberData.BuildSummary(DemoData.DriverCustId), ct);
+        await DemoCache.UpsertAsync(db, IRacingCacheKeys.Recap(DemoData.DriverCustId).Key, DemoMemberData.BuildRecap(DemoData.DriverCustId), ct);
     }
 
     /// <summary>awards + recent races for the authenticated demo driver only.</summary>
     public async Task SeedActivityAsync(CancellationToken ct)
     {
-        await DemoCache.UpsertAsync(db, $"awards:{DemoData.DriverCustId}", DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
-        await DemoCache.UpsertAsync(db, $"recent:{DemoData.DriverCustId}", DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
+        await DemoCache.UpsertAsync(db, IRacingCacheKeys.Awards(DemoData.DriverCustId).Key, DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
+        await DemoCache.UpsertAsync(db, IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key, DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
     }
 
     /// <summary>leaderboard:1..6 (the API allows category 1-6; default 5).</summary>
     public async Task SeedLeaderboardsAsync(CancellationToken ct)
     {
         for (var categoryId = 1; categoryId <= 6; categoryId++)
-            await DemoCache.UpsertAsync(db, $"leaderboard:{categoryId}", DemoLeaderboardData.Build(categoryId), ct);
+            await DemoCache.UpsertAsync(db, IRacingCacheKeys.Leaderboard(categoryId).Key, DemoLeaderboardData.Build(categoryId), ct);
     }
 
     /// <summary>standings/tt-standings per active season × car class; qual per season × class × week.</summary>
@@ -61,10 +61,10 @@ public sealed class DemoCacheSeeder(AppDbContext db)
 
             foreach (var classId in classIds)
             {
-                await DemoCache.UpsertAsync(db, $"standings:{seasonId}:{classId}", DemoStandingsData.BuildStandings(seasonId, classId), ct);
-                await DemoCache.UpsertAsync(db, $"tt-standings:{seasonId}:{classId}", DemoStandingsData.BuildTtStandings(seasonId, classId), ct);
+                await DemoCache.UpsertAsync(db, IRacingCacheKeys.Standings(seasonId, classId).Key, DemoStandingsData.BuildStandings(seasonId, classId), ct);
+                await DemoCache.UpsertAsync(db, IRacingCacheKeys.TimeTrialStandings(seasonId, classId).Key, DemoStandingsData.BuildTtStandings(seasonId, classId), ct);
                 foreach (var week in weeks)
-                    await DemoCache.UpsertAsync(db, $"qual:{seasonId}:{classId}:{week}", DemoStandingsData.BuildQualify(seasonId, classId, week), ct);
+                    await DemoCache.UpsertAsync(db, IRacingCacheKeys.QualifyResults(seasonId, classId, week).Key, DemoStandingsData.BuildQualify(seasonId, classId, week), ct);
             }
         }
     }
@@ -73,7 +73,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     public async Task SeedRaceGuideAsync(CancellationToken ct)
     {
         var seriesIds = await db.Seasons.Where(s => s.Active).Select(s => s.SeriesId).Distinct().ToListAsync(ct);
-        await DemoCache.UpsertAsync(db, "race-guide", DemoRaceGuideData.Build(seriesIds), ct);
+        await DemoCache.UpsertAsync(db, IRacingCacheKeys.RaceGuide.Key, DemoRaceGuideData.Build(seriesIds), ct);
     }
 
     /// <summary>Fills the §6 persisted gaps: per-week weather + per-car BoP for active seasons.
@@ -121,7 +121,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
 
         foreach (var (carId, trackId, fieldBest) in combos)
             await DemoCache.UpsertAsync<double?>(
-                db, $"wr:{carId}:{trackId}", DemoWorldRecord.RecordSeconds(fieldBest), ct);
+                db, IRacingCacheKeys.WorldRecord(carId, trackId).Key, DemoWorldRecord.RecordSeconds(fieldBest), ct);
     }
 
     /// <summary>laps:{subsessionId}:{demo driver} — a synthetic per-lap trace around the demo driver's
@@ -138,7 +138,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
             var laps = DemoLapData.BuildLaps(s.SubsessionId, s.BestLapSeconds);
             var (mean, std, fastest, deg) = LapAnalysis.Compute(laps);
             var dto = new DriverLapsDto(s.SubsessionId, DemoData.DriverCustId, mean, std, fastest, deg, laps);
-            await DemoCache.UpsertAsync(db, $"laps:{s.SubsessionId}:{DemoData.DriverCustId}", dto, ct);
+            await DemoCache.UpsertAsync(db, IRacingCacheKeys.LapData(s.SubsessionId, DemoData.DriverCustId).Key, dto, ct);
         }
     }
 
@@ -147,7 +147,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     public async Task SeedDriverSearchAsync(CancellationToken ct)
     {
         foreach (var (term, hits) in DemoDriverSearchData.Terms)
-            await DemoCache.UpsertAsync(db, $"driversearch:{term}", hits, ct);
+            await DemoCache.UpsertAsync(db, IRacingCacheKeys.DriverSearch(term)!.Value.Key, hits, ct);
     }
 
     /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>

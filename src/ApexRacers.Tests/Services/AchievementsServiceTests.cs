@@ -14,10 +14,6 @@ public class AchievementsServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static MemberAward Award(int id, string name, DateOnly date, int count = 1) => new()
     {
@@ -35,7 +31,7 @@ public class AchievementsServiceTests
             .Returns(new DataResponse<MemberAward[]> { Data = awards });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return (new AchievementsService(cached), client);
     }
 

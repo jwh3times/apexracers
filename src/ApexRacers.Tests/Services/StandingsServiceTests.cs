@@ -17,10 +17,6 @@ public class StandingsServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     private static SeasonDriverStanding Standing(
         int rank, int custId, string name, int points, int wins) => new()
@@ -127,7 +123,7 @@ public class StandingsServiceTests
         downloader.DownloadAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(qualifyChunks ?? []);
 
-        var cached = new CachedIRacingClient(db, new StubServiceProvider(client));
+        var cached = new CachedIRacingClient(db, client);
         return new Harness
         {
             Service = new StandingsService(db, cached, downloader),

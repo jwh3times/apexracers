@@ -166,7 +166,11 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("BetaOrAbove",   policy => policy.RequireClaim("role", "Beta", "Alpha", "Admin"));
 });
 
-builder.Services.AddScoped<CachedIRacingClient>();
+// Constructed by hand because IDataClient is registered only when all four credentials are
+// present (above); GetService returns null otherwise, which is exactly what the client's
+// nullable parameter means. Container auto-wiring would fail to resolve it instead.
+builder.Services.AddScoped(sp =>
+    new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>()));
 builder.Services.AddScoped<MemberContext>();
 builder.Services.AddScoped<MemberStatsService>();
 builder.Services.AddScoped<AchievementsService>();

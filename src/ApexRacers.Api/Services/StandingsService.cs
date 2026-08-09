@@ -25,7 +25,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
         var ctx = await ResolveAsync(seriesId, carClassId, ct);
 
         var standings = await cached.GetOrFetchAsync<IReadOnlyList<SeasonStandingDto>>(
-            $"standings:{ctx.SeasonId}:{ctx.ClassId}", TimeSpan.FromHours(24),
+            IRacingCacheKeys.Standings(ctx.SeasonId, ctx.ClassId),
             async c =>
             {
                 var rows = (await c.GetSeasonDriverStandingsAsync(
@@ -51,7 +51,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
         var ctx = await ResolveAsync(seriesId, carClassId, ct);
 
         var standings = await cached.GetOrFetchAsync<IReadOnlyList<SeasonTtStandingDto>>(
-            $"tt-standings:{ctx.SeasonId}:{ctx.ClassId}", TimeSpan.FromHours(24),
+            IRacingCacheKeys.TimeTrialStandings(ctx.SeasonId, ctx.ClassId),
             async c =>
             {
                 var rows = (await c.GetSeasonTimeTrialStandingsAsync(
@@ -86,7 +86,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
         var week = raceWeekNum ?? CurrentWeek(weeks.Select(w => (w.WeekNumber, w.StartDate)));
 
         var results = await cached.GetOrFetchAsync<IReadOnlyList<SeasonQualifyResultDto>>(
-            $"qual:{ctx.SeasonId}:{ctx.ClassId}:{week}", TimeSpan.FromHours(24),
+            IRacingCacheKeys.QualifyResults(ctx.SeasonId, ctx.ClassId, week),
             async c =>
             {
                 // The SDK type drops the lap time, so we only use it for the authenticated first

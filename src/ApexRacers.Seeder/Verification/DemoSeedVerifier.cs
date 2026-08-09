@@ -1,3 +1,4 @@
+using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
 using ApexRacers.Seeder.Demo;
@@ -28,20 +29,20 @@ public static class DemoSeedVerifier
         var memberKeys = new List<string>();
         foreach (var custId in new[] { DemoData.DriverCustId, DemoData.RivalCustId })
         {
-            memberKeys.Add($"profile:{custId}");
-            memberKeys.Add($"career:{custId}");
+            memberKeys.Add(IRacingCacheKeys.Profile(custId).Key);
+            memberKeys.Add(IRacingCacheKeys.Career(custId).Key);
         }
-        memberKeys.Add($"summary:{DemoData.DriverCustId}");
-        memberKeys.Add($"recap:{DemoData.DriverCustId}");
+        memberKeys.Add(IRacingCacheKeys.Summary(DemoData.DriverCustId).Key);
+        memberKeys.Add(IRacingCacheKeys.Recap(DemoData.DriverCustId).Key);
         AddSetCheck(checks, "members", memberKeys, keySet);
 
         // 2. activity
         AddSetCheck(checks, "activity",
-            [$"awards:{DemoData.DriverCustId}", $"recent:{DemoData.DriverCustId}"], keySet);
+            [IRacingCacheKeys.Awards(DemoData.DriverCustId).Key, IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key], keySet);
 
         // 3. leaderboards 1..6
         AddSetCheck(checks, "leaderboards",
-            Enumerable.Range(1, 6).Select(c => $"leaderboard:{c}").ToList(), keySet);
+            Enumerable.Range(1, 6).Select(c => IRacingCacheKeys.Leaderboard(c).Key).ToList(), keySet);
 
         // 4. standings/tt/qual per active season × class (+ per week for qual)
         var expectedStandings = new List<string>();
@@ -54,15 +55,15 @@ public static class DemoSeedVerifier
                 .Where(w => w.SeasonId == seasonId).Select(w => w.WeekNumber).ToListAsync(ct);
             foreach (var classId in classIds)
             {
-                expectedStandings.Add($"standings:{seasonId}:{classId}");
-                expectedStandings.Add($"tt-standings:{seasonId}:{classId}");
-                expectedStandings.AddRange(weekNums.Select(w => $"qual:{seasonId}:{classId}:{w}"));
+                expectedStandings.Add(IRacingCacheKeys.Standings(seasonId, classId).Key);
+                expectedStandings.Add(IRacingCacheKeys.TimeTrialStandings(seasonId, classId).Key);
+                expectedStandings.AddRange(weekNums.Select(w => IRacingCacheKeys.QualifyResults(seasonId, classId, w).Key));
             }
         }
         AddSetCheck(checks, "standings", expectedStandings, keySet);
 
         // 5. race guide
-        AddSetCheck(checks, "race-guide", ["race-guide"], keySet);
+        AddSetCheck(checks, "race-guide", [IRacingCacheKeys.RaceGuide.Key], keySet);
 
         // 6. world records per (car, track) combo present in synthetic results.
         // Two-step + in-memory join (rather than a r.Subsession.TrackId nav-property join)
@@ -79,7 +80,7 @@ public static class DemoSeedVerifier
             .Distinct().ToListAsync(ct);
         var wrCombos = wrPairs
             .Where(p => trackByNegSub.ContainsKey(p.SubsessionId))
-            .Select(p => $"wr:{p.CarId}:{trackByNegSub[p.SubsessionId]}")
+            .Select(p => IRacingCacheKeys.WorldRecord(p.CarId, trackByNegSub[p.SubsessionId]).Key)
             .Distinct().ToList();
         AddSetCheck(checks, "world-records", wrCombos, keySet);
 
@@ -88,11 +89,11 @@ public static class DemoSeedVerifier
             .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
             .Select(r => r.SubsessionId).Distinct().ToListAsync(ct);
         AddSetCheck(checks, "lap-data",
-            demoSubs.Select(s => $"laps:{s}:{DemoData.DriverCustId}").ToList(), keySet);
+            demoSubs.Select(s => IRacingCacheKeys.LapData(s, DemoData.DriverCustId).Key).ToList(), keySet);
 
         // 8. curated driver-search terms
         AddSetCheck(checks, "driver-search",
-            DemoDriverSearchData.Terms.Keys.Select(t => $"driversearch:{t}").ToList(), keySet);
+            DemoDriverSearchData.Terms.Keys.Select(t => IRacingCacheKeys.DriverSearch(t)!.Value.Key).ToList(), keySet);
 
         // 9. every demo cache row carries the sentinel (materialize, then filter —
         //    DateTimeOffset range predicates are the known SQLite-untranslatable case)

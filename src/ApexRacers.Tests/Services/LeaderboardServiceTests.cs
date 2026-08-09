@@ -18,10 +18,6 @@ public class LeaderboardServiceTests
         + "Aaron Vazquezz,598355,ES,N/A,1919,694,5,6,154,1267,30143,7800,5.72,A 2.96,11424,2187,20543,295527\n"
         + "Sven Haase,313251,DE,N/A,2403,1399,3,4,183,1911,56705,13214,7.47,A 4.52,11417,1721,33319,440170";
 
-    private sealed class StubServiceProvider(object? service) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => service;
-    }
 
     [Fact]
     public async Task GetLeaderboardAsync_DecodesParsesAndCachesOnce()
@@ -34,7 +30,7 @@ public class LeaderboardServiceTests
                 CategoryId = 2,
                 ContentBytes = Encoding.UTF8.GetBytes(Csv),
             });
-        var service = new LeaderboardService(new CachedIRacingClient(db, new StubServiceProvider(client)));
+        var service = new LeaderboardService(new CachedIRacingClient(db, client));
 
         var first = await service.GetLeaderboardAsync(2, Ct);
         var second = await service.GetLeaderboardAsync(2, Ct);
@@ -56,7 +52,7 @@ public class LeaderboardServiceTests
         var client = Substitute.For<IDataClient>();
         client.GetDriverStatisticsByCategoryCsvAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new DriverStatisticsCsvFile { CategoryId = 3, ContentBytes = null! });
-        var service = new LeaderboardService(new CachedIRacingClient(db, new StubServiceProvider(client)));
+        var service = new LeaderboardService(new CachedIRacingClient(db, client));
 
         Assert.Empty(await service.GetLeaderboardAsync(3, Ct));
     }
