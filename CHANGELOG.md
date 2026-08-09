@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.49] - 2026-08-09
+
+### Changed
+
+- The bearer-token settings are now bound once and shared by both sides of the contract. The issuing side and the validating side each read `JWT_ISSUER` and `JWT_AUDIENCE` and each carried their own copy of the fallback literals, with issuer and audience validation both switched on. Changing one default would have made every token this API mints be rejected by this same API — a total-auth outage from a one-word edit, with no compile error to catch it. `JwtSettings` also owns deriving the signing key, because both sides previously did their own UTF-8 encoding of it, making that a third thing that had to match. The null-forgiving cast on the signing key in `AuthService` is gone: the settings validate it on bind, matching what startup already did.
+
+### Fixed
+
+- Closed the test gap that made the above invisible. The auth suite set neither `JWT_ISSUER` nor `JWT_AUDIENCE`, so the issuing and validating sides both ran on their defaults and agreed by accident rather than by construction — a divergence between them would have passed every test. There is now a round-trip check that issues a real token through the auth service and validates it with the exact parameters startup builds, deliberately using **non-default** issuer and audience values so agreement has to come from the shared binding. Three negative cases (mismatched issuer, audience and signing key) confirm the positive ones are not passing vacuously. Verified by simulating the outage: changing the issuer in the issuing path to `ApexRacers.API` — one letter cased differently — now fails two tests, where previously nothing in the suite would have noticed.
+
 ## [0.4.48] - 2026-08-09
 
 ### Changed
@@ -414,7 +424,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.48...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.49...HEAD
+[0.4.49]: https://github.com/jwh3times/apexracers/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/jwh3times/apexracers/compare/v0.4.47...v0.4.48
 [0.4.47]: https://github.com/jwh3times/apexracers/compare/v0.4.46...v0.4.47
 [0.4.46]: https://github.com/jwh3times/apexracers/compare/v0.4.45...v0.4.46

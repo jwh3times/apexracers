@@ -43,12 +43,10 @@ var connectionString =
     builder.Configuration["DATABASE_CONNECTION_STRING"]
     ?? throw new InvalidOperationException("DATABASE_CONNECTION_STRING is not set.");
 
-var jwtKey =
-    builder.Configuration["JWT_SIGNING_KEY"]
-    ?? throw new InvalidOperationException("JWT_SIGNING_KEY is not set.");
-
-var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? "ApexRacers.Api";
-var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? "ApexRacers.Web";
+// One binding for both sides of the token contract: this configures validation below, and the
+// same instance is injected into AuthService, which issues them.
+var jwt = JwtSettings.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(jwt);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
@@ -150,11 +148,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            IssuerSigningKey = jwt.SecurityKey(),
             ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
+            ValidIssuer = jwt.Issuer,
             ValidateAudience = true,
-            ValidAudience = jwtAudience,
+            ValidAudience = jwt.Audience,
             ClockSkew = TimeSpan.Zero,
         };
     });

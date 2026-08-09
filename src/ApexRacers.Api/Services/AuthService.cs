@@ -12,7 +12,12 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ApexRacers.Api.Services;
 
-public class AuthService(UserManager<ApplicationUser> userManager, IConfiguration config, AppDbContext db, IEmailSender emailSender)
+public class AuthService(
+    UserManager<ApplicationUser> userManager,
+    IConfiguration config,
+    JwtSettings jwt,
+    AppDbContext db,
+    IEmailSender emailSender)
 {
     private const int AccessTokenMinutes = 15;
     private const int RefreshTokenDays   = 7;
@@ -372,8 +377,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
 
     internal async Task<string> GenerateJwtAsync(ApplicationUser user)
     {
-        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT_SIGNING_KEY"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var creds = new SigningCredentials(jwt.SecurityKey(), SecurityAlgorithms.HmacSha256);
 
         var roles = await userManager.GetRolesAsync(user);
         var role  = roles.FirstOrDefault() ?? "Standard";
@@ -389,12 +393,9 @@ public class AuthService(UserManager<ApplicationUser> userManager, IConfiguratio
             claims.Add(new Claim("iracing_id", user.IRacingCustomerId.Value.ToString()));
         claims.Add(new Claim("theme_preference", user.ThemePreference));
 
-        var issuer   = config["JWT_ISSUER"]   ?? "ApexRacers.Api";
-        var audience = config["JWT_AUDIENCE"] ?? "ApexRacers.Web";
-
         var token = new JwtSecurityToken(
-            issuer:             issuer,
-            audience:           audience,
+            issuer:             jwt.Issuer,
+            audience:           jwt.Audience,
             claims:             claims,
             expires:            DateTime.UtcNow.AddMinutes(AccessTokenMinutes),
             signingCredentials: creds);
