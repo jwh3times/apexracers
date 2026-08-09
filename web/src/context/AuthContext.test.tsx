@@ -4,18 +4,17 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { AuthProvider } from './AuthProvider';
 import { useAuth } from './AuthContext';
 import type { AuthResult } from '../services/api';
+import { session } from '../services/session';
 
 const mockDbGet = vi.fn();
 const mockDbSet = vi.fn();
 const mockDbRemove = vi.fn();
-const mockSetToken = vi.fn();
-const mockClearToken = vi.fn();
-const mockSetRefreshToken = vi.fn();
-const mockRefreshTokens = vi.fn();
 const mockRevokeToken = vi.fn();
-let capturedOnTokenRefreshed: ((token: string, refreshToken: string) => void) | null = null;
-let capturedOnSessionExpired: (() => void) | null = null;
 
+// The db mock IS the storage seam — the real `session` runs against it, so these assertions
+// exercise the actual persistence path rather than a stand-in for it. Session *mechanics*
+// (refresh dedup, listener fan-out, rotation) are covered directly in services/session.test.ts;
+// what this file tests is the React binding on top.
 vi.mock('../services/db', () => ({
   dbGet: (...args: unknown[]) => mockDbGet(...args),
   dbSet: (...args: unknown[]) => mockDbSet(...args),
@@ -23,26 +22,15 @@ vi.mock('../services/db', () => ({
 }));
 
 vi.mock('../services/api', () => ({
-  setToken: (...args: unknown[]) => mockSetToken(...args),
-  clearToken: (...args: unknown[]) => mockClearToken(...args),
-  setRefreshToken: (...args: unknown[]) => mockSetRefreshToken(...args),
-  onTokenRefreshed: (cb: unknown) => {
-    capturedOnTokenRefreshed = cb as (t: string, r: string) => void;
-  },
-  onSessionExpired: (cb: unknown) => {
-    capturedOnSessionExpired = cb as () => void;
-  },
-  api: {
-    refreshTokens: (...args: unknown[]) => mockRefreshTokens(...args),
-    revokeToken: (...args: unknown[]) => mockRevokeToken(...args),
-  },
+  api: { revokeToken: (...args: unknown[]) => mockRevokeToken(...args) },
 }));
 
+const mockSyncFromJwt = vi.fn();
 vi.mock('./ThemeContext', () => {
   // Stable references (created once) so AuthProvider's mount effect, which depends
   // on syncFromJwt, runs a single time — mirroring the real useCallback-backed value.
   const setTheme = vi.fn();
-  const syncFromJwt = vi.fn();
+  const syncFromJwt = (...args: unknown[]) => mockSyncFromJwt(...args);
   return { useTheme: () => ({ theme: 'auto', setTheme, syncFromJwt }) };
 });
 
@@ -84,15 +72,18 @@ function Consumer() {
 }
 
 describe('AuthContext', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
-    capturedOnTokenRefreshed = null;
-    capturedOnSessionExpired = null;
+    vi.unstubAllGlobals();
     mockDbGet.mockResolvedValue(undefined);
     mockDbSet.mockResolvedValue(undefined);
     mockDbRemove.mockResolvedValue(undefined);
-    mockRefreshTokens.mockRejectedValue(new Error('no refresh'));
     mockRevokeToken.mockResolvedValue(undefined);
+    // `session` is an app-wide singleton, so its in-memory tokens would otherwise leak between
+    // tests in this file.
+    await session.clear();
+    mockDbRemove.mockClear();
+    mockDbSet.mockClear();
   });
 
   it('starts loading then settles to false', async () => {
@@ -131,7 +122,7 @@ describe('AuthContext', () => {
     });
     expect(screen.getByTestId('user')).toHaveTextContent('Jerry');
     expect(screen.getByTestId('email')).toHaveTextContent('a@b.com');
-    expect(mockSetToken).toHaveBeenCalledWith(token);
+    expect(session.accessToken).toBe(token);
   });
 
   it('ignores a token with an invalid JWT payload', async () => {
@@ -185,7 +176,7 @@ describe('AuthContext', () => {
     await user.click(screen.getByText('login'));
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('New'));
     expect(screen.getByTestId('email')).toHaveTextContent('a@b.com');
-    expect(mockSetToken).toHaveBeenCalledWith('tok');
+    expect(session.accessToken).toBe('tok');
     expect(mockDbSet).toHaveBeenCalledWith('ar_token', 'tok');
   });
 
@@ -204,7 +195,7 @@ describe('AuthContext', () => {
     });
     await user.click(screen.getByText('logout'));
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('null'));
-    expect(mockClearToken).toHaveBeenCalled();
+    expect(session.accessToken).toBeNull();
     expect(mockDbRemove).toHaveBeenCalledWith('ar_token');
   });
 
@@ -223,7 +214,7 @@ describe('AuthContext', () => {
     });
     await user.click(screen.getByText('update'));
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('Updated'));
-    expect(mockSetToken).toHaveBeenCalledWith('tok2');
+    expect(session.accessToken).toBe('tok2');
     expect(mockDbSet).toHaveBeenCalledWith('ar_token', 'tok2');
   });
 
@@ -304,7 +295,7 @@ describe('AuthContext', () => {
     spy.mockRestore();
   });
 
-  it('login with refreshToken persists it to db and calls setRefreshToken', async () => {
+  it('login with a refreshToken installs and persists it', async () => {
     function LoginWithRefreshConsumer() {
       const auth = useAuth();
       return (
@@ -333,7 +324,7 @@ describe('AuthContext', () => {
     });
     await user.click(screen.getByText('loginWithRefresh'));
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('N'));
-    expect(mockSetRefreshToken).toHaveBeenCalledWith('rt1');
+    expect(session.refreshToken).toBe('rt1');
     expect(mockDbSet).toHaveBeenCalledWith('ar_refresh_token', 'rt1');
   });
 
@@ -366,12 +357,14 @@ describe('AuthContext', () => {
       if (key === 'ar_refresh_token') return Promise.resolve('old-rt');
       return Promise.resolve(undefined);
     });
-    mockRefreshTokens.mockResolvedValue({
-      token: newToken,
-      userId: 'u1',
-      displayName: 'Jerry',
-      refreshToken: 'new-rt',
+    // The session exchanges the token over its own transport (raw fetch, deliberately not the
+    // intercepting client — routing it through would recurse on the 401 it exists to handle).
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ token: newToken, refreshToken: 'new-rt' }),
     });
+    vi.stubGlobal('fetch', fetchMock);
+
     await act(async () => {
       render(
         <AuthProvider>
@@ -380,8 +373,11 @@ describe('AuthContext', () => {
       );
     });
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('Jerry'));
-    expect(mockRefreshTokens).toHaveBeenCalledWith('old-rt');
-    expect(mockSetToken).toHaveBeenCalledWith(newToken);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/refresh',
+      expect.objectContaining({ body: JSON.stringify({ refreshToken: 'old-rt' }) })
+    );
+    expect(session.accessToken).toBe(newToken);
     expect(mockDbSet).toHaveBeenCalledWith('ar_refresh_token', 'new-rt');
   });
 
@@ -391,6 +387,8 @@ describe('AuthContext', () => {
       if (key === 'ar_token') return Promise.resolve(expiredToken);
       return Promise.resolve(undefined);
     });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
     await act(async () => {
       render(
         <AuthProvider>
@@ -399,7 +397,7 @@ describe('AuthContext', () => {
       );
     });
     expect(screen.getByTestId('user')).toHaveTextContent('null');
-    expect(mockRefreshTokens).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('user stays null when silent refresh fails and cleans up db', async () => {
@@ -409,7 +407,7 @@ describe('AuthContext', () => {
       if (key === 'ar_refresh_token') return Promise.resolve('bad-rt');
       return Promise.resolve(undefined);
     });
-    mockRefreshTokens.mockRejectedValue(new Error('expired'));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
     await act(async () => {
       render(
         <AuthProvider>
@@ -422,7 +420,71 @@ describe('AuthContext', () => {
     expect(mockDbRemove).toHaveBeenCalledWith('ar_refresh_token');
   });
 
-  it('onSessionExpired callback clears user and refresh token', async () => {
+  // ── Reacting to the session ─────────────────────────────────────────────────
+  //
+  // These used to reach in and invoke a captured callback slot. They now drive the real session
+  // and assert the provider follows, which is the binding this component actually owns.
+
+  it('syncs the theme from a restored token that carries a preference', async () => {
+    const token = `header.${btoa(
+      JSON.stringify({ sub: 'u1', email: 'a@b.com', name: 'Jerry', theme_preference: 'dark' })
+    )}.signature`;
+    mockDbGet.mockImplementation((key: string) =>
+      key === 'ar_token' ? Promise.resolve(token) : Promise.resolve(undefined)
+    );
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <Consumer />
+        </AuthProvider>
+      );
+    });
+
+    expect(mockSyncFromJwt).toHaveBeenCalledWith('dark');
+  });
+
+  it('does not sync the theme when the token carries no preference', async () => {
+    const token = makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Jerry' });
+    mockDbGet.mockImplementation((key: string) =>
+      key === 'ar_token' ? Promise.resolve(token) : Promise.resolve(undefined)
+    );
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <Consumer />
+        </AuthProvider>
+      );
+    });
+
+    expect(mockSyncFromJwt).not.toHaveBeenCalled();
+  });
+
+  it('syncs the theme only once, so a later login cannot override a manual change', async () => {
+    const token = `header.${btoa(
+      JSON.stringify({ sub: 'u1', email: 'a@b.com', name: 'Jerry', theme_preference: 'dark' })
+    )}.signature`;
+    mockDbGet.mockImplementation((key: string) =>
+      key === 'ar_token' ? Promise.resolve(token) : Promise.resolve(undefined)
+    );
+    const user = userEvent.setup();
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <Consumer />
+        </AuthProvider>
+      );
+    });
+    expect(mockSyncFromJwt).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByText('login'));
+    await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('New'));
+
+    expect(mockSyncFromJwt).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the user when the session clears itself', async () => {
     const token = makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Jerry' });
     mockDbGet.mockImplementation((key: string) =>
       key === 'ar_token' ? Promise.resolve(token) : Promise.resolve(undefined)
@@ -435,16 +497,17 @@ describe('AuthContext', () => {
       );
     });
     expect(screen.getByTestId('user')).toHaveTextContent('Jerry');
-    // Simulate the session expired callback fired by the api interceptor
+
     await act(async () => {
-      capturedOnSessionExpired?.();
+      await session.clear();
     });
+
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('null'));
   });
 
-  it('onTokenRefreshed callback updates user token in state and persists to db', async () => {
+  it('follows a background token refresh into state and storage', async () => {
     const token = makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Jerry' });
-    const newToken = makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Jerry' });
+    const newToken = makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Renamed' });
     mockDbGet.mockImplementation((key: string) =>
       key === 'ar_token' ? Promise.resolve(token) : Promise.resolve(undefined)
     );
@@ -455,11 +518,33 @@ describe('AuthContext', () => {
         </AuthProvider>
       );
     });
-    // Simulate the token refreshed callback fired by the api interceptor
+
     await act(async () => {
-      await capturedOnTokenRefreshed?.(newToken, 'new-rt');
+      await session.adopt({ accessToken: newToken, refreshToken: 'new-rt' });
     });
+
+    await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('Renamed'));
     expect(mockDbSet).toHaveBeenCalledWith('ar_token', newToken);
     expect(mockDbSet).toHaveBeenCalledWith('ar_refresh_token', 'new-rt');
+  });
+
+  it('unsubscribes on unmount, so a later session change cannot update a dead provider', async () => {
+    // The old interceptor exposed a single global callback slot with no way to deregister; a
+    // second provider silently replaced the first and an unmounted one kept being called.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { unmount } = render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+
+    unmount();
+    await act(async () => {
+      await session.adopt({ accessToken: makeJwt({ sub: 'u1', email: 'a@b.com', name: 'Late' }) });
+    });
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 });
