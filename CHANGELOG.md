@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.50] - 2026-08-09
+
+### Changed
+
+- Documented the percentile page's behaviour under the demo flag, which was missing from the demo-caveats list alongside the existing `/analytics`, race-guide and `/compare` entries. Under `iracing-demo` the page shows its manual customer-ID form rather than resolving the demo driver automatically, because the percentile endpoint deliberately accepts a caller-supplied customer id so the page can look up *any* driver, and the demo-aware resolver is deliberately not on that path. A demo user has no real iRacing customer id, so the JWT claim the page reads first is absent and it falls through to the form — entering `100001` shows the demo driver. **This is accepted behaviour, not a defect**; the omission from the caveats list was the actual problem, since it read as a bug to anyone comparing the page against the others. Noted explicitly so it is not "fixed" by routing the endpoint through the demo-aware resolver, which would remove the ability to look up another driver.
+
 ## [0.4.49] - 2026-08-09
 
 ### Changed
@@ -424,7 +430,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.49...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.50...HEAD
+[0.4.50]: https://github.com/jwh3times/apexracers/compare/v0.4.49...v0.4.50
 [0.4.49]: https://github.com/jwh3times/apexracers/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/jwh3times/apexracers/compare/v0.4.47...v0.4.48
 [0.4.47]: https://github.com/jwh3times/apexracers/compare/v0.4.46...v0.4.47

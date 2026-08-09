@@ -449,7 +449,13 @@ a far-future `ExpiresAt` sentinel (`>= 9000-01-01`) so cleanup never evicts them
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
-`/compare` search only hits a curated term set (arbitrary terms 503 — use the suggestions list instead).
+`/compare` search only hits a curated term set (arbitrary terms 503 — use the suggestions list instead);
+the percentile page shows its manual customer-ID form rather than resolving the demo driver
+automatically. That last one is **known and accepted**, not a bug to fix: `MemberContext` is the only
+demo-aware resolver, and `PercentileController` deliberately takes a caller-supplied `customerId` so
+the page can look up *any* driver. A demo user has no real `IRacingCustomerId`, so the `iracing_id`
+JWT claim the page reads first is absent and it falls through to the form. Enter
+`100001` (`DemoData.DriverCustId`) to see the demo driver's percentiles.
 
 ### Frontend (`web/`)
 
