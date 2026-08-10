@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.52] - 2026-08-09
+
+### Changed
+
+- The ingestion worker now delegates season, schedule, subsession and track-state persistence to focused modules instead of owning roughly fifty SDK-to-database field mappings inline. Persisted track state crosses the SDK boundary through an owned snapshot, so SDK model drift is isolated to one mapper rather than leaking into stored JSON. The extracted mapping and insert/update behavior now have direct field-level and database-backed coverage while the worker remains an orchestration shell.
+
 ## [0.4.51] - 2026-08-09
 
 ### Changed
@@ -441,7 +447,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.51...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.52...HEAD
+[0.4.52]: https://github.com/jwh3times/apexracers/compare/v0.4.51...v0.4.52
 [0.4.51]: https://github.com/jwh3times/apexracers/compare/v0.4.50...v0.4.51
 [0.4.50]: https://github.com/jwh3times/apexracers/compare/v0.4.49...v0.4.50
 [0.4.49]: https://github.com/jwh3times/apexracers/compare/v0.4.48...v0.4.49
