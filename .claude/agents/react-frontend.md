@@ -98,6 +98,12 @@ src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
 ```
 
+### Percentile display contract
+
+API percentile ranks are higher-is-better. Pass the raw `percentileRank` to `PercentileBadge`, which
+owns the lower-is-better `TOP X%` conversion through `utils/percentile.toTopPercent`. When only text
+is needed, use `topPercentLabel`; never invert or floor the rank in a page or another component.
+
 ## Styling
 
 Tailwind CSS with a **fluid design system** — all sizing scales continuously with viewport width via `clamp()`. Use the custom utility classes from `src/index.css`; do not reach for one-off Tailwind classes for the same purposes.

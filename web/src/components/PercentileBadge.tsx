@@ -1,9 +1,13 @@
+import { toTopPercent } from '../utils/percentile';
+
 interface Props {
-  pct: number; // TOP X% (lower = better), e.g. 4 means "TOP 4%"
+  rank: number; // Percentile rank from the API (higher = better).
   size?: 'lg' | 'md' | 'sm' | 'chip';
 }
 
-export default function PercentileBadge({ pct, size = 'md' }: Props) {
+export default function PercentileBadge({ rank, size = 'md' }: Props) {
+  const pct = toTopPercent(rank);
+
   // Compact inline pill for dense contexts (e.g. table cells) — not the ring gauge.
   if (size === 'chip') {
     return (

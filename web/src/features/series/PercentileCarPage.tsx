@@ -237,7 +237,6 @@ export default function PercentileCarPage() {
       {/* Percentile result */}
       {result &&
         (() => {
-          const topPct = Math.max(1, Math.ceil(100 - result.percentileRank));
           const driversAhead = Math.round(result.sampleSize * (1 - result.percentileRank / 100));
           const rank = Math.max(1, driversAhead + 1);
           const gapToP1 = formatGap(result.yourBestLapSeconds, result.fieldBestLapSeconds);
@@ -247,7 +246,7 @@ export default function PercentileCarPage() {
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Left: badge + headline + stat grid */}
                 <div className="scan-texture flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2">
-                  <PercentileBadge pct={topPct} size="lg" />
+                  <PercentileBadge rank={result.percentileRank} size="lg" />
 
                   <div className="text-center">
                     <p className="text-section-head text-on-surface">

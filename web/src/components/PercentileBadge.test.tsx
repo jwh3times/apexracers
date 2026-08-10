@@ -4,28 +4,28 @@ import PercentileBadge from './PercentileBadge';
 
 describe('PercentileBadge', () => {
   it('renders the TOP label', () => {
-    render(<PercentileBadge pct={12} />);
+    render(<PercentileBadge rank={88} />);
     expect(screen.getByText('TOP')).toBeInTheDocument();
   });
 
-  it('renders the pct value with percent sign', () => {
-    render(<PercentileBadge pct={12} />);
+  it('converts the percentile rank to a TOP value with percent sign', () => {
+    render(<PercentileBadge rank={88} />);
     expect(screen.getByText('12%')).toBeInTheDocument();
   });
 
-  it('renders a different pct value correctly', () => {
-    render(<PercentileBadge pct={4} />);
+  it('renders a different percentile rank correctly', () => {
+    render(<PercentileBadge rank={96} />);
     expect(screen.getByText('4%')).toBeInTheDocument();
   });
 
   it('renders an SVG ring element', () => {
-    const { container } = render(<PercentileBadge pct={12} />);
+    const { container } = render(<PercentileBadge rank={88} />);
     const circles = container.querySelectorAll('circle');
     expect(circles.length).toBe(2);
   });
 
   it('applies lg size scaling', () => {
-    const { container } = render(<PercentileBadge pct={12} size="lg" />);
+    const { container } = render(<PercentileBadge rank={88} size="lg" />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -34,7 +34,7 @@ describe('PercentileBadge', () => {
   });
 
   it('applies sm size scaling', () => {
-    const { container } = render(<PercentileBadge pct={12} size="sm" />);
+    const { container } = render(<PercentileBadge rank={88} size="sm" />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -43,7 +43,7 @@ describe('PercentileBadge', () => {
   });
 
   it('applies md size (default) scaling', () => {
-    const { container } = render(<PercentileBadge pct={12} />);
+    const { container } = render(<PercentileBadge rank={88} />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -51,29 +51,32 @@ describe('PercentileBadge', () => {
     expect(width).toBeCloseTo(92, 0);
   });
 
-  it('calculates correct fill fraction for pct=0 (full ring)', () => {
-    const { container } = render(<PercentileBadge pct={0} />);
+  it('floors rank 100 at TOP 1% and renders a nearly full ring', () => {
+    const { container } = render(<PercentileBadge rank={100} />);
     const circles = container.querySelectorAll('circle');
     const accentCircle = circles[1];
+    const dashArray = parseFloat(
+      (accentCircle.getAttribute('stroke-dasharray') ?? '0').split(' ')[0]
+    );
     const dashOffset = parseFloat(accentCircle.getAttribute('stroke-dashoffset') ?? '1');
-    // fillFrac = (100 - 0) / 100 = 1.0, so dashoffset = circ * (1-1) = 0
-    expect(dashOffset).toBeCloseTo(0, 0);
+    expect(screen.getByText('1%')).toBeInTheDocument();
+    expect(dashOffset).toBeCloseTo(dashArray * 0.01, 4);
   });
 
-  it('calculates correct fill fraction for pct=100 (empty ring)', () => {
-    const { container } = render(<PercentileBadge pct={100} />);
+  it('renders rank 0 as TOP 100% with an empty ring', () => {
+    const { container } = render(<PercentileBadge rank={0} />);
     const circles = container.querySelectorAll('circle');
     const accentCircle = circles[1];
     const dashArray = parseFloat(
       (accentCircle.getAttribute('stroke-dasharray') ?? '0').split(' ')[0]
     );
     const dashOffset = parseFloat(accentCircle.getAttribute('stroke-dashoffset') ?? '0');
-    // fillFrac = (100 - 100) / 100 = 0, so dashoffset = circ * 1 = circ
+    expect(screen.getByText('100%')).toBeInTheDocument();
     expect(dashOffset).toBeCloseTo(dashArray, 0);
   });
 
   it('renders a compact inline pill (no ring) for the chip size', () => {
-    const { container } = render(<PercentileBadge pct={4} size="chip" />);
+    const { container } = render(<PercentileBadge rank={96} size="chip" />);
     expect(screen.getByText('TOP 4%')).toBeInTheDocument();
     // The chip is a pill, not the SVG ring gauge.
     expect(container.querySelector('svg')).toBeNull();
