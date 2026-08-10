@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- The `/ship` workflow now evaluates the complete release impact before choosing a version: incompatible changes start a major line, backward-compatible capabilities start a minor line, and fixes or maintenance stay on the current line for the standard build increment. Major and minor decisions update both npm version files before the shared version script computes the exact tag.
 
 ## [0.4.55] - 2026-08-09
 
