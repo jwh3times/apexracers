@@ -171,7 +171,7 @@ export default function RecommendationsPage() {
     signal => {
       const blended = paceSource.mode === 'blend';
       return api.getRecommendations(
-        selectedSeriesId!,
+        selectedSeriesId,
         weekNumber!,
         {
           includePersonalLaps: blended,

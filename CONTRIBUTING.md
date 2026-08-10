@@ -136,7 +136,7 @@ reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:Te
 Run from `web/`:
 
 ```bash
-npm run lint                 # ESLint
+npm run lint                 # Oxlint with TypeScript 7-powered type-aware rules
 npx prettier --check .       # Formatting — CI runs this exact check
 npx vitest run --coverage    # Tests + 85% coverage thresholds
 npm run build                # tsc + production build

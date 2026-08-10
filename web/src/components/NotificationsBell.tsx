@@ -23,7 +23,7 @@ export default function NotificationsBell() {
     // only under iracing-live; under iracing-demo it relies on the seeded cache (Plan 2).
     if (!alertsEnabled || !showIracing) return;
     let active = true;
-    Promise.all([
+    void Promise.all([
       api.getRaceGuide().catch((): RaceGuideEntry[] => []),
       api.getMyAnalytics().catch((): CarAnalytics[] => []),
     ]).then(([raceGuide, analytics]) => {

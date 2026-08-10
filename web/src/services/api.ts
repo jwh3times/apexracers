@@ -637,7 +637,7 @@ const http = createHttpClient({
   refresh: () => session.refresh(),
 });
 
-const request = http.request;
+const request = http.request.bind(http);
 
 // ── Public API surface ────────────────────────────────────────────────────────
 

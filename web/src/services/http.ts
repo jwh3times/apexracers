@@ -50,9 +50,7 @@ function tryParseJson(raw: string): unknown {
 }
 
 function asProblemBody(value: unknown): ProblemBody | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as ProblemBody)
-    : null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null;
 }
 
 /**

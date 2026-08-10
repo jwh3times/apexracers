@@ -100,7 +100,7 @@ export default function SettingsPage() {
   }
 
   function toggleAlerts() {
-    setAlertsEnabled(!alertsEnabled);
+    void setAlertsEnabled(!alertsEnabled);
   }
 
   async function selectTier(tier: string) {

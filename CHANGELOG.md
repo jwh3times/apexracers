@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Frontend linting now runs entirely on Oxlint, including its TypeScript 7-powered type-aware backend and native React compiler analysis. ESLint, typescript-eslint, and their plugin stack have been removed; existing async and type-assertion findings were tightened as part of adoption, Playwright/E2E files now participate in the Node tsconfig, and overrides are limited to test-mock conventions plus the dynamic dependency contract in `useResource`.
 
 ## [0.5.2] - 2026-08-10
 

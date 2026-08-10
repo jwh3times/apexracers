@@ -86,7 +86,7 @@ function UsersTab() {
             {users.map(user => {
               const isAdmin = user.role === 'Admin';
               const pending = pendingRoles[user.userId];
-              const effectiveRole = (pending ?? user.role) as Role;
+              const effectiveRole = pending ?? user.role;
               const isDirty = !isAdmin && pending !== undefined && pending !== user.role;
               const isSaving = saving.has(user.userId);
               return (

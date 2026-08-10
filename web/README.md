@@ -30,7 +30,7 @@ The dev server runs on `http://localhost:5173`. The proxy target is set by `API_
 ```bash
 npm run build    # tsc + Vite production build → dist/
 npm run preview  # Serve the production build locally
-npm run lint     # ESLint
+npm run lint     # Oxlint with TypeScript 7-powered type-aware rules
 ```
 
 ## Testing

@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];
   const selectedSeriesId = seriesSelection ?? series[0]?.id ?? null;
   const analyticsResource = useResource(
-    signal => api.getMyAnalytics(selectedSeriesId!, signal),
+    signal => api.getMyAnalytics(selectedSeriesId, signal),
     [user, viewMode, selectedSeriesId, refreshVersion],
     {
       enabled: !!user && viewMode === 'series' && selectedSeriesId !== null,

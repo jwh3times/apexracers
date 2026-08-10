@@ -77,16 +77,12 @@ updates:
         update-types:
           - "major"
 
-      # @eslint/js is lockstep-versioned with eslint; plugins peer-cap on the eslint
-      # major; typescript-eslint peer-bounds both eslint and typescript.
+      # Oxlint's semantic backend follows the TypeScript 7 line; update the
+      # linter, backend, and project compiler together when that upgrade lands.
       lint-and-typescript:
         patterns:
-          - "eslint"
-          - "@eslint/*"
-          - "eslint-plugin-*"
-          - "eslint-config-*"
-          - "typescript-eslint"
-          - "globals"
+          - "oxlint"
+          - "oxlint-tsgolint"
           - "typescript"
         update-types:
           - "major"

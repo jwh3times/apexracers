@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { AuthProvider } from './AuthProvider';
 import { useAuth } from './AuthContext';
-import type { AuthResult } from '../services/api';
 import { session } from '../services/session';
 
 const mockDbGet = vi.fn();
@@ -52,17 +51,13 @@ function Consumer() {
       <span data-testid="email">{auth.user?.email ?? 'null'}</span>
       <span data-testid="alerts">{String(auth.alertsEnabled)}</span>
       <button
-        onClick={() =>
-          auth.login({ token: 'tok', userId: 'u1', displayName: 'New' } as AuthResult, 'a@b.com')
-        }
+        onClick={() => auth.login({ token: 'tok', userId: 'u1', displayName: 'New' }, 'a@b.com')}
       >
         login
       </button>
       <button onClick={() => auth.logout()}>logout</button>
       <button
-        onClick={() =>
-          auth.updateSession({ token: 'tok2', userId: 'u1', displayName: 'Updated' } as AuthResult)
-        }
+        onClick={() => auth.updateSession({ token: 'tok2', userId: 'u1', displayName: 'Updated' })}
       >
         update
       </button>
@@ -236,7 +231,7 @@ describe('AuthContext', () => {
                 token: newToken,
                 userId: 'u1',
                 displayName: 'Jerry',
-              } as AuthResult)
+              })
             }
           >
             updateEmail

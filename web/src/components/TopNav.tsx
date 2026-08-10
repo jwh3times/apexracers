@@ -95,7 +95,7 @@ function ProfileDropdown() {
   async function handleLogout() {
     setOpen(false);
     await logout();
-    navigate('/login');
+    void navigate('/login');
   }
 
   return (
