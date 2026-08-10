@@ -5,7 +5,7 @@ React + TypeScript + Vite frontend for ApexRacers. All `/api` requests are proxi
 ## Tech stack
 
 - React 19, React Router v7
-- TypeScript 6, Vite 8
+- TypeScript 7, Vite 8
 - Tailwind CSS v4
 - Vitest + Testing Library
 - Node.js 26+ (required; enforced via `engines` in `package.json`)
