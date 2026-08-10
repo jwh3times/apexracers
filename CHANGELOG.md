@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- The frontend compiler has moved from TypeScript 6 to the stable TypeScript 7 native implementation, aligning builds with the type-aware Oxlint backend already adopted in v0.5.3.
 
 ## [0.5.3] - 2026-08-10
 
