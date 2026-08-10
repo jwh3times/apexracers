@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.51] - 2026-08-09
+
+### Changed
+
+- Authenticated iRacing endpoints now share one tested member-identity contract for optional personalization versus required linked-account data. The nine required-link controller paths no longer each reinterpret `null` and `0`; `MemberContext` owns that decision and the middleware preserves the existing `409` `{ code, message }` response used by the web client. Expected unlinked-account requests remain ordinary request warnings rather than producing a second exception warning with a stack trace.
+- Feature-flag role eligibility now has one owner shared by the public flag list and the demo-driver identity override, so both paths apply the same enabled/minimum-role rules. The demo-aware identity path also drops from three database queries to two.
+
+### Security
+
+- Unknown or corrupt feature-flag minimum roles now fail closed instead of inheriting Standard-tier eligibility, while valid role names remain case-insensitive.
+
 ## [0.4.50] - 2026-08-09
 
 ### Changed
@@ -430,7 +441,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.50...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.51...HEAD
+[0.4.51]: https://github.com/jwh3times/apexracers/compare/v0.4.50...v0.4.51
 [0.4.50]: https://github.com/jwh3times/apexracers/compare/v0.4.49...v0.4.50
 [0.4.49]: https://github.com/jwh3times/apexracers/compare/v0.4.48...v0.4.49
 [0.4.48]: https://github.com/jwh3times/apexracers/compare/v0.4.47...v0.4.48
