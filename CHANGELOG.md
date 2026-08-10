@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
-## [0.4.56] - 2026-08-10
+## [0.5.1] - 2026-08-10
 
 ### Changed
 
 - Percentile badges and labels now share one conversion from a raw percentile rank to the displayed top-percent value. Pages pass the rank through unchanged, while the shared formatter owns rounding and the minimum `TOP 1%` clamp, preventing the week-detail and percentile-result displays from drifting apart at boundary values.
+
+## [0.5.0] - 2026-08-09
+
+### Changed
+
+- The `/ship` workflow now evaluates the complete release impact before choosing a version: incompatible changes start a major line, backward-compatible capabilities start a minor line, and fixes or maintenance stay on the current line for the standard build increment. Major and minor decisions update both npm version files before the shared version script computes the exact tag.
 
 ## [0.4.55] - 2026-08-09
 
@@ -471,8 +477,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.56...HEAD
-[0.4.56]: https://github.com/jwh3times/apexracers/compare/v0.4.55...v0.4.56
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/jwh3times/apexracers/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/jwh3times/apexracers/compare/v0.4.55...v0.5.0
 [0.4.55]: https://github.com/jwh3times/apexracers/compare/v0.4.54...v0.4.55
 [0.4.54]: https://github.com/jwh3times/apexracers/compare/v0.4.53...v0.4.54
 [0.4.53]: https://github.com/jwh3times/apexracers/compare/v0.4.52...v0.4.53
