@@ -1,15 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { api, type TrackCatalogItem } from '../../services/api';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; tracks: TrackCatalogItem[] }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
+import { api } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function pretty(slug: string): string {
   return slug
@@ -20,30 +13,12 @@ function pretty(slug: string): string {
 }
 
 export default function TracksPage() {
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
+  const resource = useResource(() => api.getTracks(), [], {
+    fallbackMessage: 'Failed to load the track catalog.',
+  });
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getTracks()
-      .then(tracks => {
-        if (active) setState({ status: 'ok', tracks });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load the track catalog.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const tracks = useMemo(() => (state.status === 'ok' ? state.tracks : []), [state]);
+  const tracks = useMemo(() => (resource.status === 'ok' ? resource.data : []), [resource]);
 
   const categories = useMemo(
     () => [...new Set(tracks.map(t => t.category).filter((c): c is string => !!c))].sort(),
@@ -66,20 +41,9 @@ export default function TracksPage() {
         <h1 className="text-page-title text-on-surface mt-2">Tracks</h1>
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && (
+      {resource.status === 'ok' && (
         <>
           <div className="flex flex-col gap-3 mb-6">
             <input
@@ -129,8 +93,7 @@ export default function TracksPage() {
                 <Link
                   key={t.trackId}
                   to={`/tracks/${t.trackId}`}
-                  className="card-r border border-line-2 bg-surface overflow-hidden hover:border-primary-container transition-colors"
-                  style={cardStyle}
+                  className="card-r card-shadow border border-line-2 bg-surface overflow-hidden hover:border-primary-container transition-colors"
                 >
                   <div className="aspect-[16/9] bg-surface-container overflow-hidden">
                     {t.smallImageUrl && (

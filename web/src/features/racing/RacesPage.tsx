@@ -1,21 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { api, IRacingNotLinkedError, type RaceHistoryRow } from '../../services/api';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; rows: RaceHistoryRow[] }
-  | { status: 'not-linked' }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import { api, type RaceHistoryRow } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -33,7 +20,7 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-line-2" style={scanTexture}>
+          <tr className="scan-texture border-b border-line-2">
             <th className="th-p text-th text-on-surface-variant text-left">Date</th>
             <th className="th-p text-th text-on-surface-variant text-left">Series</th>
             <th className="th-p text-th text-on-surface-variant text-left">Track</th>
@@ -108,33 +95,12 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
 }
 
 export default function RacesPage() {
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null);
+  const resource = useResource(() => api.getRaceHistory(), [], {
+    fallbackMessage: 'Failed to load race history.',
+  });
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getRaceHistory()
-      .then(rows => {
-        if (active) setState({ status: 'ok', rows });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        if (err instanceof IRacingNotLinkedError) {
-          setState({ status: 'not-linked' });
-          return;
-        }
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load race history.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const allRows = state.status === 'ok' ? state.rows : [];
+  const allRows = resource.status === 'ok' ? resource.data : [];
   const seriesNames = Array.from(new Set(allRows.map(r => r.seriesName))).sort((a, b) =>
     a.localeCompare(b)
   );
@@ -148,48 +114,16 @@ export default function RacesPage() {
         <h1 className="text-page-title text-on-surface mt-2">Recent Races</h1>
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView
+        resource={resource}
+        notLinkedReason="Link your iRacing account to see your race history."
+      />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'not-linked' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
-          style={cardStyle}
-        >
-          <span
-            className="material-symbols-outlined text-4xl text-primary-container"
-            aria-hidden="true"
-          >
-            link_off
-          </span>
-          <p className="text-body-fluid text-on-surface-variant">
-            Link your iRacing account to see your race history. Add your iRacing customer ID in{' '}
-            <Link
-              to="/settings"
-              className="text-primary-container underline hover:opacity-80 transition-opacity"
-            >
-              Settings
-            </Link>
-            .
-          </p>
-        </div>
-      )}
-
-      {state.status === 'ok' && allRows.length === 0 && (
+      {resource.status === 'ok' && allRows.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant">No recent races found.</p>
       )}
 
-      {state.status === 'ok' && allRows.length > 0 && (
+      {resource.status === 'ok' && allRows.length > 0 && (
         <div className="flex flex-col gap-fluid">
           {/* Series filter chips */}
           <div className="flex flex-wrap gap-2">
@@ -220,7 +154,7 @@ export default function RacesPage() {
             ))}
           </div>
 
-          <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+          <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
             <RaceTable rows={visibleRows} />
           </div>
         </div>

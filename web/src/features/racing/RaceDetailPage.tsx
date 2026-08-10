@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   api,
@@ -9,20 +8,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
 import LapTraceChart from '../../components/LapTraceChart';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: SubsessionDetail }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
 
@@ -48,7 +35,7 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-line-2" style={scanTexture}>
+          <tr className="scan-texture border-b border-line-2">
             <th className="th-p text-th text-on-surface-variant text-right w-12">Pos</th>
             <th className="th-p text-th text-on-surface-variant text-left">Driver</th>
             <th className="th-p text-th text-on-surface-variant text-right">Start</th>
@@ -116,32 +103,18 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
 }
 
 function PaceCard({ subsessionId, custId }: { subsessionId: number; custId: number }) {
-  const [data, setData] = useState<DriverLaps | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getDriverLaps(subsessionId, custId)
-      .then(d => {
-        if (active) setData(d);
-      })
-      .catch(() => {
-        if (active) setData(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [subsessionId, custId]);
+  const resource = useResource<DriverLaps>(
+    () => api.getDriverLaps(subsessionId, custId),
+    [subsessionId, custId]
+  );
+  const data = resource.status === 'ok' ? resource.data : null;
 
   if (!data || data.laps.filter(l => l.valid).length < 2) return null;
 
   const deg = data.degSlopeSecondsPerLap;
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden mb-6" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden mb-6">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
         <h2 className="text-section-head text-on-surface">Your Race Pace</h2>
         <span className="text-eyebrow text-primary-container">Automatic telemetry — no upload</span>
       </div>
@@ -166,26 +139,9 @@ export default function RaceDetailPage() {
   const { subsessionId } = useParams<{ subsessionId: string }>();
   const id = Number(subsessionId);
   const { user } = useAuth();
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getSubsession(id)
-      .then(data => {
-        if (active) setState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load race.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [id]);
+  const resource = useResource<SubsessionDetail>(() => api.getSubsession(id), [id], {
+    fallbackMessage: 'Failed to load race.',
+  });
 
   return (
     <main className="page-wrap">
@@ -199,63 +155,55 @@ export default function RaceDetailPage() {
         Race History
       </Link>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && (
+      {resource.status === 'ok' && (
         <>
           <div className="mb-6">
-            <p className="text-eyebrow text-primary-container">{state.data.seriesName}</p>
+            <p className="text-eyebrow text-primary-container">{resource.data.seriesName}</p>
             <h1 className="text-page-title text-on-surface mt-2">
-              {state.data.trackName}
-              {state.data.trackConfigName ? ` — ${state.data.trackConfigName}` : ''}
+              {resource.data.trackName}
+              {resource.data.trackConfigName ? ` — ${resource.data.trackConfigName}` : ''}
             </h1>
           </div>
 
           <div className="grid grid-kpi gap-fluid mb-6">
-            <Kpi label="Strength of Field" value={state.data.strengthOfField.toLocaleString()} />
-            <Kpi label="Cautions" value={state.data.numCautions} />
-            <Kpi label="Lead Changes" value={state.data.numLeadChanges} />
-            <Kpi label="Fastest Lap" value={lap(state.data.eventBestLapSeconds)} />
-            {state.data.weather && (
+            <Kpi label="Strength of Field" value={resource.data.strengthOfField.toLocaleString()} />
+            <Kpi label="Cautions" value={resource.data.numCautions} />
+            <Kpi label="Lead Changes" value={resource.data.numLeadChanges} />
+            <Kpi label="Fastest Lap" value={lap(resource.data.eventBestLapSeconds)} />
+            {resource.data.weather && (
               <>
-                <Kpi label="Track Temp" value={`${state.data.weather.tempCelsius.toFixed(0)}°C`} />
+                <Kpi
+                  label="Track Temp"
+                  value={`${resource.data.weather.tempCelsius.toFixed(0)}°C`}
+                />
                 <Kpi
                   label="Precip Chance"
-                  value={`${state.data.weather.precipChance.toFixed(0)}%`}
+                  value={`${resource.data.weather.precipChance.toFixed(0)}%`}
                 />
                 <Kpi
                   label="Skies"
-                  value={SKIES[state.data.weather.skies] ?? `#${state.data.weather.skies}`}
+                  value={SKIES[resource.data.weather.skies] ?? `#${resource.data.weather.skies}`}
                 />
               </>
             )}
           </div>
 
           {user?.iRacingCustomerId != null &&
-            state.data.results.some(r => r.custId === user.iRacingCustomerId) && (
-              <PaceCard subsessionId={state.data.subsessionId} custId={user.iRacingCustomerId} />
+            resource.data.results.some(r => r.custId === user.iRacingCustomerId) && (
+              <PaceCard subsessionId={resource.data.subsessionId} custId={user.iRacingCustomerId} />
             )}
 
-          <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-            <div className="card-hp border-b border-line-2" style={scanTexture}>
+          <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+            <div className="card-hp scan-texture border-b border-line-2">
               <h2 className="text-section-head text-on-surface">
-                Results ({state.data.results.length})
+                Results ({resource.data.results.length})
               </h2>
             </div>
-            {state.data.results.length > 0 ? (
+            {resource.data.results.length > 0 ? (
               <ClassifiedTable
-                rows={state.data.results}
+                rows={resource.data.results}
                 meCustId={user?.iRacingCustomerId ?? undefined}
               />
             ) : (

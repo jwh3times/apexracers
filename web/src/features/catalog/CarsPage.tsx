@@ -1,15 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { api, type CarCatalogItem } from '../../services/api';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; cars: CarCatalogItem[] }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
+import { api } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function pretty(slug: string): string {
   return slug
@@ -20,30 +13,12 @@ function pretty(slug: string): string {
 }
 
 export default function CarsPage() {
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
+  const resource = useResource(() => api.getCars(), [], {
+    fallbackMessage: 'Failed to load the car catalog.',
+  });
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getCars()
-      .then(cars => {
-        if (active) setState({ status: 'ok', cars });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load the car catalog.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const cars = useMemo(() => (state.status === 'ok' ? state.cars : []), [state]);
+  const cars = useMemo(() => (resource.status === 'ok' ? resource.data : []), [resource]);
 
   const categories = useMemo(() => [...new Set(cars.flatMap(c => c.categories))].sort(), [cars]);
 
@@ -63,20 +38,9 @@ export default function CarsPage() {
         <h1 className="text-page-title text-on-surface mt-2">Cars</h1>
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && (
+      {resource.status === 'ok' && (
         <>
           <div className="flex flex-col gap-3 mb-6">
             <input
@@ -126,8 +90,7 @@ export default function CarsPage() {
                 <Link
                   key={c.carId}
                   to={`/cars/${c.carId}`}
-                  className="card-r border border-line-2 bg-surface overflow-hidden hover:border-primary-container transition-colors"
-                  style={cardStyle}
+                  className="card-r card-shadow border border-line-2 bg-surface overflow-hidden hover:border-primary-container transition-colors"
                 >
                   <div className="aspect-[16/9] bg-surface-container overflow-hidden">
                     {c.smallImageUrl && (

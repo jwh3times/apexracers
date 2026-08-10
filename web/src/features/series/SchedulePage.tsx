@@ -1,20 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { api, type ScheduleWeek, type SeasonSchedule } from '../../services/api';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: SeasonSchedule }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import { api, type ScheduleWeek } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
 
@@ -55,7 +42,7 @@ function BopTable({ bop }: { bop: ScheduleWeek['bop'] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-line-2" style={scanTexture}>
+          <tr className="scan-texture border-b border-line-2">
             <th className="th-p text-th text-on-surface-variant text-left">Car</th>
             <th className="th-p text-th text-on-surface-variant text-right">Weight</th>
             <th className="th-p text-th text-on-surface-variant text-right">Power</th>
@@ -91,11 +78,8 @@ function BopTable({ bop }: { bop: ScheduleWeek['bop'] }) {
 
 function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | null }) {
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3 flex-wrap"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-eyebrow text-on-surface-variant">Week {week.weekNumber}</span>
           <h3 className="text-section-head text-on-surface">
@@ -134,30 +118,13 @@ function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | nu
 export default function SchedulePage() {
   const { seriesId } = useParams<{ seriesId: string }>();
   const id = Number(seriesId);
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getSchedule(id)
-      .then(data => {
-        if (active) setState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load schedule.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [id]);
+  const resource = useResource(() => api.getSchedule(id), [id], {
+    fallbackMessage: 'Failed to load schedule.',
+  });
 
   // The current week is the latest week whose start date is on or before today.
   const today = new Date().toISOString().slice(0, 10);
-  const weeks = state.status === 'ok' ? state.data.weeks : [];
+  const weeks = resource.status === 'ok' ? resource.data.weeks : [];
   const past = weeks.filter(w => w.startDate <= today);
   const currentWeekNumber = past.length > 0 ? past[past.length - 1].weekNumber : null;
 
@@ -173,24 +140,13 @@ export default function SchedulePage() {
         Series
       </Link>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && (
+      {resource.status === 'ok' && (
         <>
           <div className="mb-6">
             <p className="text-eyebrow text-primary-container">SEASON SCHEDULE</p>
-            <h1 className="text-page-title text-on-surface mt-2">{state.data.seriesName}</h1>
+            <h1 className="text-page-title text-on-surface mt-2">{resource.data.seriesName}</h1>
           </div>
 
           {weeks.length === 0 ? (

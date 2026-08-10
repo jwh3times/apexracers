@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   api,
@@ -7,6 +7,8 @@ import {
   type SeasonQualifyResults,
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 
 type View = 'championship' | 'tt' | 'qualifying';
@@ -15,18 +17,6 @@ type Payload =
   | { view: 'championship'; data: SeasonStandings }
   | { view: 'tt'; data: SeasonTtStandings }
   | { view: 'qualifying'; data: SeasonQualifyResults };
-
-type FetchState =
-  { status: 'loading' } | { status: 'ok'; payload: Payload } | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'championship', label: 'Championship' },
@@ -48,7 +38,6 @@ export default function StandingsPage() {
   const [view, setView] = useState<View>('championship');
   const [carClassId, setCarClassId] = useState<number | null>(null);
   const [week, setWeek] = useState<number | null>(null);
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
 
   // Reset the class/week selection when switching views so a stale week doesn't leak across tabs.
   function selectView(next: View) {
@@ -56,39 +45,25 @@ export default function StandingsPage() {
     setView(next);
     setCarClassId(null);
     setWeek(null);
-    setState({ status: 'loading' });
   }
 
-  useEffect(() => {
-    let active = true;
-    const cls = carClassId ?? undefined;
-    const load: Promise<Payload> =
-      view === 'championship'
+  const resource = useResource<Payload>(
+    () => {
+      const cls = carClassId ?? undefined;
+      return view === 'championship'
         ? api.getStandings(id, cls).then(data => ({ view: 'championship', data }) as const)
         : view === 'tt'
           ? api.getTtStandings(id, cls).then(data => ({ view: 'tt', data }) as const)
           : api
               .getQualifyResults(id, cls, week ?? undefined)
               .then(data => ({ view: 'qualifying', data }) as const);
-
-    load
-      .then(payload => {
-        if (active) setState({ status: 'ok', payload });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load standings.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [id, view, carClassId, week]);
+    },
+    [id, view, carClassId, week],
+    { fallbackMessage: 'Failed to load standings.' }
+  );
 
   const myCustId = user?.iRacingCustomerId ?? null;
-  const myDivision = state.status === 'ok' ? callerDivision(state.payload, myCustId) : null;
+  const myDivision = resource.status === 'ok' ? callerDivision(resource.data, myCustId) : null;
 
   return (
     <main className="page-wrap">
@@ -102,26 +77,15 @@ export default function StandingsPage() {
         Series
       </Link>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && (
+      {resource.status === 'ok' && (
         <>
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-eyebrow text-primary-container">CHAMPIONSHIP STANDINGS</p>
               <h1 className="text-page-title text-on-surface mt-2">
-                {state.payload.data.seriesName}
+                {resource.data.data.seriesName}
               </h1>
             </div>
             {myDivision != null && (
@@ -147,14 +111,14 @@ export default function StandingsPage() {
             ))}
           </div>
 
-          {state.payload.data.carClasses.length > 1 && (
+          {resource.data.data.carClasses.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-4">
-              {state.payload.data.carClasses.map(c => (
+              {resource.data.data.carClasses.map(c => (
                 <button
                   key={c.carClassId}
                   type="button"
                   onClick={() => setCarClassId(c.carClassId)}
-                  className={chipClass(c.carClassId === state.payload.data.carClassId)}
+                  className={chipClass(c.carClassId === resource.data.data.carClassId)}
                 >
                   {c.carClassName}
                 </button>
@@ -162,11 +126,11 @@ export default function StandingsPage() {
             </div>
           )}
 
-          {state.payload.view === 'qualifying' && (
-            <WeekSelector data={state.payload.data} onSelect={setWeek} />
+          {resource.data.view === 'qualifying' && (
+            <WeekSelector data={resource.data.data} onSelect={setWeek} />
           )}
 
-          {renderBody(state.payload, myCustId)}
+          {renderBody(resource.data, myCustId)}
         </>
       )}
     </main>
@@ -222,7 +186,7 @@ function renderBody(payload: Payload, custId: number | null) {
   }
 
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
       <div className="overflow-x-auto">
         {payload.view === 'championship' && (
           <ChampionshipTable data={payload.data} custId={custId} />
@@ -259,7 +223,7 @@ function ChampionshipTable({ data, custId }: { data: SeasonStandings; custId: nu
   return (
     <table className="w-full border-collapse">
       <thead>
-        <tr className="border-b border-line-2" style={scanTexture}>
+        <tr className="scan-texture border-b border-line-2">
           <th className={`${th} w-12`}>#</th>
           <th className={thLeft}>Driver</th>
           <th className={th}>Pts</th>
@@ -299,7 +263,7 @@ function TimeTrialTable({ data, custId }: { data: SeasonTtStandings; custId: num
   return (
     <table className="w-full border-collapse">
       <thead>
-        <tr className="border-b border-line-2" style={scanTexture}>
+        <tr className="scan-texture border-b border-line-2">
           <th className={`${th} w-12`}>#</th>
           <th className={thLeft}>Driver</th>
           <th className={th}>Pts</th>
@@ -337,7 +301,7 @@ function QualifyingTable({ data, custId }: { data: SeasonQualifyResults; custId:
   return (
     <table className="w-full border-collapse">
       <thead>
-        <tr className="border-b border-line-2" style={scanTexture}>
+        <tr className="scan-texture border-b border-line-2">
           <th className={`${th} w-12`}>#</th>
           <th className={thLeft}>Driver</th>
           <th className={th}>Best Qual</th>

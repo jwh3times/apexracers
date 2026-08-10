@@ -379,4 +379,14 @@ describe('ComparePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
     await waitFor(() => expect(screen.getByText(/compare boom/i)).toBeInTheDocument());
   });
+
+  it('shows the shared account-link prompt when loading rivals returns a typed 409', async () => {
+    mockGetRivals.mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    renderPage();
+
+    expect(
+      await screen.findByText(/link your iracing account to follow and compare rivals/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+  });
 });

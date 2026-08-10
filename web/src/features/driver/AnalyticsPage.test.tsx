@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import AnalyticsPage from './AnalyticsPage';
-import { api } from '../../services/api';
+import { api, IRacingNotLinkedError } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
 let mockUser: User | null = {
@@ -357,5 +357,16 @@ describe('AnalyticsPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('2025')).toBeInTheDocument());
     expect(screen.getByText('2026')).toBeInTheDocument();
+  });
+
+  it('shows the shared account-link prompt for a typed 409', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    renderPage();
+
+    expect(
+      await screen.findByText(/link your iracing account to view personalized analytics/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
   });
 });

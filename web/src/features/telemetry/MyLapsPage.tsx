@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, type PersonalLap } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 
 function formatDate(iso: string): string {
@@ -64,28 +66,11 @@ function StatCard({
 }
 
 export default function MyLapsPage() {
-  const [laps, setLaps] = useState<PersonalLap[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const resource = useResource(() => api.getMyLaps(), [], {
+    fallbackMessage: 'Failed to load laps.',
+  });
+  const laps = resource.status === 'ok' ? resource.data : [];
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getMyLaps()
-      .then(rows => {
-        if (active) setLaps(rows);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Failed to load laps.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
   const uniqueTracks = new Set(laps.map(l => l.trackName)).size;
@@ -116,13 +101,9 @@ export default function MyLapsPage() {
         </p>
       </header>
 
-      {loading && (
-        <p className="text-on-surface-variant font-body-sm animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {error && <div className="glass-panel rounded-lg p-6 font-body-sm text-error">{error}</div>}
-
-      {!loading && !error && laps.length === 0 && (
+      {resource.status === 'ok' && laps.length === 0 && (
         <div className="glass-panel rounded-xl p-8 flex flex-col items-center gap-4 text-center max-w-md">
           <span
             className="material-symbols-outlined text-4xl text-on-surface-variant"
@@ -143,7 +124,7 @@ export default function MyLapsPage() {
         </div>
       )}
 
-      {laps.length > 0 && (
+      {resource.status === 'ok' && laps.length > 0 && (
         <>
           {/* Stat cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

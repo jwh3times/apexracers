@@ -1,18 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { api, type WeekDetail, type WeekCar } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 type SortMode = 'best' | 'consistency' | 'volume';
 
@@ -65,69 +58,38 @@ export default function WeekDetailPage() {
   const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [detail, setDetail] = useState<WeekDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortMode>('best');
-  // carId → the caller's percentile this week (higher = better). Empty unless signed-in + linked.
-  const [myPercentiles, setMyPercentiles] = useState<Map<number, number>>(new Map());
-
-  useEffect(() => {
-    if (!seriesId || !weekNumber) return;
-    let active = true;
-    api
-      .getWeekDetail(Number(seriesId), Number(weekNumber))
-      .then(data => {
-        if (active) setDetail(data);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Failed to load week data.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [seriesId, weekNumber]);
+  const detailResource = useResource<WeekDetail>(
+    () => api.getWeekDetail(Number(seriesId), Number(weekNumber)),
+    [seriesId, weekNumber],
+    {
+      enabled: !!seriesId && !!weekNumber,
+      fallbackMessage: 'Failed to load week data.',
+    }
+  );
 
   // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the
   // column blank rather than surfacing an error on this otherwise-public page.
-  useEffect(() => {
-    if (!seriesId || !weekNumber || !user) return;
-    let active = true;
-    api
-      .getMyWeekPercentiles(Number(seriesId), Number(weekNumber))
-      .then(rows => {
-        if (active) setMyPercentiles(new Map(rows.map(r => [r.carId, r.percentileRank])));
-      })
-      .catch(() => {
-        if (active) setMyPercentiles(new Map());
-      });
-    return () => {
-      active = false;
-    };
-  }, [seriesId, weekNumber, user]);
+  const percentileResource = useResource(
+    () => api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber)),
+    [seriesId, weekNumber, user],
+    { enabled: !!seriesId && !!weekNumber && !!user }
+  );
+  const myPercentiles =
+    percentileResource.status === 'ok'
+      ? new Map(percentileResource.data.map(r => [r.carId, r.percentileRank]))
+      : new Map<number, number>();
 
-  if (loading) {
+  if (detailResource.status !== 'ok') {
     return (
       <main className="page-wrap">
-        <p className="text-on-surface-variant text-body-fluid animate-pulse">Loading&hellip;</p>
+        <ResourceView resource={detailResource} />
       </main>
     );
   }
 
-  if (error) {
-    return (
-      <main className="page-wrap">
-        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-line-2">
-          {error}
-        </div>
-      </main>
-    );
-  }
-
-  const cars = detail?.cars ?? [];
+  const detail = detailResource.data;
+  const cars = detail.cars;
   const sorted = sortCars(cars, sort);
   const fieldBest = sorted.find(c => c.fastestLapSeconds != null);
   const totalEntries = cars.reduce((sum, c) => sum + c.entryCount, 0);
@@ -254,8 +216,7 @@ export default function WeekDetailPage() {
         ).map(kpi => (
           <div
             key={kpi.label}
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
+            className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden"
           >
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span
@@ -281,12 +242,9 @@ export default function WeekDetailPage() {
           No lap time data yet for this week.
         </p>
       ) : (
-        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+        <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
           {/* Card header with sort controls */}
-          <div
-            className="flex items-center justify-between card-hp border-b border-line-2"
-            style={scanTexture}
-          >
+          <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
             <div>
               <h3 className="text-section-head text-on-surface">Car breakdown</h3>
               <p className="text-small-fluid text-on-surface-variant mt-0.5">

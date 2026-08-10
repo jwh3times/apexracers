@@ -1,22 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { api, type CarStrategy, type WeekStrategy } from '../../services/api';
+import { api, type CarStrategy } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: WeekStrategy }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
 
@@ -60,11 +47,8 @@ function signed(value: number, unit: string): string {
 function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized: boolean }) {
   const trend = trendStyle(car.bopTrend);
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3 flex-wrap"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           {car.optimalRank != null && (
             <span className="text-eyebrow px-2 py-1 rounded-[7px] bg-primary-container/15 text-primary-container">
@@ -172,7 +156,7 @@ function BopStat({
   deltaBad?: boolean;
 }) {
   return (
-    <div className="bg-surface border border-line-2 card-r kpi-p" style={cardStyle}>
+    <div className="bg-surface border border-line-2 card-r card-shadow kpi-p">
       <div className="text-small-fluid text-on-surface-variant font-medium">{label}</div>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-kpi-value text-on-surface">{value}</span>
@@ -206,28 +190,11 @@ export default function StrategyPage() {
   const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const id = Number(seriesId);
   const week = Number(weekNumber);
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
+  const resource = useResource(() => api.getWeekStrategy(id, week), [id, week], {
+    fallbackMessage: 'Failed to load strategy.',
+  });
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getWeekStrategy(id, week)
-      .then(data => {
-        if (active) setState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load strategy.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [id, week]);
-
-  const data = state.status === 'ok' ? state.data : null;
+  const data = resource.status === 'ok' ? resource.data : null;
   const risk = data ? riskStyle(data.weatherRisk.level) : null;
 
   const contextChips = data
@@ -252,18 +219,7 @@ export default function StrategyPage() {
         Week detail
       </Link>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
-
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
+      <ResourceView resource={resource} />
 
       {data && risk && (
         <>
@@ -287,8 +243,8 @@ export default function StrategyPage() {
 
           {/* Weather-risk banner */}
           <div
-            className={`card-r p-4 mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 ${risk.className}`}
-            style={{ ...cardStyle, ...risk.style }}
+            className={`card-r card-shadow p-4 mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 ${risk.className}`}
+            style={risk.style}
           >
             <span className="text-section-head">Weather risk: {data.weatherRisk.level}</span>
             <span className="text-body-fluid">

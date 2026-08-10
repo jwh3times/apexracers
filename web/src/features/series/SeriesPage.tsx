@@ -1,29 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, type Series } from '../../services/api';
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function SeriesCard({ s }: { s: Series }) {
   const active = s.currentWeekNumber != null;
 
   const inner = (
-    <div
-      className="card-r border border-line-2 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full"
-      style={cardStyle}
-    >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full">
       {/* Header */}
       <div
-        className="px-[18px] pt-[16px] pb-[16px] border-b border-line-2"
+        className="scan-texture px-[18px] pt-[16px] pb-[16px] border-b border-line-2"
         style={{
-          ...scanTexture,
           background:
             'linear-gradient(120deg, var(--md-sys-color-surface-container-high, rgba(255,255,255,0.03)), transparent)',
         }}
@@ -124,47 +113,21 @@ function SeriesCard({ s }: { s: Series }) {
 }
 
 export default function SeriesPage() {
-  const [series, setSeries] = useState<Series[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const resource = useResource(() => api.getSeries(), [], {
+    fallbackMessage: 'Failed to load series.',
+  });
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getSeries()
-      .then(rows => {
-        if (active) setSeries(rows);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Failed to load series.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (loading) {
+  if (resource.status !== 'ok') {
     return (
       <main className="page-wrap">
-        <p className="text-on-surface-variant text-body-fluid animate-pulse">Loading&hellip;</p>
+        <ResourceView resource={resource} />
       </main>
     );
   }
 
-  if (error) {
-    return (
-      <main className="page-wrap">
-        <div className="card-r p-6 text-body-fluid text-error bg-surface border border-line-2">
-          {error}
-        </div>
-      </main>
-    );
-  }
+  const series = resource.data;
 
   if (series.length === 0) {
     return (

@@ -1,19 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api, type RaceGuideEntry } from '../../services/api';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; rows: RaceGuideEntry[] }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import { api } from '../../services/api';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function startLabel(iso: string): string {
   const d = new Date(iso);
@@ -31,27 +19,10 @@ function countdown(startMs: number, now: number): string {
 }
 
 export default function LivePage() {
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
   const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getRaceGuide()
-      .then(rows => {
-        if (active) setState({ status: 'ok', rows });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load the race guide.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const resource = useResource(() => api.getRaceGuide(), [], {
+    fallbackMessage: 'Failed to load the race guide.',
+  });
 
   // Tick once a second so the countdowns stay live.
   useEffect(() => {
@@ -66,31 +37,20 @@ export default function LivePage() {
         <h1 className="text-page-title text-on-surface mt-2">Sessions starting soon</h1>
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && state.rows.length === 0 && (
+      {resource.status === 'ok' && resource.data.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant">
           No official sessions starting in the next few hours.
         </p>
       )}
 
-      {state.status === 'ok' && state.rows.length > 0 && (
-        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+      {resource.status === 'ok' && resource.data.length > 0 && (
+        <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-line-2" style={scanTexture}>
+                <tr className="scan-texture border-b border-line-2">
                   <th className="th-p text-th text-on-surface-variant text-left">Start</th>
                   <th className="th-p text-th text-on-surface-variant text-left">Series</th>
                   <th className="th-p text-th text-on-surface-variant text-left">Status</th>
@@ -99,7 +59,7 @@ export default function LivePage() {
                 </tr>
               </thead>
               <tbody>
-                {state.rows.map(r => {
+                {resource.data.map(r => {
                   const startMs = new Date(r.startTime).getTime();
                   const endMs = new Date(r.endTime).getTime();
                   const live = startMs <= now && now < endMs;
