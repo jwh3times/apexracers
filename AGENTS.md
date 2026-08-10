@@ -531,8 +531,8 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   silent refresh), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
   `FeatureFlagContext` (`useFeatureFlags()` exposes `isEnabled` + owner-specific `ready`;
   `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union).
-- **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `topPercentLabel`,
-  `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
+- **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `toTopPercent` /
+  `topPercentLabel`, `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
 
 ---
 
