@@ -33,6 +33,7 @@ public class SeasonIngestTests
         };
 
         await ingest.UpsertHeaderAsync(source, "GT Challenge", ct);
+        db.ChangeTracker.Clear();
 
         var series = await db.Series.SingleAsync(ct);
         var season = await db.Seasons.SingleAsync(ct);
@@ -55,10 +56,16 @@ public class SeasonIngestTests
         source.FixedSetup = true;
         source.Multiclass = false;
         season.Active = false;
+        await db.SaveChangesAsync(ct);
+        db.ChangeTracker.Clear();
+
         await ingest.UpsertHeaderAsync(source, "GT Challenge Renamed", ct);
+        db.ChangeTracker.Clear();
 
         Assert.Single(await db.Series.ToListAsync(ct));
         Assert.Single(await db.Seasons.ToListAsync(ct));
+        series = await db.Series.SingleAsync(ct);
+        season = await db.Seasons.SingleAsync(ct);
         Assert.Equal("GT Challenge Renamed", series.Name);
         Assert.True(season.Active);
         Assert.Equal(5, season.LicenseGroup);
@@ -77,6 +84,7 @@ public class SeasonIngestTests
         var item = ScheduleItem();
 
         await ingest.UpsertScheduleAsync(501, [item], ct);
+        db.ChangeTracker.Clear();
 
         var track = await db.Tracks.SingleAsync(ct);
         var week = await db.Weeks.SingleAsync(ct);
@@ -110,14 +118,19 @@ public class SeasonIngestTests
         item.CarRestrictions[0].PowerAdjustPercent = -1;
         item.CarRestrictions[0].MaxPercentFuelFill = 90;
         item.CarRestrictions[0].MaxDryTireSets = 5;
+        db.ChangeTracker.Clear();
 
         await ingest.UpsertScheduleAsync(501, [item], ct);
+        db.ChangeTracker.Clear();
 
         Assert.Single(await db.Tracks.ToListAsync(ct));
         Assert.Single(await db.Weeks.ToListAsync(ct));
         Assert.Single(await db.SeasonCarBops.ToListAsync(ct));
         Assert.Single(await db.Cars.ToListAsync(ct));
         Assert.Single(await db.SeasonCars.ToListAsync(ct));
+        track = await db.Tracks.SingleAsync(ct);
+        week = await db.Weeks.SingleAsync(ct);
+        bop = await db.SeasonCarBops.SingleAsync(ct);
         Assert.Equal("Spa Updated", track.Name);
         Assert.Equal(string.Empty, track.ConfigName);
         Assert.Equal(new DateOnly(2026, 8, 12), week.StartDate);

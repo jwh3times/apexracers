@@ -35,7 +35,18 @@ public class SubsessionMapperTests
                 TemperatureUnits = 1,
                 RelativeHumidity = 55,
             },
-            TrackState = new TrackState(),
+            TrackState = new TrackState
+            {
+                LeaveMarbles = true,
+                PracticeRubber = 1,
+                QualifyRubber = 2,
+                WarmupRubber = 3,
+                RaceRubber = 4,
+                PracticeGripCompound = 5,
+                QualifyGripCompound = 6,
+                WarmupGripCompound = 7,
+                RaceGripCompound = 8,
+            },
         };
 
         var entity = SubsessionMapper.ToEntity(99001, source, weekId, splitNum: 2);
@@ -58,7 +69,8 @@ public class SubsessionMapperTests
         Assert.Equal(129.75, entity.EventBestLapSeconds);
         Assert.Equal(42, entity.EventLapsComplete);
         Assert.Contains("\"temp_value\":24", entity.WeatherJson);
-        Assert.NotNull(entity.TrackStateJson);
+        Assert.Contains("\"leave_marbles\":true", entity.TrackStateJson);
+        Assert.Contains("\"race_grip_compound\":8", entity.TrackStateJson);
     }
 
     [Fact]

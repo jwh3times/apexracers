@@ -39,9 +39,9 @@ public static class SubsessionMapper
             WeatherJson = WeatherIngest.ToSnapshot(data.Weather) is { } weather
                 ? JsonSerializer.Serialize(weather)
                 : null,
-            TrackStateJson = data.TrackState is null
+            TrackStateJson = TrackStateIngest.ToSnapshot(data.TrackState) is not { } trackState
                 ? null
-                : JsonSerializer.Serialize(data.TrackState),
+                : JsonSerializer.Serialize(trackState),
         };
 
     public static CoreSubsessionResult ToResult(int subsessionId, Result result) =>

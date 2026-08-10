@@ -11,7 +11,7 @@
               - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
               - DesignTimeFactory: dotnet-ef dev tooling only
               - Ingestion Worker : I/O orchestration shell; its decision/mapping logic lives in
-                                   SubsessionIndexer, SubsessionMapper, and SeasonIngest (all covered)
+                                   covered SubsessionIndexer, *Ingest, and *Mapper modules
               - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
                                    orchestration shells with no unit tests; the pure lap-gen
                                    helpers they call (SyntheticLaps) stay covered, as does the
