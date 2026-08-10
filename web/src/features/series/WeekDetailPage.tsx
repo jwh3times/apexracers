@@ -131,10 +131,8 @@ export default function WeekDetailPage() {
   const sorted = sortCars(cars, sort);
   const fieldBest = sorted.find(c => c.fastestLapSeconds != null);
   const totalEntries = cars.reduce((sum, c) => sum + c.entryCount, 0);
-  // Show the "Your pct" column only to signed-in drivers. percentileRank is higher-is-better;
-  // PercentileBadge wants the TOP value (lower-is-better), matching utils/percentile.topPercentLabel.
+  // Show the "Your pct" column only to signed-in drivers.
   const showMyPct = !!user;
-  const topPct = (rank: number) => Math.max(1, Math.ceil(100 - rank));
 
   const trackSubtitle = detail
     ? [
@@ -406,10 +404,7 @@ export default function WeekDetailPage() {
                       {showMyPct && (
                         <td className="td-p border-b border-line-2 text-right">
                           {myPercentiles.has(car.carId) ? (
-                            <PercentileBadge
-                              pct={topPct(myPercentiles.get(car.carId)!)}
-                              size="chip"
-                            />
+                            <PercentileBadge rank={myPercentiles.get(car.carId)!} size="chip" />
                           ) : (
                             <span className="text-on-surface-variant/40">—</span>
                           )}
