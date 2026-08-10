@@ -19,10 +19,11 @@ not `CLAUDE.md` — when project guidance changes.
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 | Documentation sync after changes (CHANGELOG, AGENTS.md, README, …) | `docs-updater`         |
 
-Docs are refreshed at **ship time** by the [`/ship` skill](.agents/skills/ship/SKILL.md): before
-opening a PR it invokes `docs-updater` scoped to the branch diff, then rolls `[Unreleased]` into a
-CHANGELOG section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a
-branch is ready for review.
+Docs and release metadata are prepared at **ship time** by the
+[`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
+impact, invokes `docs-updater` scoped to the branch diff, then rolls `[Unreleased]` into a CHANGELOG
+section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a branch is
+ready for review.
 
 ## Agent config parity (Claude Code ↔ Codex)
 
@@ -145,12 +146,14 @@ add a bullet under the `CHANGELOG.md` `[Unreleased]` section (correct
 `.github/workflows/version.yml`
 creates a standard SemVer tag/GitHub Release in `<major>.<minor>.<build>` form, where
 `web/package.json` selects the major/minor release line and the build auto-increments from existing
-three-part tags. For an intentional major/minor bump, set `web/package.json` to `x.y.0`; if no `vX.Y.0`
-tag exists yet, build `0` is valid and is not advanced to `1`. Rolling `[Unreleased]` into a versioned
-changelog section is a separate, deliberate step the [`/ship` skill](.claude/skills/ship/SKILL.md)
-performs when a branch is shipped (dating it for the version that merge will mint) — not during
-ordinary feature/fix work. `version.yml` and `/ship` compute that version from the same
-`scripts/next-version.sh`, and a `Changelog Version` CI check
+three-part tags. At ship time, `/ship` evaluates the cumulative release impact: a major or minor
+decision advances both `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a
+build decision leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not
+advanced to `1`. Rolling `[Unreleased]` into a versioned changelog section is a separate, deliberate
+step the [`/ship` skill](.claude/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
+the version that merge will mint) — not during ordinary feature/fix work. After selecting the release
+line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.sh`, and a
+`Changelog Version` CI check
 (`.github/workflows/changelog-version.yml`) fails a PR whose dated section has drifted from it. (The
 `docs-updater` agent owns the full doc-update matrix.)
 
