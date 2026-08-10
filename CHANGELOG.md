@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.53] - 2026-08-09
+
+### Changed
+
+- Refresh-token issuance, rotation, revocation, active-token capping and retention cleanup now share one lifecycle owner and one injected clock. A token is active only while it is unrevoked and strictly unexpired; issue and rotation use the same random-token/hash factory, rotation persists the old-token revocation and replacement atomically, and raw credentials are returned to the caller without ever being stored. Exact-expiry, five-token cap, rotation exemption, revoke-all and purge boundaries now have direct database-backed coverage.
+
 ## [0.4.52] - 2026-08-09
 
 ### Changed
@@ -447,7 +453,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.52...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.53...HEAD
+[0.4.53]: https://github.com/jwh3times/apexracers/compare/v0.4.52...v0.4.53
 [0.4.52]: https://github.com/jwh3times/apexracers/compare/v0.4.51...v0.4.52
 [0.4.51]: https://github.com/jwh3times/apexracers/compare/v0.4.50...v0.4.51
 [0.4.50]: https://github.com/jwh3times/apexracers/compare/v0.4.49...v0.4.50
