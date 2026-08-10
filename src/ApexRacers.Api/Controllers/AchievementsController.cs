@@ -18,10 +18,7 @@ public class AchievementsController(AchievementsService achievements, MemberCont
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await achievements.GetAchievementsAsync(custId.Value, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await achievements.GetAchievementsAsync(custId, ct));
     }
 }

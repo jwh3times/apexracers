@@ -7,6 +7,10 @@ namespace ApexRacers.Tests.Middleware;
 public class ExceptionStatusMapperTests
 {
     [Fact]
+    public void IRacingNotLinked_MapsTo409() =>
+        Assert.Equal(409, ExceptionStatusMapper.MapStatusCode(new IRacingNotLinkedException()));
+
+    [Fact]
     public void IRacingNotConfigured_MapsTo503() =>
         Assert.Equal(503, ExceptionStatusMapper.MapStatusCode(new IRacingNotConfiguredException()));
 

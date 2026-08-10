@@ -6,18 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
-public class AdminService(UserManager<ApplicationUser> userManager, AppDbContext db)
+public class AdminService(
+    UserManager<ApplicationUser> userManager,
+    AppDbContext db,
+    FeatureFlagEligibility featureFlagEligibility)
 {
-    private static readonly string[] ValidRoles = ["Standard", "Beta", "Alpha", "Admin"];
-
-    public static readonly Dictionary<string, int> RoleHierarchy = new()
-    {
-        ["Standard"] = 0,
-        ["Beta"] = 1,
-        ["Alpha"] = 2,
-        ["Admin"] = 3,
-    };
-
     // ── Users ─────────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<AdminUserDto>> GetUsersAsync(CancellationToken ct = default)
@@ -36,7 +29,7 @@ public class AdminService(UserManager<ApplicationUser> userManager, AppDbContext
 
     public async Task<AdminUserDto> SetUserRoleAsync(Guid userId, string newRole, CancellationToken ct = default)
     {
-        if (!ValidRoles.Contains(newRole, StringComparer.OrdinalIgnoreCase))
+        if (!FeatureFlagEligibility.IsKnownRole(newRole))
             throw new InvalidOperationException($"Invalid role '{newRole}'.");
 
         var user = await userManager.FindByIdAsync(userId.ToString())
@@ -61,20 +54,14 @@ public class AdminService(UserManager<ApplicationUser> userManager, AppDbContext
 
     public async Task<List<FeatureFlagDto>> GetFlagsForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        var roles = user is null ? [] : await userManager.GetRolesAsync(user);
-        var role = roles.FirstOrDefault() ?? "Standard";
-        return await GetFlagsForRoleAsync(role, ct);
+        var flags = await featureFlagEligibility.GetActiveForUserAsync(userId, ct);
+        return flags.Select(ToDto).ToList();
     }
 
     public async Task<List<FeatureFlagDto>> GetFlagsForRoleAsync(string role, CancellationToken ct = default)
     {
-        var userLevel = RoleHierarchy.GetValueOrDefault(role, 0);
-        var flags = await db.FeatureFlags.ToListAsync(ct);
-        return flags
-            .Where(f => f.IsEnabled && RoleHierarchy.GetValueOrDefault(f.MinimumRole, 0) <= userLevel)
-            .Select(ToDto)
-            .ToList();
+        var flags = await featureFlagEligibility.GetActiveForRoleAsync(role, ct);
+        return flags.Select(ToDto).ToList();
     }
 
     public async Task<FeatureFlagDto> CreateFlagAsync(CreateFeatureFlagRequest request, CancellationToken ct = default)
@@ -123,7 +110,7 @@ public class AdminService(UserManager<ApplicationUser> userManager, AppDbContext
 
     private static void ValidateRole(string role)
     {
-        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        if (!FeatureFlagEligibility.IsKnownRole(role))
             throw new InvalidOperationException($"Invalid minimum role '{role}'.");
     }
 

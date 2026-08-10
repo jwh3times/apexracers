@@ -289,9 +289,12 @@ command/query handlers, no `IRepository<T>` (use `AppDbContext` directly).
 **Error handling:** `ExceptionHandlingMiddleware` (registered first) converts unhandled exceptions into
 RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper`
 (`ArgumentException`/`InvalidOperationException` → 400, `KeyNotFoundException` → 404,
-`UnauthorizedAccessException` → 401, `IRacingNotConfiguredException` → 503, else 500 with its message
-hidden). Services should just `throw`; don't catch to `BadRequest(string)`. Controllers still return
-explicit results for non-exception outcomes needing a specific code (e.g. AuthController's 423 lockout).
+`UnauthorizedAccessException` → 401, `IRacingNotLinkedException` → 409,
+`IRacingNotConfiguredException` → 503, else 500 with its message hidden). The not-linked exception is
+the deliberate format exception: middleware preserves the established exact JSON
+`{ code: "IRACING_NOT_LINKED", message: "…" }` instead of ProblemDetails. Services should just `throw`;
+don't catch to `BadRequest(string)`. Controllers still return explicit results for non-exception
+outcomes needing a specific code (e.g. AuthController's 423 lockout).
 **Client disconnects are handled ahead of that mapping:** the pure `ClientDisconnectDetector` matches an
 `OperationCanceledException` or `BadHttpRequestException` raised while `HttpContext.RequestAborted` is
 signalled, and the middleware records it at Debug, sets **499** (nginx's "Client Closed Request"), and
@@ -378,9 +381,16 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 - `AuthService` — registration, login (JWT + rotating refresh token), profile/password/email-change, reset. Caps active refresh tokens at 5 per user; revokes all on password/email change. Needs `AddDefaultTokenProviders()`. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`) and injected into both the issuing side (`AuthService`) and the validating side (`TokenValidationParameters`) — see `dotnet-api` for the rule.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
 - `TelemetryUploadService`, `PersonalLapService` — parse `.ibt` → `PersonalLap`; query personal bests.
-- `AdminService` — role + flag CRUD. Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`); flag eligibility is hierarchical (`MinimumRole` level ≤ user level).
+- `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
+  Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
+- `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
+  (`MinimumRole` level ≤ user level), shared by `AdminService` and `MemberContext`. Unknown or role-less
+  users receive Standard eligibility; an unknown `MinimumRole` fails closed.
 - `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent.
-- `MemberContext` — resolves the user's iRacing `cust_id`; null when unlinked → typed `409`. The **only** demo-aware branch: under `iracing-demo` it resolves to `DemoData.DriverCustId` (= 100001).
+- `MemberContext` — owns optional vs required iRacing identity resolution: optional callers receive
+  null when unlinked; required callers use `GetRequiredCustIdAsync` / `RequireCustId`, which throw the
+  typed `IRacingNotLinkedException` mapped to the exact `409` contract above. The **only** demo-aware
+  branch: under an eligible `iracing-demo` flag it resolves to `DemoData.DriverCustId` (= 100001).
 
 ### Core models (`src/ApexRacers.Core/Models/`)
 

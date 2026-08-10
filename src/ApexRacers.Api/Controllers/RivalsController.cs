@@ -49,9 +49,8 @@ public class RivalsController(RivalService rivals, MemberContext member) : Contr
     public async Task<IActionResult> SuggestionsAsync(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0) return this.IRacingNotLinked();
-        return Ok(await rivals.SuggestionsAsync(userId, custId.Value, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await rivals.SuggestionsAsync(userId, custId, ct));
     }
 
     private bool TryGetUserId(out Guid userId) =>

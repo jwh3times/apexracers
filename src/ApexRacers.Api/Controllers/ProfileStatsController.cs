@@ -18,10 +18,7 @@ public class ProfileStatsController(MemberStatsService stats, MemberContext memb
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await stats.GetDriverProfileAsync(custId.Value, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await stats.GetDriverProfileAsync(custId, ct));
     }
 }

@@ -26,11 +26,9 @@ public class RecommendationsController(
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, weekNumber, custId.Value, includePersonalLaps, personalLapTypes, ct));
+            seriesId, weekNumber, custId, includePersonalLaps, personalLapTypes, ct));
     }
 }

@@ -31,12 +31,9 @@ public class SubsessionController(
             var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             if (!Guid.TryParse(userIdStr, out var userId))
                 return Unauthorized();
-            custId = await member.GetCustIdAsync(userId, ct);
+            custId = await member.GetRequiredCustIdAsync(userId, ct);
         }
 
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await lapData.GetDriverLapsAsync(id, custId.Value, ct));
+        return Ok(await lapData.GetDriverLapsAsync(id, member.RequireCustId(custId), ct));
     }
 }

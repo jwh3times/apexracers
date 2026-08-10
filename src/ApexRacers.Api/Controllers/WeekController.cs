@@ -34,10 +34,7 @@ public class WeekController(
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await recommendations.GetMyPercentilesAsync(seriesId, weekNumber, custId.Value, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await recommendations.GetMyPercentilesAsync(seriesId, weekNumber, custId, ct));
     }
 }
