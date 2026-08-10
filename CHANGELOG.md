@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.5.3] - 2026-08-10
+
 ### Changed
 
 - Frontend linting now runs entirely on Oxlint, including its TypeScript 7-powered type-aware backend and native React compiler analysis. ESLint, typescript-eslint, and their plugin stack have been removed; existing async and type-assertion findings were tightened as part of adoption, Playwright/E2E files now participate in the Node tsconfig, and overrides are limited to test-mock conventions plus the dynamic dependency contract in `useResource`.
@@ -489,7 +493,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/jwh3times/apexracers/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/jwh3times/apexracers/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jwh3times/apexracers/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jwh3times/apexracers/compare/v0.4.55...v0.5.0
