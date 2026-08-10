@@ -266,10 +266,11 @@ Api / Ingestion / Seeder ← reference Core + Data (Api and Ingestion never refe
 Tests ← xUnit (references Api + Ingestion + Seeder + Core + Data)
 ```
 
-> **Coverage note:** because Tests references Seeder, the Seeder assembly is in the coverage denominator.
-> `coverage.runsettings` excludes the seeder orchestration/data (`Program`, `CiCatalogSeeder`, `CiCatalog`,
-> `Demo.DemoCacheSeeder`) as I/O infrastructure; pure logic like `SyntheticLaps` and the
-> `Verification.DemoSeedVerifier` stay covered and tested.
+> **Coverage note:** because Tests references Ingestion and Seeder, both assemblies are in the coverage
+> denominator. `coverage.runsettings` excludes the ingestion `Worker` / `Program` I/O shells while their
+> decision, mapping, and persistence modules stay covered; it also excludes seeder orchestration/data
+> (`Program`, `CiCatalogSeeder`, `CiCatalog`, `Demo.DemoCacheSeeder`) while pure logic like
+> `SyntheticLaps` and `Verification.DemoSeedVerifier` stays covered and tested.
 
 Package versions are centrally managed in `Directory.Packages.props` — **never** add `Version="…"` to a
 `.csproj`; use `dotnet add package`. `CentralPackageTransitivePinningEnabled=true` is intentional. Full
@@ -403,7 +404,8 @@ indexes, FK/`OnDelete` behavior).
 | `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`) |
 | `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership                                                         |
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
-| `Subsession` / `SubsessionResult`               | one race session + per-driver result (+ race context, weather as an owned `WeatherSnapshot`, track-state JSON) |
+| `Subsession` / `SubsessionResult`               | one race session + per-driver result (+ race context; owned weather/track-state snapshot JSON) |
+| `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |
 | `PersonalLap`                                   | user's personal best per track+car (from telemetry)                                            |
 | `CarPercentileResult`                           | cached percentile rank per (UserId, CarId, SeriesId, WeekId)                                   |
 | `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
@@ -416,7 +418,10 @@ indexes, FK/`OnDelete` behavior).
 `ApexRacers.Ingestion` is a `BackgroundService` using `Aydsko.iRacingData` with
 `UsePasswordLimitedOAuth()` (four `IRACING_*` env vars). Resolve `IDataClient` + `AppDbContext` per cycle
 through `IServiceScopeFactory` (scoped services from a singleton worker). Each run refreshes the full
-car/track catalog into `Car`/`Track` via the pure, tested `CatalogIngest` helper. (See `dotnet-api`.)
+car/track catalog into `Car`/`Track` via the pure, tested `CatalogIngest` helper. The worker fetches and
+coordinates only: `SeasonIngest` owns season/schedule relational upserts, `SubsessionMapper` owns the
+subsession/result field mapping, and `WeatherIngest` / `TrackStateIngest` map nested SDK blocks to owned
+Core snapshots. (See `dotnet-api`.)
 
 ### Data source strategy — persist vs cache (read before adding an iRacing-backed feature)
 
@@ -424,11 +429,12 @@ Three ways iRacing data reaches a read path. Pick deliberately:
 
 1. **Persist into typed entities** (worker/seeder → Postgres): `Series`, `Season`, `Week`, `Track`,
    `Car`, `Subsession`, `SubsessionResult`, `SeasonCarBop`, … Read paths query with SQL/joins. Pure
-   SDK→entity mapping goes in a tested helper (mirror `SubsessionIndexer` / `CatalogIngest`). This
-   includes JSON columns nested inside a persisted row — `Subsession.WeatherJson` and
-   `Week.WeatherSummaryJson` serialize the owned `WeatherSnapshot` / `WeatherForecastSnapshot`
-   (`ApexRacers.Core.Models`), mapped at ingest by the pure, tested `WeatherIngest`
-   (`ApexRacers.Ingestion`), the same seam pattern as `CatalogIngest`.
+   SDK→entity mapping goes in a tested helper (mirror `CatalogIngest` / `SubsessionMapper`); relational
+   upsert rules belong in a directly tested persistence module (mirror `SeasonIngest`). This includes
+   JSON columns nested inside a persisted row: `Subsession.WeatherJson`, `Week.WeatherSummaryJson`, and
+   `Subsession.TrackStateJson` serialize the owned `WeatherSnapshot`, `WeatherForecastSnapshot`, and
+   `TrackStateSnapshot` (`ApexRacers.Core.Models`), mapped at ingest by the pure, tested `WeatherIngest`
+   / `TrackStateIngest` seams (`ApexRacers.Ingestion`).
 2. **On-demand cache** (`CachedIRacingClient` → `ExternalDataCache`): fetch live per request, memoize
    **mapped DTOs** as JSON with a per-call TTL. Backs progression, profile, race history, lap data,
    world records, leaderboards, standings, race guide, driver search.

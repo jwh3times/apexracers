@@ -10,8 +10,8 @@
               - EF Migrations    : auto-generated schema code
               - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
               - DesignTimeFactory: dotnet-ef dev tooling only
-              - Ingestion Worker : I/O orchestration shell; its pure decision logic
-                                   lives in SubsessionIndexer (which IS covered)
+              - Ingestion Worker : I/O orchestration shell; its decision/mapping logic lives in
+                                   covered SubsessionIndexer, *Ingest, and *Mapper modules
               - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
                                    orchestration shells with no unit tests; the pure lap-gen
                                    helpers they call (SyntheticLaps) stay covered, as does the

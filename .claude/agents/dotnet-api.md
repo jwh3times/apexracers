@@ -97,6 +97,12 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. AGENTS.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
 
+The ingestion `Worker` is a coverage-excluded I/O shell. Put SDK field mapping in the covered
+`CatalogIngest`, `WeatherIngest`, `TrackStateIngest`, or `SubsessionMapper` seams and relational
+season/schedule upsert rules in `SeasonIngest`. Mapper tests assert every persisted field, fallback,
+and pinned JSON name; `SeasonIngest` tests use SQLite to prove insert/update parity and the save ordering
+needed before dependent rows are added. Keep the worker at fetch, coordination, and logging.
+
 A single `AppDbContext` serializes everything through one change tracker, so it cannot express two
 callers racing the same row. For that case only, `DbContextFactory.CreateShared()` returns a
 `SharedSqliteDatabase` holding one in-memory SQLite connection that hands out multiple independent

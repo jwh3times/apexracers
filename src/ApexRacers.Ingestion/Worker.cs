@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
@@ -139,40 +138,8 @@ public sealed class Worker(
 
         // ── Step 2: Upsert Series + Season ────────────────────────────────────────
 
-        var series = await db.Series.FindAsync([seasonSeries.SeriesId], ct);
-        if (series is null)
-            db.Series.Add(new Series { Id = seasonSeries.SeriesId, Name = seriesName });
-        else
-            series.Name = seriesName;
-
-        var season = await db.Seasons.FindAsync([seasonSeries.SeasonId], ct);
-        if (season is null)
-        {
-            db.Seasons.Add(new Season
-            {
-                Id           = seasonSeries.SeasonId,
-                SeriesId     = seasonSeries.SeriesId,
-                Year         = seasonSeries.SeasonYear,
-                Quarter      = seasonSeries.SeasonQuarter,
-                Active       = true,
-                LicenseGroup = seasonSeries.LicenseGroup,
-                Official     = seasonSeries.Official,
-                Drops        = seasonSeries.Drops,
-                FixedSetup   = seasonSeries.FixedSetup,
-                Multiclass   = seasonSeries.Multiclass,
-            });
-        }
-        else
-        {
-            season.Active       = true;
-            season.LicenseGroup = seasonSeries.LicenseGroup;
-            season.Official     = seasonSeries.Official;
-            season.Drops        = seasonSeries.Drops;
-            season.FixedSetup   = seasonSeries.FixedSetup;
-            season.Multiclass   = seasonSeries.Multiclass;
-        }
-
-        await db.SaveChangesAsync(ct);
+        var seasonIngest = new SeasonIngest(db);
+        await seasonIngest.UpsertHeaderAsync(seasonSeries, seriesName, ct);
 
         // ── Step 3: Fetch full schedule → upsert Weeks, Cars, SeasonCars ─────────
         // GetSeasonScheduleAsync gives us SeasonScheduleItem[] with per-week car lists.
@@ -183,107 +150,8 @@ public sealed class Worker(
             return (0, 0);
         }
 
-        foreach (var item in scheduleResponse.Data.Schedules)
-        {
-            // Upsert track
-            var track = await db.Tracks.FindAsync([item.Track.TrackId], ct);
-            if (track is null)
-            {
-                track = new Track
-                {
-                    Id         = item.Track.TrackId,
-                    Name       = item.Track.TrackName,
-                    ConfigName = item.Track.ConfigName ?? "",
-                };
-                db.Tracks.Add(track);
-                await db.SaveChangesAsync(ct);
-            }
-            else
-            {
-                track.Name       = item.Track.TrackName;
-                track.ConfigName = item.Track.ConfigName ?? "";
-            }
-
-            // Weather forecast summary for the week (serialized as-is; normalized on read).
-            var weatherJson = WeatherIngest.ToSnapshot(item.Weather?.WeatherSummary) is { } forecast
-                ? JsonSerializer.Serialize(forecast)
-                : null;
-
-            var week = await db.Weeks
-                .FirstOrDefaultAsync(
-                    w => w.SeasonId == seasonSeries.SeasonId && w.WeekNumber == item.RaceWeekNum, ct);
-
-            if (week is null)
-            {
-                week = new Week
-                {
-                    SeasonId          = seasonSeries.SeasonId,
-                    WeekNumber        = item.RaceWeekNum,
-                    TrackId           = item.Track.TrackId,
-                    StartDate         = item.StartDate,
-                    WeatherSummaryJson = weatherJson,
-                };
-                db.Weeks.Add(week);
-                await db.SaveChangesAsync(ct); // flush to get DB-generated Week.Id
-            }
-            else
-            {
-                week.TrackId            = item.Track.TrackId;
-                week.StartDate          = item.StartDate;
-                week.WeatherSummaryJson = weatherJson;
-            }
-
-            // Per-car Balance of Performance for this week.
-            foreach (var cr in item.CarRestrictions ?? [])
-            {
-                var bop = await db.SeasonCarBops
-                    .FindAsync([seasonSeries.SeasonId, item.RaceWeekNum, cr.CarId], ct);
-                if (bop is null)
-                {
-                    db.SeasonCarBops.Add(new SeasonCarBop
-                    {
-                        SeasonId        = seasonSeries.SeasonId,
-                        WeekNumber      = item.RaceWeekNum,
-                        CarId           = cr.CarId,
-                        WeightPenaltyKg = (double)cr.WeightPenaltyKg,
-                        PowerAdjustPct  = (double)cr.PowerAdjustPercent,
-                        MaxPctFuelFill  = (double)cr.MaxPercentFuelFill,
-                        MaxDryTireSets  = cr.MaxDryTireSets,
-                    });
-                }
-                else
-                {
-                    bop.WeightPenaltyKg = (double)cr.WeightPenaltyKg;
-                    bop.PowerAdjustPct  = (double)cr.PowerAdjustPercent;
-                    bop.MaxPctFuelFill  = (double)cr.MaxPercentFuelFill;
-                    bop.MaxDryTireSets  = cr.MaxDryTireSets;
-                }
-            }
-
-            foreach (var car in item.RaceWeekCars)
-            {
-                if (await db.Cars.FindAsync([car.CarId], ct) is null)
-                {
-                    db.Cars.Add(new Car
-                    {
-                        Id              = car.CarId,
-                        Name            = car.CarName,
-                        NameAbbreviated = car.CarNameAbbreviated,
-                    });
-                }
-
-                if (await db.SeasonCars.FindAsync([seasonSeries.SeasonId, car.CarId], ct) is null)
-                {
-                    db.SeasonCars.Add(new SeasonCar
-                    {
-                        SeasonId = seasonSeries.SeasonId,
-                        CarId    = car.CarId,
-                    });
-                }
-            }
-        }
-
-        await db.SaveChangesAsync(ct);
+        await seasonIngest.UpsertScheduleAsync(
+            seasonSeries.SeasonId, scheduleResponse.Data.Schedules, ct);
 
         // ── Step 4: Index new race subsessions ────────────────────────────────────
         var indexed = await IndexNewSubsessionsAsync(db, client, seasonSeries, ct);
@@ -387,28 +255,8 @@ public sealed class Worker(
                 var splitNum = SubsessionIndexer.ResolveSplitNumber(
                     data.SessionSplits?.Select(s => s.SubSessionId).ToList(), subsessionId);
 
-                var subsession = new Subsession
-                {
-                    Id                     = subsessionId,
-                    SeasonId               = data.SeasonId,
-                    WeekNumber             = data.RaceWeekIndex,
-                    WeekId                 = weekId,
-                    TrackId                = data.Track.TrackId,
-                    OfficialSession        = data.OfficialSession,
-                    EventStrengthOfField   = data.EventStrengthOfField,
-                    StartTime              = data.StartTime,
-                    EndTime                = data.EndTime,   // DateTimeOffset, not nullable in SubSessionResult
-                    SplitNum               = splitNum,
-                    NumCautions            = data.NumberOfCautions,
-                    NumCautionLaps         = data.NumberOfCautionLaps,
-                    NumLeadChanges         = data.NumberOfLeadChanges,
-                    CornersPerLap          = data.CornersPerLap,
-                    EventAverageLapSeconds = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventAverageLap),
-                    EventBestLapSeconds    = SubsessionIndexer.EventLapSecondsOrSentinel(data.EventBestLapTime),
-                    EventLapsComplete      = data.EventLapsComplete,
-                    WeatherJson            = WeatherIngest.ToSnapshot(data.Weather) is { } w ? JsonSerializer.Serialize(w) : null,
-                    TrackStateJson         = data.TrackState is null ? null : JsonSerializer.Serialize(data.TrackState),
-                };
+                var subsession = SubsessionMapper.ToEntity(
+                    subsessionId, data, weekId, splitNum);
                 db.Subsessions.Add(subsession);
                 await db.SaveChangesAsync(ct);
 
@@ -416,9 +264,6 @@ public sealed class Worker(
                 {
                     // Skip AI drivers and team events (null CustomerId)
                     if (SubsessionIndexer.ShouldSkipResult(r.AI, r.CustomerId)) continue;
-
-                    var bestLapSecs = SubsessionIndexer.LapSecondsOrSentinel(r.BestLapTime);
-                    var avgLapSecs  = SubsessionIndexer.LapSecondsOrSentinel(r.AverageLap);
 
                     // Upsert car
                     if (await db.Cars.FindAsync([r.CarId], ct) is null)
@@ -443,42 +288,14 @@ public sealed class Worker(
                         });
                     }
 
-                    db.SubsessionResults.Add(new SubsessionResult
-                    {
-                        SubsessionId              = subsessionId,
-                        CustId                    = (long)r.CustomerId!.Value,
-                        CarId                     = r.CarId,
-                        CarClassId                = r.CarClassId,
-                        FinishPosition            = r.FinishPosition,
-                        FinishPositionInClass     = r.FinishPositionInClass,
-                        StartingPosition          = r.StartingPosition,
-                        StartingPositionInClass   = r.StartingPositionInClass ?? 0,
-                        Incidents                 = r.Incidents,
-                        BestLapSeconds            = bestLapSecs,
-                        AverageLapSeconds         = avgLapSecs,
-                        LapsComplete              = r.LapsComplete,
-                        LapsLead                  = r.LapsLead,
-                        ChampPoints               = r.ChampPoints,
-                        AggregateChampPoints      = r.AggregateChampionshipPoints,
-                        NewIRating                = r.NewIRating,
-                        OldIRating                = r.OldIRating,
-                        NewCpi                    = (double)r.NewCornersPerIncident,
-                        OldCpi                    = (double)r.OldCornersPerIncident,
-                        ReasonOut                 = r.ReasonOut,
-                        ReasonOutId               = r.ReasonOutId,
-                        Division                  = r.Division,
-                        DropRace                  = r.DropRace,
-                        Interval                  = r.ClassInterval?.TotalSeconds ?? -1,
-                        DisplayName               = r.DisplayName,
-                        QualLapSeconds            = SubsessionIndexer.LapSecondsOrSentinel(r.QualifyingLapTime),
-                        NewSubLevel               = r.NewSubLevel,
-                        OldSubLevel               = r.OldSubLevel,
-                        NewTtRating               = r.NewTimeTrialRating,
-                        OldTtRating               = r.OldTimeTrialRating,
-                    });
+                    db.SubsessionResults.Add(SubsessionMapper.ToResult(subsessionId, r));
                 }
 
                 await db.SaveChangesAsync(ct);
+
+                // A season can contain thousands of result rows. Detach the stored subsession graph
+                // after each successful write so EF does not retain every prior race and driver in
+                // the change tracker for the rest of this long-lived ingestion run.
                 db.ChangeTracker.Clear();
                 stored++;
 
