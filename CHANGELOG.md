@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.5] - 2026-08-10
+
+### Fixed
+
+- The Changelog Version CI check no longer fails pull requests it is meant to exempt. A pull request that adds no new dated changelog section — dependency bumps, docs-only work — is supposed to pass immediately, but the check reported a spurious version-drift error on every one of them, blocking otherwise-green branches until the section was pointlessly renumbered.
+
 ## [0.5.4] - 2026-08-10
 
 ### Changed
@@ -499,7 +505,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/jwh3times/apexracers/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/jwh3times/apexracers/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/jwh3times/apexracers/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/jwh3times/apexracers/compare/v0.5.1...v0.5.2

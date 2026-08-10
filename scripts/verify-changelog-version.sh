@@ -70,7 +70,11 @@ base_changelog="$(git -C "$repo_root" show "${base_ref}:CHANGELOG.md" 2>/dev/nul
 # Literal-dot match, so 0.4.1 can never match the 0.4.15 heading.
 top_pattern="${top//./\\.}"
 
-if printf '%s\n' "$base_changelog" | grep -qE "^## \[${top_pattern}\]"; then
+# Here-string, NOT `printf ... | grep -q`: with -q, grep exits the moment it
+# matches and closes the pipe, so printf's remaining writes fail with EPIPE. Under
+# `pipefail` that makes the *successful match* look like a failed test, sending
+# every exempt PR down the drift-error path. A here-string has no reader to close.
+if grep -qE "^## \[${top_pattern}\]" <<<"$base_changelog"; then
   echo "Top CHANGELOG section [${top}] already exists on ${base_ref}; this branch adds no new dated section. OK."
   exit 0
 fi
