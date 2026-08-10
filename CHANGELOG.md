@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.55] - 2026-08-09
+
+### Fixed
+
+- Flag-gated iRacing routes no longer flash the Coming Soon page while feature flags are loading or the signed-in owner changes. The flag context now distinguishes unresolved state from a resolved disabled flag, failures settle ready and fail closed, and the route guard renders nothing until the current owner has a result. A single `useIracingSurface` hook now owns the `iracing-live`-or-`iracing-demo` rule used by navigation and driver/profile surfaces, preventing those consumers from drifting.
+
 ## [0.4.54] - 2026-08-09
 
 ### Fixed
@@ -459,7 +465,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.54...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.55...HEAD
+[0.4.55]: https://github.com/jwh3times/apexracers/compare/v0.4.54...v0.4.55
 [0.4.54]: https://github.com/jwh3times/apexracers/compare/v0.4.53...v0.4.54
 [0.4.53]: https://github.com/jwh3times/apexracers/compare/v0.4.52...v0.4.53
 [0.4.52]: https://github.com/jwh3times/apexracers/compare/v0.4.51...v0.4.52

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type RaceGuideEntry, type CarAnalytics } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { useFeatureFlag } from '../context/FeatureFlagContext';
+import { useIracingSurface } from '../context/FeatureFlagContext';
 import { deriveAlerts, type Alert } from '../utils/alerts';
 
 /**
@@ -13,10 +13,7 @@ import { deriveAlerts, type Alert } from '../utils/alerts';
  */
 export default function NotificationsBell() {
   const { alertsEnabled } = useAuth();
-  const liveFlag = useFeatureFlag('iracing-live');
-  const demoFlag = useFeatureFlag('iracing-demo');
-  // Show iRacing panels when real (live) OR synthetic demo data is available.
-  const showIracing = liveFlag || demoFlag;
+  const { enabled: showIracing } = useIracingSurface();
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 

@@ -13,8 +13,12 @@ vi.mock('../context/AuthContext', () => ({
 }));
 
 let mockFlags: Record<string, boolean> = {};
+let mockFlagsReady = true;
 vi.mock('../context/FeatureFlagContext', () => ({
-  useFeatureFlag: (key: string) => mockFlags[key] ?? false,
+  useIracingSurface: () => ({
+    enabled: (mockFlags['iracing-live'] ?? false) || (mockFlags['iracing-demo'] ?? false),
+    ready: mockFlagsReady,
+  }),
 }));
 
 const adminUser: User = {
@@ -105,6 +109,14 @@ describe('RequireFlag', () => {
     mockUser = null;
     mockLoading = false;
     mockFlags = { 'iracing-live': true };
+    mockFlagsReady = true;
+  });
+
+  it('renders neither the outlet nor ComingSoon while flags are loading', () => {
+    mockFlagsReady = false;
+    renderGuard(<RequireFlag />, '/secret');
+    expect(screen.queryByText('secret content')).not.toBeInTheDocument();
+    expect(screen.queryByText(/live iracing analytics arriving soon/i)).not.toBeInTheDocument();
   });
 
   it('renders the gated outlet when iracing-live is on', () => {

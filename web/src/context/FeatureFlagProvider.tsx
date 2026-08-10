@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../services/api';
 import type { FeatureFlag } from '../services/api';
@@ -39,9 +39,12 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
     };
   }, [owner]);
 
-  const isEnabled = (key: string) => flags.owner === owner && flags.map[key] === true;
-
-  return (
-    <FeatureFlagContext.Provider value={{ isEnabled }}>{children}</FeatureFlagContext.Provider>
+  const ready = flags.owner === owner;
+  const isEnabled = useCallback(
+    (key: string) => ready && flags.map[key] === true,
+    [flags.map, ready]
   );
+  const value = useMemo(() => ({ isEnabled, ready }), [isEnabled, ready]);
+
+  return <FeatureFlagContext.Provider value={value}>{children}</FeatureFlagContext.Provider>;
 }

@@ -8,7 +8,7 @@ import {
   type CarAnalytics,
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { useFeatureFlag } from '../../context/FeatureFlagContext';
+import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
 
@@ -28,10 +28,7 @@ const cardStyle: React.CSSProperties = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
-  const liveFlag = useFeatureFlag('iracing-live');
-  const demoFlag = useFeatureFlag('iracing-demo');
-  // Show iRacing panels when real (live) OR synthetic demo data is available.
-  const showIracing = liveFlag || demoFlag;
+  const { enabled: showIracing } = useIracingSurface();
 
   const [series, setSeries] = useState<Series[]>([]);
   const [laps, setLaps] = useState<PersonalLap[]>([]);
