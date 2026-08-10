@@ -94,7 +94,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 
 **Feature flags**
 
-- Flag feature flag state read from anywhere other than `useFeatureFlags()`.
+- Feature-flag reads belong to the context hooks: `useFeatureFlag(key)` for one key,
+  `useFeatureFlags()` when readiness matters, and `useIracingSurface()` for the
+  `iracing-live`/`iracing-demo` union. Flag consumers that reconstruct that union, show a disabled
+  fallback while `ready` is false, or conditionally call hooks.
 
 **Tests**
 

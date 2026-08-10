@@ -67,7 +67,16 @@ binding follows it — it does not mock `session.ts` itself.
 
 ## Feature flags
 
-`FeatureFlagContext` (`src/context/FeatureFlagContext.tsx`) fetches flags from `GET /api/feature-flags` (public — signed-out visitors fetch the enabled Standard-tier set under a `guest` owner) and caches them; read them through the context hook (`useFeatureFlag(key)`). **Never inline flag logic or conditionally call flag APIs outside the context.**
+`FeatureFlagProvider` fetches `GET /api/feature-flags` for an owner keyed by guest or user ID + role.
+`useFeatureFlags()` exposes `{ isEnabled, ready }`: `ready` is true only when the stored map belongs
+to the current owner, including an empty map settled by a failed request. Owner changes therefore
+fail closed while refetching without treating the stale map as current.
+
+Use `useFeatureFlag(key)` for a single independent flag. Use `useIracingSurface()` anywhere the
+iRacing surface depends on `iracing-live` **OR** `iracing-demo`; it owns both unconditional key reads
+and returns `{ enabled, ready }`. Route guards render no fallback while `ready` is false, then choose
+the gated content or `ComingSoonPage`. Keep flag combination and loading decisions in these context
+hooks rather than re-deriving them in consumers.
 
 ## State management
 

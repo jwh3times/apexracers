@@ -136,11 +136,11 @@ The signed-in session — tokens, decoded claims, persistence, and the silent re
 
 ## Contexts
 
-| Context              | Hook                | Purpose                                                                                                            |
-| -------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `AuthContext`        | `useAuth()`         | User (binding over `session.ts`), login/logout, profile updates, role, alerts toggle                               |
-| `ThemeContext`       | `useTheme()`        | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API                                            |
-| `FeatureFlagContext` | `useFeatureFlags()` | Fetches flags from `/api/feature-flags` (public; signed-out visitors get the Standard set); exposes `hasFlag(key)` |
+| Context              | Hook(s)                                                           | Purpose                                                                                                                                                |
+| -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AuthContext`        | `useAuth()`                                                       | User (binding over `session.ts`), login/logout, profile updates, role, alerts toggle                                                                   |
+| `ThemeContext`       | `useTheme()`                                                      | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API                                                                                |
+| `FeatureFlagContext` | `useFeatureFlags()`, `useFeatureFlag(key)`, `useIracingSurface()` | Fetches the public/current-user flag set; exposes `isEnabled` + owner-specific `ready`, a single-key helper, and the shared live-or-demo surface state |
 
 ## Design system
 

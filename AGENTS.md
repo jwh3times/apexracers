@@ -162,8 +162,10 @@ ordinary feature/fix work. `version.yml` and `/ship` compute that version from t
 > - `iracing-demo` (Alpha-gated) — reveals the same surface backed by clearly-labeled **synthetic** demo
 >   data. `MemberContext` resolves demo users to `DemoData.DriverCustId`.
 >
-> `RequireFlag` / `visibleNav` gate on `iracing-live` **OR** `iracing-demo`. `iracing-demo` is fully
-> functional **only** once a DB is seeded with `ApexRacers.Seeder --demo`.
+> `useIracingSurface` owns the `iracing-live` **OR** `iracing-demo` decision used by `RequireFlag`,
+> `visibleNav`, and in-page panels. `RequireFlag` renders nothing until the current flag owner is
+> ready, then chooses the child or `ComingSoonPage`; `iracing-demo` is fully functional **only** once
+> a DB is seeded with `ApexRacers.Seeder --demo`.
 
 ---
 
@@ -512,10 +514,10 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
 | `/profile` · `/settings` · `/support` · `/admin`                        | profile / settings / support / admin (AdminGuard) |
 
 - **`AdminGuard`** (wraps `/admin`): unauthenticated → `/login`; authed non-admin → `/dashboard`.
-- **`RequireFlag`** (wraps iRacing-dependent routes): renders `ComingSoonPage` when **both**
-  `iracing-live` and `iracing-demo` are off; else renders the child. Both hooks called unconditionally
-  and OR-ed. Auth-independent. Dashboard/Profile degrade gracefully; their in-page iRacing panels
-  OR-gate the same way (`showIracing = liveFlag || demoFlag`), so they render under demo too.
+- **`RequireFlag`** (wraps iRacing-dependent routes): renders nothing while feature flags for the
+  current guest/user/role owner are unresolved, then renders `ComingSoonPage` when both
+  `iracing-live` and `iracing-demo` are off or the child when either is on. Auth-independent.
+  `useIracingSurface()` owns that union for the guard, navigation, alerts, Dashboard, and Profile.
 
 #### Components, contexts, utilities
 
@@ -527,7 +529,8 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
 - **Contexts** (`web/src/context/`): `AuthContext` (signed-in user, login/logout, `alertsEnabled` — a
   thin React binding over the session module, which owns the token pair, claims, persistence, and
   silent refresh), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
-  `FeatureFlagContext` (`useFeatureFlag(key)`).
+  `FeatureFlagContext` (`useFeatureFlags()` exposes `isEnabled` + owner-specific `ready`;
+  `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `topPercentLabel`,
   `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
 
