@@ -163,7 +163,7 @@ describe('AnalyticsPage', () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     renderPage();
     await waitFor(() => {
-      expect(mockGetMyAnalytics).toHaveBeenCalledWith(1);
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(1, expect.any(AbortSignal));
     });
   });
 
@@ -265,7 +265,9 @@ describe('AnalyticsPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
-    await waitFor(() => expect(mockGetMyAnalytics).toHaveBeenCalledWith(2));
+    await waitFor(() =>
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(2, expect.any(AbortSignal))
+    );
   });
 
   it('shows error message when getMyAnalytics fails', async () => {

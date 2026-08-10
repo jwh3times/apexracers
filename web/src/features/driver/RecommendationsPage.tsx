@@ -153,7 +153,7 @@ export default function RecommendationsPage() {
   const seriesIdParam = searchParams.get('seriesId');
 
   const [paceSource, setPaceSource] = useState<PaceSourceValue>({ mode: 'official', sessions: [] });
-  const seriesResource = useResource(() => api.getSeries(), []);
+  const seriesResource = useResource(signal => api.getSeries(signal), []);
   const allSeries = useMemo(
     () =>
       seriesResource.status === 'ok'
@@ -168,13 +168,18 @@ export default function RecommendationsPage() {
   const weekNumber = selectedSeries?.currentWeekNumber ?? null;
 
   const recommendations = useResource(
-    () => {
+    signal => {
       const blended = paceSource.mode === 'blend';
-      return api.getRecommendations(selectedSeriesId!, weekNumber!, {
-        includePersonalLaps: blended,
-        personalLapTypes:
-          blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
-      });
+      return api.getRecommendations(
+        selectedSeriesId!,
+        weekNumber!,
+        {
+          includePersonalLaps: blended,
+          personalLapTypes:
+            blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
+        },
+        signal
+      );
     },
     [selectedSeriesId, weekNumber, paceSource],
     {

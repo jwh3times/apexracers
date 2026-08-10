@@ -66,7 +66,7 @@ function StatCard({
 }
 
 export default function MyLapsPage() {
-  const resource = useResource(() => api.getMyLaps(), [], {
+  const resource = useResource(signal => api.getMyLaps(signal), [], {
     fallbackMessage: 'Failed to load laps.',
   });
   const laps = resource.status === 'ok' ? resource.data : [];

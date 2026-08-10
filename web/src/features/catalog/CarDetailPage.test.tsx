@@ -58,7 +58,7 @@ describe('CarDetailPage', () => {
 
   it('fetches the car by its route id', async () => {
     renderPage();
-    await waitFor(() => expect(mockGetCar).toHaveBeenCalledWith(132));
+    await waitFor(() => expect(mockGetCar).toHaveBeenCalledWith(132, expect.any(AbortSignal)));
   });
 
   it('renders the name, specs, car classes, and your best laps', async () => {

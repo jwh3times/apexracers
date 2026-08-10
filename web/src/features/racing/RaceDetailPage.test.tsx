@@ -101,7 +101,9 @@ describe('RaceDetailPage', () => {
   it('fetches the subsession from the route param', async () => {
     mockGetSubsession.mockResolvedValue(DETAIL);
     renderPage();
-    await waitFor(() => expect(mockGetSubsession).toHaveBeenCalledWith(100));
+    await waitFor(() =>
+      expect(mockGetSubsession).toHaveBeenCalledWith(100, expect.any(AbortSignal))
+    );
   });
 
   it('renders the header KPIs', async () => {
@@ -184,7 +186,7 @@ describe('RaceDetailPage', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText(/your race pace/i)).toBeInTheDocument());
-    expect(mockGetDriverLaps).toHaveBeenCalledWith(100, 111);
+    expect(mockGetDriverLaps).toHaveBeenCalledWith(100, 111, expect.any(AbortSignal));
     expect(screen.getByRole('img', { name: /lap time trace/i })).toBeInTheDocument();
   });
 

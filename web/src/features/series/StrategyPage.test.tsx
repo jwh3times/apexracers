@@ -125,7 +125,7 @@ describe('StrategyPage', () => {
   it('fetches strategy for the route series and week ids', async () => {
     mockGet.mockResolvedValue(makeData());
     renderPage();
-    await waitFor(() => expect(mockGet).toHaveBeenCalledWith(444, 3));
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith(444, 3, expect.any(AbortSignal)));
   });
 
   it('renders the header, track context chips and high weather-risk banner', async () => {

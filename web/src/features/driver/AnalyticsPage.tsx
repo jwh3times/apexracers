@@ -208,21 +208,25 @@ export default function AnalyticsPage() {
   const [computing, setComputing] = useState(false);
   const [computeError, setComputeError] = useState<string | null>(null);
 
-  const seriesResource = useResource(() => api.getSeries(), []);
+  const seriesResource = useResource(signal => api.getSeries(signal), []);
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];
   const selectedSeriesId = seriesSelection ?? series[0]?.id ?? null;
   const analyticsResource = useResource(
-    () => api.getMyAnalytics(selectedSeriesId!),
+    signal => api.getMyAnalytics(selectedSeriesId!, signal),
     [user, viewMode, selectedSeriesId, refreshVersion],
     {
       enabled: !!user && viewMode === 'series' && selectedSeriesId !== null,
       fallbackMessage: 'Failed to load analytics.',
     }
   );
-  const allAnalyticsResource = useResource(() => api.getMyAnalytics(), [user, viewMode], {
-    enabled: !!user && viewMode === 'car',
-    fallbackMessage: 'Failed to load analytics.',
-  });
+  const allAnalyticsResource = useResource(
+    signal => api.getMyAnalytics(undefined, signal),
+    [user, viewMode],
+    {
+      enabled: !!user && viewMode === 'car',
+      fallbackMessage: 'Failed to load analytics.',
+    }
+  );
   const analytics = analyticsResource.status === 'ok' ? analyticsResource.data : [];
   const allAnalytics = allAnalyticsResource.status === 'ok' ? allAnalyticsResource.data : [];
 

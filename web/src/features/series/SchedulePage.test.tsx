@@ -76,7 +76,7 @@ describe('SchedulePage', () => {
   it('fetches the schedule for the route series id', async () => {
     mockGetSchedule.mockResolvedValue(SCHEDULE);
     renderPage();
-    await waitFor(() => expect(mockGetSchedule).toHaveBeenCalledWith(444));
+    await waitFor(() => expect(mockGetSchedule).toHaveBeenCalledWith(444, expect.any(AbortSignal)));
   });
 
   it('renders a card per week with track and series names', async () => {

@@ -13,7 +13,7 @@ function pretty(slug: string): string {
 }
 
 export default function CarsPage() {
-  const resource = useResource(() => api.getCars(), [], {
+  const resource = useResource(signal => api.getCars(signal), [], {
     fallbackMessage: 'Failed to load the car catalog.',
   });
   const [search, setSearch] = useState('');

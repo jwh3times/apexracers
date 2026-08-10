@@ -96,7 +96,7 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
 
 export default function RacesPage() {
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null);
-  const resource = useResource(() => api.getRaceHistory(), [], {
+  const resource = useResource(signal => api.getRaceHistory(signal), [], {
     fallbackMessage: 'Failed to load race history.',
   });
 

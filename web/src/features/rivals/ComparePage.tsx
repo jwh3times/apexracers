@@ -288,12 +288,16 @@ export default function ComparePage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [comparison, setComparison] = useState<ComparisonState>({ status: 'idle' });
 
-  const rivalsResource = useResource(() => api.getRivals(), [rivalVersion], {
+  const rivalsResource = useResource(signal => api.getRivals(signal), [rivalVersion], {
     fallbackMessage: 'Failed to load rivals.',
   });
-  const suggestionsResource = useResource(() => api.getRivalSuggestions(), [rivalVersion]);
+  const suggestionsResource = useResource(
+    signal => api.getRivalSuggestions(signal),
+    [rivalVersion],
+    { onNotLinked: { fallback: [] }, onError: { fallback: [] } }
+  );
   const rivals = rivalsResource.status === 'ok' ? rivalsResource.data : [];
-  // Suggestions are an optional enhancement: not-linked/unavailable deliberately means none.
+  // Suggestions are an optional enhancement; the resource policy settles failures to an empty list.
   const suggestions = suggestionsResource.status === 'ok' ? suggestionsResource.data : [];
 
   // Debounced driver name search. All state updates happen inside the timer (never

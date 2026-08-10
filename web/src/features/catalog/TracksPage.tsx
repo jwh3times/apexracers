@@ -13,7 +13,7 @@ function pretty(slug: string): string {
 }
 
 export default function TracksPage() {
-  const resource = useResource(() => api.getTracks(), [], {
+  const resource = useResource(signal => api.getTracks(signal), [], {
     fallbackMessage: 'Failed to load the track catalog.',
   });
   const [search, setSearch] = useState('');

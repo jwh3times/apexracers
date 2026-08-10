@@ -16,16 +16,20 @@ export default function DashboardPage() {
   const displayName = user?.displayName ?? 'Driver';
   const { enabled: showIracing } = useIracingSurface();
 
-  const lapsResource = useResource(() => api.getMyLaps(), []);
-  const seriesResource = useResource(() => api.getSeries(), [showIracing], {
+  const lapsResource = useResource(signal => api.getMyLaps(signal), []);
+  const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
     enabled: showIracing,
   });
-  const profileResource = useResource(() => api.getProfileStats(), [showIracing], {
+  const profileResource = useResource(signal => api.getProfileStats(signal), [showIracing], {
     enabled: showIracing,
   });
-  const analyticsResource = useResource(() => api.getMyAnalytics(), [showIracing], {
-    enabled: showIracing,
-  });
+  const analyticsResource = useResource(
+    signal => api.getMyAnalytics(undefined, signal),
+    [showIracing],
+    {
+      enabled: showIracing,
+    }
+  );
 
   const laps = lapsResource.status === 'ok' ? lapsResource.data : [];
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];

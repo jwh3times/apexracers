@@ -29,6 +29,24 @@ describe('useResource', () => {
     await waitFor(() => expect(result.current).toEqual({ status: 'not-linked' }));
   });
 
+  it('settles a deliberately optional not-linked resource to its declared fallback', async () => {
+    const fetcher = vi.fn().mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    const { result } = renderHook(() =>
+      useResource(fetcher, [], { onNotLinked: { fallback: [] as string[] } })
+    );
+
+    await waitFor(() => expect(result.current).toEqual({ status: 'ok', data: [] }));
+  });
+
+  it('settles a deliberately optional failed resource to its declared fallback', async () => {
+    const fetcher = vi.fn().mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() =>
+      useResource(fetcher, [], { onError: { fallback: [] as string[] } })
+    );
+
+    await waitFor(() => expect(result.current).toEqual({ status: 'ok', data: [] }));
+  });
+
   it('coerces non-Error rejections to the configured fallback', async () => {
     const fetcher = vi.fn().mockRejectedValue('offline');
     const { result } = renderHook(() =>

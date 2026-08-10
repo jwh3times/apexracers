@@ -103,9 +103,10 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
 }
 
 function PaceCard({ subsessionId, custId }: { subsessionId: number; custId: number }) {
-  const resource = useResource<DriverLaps>(
-    () => api.getDriverLaps(subsessionId, custId),
-    [subsessionId, custId]
+  const resource = useResource<DriverLaps | null>(
+    signal => api.getDriverLaps(subsessionId, custId, signal),
+    [subsessionId, custId],
+    { onNotLinked: { fallback: null }, onError: { fallback: null } }
   );
   const data = resource.status === 'ok' ? resource.data : null;
 
@@ -139,7 +140,7 @@ export default function RaceDetailPage() {
   const { subsessionId } = useParams<{ subsessionId: string }>();
   const id = Number(subsessionId);
   const { user } = useAuth();
-  const resource = useResource<SubsessionDetail>(() => api.getSubsession(id), [id], {
+  const resource = useResource<SubsessionDetail>(signal => api.getSubsession(id, signal), [id], {
     fallbackMessage: 'Failed to load race.',
   });
 

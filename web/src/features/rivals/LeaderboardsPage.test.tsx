@@ -52,7 +52,9 @@ describe('LeaderboardsPage', () => {
   it('loads sports car (category 5) by default and renders rows', async () => {
     mockGetLeaderboard.mockResolvedValue(ROWS);
     render(<LeaderboardsPage />);
-    await waitFor(() => expect(mockGetLeaderboard).toHaveBeenCalledWith(5));
+    await waitFor(() =>
+      expect(mockGetLeaderboard).toHaveBeenCalledWith(5, expect.any(AbortSignal))
+    );
     expect(screen.getByText('Fast Guy')).toBeInTheDocument();
     expect(screen.getByText('9,000')).toBeInTheDocument();
   });
@@ -60,10 +62,14 @@ describe('LeaderboardsPage', () => {
   it('refetches when a different category chip is selected', async () => {
     mockGetLeaderboard.mockResolvedValue(ROWS);
     render(<LeaderboardsPage />);
-    await waitFor(() => expect(mockGetLeaderboard).toHaveBeenCalledWith(5));
+    await waitFor(() =>
+      expect(mockGetLeaderboard).toHaveBeenCalledWith(5, expect.any(AbortSignal))
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Oval' }));
-    await waitFor(() => expect(mockGetLeaderboard).toHaveBeenCalledWith(1));
+    await waitFor(() =>
+      expect(mockGetLeaderboard).toHaveBeenCalledWith(1, expect.any(AbortSignal))
+    );
   });
 
   it("highlights the logged-in driver's row", async () => {

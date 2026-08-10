@@ -118,7 +118,7 @@ function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | nu
 export default function SchedulePage() {
   const { seriesId } = useParams<{ seriesId: string }>();
   const id = Number(seriesId);
-  const resource = useResource(() => api.getSchedule(id), [id], {
+  const resource = useResource(signal => api.getSchedule(id, signal), [id], {
     fallbackMessage: 'Failed to load schedule.',
   });
 

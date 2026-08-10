@@ -159,7 +159,9 @@ describe('StandingsPage', () => {
 
   it('fetches championship standings for the route series id by default', async () => {
     renderPage();
-    await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, undefined));
+    await waitFor(() =>
+      expect(mockGetStandings).toHaveBeenCalledWith(444, undefined, expect.any(AbortSignal))
+    );
   });
 
   it('renders championship rows and series name', async () => {
@@ -171,9 +173,13 @@ describe('StandingsPage', () => {
 
   it('refetches when a different car class chip is selected', async () => {
     renderPage();
-    await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, undefined));
+    await waitFor(() =>
+      expect(mockGetStandings).toHaveBeenCalledWith(444, undefined, expect.any(AbortSignal))
+    );
     fireEvent.click(screen.getByRole('button', { name: 'GT4 Class' }));
-    await waitFor(() => expect(mockGetStandings).toHaveBeenCalledWith(444, 2000));
+    await waitFor(() =>
+      expect(mockGetStandings).toHaveBeenCalledWith(444, 2000, expect.any(AbortSignal))
+    );
   });
 
   it("highlights the logged-in driver's row and shows their division", async () => {
@@ -207,7 +213,9 @@ describe('StandingsPage', () => {
     await waitFor(() => expect(screen.getByText('Leader')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Time Trial' }));
-    await waitFor(() => expect(mockGetTtStandings).toHaveBeenCalledWith(444, undefined));
+    await waitFor(() =>
+      expect(mockGetTtStandings).toHaveBeenCalledWith(444, undefined, expect.any(AbortSignal))
+    );
     expect(screen.getByText('TT Leader')).toBeInTheDocument();
     expect(screen.getByText('2,500')).toBeInTheDocument(); // tt rating
     expect(screen.getByText('No Rating')).toBeInTheDocument();
@@ -220,7 +228,12 @@ describe('StandingsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Qualifying' }));
     await waitFor(() =>
-      expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, undefined)
+      expect(mockGetQualifyResults).toHaveBeenCalledWith(
+        444,
+        undefined,
+        undefined,
+        expect.any(AbortSignal)
+      )
     );
     expect(screen.getByText('Pole Sitter')).toBeInTheDocument();
     expect(screen.getByText('6:15.000')).toBeInTheDocument(); // 375.0s formatted
@@ -228,7 +241,9 @@ describe('StandingsPage', () => {
 
     // Week selector reflects availableWeeks (1-based labels) and refetches on click.
     fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
-    await waitFor(() => expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, 0));
+    await waitFor(() =>
+      expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, 0, expect.any(AbortSignal))
+    );
   });
 
   it('shows an empty-state for qualifying when there are no results', async () => {

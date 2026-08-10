@@ -20,7 +20,7 @@ function countdown(startMs: number, now: number): string {
 
 export default function LivePage() {
   const [now, setNow] = useState(() => Date.now());
-  const resource = useResource(() => api.getRaceGuide(), [], {
+  const resource = useResource(signal => api.getRaceGuide(signal), [], {
     fallbackMessage: 'Failed to load the race guide.',
   });
 

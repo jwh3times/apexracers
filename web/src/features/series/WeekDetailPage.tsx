@@ -60,7 +60,7 @@ export default function WeekDetailPage() {
   const { user } = useAuth();
   const [sort, setSort] = useState<SortMode>('best');
   const detailResource = useResource<WeekDetail>(
-    () => api.getWeekDetail(Number(seriesId), Number(weekNumber)),
+    signal => api.getWeekDetail(Number(seriesId), Number(weekNumber), signal),
     [seriesId, weekNumber],
     {
       enabled: !!seriesId && !!weekNumber,
@@ -71,9 +71,13 @@ export default function WeekDetailPage() {
   // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the
   // column blank rather than surfacing an error on this otherwise-public page.
   const percentileResource = useResource(
-    () => api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber)),
+    signal => api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber), signal),
     [seriesId, weekNumber, user],
-    { enabled: !!seriesId && !!weekNumber && !!user }
+    {
+      enabled: !!seriesId && !!weekNumber && !!user,
+      onNotLinked: { fallback: [] },
+      onError: { fallback: [] },
+    }
   );
   const myPercentiles =
     percentileResource.status === 'ok'

@@ -109,6 +109,15 @@ describe('createHttpClient', () => {
       expect(h.initOf(0).body).toBe(form);
       expect(h.headersOf(0)['Content-Type']).toBeUndefined();
     });
+
+    it('passes the abort signal through to fetch', async () => {
+      const h = harness([response({ json: {} })]);
+      const controller = new AbortController();
+
+      await h.client.request('/api/thing', { signal: controller.signal });
+
+      expect(h.initOf(0).signal).toBe(controller.signal);
+    });
   });
 
   // ── Responses ───────────────────────────────────────────────────────────────
@@ -174,6 +183,19 @@ describe('createHttpClient', () => {
 
       expect(h.initOf(1).method).toBe('PUT');
       expect(h.initOf(1).body).toBe('{"a":1}');
+    });
+
+    it('preserves the abort signal on the replay', async () => {
+      const h = harness(
+        [response({ status: 401, statusText: 'Unauthorized' }), response({ json: {} })],
+        true
+      );
+      const controller = new AbortController();
+
+      await h.client.request('/api/thing', { signal: controller.signal });
+
+      expect(h.initOf(0).signal).toBe(controller.signal);
+      expect(h.initOf(1).signal).toBe(controller.signal);
     });
 
     it('throws without retrying when the refresh fails', async () => {

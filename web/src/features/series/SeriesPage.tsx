@@ -113,7 +113,7 @@ function SeriesCard({ s }: { s: Series }) {
 }
 
 export default function SeriesPage() {
-  const resource = useResource(() => api.getSeries(), [], {
+  const resource = useResource(signal => api.getSeries(signal), [], {
     fallbackMessage: 'Failed to load series.',
   });
   const [search, setSearch] = useState('');

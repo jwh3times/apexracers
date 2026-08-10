@@ -7,9 +7,13 @@ export type Resource<T> =
   | { status: 'not-linked' }
   | { status: 'error'; message: string };
 
-type ResourceOptions = {
+type ResourceFallback<T> = { fallback: T };
+
+type ResourceOptions<T> = {
   enabled?: boolean;
   fallbackMessage?: string;
+  onNotLinked?: ResourceFallback<T>;
+  onError?: ResourceFallback<T>;
 };
 
 const DEFAULT_ERROR = 'Something went wrong. Please try again.';
@@ -26,7 +30,7 @@ function errorMessage(error: unknown, fallback: string): string {
 export function useResource<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
   dependencies: readonly unknown[],
-  options: ResourceOptions = {}
+  options: ResourceOptions<T> = {}
 ): Resource<T> {
   const [resource, setResource] = useState<Resource<T>>({ status: 'loading' });
 
@@ -53,7 +57,15 @@ export function useResource<T>(
       } catch (error: unknown) {
         if (!active) return;
         if (error instanceof IRacingNotLinkedError) {
+          if (options.onNotLinked) {
+            setResource({ status: 'ok', data: options.onNotLinked.fallback });
+            return;
+          }
           setResource({ status: 'not-linked' });
+          return;
+        }
+        if (options.onError) {
+          setResource({ status: 'ok', data: options.onError.fallback });
           return;
         }
         setResource({

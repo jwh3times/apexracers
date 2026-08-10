@@ -15,7 +15,7 @@ function Spec({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function CarDetailPage() {
   const { carId } = useParams<{ carId: string }>();
-  const resource = useResource(() => api.getCar(Number(carId)), [carId], {
+  const resource = useResource(signal => api.getCar(Number(carId), signal), [carId], {
     fallbackMessage: 'Failed to load the car.',
   });
 

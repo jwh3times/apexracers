@@ -48,14 +48,14 @@ export default function StandingsPage() {
   }
 
   const resource = useResource<Payload>(
-    () => {
+    signal => {
       const cls = carClassId ?? undefined;
       return view === 'championship'
-        ? api.getStandings(id, cls).then(data => ({ view: 'championship', data }) as const)
+        ? api.getStandings(id, cls, signal).then(data => ({ view: 'championship', data }) as const)
         : view === 'tt'
-          ? api.getTtStandings(id, cls).then(data => ({ view: 'tt', data }) as const)
+          ? api.getTtStandings(id, cls, signal).then(data => ({ view: 'tt', data }) as const)
           : api
-              .getQualifyResults(id, cls, week ?? undefined)
+              .getQualifyResults(id, cls, week ?? undefined, signal)
               .then(data => ({ view: 'qualifying', data }) as const);
     },
     [id, view, carClassId, week],

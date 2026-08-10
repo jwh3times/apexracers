@@ -83,7 +83,7 @@ describe('RecommendationsPage', () => {
     // The recommendations fetch fires in a follow-up effect after the series
     // auto-selects, so poll for it rather than asserting synchronously.
     await waitFor(() => {
-      expect(mockGetRecs).toHaveBeenCalledWith(2, 8, expect.any(Object));
+      expect(mockGetRecs).toHaveBeenCalledWith(2, 8, expect.any(Object), expect.any(AbortSignal));
     });
   });
 
@@ -92,7 +92,7 @@ describe('RecommendationsPage', () => {
     mockGetRecs.mockResolvedValue([]);
     renderPage('?seriesId=1');
     await waitFor(() => {
-      expect(mockGetRecs).toHaveBeenCalledWith(1, 10, expect.any(Object));
+      expect(mockGetRecs).toHaveBeenCalledWith(1, 10, expect.any(Object), expect.any(AbortSignal));
     });
   });
 
@@ -194,7 +194,8 @@ describe('RecommendationsPage', () => {
       expect(mockGetRecs).toHaveBeenCalledWith(
         1,
         10,
-        expect.objectContaining({ includePersonalLaps: true })
+        expect.objectContaining({ includePersonalLaps: true }),
+        expect.any(AbortSignal)
       )
     );
   });

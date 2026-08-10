@@ -255,7 +255,7 @@ describe('WeekDetailPage', () => {
     mockGetMyWeekPercentiles.mockResolvedValue([{ carId: 1, percentileRank: 92 }]);
     renderPage('1', '10');
     await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
-    expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(1, 10);
+    expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(1, 10, expect.any(AbortSignal));
     // percentileRank 92 → ceil(100-92) = TOP 8%
     expect(screen.getByText('TOP 8%')).toBeInTheDocument();
   });

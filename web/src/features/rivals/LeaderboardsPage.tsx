@@ -16,7 +16,7 @@ const CATEGORIES = [
 export default function LeaderboardsPage() {
   const { user } = useAuth();
   const [categoryId, setCategoryId] = useState(5);
-  const resource = useResource(() => api.getLeaderboard(categoryId), [categoryId], {
+  const resource = useResource(signal => api.getLeaderboard(categoryId, signal), [categoryId], {
     fallbackMessage: 'Failed to load leaderboard.',
   });
 

@@ -15,7 +15,7 @@ function Spec({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function TrackDetailPage() {
   const { trackId } = useParams<{ trackId: string }>();
-  const resource = useResource(() => api.getTrack(Number(trackId)), [trackId], {
+  const resource = useResource(signal => api.getTrack(Number(trackId), signal), [trackId], {
     fallbackMessage: 'Failed to load the track.',
   });
 

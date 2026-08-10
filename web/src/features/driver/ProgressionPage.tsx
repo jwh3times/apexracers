@@ -79,7 +79,7 @@ function CategoryCard({ cat }: { cat: CategoryProgression }) {
 }
 
 export default function ProgressionPage() {
-  const resource = useResource(() => api.getProgression(), [], {
+  const resource = useResource(signal => api.getProgression(signal), [], {
     fallbackMessage: 'Failed to load progression.',
   });
 

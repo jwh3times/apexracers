@@ -190,7 +190,7 @@ export default function StrategyPage() {
   const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const id = Number(seriesId);
   const week = Number(weekNumber);
-  const resource = useResource(() => api.getWeekStrategy(id, week), [id, week], {
+  const resource = useResource(signal => api.getWeekStrategy(id, week, signal), [id, week], {
     fallbackMessage: 'Failed to load strategy.',
   });
 
