@@ -24,8 +24,7 @@ public class AuthServiceTests
         // Password reset tokens are produced by DataProtectorTokenProvider, which needs
         // data-protection services + the default token providers registered.
         services.AddDataProtection();
-        services.AddDbContext<AppDbContext>(o =>
-            o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddScoped(_ => DbContextFactory.CreateInMemory());
         services.AddIdentityCore<ApplicationUser>(o =>
         {
             o.Password.RequireDigit          = false;
