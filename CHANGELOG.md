@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.4.54] - 2026-08-09
+
+### Fixed
+
+- Demo cache rows now share one owned sentinel-range contract across the Seeder, verifier, API cleanup, and production purge SQL. The SQL lower bound is an explicit UTC `timestamptz` instant rather than a session-time-zone-dependent date, and routine cache cleanup explicitly preserves every row in the sentinel range even if its cutoff advances beyond year 9000. Tests pin the below/at/above boundary, the exact SQL operator and UTC value, and preservation of both threshold and writer-sentinel rows.
+
 ## [0.4.53] - 2026-08-09
 
 ### Changed
@@ -453,7 +459,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.53...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.4.54...HEAD
+[0.4.54]: https://github.com/jwh3times/apexracers/compare/v0.4.53...v0.4.54
 [0.4.53]: https://github.com/jwh3times/apexracers/compare/v0.4.52...v0.4.53
 [0.4.52]: https://github.com/jwh3times/apexracers/compare/v0.4.51...v0.4.52
 [0.4.51]: https://github.com/jwh3times/apexracers/compare/v0.4.50...v0.4.51
