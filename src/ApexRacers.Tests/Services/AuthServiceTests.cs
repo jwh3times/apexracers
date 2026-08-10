@@ -57,7 +57,9 @@ public class AuthServiceTests
         // Bound the same way production binds it, so the tests exercise the real defaults rather
         // than a second set invented here.
         var jwt = JwtSettings.FromConfiguration(config);
-        return new AuthService(userManager, config, jwt, db, emailSender ?? new FakeEmailSender());
+        var refreshTokens = new RefreshTokenStore(db, TimeProvider.System);
+        return new AuthService(
+            userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender());
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)

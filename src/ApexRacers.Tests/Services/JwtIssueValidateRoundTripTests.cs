@@ -68,11 +68,13 @@ public class JwtIssueValidateRoundTripTests
             })
             .Build();
 
+        var refreshTokens = new RefreshTokenStore(
+            provider.GetRequiredService<AppDbContext>(), TimeProvider.System);
         var service = new AuthService(
             provider.GetRequiredService<UserManager<ApplicationUser>>(),
             config,
             jwt,
-            provider.GetRequiredService<AppDbContext>(),
+            refreshTokens,
             new FakeEmailSender());
 
         var result = await service.RegisterAsync(

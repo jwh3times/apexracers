@@ -194,6 +194,8 @@ builder.Services.AddScoped<PercentileCalculationService>();
 builder.Services.AddScoped<CarRecommendationService>();
 builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<UserAnalyticsService>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddScoped<RefreshTokenStore>();
 builder.Services.AddScoped<AuthService>();
 
 var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
