@@ -378,7 +378,7 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 - `PersonalBestQuery` — shared per-car-and-track personal-best projection (fastest or most-recent
   order), used by `PersonalLapService` and the catalog services' PB overlays instead of each holding
   its own copy. See `dotnet-api` for the two invariants it enforces.
-- `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired cache rows every 6 h.
+- `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired non-demo cache rows every 6 h.
 - `AuthService` — registration, login, JWT issuance, profile/password/email-change, and reset; delegates the refresh-token lifecycle to `RefreshTokenStore`. Needs `AddDefaultTokenProviders()`. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`) and injected into both the issuing side (`AuthService`) and the validating side (`TokenValidationParameters`) — see `dotnet-api` for the rule.
 - `RefreshTokenStore` — owns issue/rotate/revoke/revoke-all/retention cleanup over an injected `TimeProvider`. Its canonical active predicate is `RevokedAt == null && ExpiresAt > now`; issuance caps active tokens at 5 per user, and rotation revokes + inserts in one save. Raw tokens leave only as return values; persistence stores their SHA-256 hashes.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
@@ -456,12 +456,16 @@ Every cache key and its TTL is authored once, as a `CacheSpec` factory on
 `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the single
 source of truth for key format and freshness window, not this prose; a new cache-backed read path adds
 a factory there rather than interpolating a key at the call site. Eviction is TTL-only (lazy);
-`ExternalDataCacheCleanupService` purges long-expired rows.
+`ExternalDataCacheCleanupService` purges long-expired rows below the inclusive demo sentinel range and
+explicitly preserves that range even if the cleanup cutoff reaches it.
 
 **Demo cache seeding** (`ApexRacers.Seeder --demo` → `DemoCacheSeeder`): seeds `ExternalDataCache` rows
 with synthetic mapped DTOs under each service's **exact** runtime cache keys — enforced by both trees
 calling the same `IRacingCacheKeys` factories rather than by hand-matching interpolated strings — with
-a far-future `ExpiresAt` sentinel (`>= 9000-01-01`) so cleanup never evicts them; also seeds synthetic
+a far-future `ExpiresAt` sentinel so cleanup never evicts them. `Core.DemoData` owns both the inclusive
+range threshold (`CacheSentinelThreshold`, `9000-01-01T00:00:00Z`) and the value writers use
+(`CacheSentinel`, `9999-01-01T00:00:00Z`); `purge_demo_data.sql` is the explicit UTC SQL mirror of the
+threshold and `>=` operator. The seeder also seeds synthetic
 `SeasonCarBop`, `Week.WeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily

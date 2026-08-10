@@ -64,15 +64,30 @@ public class DemoSeedVerifierTests
     }
 
     [Fact]
-    public async Task NonSentinelExpiry_FailsSentinelCheck()
+    public async Task SentinelChecks_UseTheOwnedThresholdAsAnInclusiveRange()
     {
         await using var db = DbContextFactory.CreateInMemory();
         await SeedHappyPathAsync(db);
-        var row = db.ExternalDataCaches.First();
-        row.ExpiresAt = DateTimeOffset.UtcNow.AddHours(1);
+        var below = db.ExternalDataCaches.First();
+        below.ExpiresAt = DemoCache.SentinelThreshold.AddTicks(-1);
         await db.SaveChangesAsync(Ct);
-        var checks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
-        Assert.Contains(checks, c => c.Name == "sentinel-expiry" && !c.Passed);
+
+        var belowChecks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
+        Assert.Contains(belowChecks, check =>
+            check.Name == "sentinel-expiry" && !check.Passed);
+
+        below.ExpiresAt = DemoCache.SentinelThreshold;
+        await db.SaveChangesAsync(Ct);
+
+        var inclusiveChecks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
+        Assert.Contains(inclusiveChecks, check =>
+            check.Name == "sentinel-expiry" && check.Passed);
+
+        var teardownChecks = await DemoSeedVerifier.VerifyTeardownAsync(db, Ct);
+        var sentinelCheck = Assert.Single(
+            teardownChecks, check => check.Name == "no-sentinel-cache");
+        Assert.False(sentinelCheck.Passed);
+        Assert.Equal($"{db.ExternalDataCaches.Count()} sentinel rows remain", sentinelCheck.Detail);
     }
 
     [Fact]

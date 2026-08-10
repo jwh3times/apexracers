@@ -1,4 +1,7 @@
 using System.Text.Json;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +41,35 @@ public class DemoCacheTests
     }
 
     [Fact]
-    public void Sentinel_IsBeyondPurgeMarker() =>
-        Assert.True(DemoCache.Sentinel >= new DateTimeOffset(9000, 1, 1, 0, 0, 0, TimeSpan.Zero));
+    public void Sentinel_IsInsideTheOwnedSentinelRange() =>
+        Assert.True(DemoCache.Sentinel >= DemoCache.SentinelThreshold);
+
+    [Fact]
+    public void ProductionPurgeSql_MatchesTheOwnedThresholdAndRangeOperator()
+    {
+        var path = PurgeSqlPath();
+        var sql = File.ReadAllText(path);
+        var delete = Regex.Match(
+            sql,
+            """DELETE\s+FROM\s+iracing\."ExternalDataCaches"\s+WHERE\s+"ExpiresAt"\s*(?<operator>>=|<=|=|>|<)\s*TIMESTAMPTZ\s*'(?<threshold>[^']+)'\s*;""",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+        Assert.True(delete.Success,
+            $"Could not find the production ExternalDataCaches sentinel DELETE in {path}.");
+        Assert.Equal(">=", delete.Groups["operator"].Value);
+        var threshold = DateTimeOffset.Parse(
+            delete.Groups["threshold"].Value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal);
+        Assert.Equal(
+            DemoCache.SentinelThreshold,
+            threshold);
+        Assert.Contains("DemoCache.SentinelThreshold", sql, StringComparison.Ordinal);
+        Assert.Contains("DemoData.CacheSentinelThreshold", sql, StringComparison.Ordinal);
+    }
+
+    private static string PurgeSqlPath([CallerFilePath] string sourceFile = "") =>
+        Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(sourceFile)!, "..", "..", "ApexRacers.Data", "Seeds",
+            "purge_demo_data.sql"));
 }

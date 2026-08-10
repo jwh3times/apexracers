@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
+using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Xunit;
 
@@ -53,5 +54,28 @@ public class ExternalDataCacheCleanupServiceTests
 
         Assert.Equal(0, removed);
         Assert.Single(db.ExternalDataCaches);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredAsync_AtSentinelThreshold_PreservesTheInclusiveSentinelRange()
+    {
+        // MaxValue proves preservation is an explicit predicate, not an accident of today's date:
+        // every sentinel-range row is before this cutoff, but cleanup must still retain it.
+        await using var db = DbContextFactory.CreateInMemory();
+        db.ExternalDataCaches.AddRange(
+            Row("below-threshold", DemoCache.SentinelThreshold.AddTicks(-1)),
+            Row("at-threshold", DemoCache.SentinelThreshold),
+            Row("writer-sentinel", DemoCache.Sentinel));
+        await db.SaveChangesAsync(Ct);
+
+        var removed = await ExternalDataCacheCleanupService.PurgeExpiredAsync(
+            db, DateTimeOffset.MaxValue, TimeSpan.Zero, Ct);
+
+        Assert.Equal(1, removed);
+        var remaining = db.ExternalDataCaches
+            .Select(cache => cache.CacheKey)
+            .OrderBy(key => key)
+            .ToList();
+        Assert.Equal(["at-threshold", "writer-sentinel"], remaining);
     }
 }
