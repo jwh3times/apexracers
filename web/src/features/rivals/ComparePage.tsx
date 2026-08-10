@@ -4,23 +4,16 @@ import {
   api,
   ApiError,
   IRacingNotLinkedError,
-  type Rival,
-  type RivalSuggestion,
   type DriverSearchResult,
   type DriverComparison,
   type ComparisonSide,
 } from '../../services/api';
 import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import IRatingCompareChart from '../../components/IRatingCompareChart';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
 const RIVAL_COLOR = '#f5a623';
 
 type ComparisonState =
@@ -32,8 +25,8 @@ type ComparisonState =
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div className="card-hp border-b border-line-2" style={scanTexture}>
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2">
         <h3 className="text-section-head text-on-surface">{title}</h3>
       </div>
       <div className="card-p">{children}</div>
@@ -288,46 +281,24 @@ function HeadToHead({ data }: { data: DriverComparison }) {
 
 export default function ComparePage() {
   const demoFlag = useFeatureFlag('iracing-demo');
-  const [rivals, setRivals] = useState<Rival[]>([]);
-  const [suggestions, setSuggestions] = useState<RivalSuggestion[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [rivalVersion, setRivalVersion] = useState(0);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<DriverSearchResult[]>([]);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [comparison, setComparison] = useState<ComparisonState>({ status: 'idle' });
 
-  // `isActive` lets the mount effect drop a result that landed after unmount; the add/remove
-  // handlers pass nothing and always apply.
-  const reloadRivals = (isActive: () => boolean = () => true) =>
-    api
-      .getRivals()
-      .then(rows => {
-        if (isActive()) setRivals(rows);
-      })
-      .catch((e: unknown) => {
-        if (isActive()) setLoadError(e instanceof Error ? e.message : 'Failed to load rivals.');
-      });
-
-  const reloadSuggestions = (isActive: () => boolean = () => true) =>
-    api
-      .getRivalSuggestions()
-      .then(rows => {
-        if (isActive()) setSuggestions(rows);
-      })
-      .catch(() => {
-        if (isActive()) setSuggestions([]); // not-linked / unavailable → no suggestions
-      });
-
-  useEffect(() => {
-    let active = true;
-    const isActive = () => active;
-    void reloadRivals(isActive);
-    void reloadSuggestions(isActive);
-    return () => {
-      active = false;
-    };
-  }, []);
+  const rivalsResource = useResource(signal => api.getRivals(signal), [rivalVersion], {
+    fallbackMessage: 'Failed to load rivals.',
+  });
+  const suggestionsResource = useResource(
+    signal => api.getRivalSuggestions(signal),
+    [rivalVersion],
+    { onNotLinked: { fallback: [] }, onError: { fallback: [] } }
+  );
+  const rivals = rivalsResource.status === 'ok' ? rivalsResource.data : [];
+  // Suggestions are an optional enhancement; the resource policy settles failures to an empty list.
+  const suggestions = suggestionsResource.status === 'ok' ? suggestionsResource.data : [];
 
   // Debounced driver name search. All state updates happen inside the timer (never
   // synchronously in the effect body) so short/cleared terms also settle after the debounce.
@@ -362,12 +333,14 @@ export default function ComparePage() {
     };
   }, [term]);
 
-  const followedIds = useMemo(() => new Set(rivals.map(r => r.custId)), [rivals]);
+  const followedIds = useMemo(
+    () => new Set(rivalsResource.status === 'ok' ? rivalsResource.data.map(r => r.custId) : []),
+    [rivalsResource]
+  );
 
   const add = async (custId: number, displayName: string) => {
     await api.addRival(custId, displayName);
-    await reloadRivals();
-    await reloadSuggestions();
+    setRivalVersion(version => version + 1);
     setResults(rs => rs.filter(r => r.custId !== custId));
   };
 
@@ -377,7 +350,7 @@ export default function ComparePage() {
       setSelected(null);
       setComparison({ status: 'idle' });
     }
-    await reloadRivals();
+    setRivalVersion(version => version + 1);
   };
 
   const compare = (custId: number) => {
@@ -405,14 +378,12 @@ export default function ComparePage() {
         <h1 className="text-page-title text-on-surface mt-2">Driver Comparison</h1>
       </div>
 
-      {loadError && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error mb-6"
-          style={cardStyle}
-        >
-          {loadError}
-        </div>
-      )}
+      <div className="mb-6">
+        <ResourceView
+          resource={rivalsResource}
+          notLinkedReason="Link your iRacing account to follow and compare rivals."
+        />
+      </div>
 
       <div className="grid gap-fluid-lg lg:grid-cols-[minmax(0,22rem)_1fr]">
         {/* Rival manager */}
@@ -531,10 +502,7 @@ export default function ComparePage() {
         {/* Comparison */}
         <div className="flex flex-col gap-fluid">
           {comparison.status === 'idle' && (
-            <div
-              className="card-r border border-line-2 bg-surface p-8 text-center text-body-fluid text-on-surface-variant"
-              style={cardStyle}
-            >
+            <div className="card-r card-shadow border border-line-2 bg-surface p-8 text-center text-body-fluid text-on-surface-variant">
               Pick a rival and hit Compare to see the head-to-head.
             </div>
           )}
@@ -546,19 +514,13 @@ export default function ComparePage() {
           )}
 
           {comparison.status === 'error' && (
-            <div
-              className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-              style={cardStyle}
-            >
+            <div className="card-r card-shadow border border-line-2 bg-surface p-6 text-body-fluid text-error">
               {comparison.message}
             </div>
           )}
 
           {comparison.status === 'not-linked' && (
-            <div
-              className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center"
-              style={cardStyle}
-            >
+            <div className="card-r card-shadow border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center">
               <span
                 className="material-symbols-outlined text-4xl text-primary-container"
                 aria-hidden="true"

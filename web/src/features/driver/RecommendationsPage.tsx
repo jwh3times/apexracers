@@ -1,55 +1,14 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import {
-  api,
-  IRacingNotLinkedError,
-  type CarRecommendation,
-  type Series,
-} from '../../services/api';
+import { api, type CarRecommendation } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import CalculationSource, { type PaceSourceValue } from '../../components/CalculationSource';
-
-type FetchState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ok'; recs: CarRecommendation[] }
-  | { status: 'not-linked' }
-  | { status: 'error'; message: string };
-
-type FetchAction =
-  | { type: 'FETCH_START' }
-  | { type: 'FETCH_OK'; recs: CarRecommendation[] }
-  | { type: 'FETCH_NOT_LINKED' }
-  | { type: 'FETCH_ERROR'; message: string }
-  | { type: 'RESET' };
-
-function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
-  switch (action.type) {
-    case 'FETCH_START':
-      return { status: 'loading' };
-    case 'FETCH_OK':
-      return { status: 'ok', recs: action.recs };
-    case 'FETCH_NOT_LINKED':
-      return { status: 'not-linked' };
-    case 'FETCH_ERROR':
-      return { status: 'error', message: action.message };
-    case 'RESET':
-      return { status: 'idle' };
-  }
-}
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function ordinal(p: number): string {
   return `${p.toFixed(1)}th`;
 }
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
 
 function HeroCard({
   rec,
@@ -61,10 +20,7 @@ function HeroCard({
   weekNumber: number;
 }) {
   return (
-    <div
-      className="card-r border border-line-2 bg-surface overflow-hidden"
-      style={{ ...cardStyle, ...scanTexture }}
-    >
+    <div className="card-r card-shadow scan-texture border border-line-2 bg-surface overflow-hidden">
       <div className="card-p flex flex-col gap-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -143,7 +99,7 @@ function RecommendationTable({
   return (
     <table className="w-full border-collapse">
       <thead>
-        <tr className="border-b border-line-2" style={scanTexture}>
+        <tr className="scan-texture border-b border-line-2">
           <th className="th-p text-th text-on-surface-variant text-left w-10">#</th>
           <th className="th-p text-th text-on-surface-variant text-left">Car</th>
           <th className="th-p text-th text-on-surface-variant text-right">Best Lap</th>
@@ -196,53 +152,41 @@ export default function RecommendationsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const seriesIdParam = searchParams.get('seriesId');
 
-  const [allSeries, setAllSeries] = useState<Series[]>([]);
-  const [seriesLoading, setSeriesLoading] = useState(true);
   const [paceSource, setPaceSource] = useState<PaceSourceValue>({ mode: 'official', sessions: [] });
-
-  const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' } as FetchState);
-
-  useEffect(() => {
-    api
-      .getSeries()
-      .then(data => {
-        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name));
-        setAllSeries(sorted);
-      })
-      .catch(() => setAllSeries([]))
-      .finally(() => setSeriesLoading(false));
-  }, []);
+  const seriesResource = useResource(signal => api.getSeries(signal), []);
+  const allSeries = useMemo(
+    () =>
+      seriesResource.status === 'ok'
+        ? [...seriesResource.data].sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [seriesResource]
+  );
 
   const selectedSeriesId =
     seriesIdParam != null ? Number(seriesIdParam) : (allSeries[0]?.id ?? null);
   const selectedSeries = allSeries.find(s => s.id === selectedSeriesId) ?? null;
   const weekNumber = selectedSeries?.currentWeekNumber ?? null;
 
-  useEffect(() => {
-    if (selectedSeriesId == null || weekNumber == null) {
-      dispatch({ type: 'RESET' });
-      return;
+  const recommendations = useResource(
+    signal => {
+      const blended = paceSource.mode === 'blend';
+      return api.getRecommendations(
+        selectedSeriesId!,
+        weekNumber!,
+        {
+          includePersonalLaps: blended,
+          personalLapTypes:
+            blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
+        },
+        signal
+      );
+    },
+    [selectedSeriesId, weekNumber, paceSource],
+    {
+      enabled: selectedSeriesId != null && weekNumber != null,
+      fallbackMessage: 'Failed to load recommendations.',
     }
-    dispatch({ type: 'FETCH_START' });
-    const blended = paceSource.mode === 'blend';
-    api
-      .getRecommendations(selectedSeriesId, weekNumber, {
-        includePersonalLaps: blended,
-        personalLapTypes:
-          blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
-      })
-      .then(recs => dispatch({ type: 'FETCH_OK', recs }))
-      .catch((err: unknown) => {
-        if (err instanceof IRacingNotLinkedError) {
-          dispatch({ type: 'FETCH_NOT_LINKED' });
-          return;
-        }
-        dispatch({
-          type: 'FETCH_ERROR',
-          message: err instanceof Error ? err.message : 'Failed to load recommendations.',
-        });
-      });
-  }, [selectedSeriesId, weekNumber, paceSource]);
+  );
 
   return (
     <main className="page-wrap">
@@ -250,17 +194,13 @@ export default function RecommendationsPage() {
         <p className="text-eyebrow text-primary-container">RECOMMENDATIONS</p>
         <h1 className="text-page-title text-on-surface mt-2 mb-4">My Car Recommendations</h1>
 
-        {seriesLoading && (
-          <p className="text-body-fluid text-on-surface-variant animate-pulse">
-            Loading series&hellip;
-          </p>
-        )}
+        <ResourceView resource={seriesResource} />
 
-        {!seriesLoading && allSeries.length === 0 && (
+        {seriesResource.status === 'ok' && allSeries.length === 0 && (
           <p className="text-body-fluid text-on-surface-variant">No active series found.</p>
         )}
 
-        {!seriesLoading && allSeries.length > 0 && (
+        {seriesResource.status === 'ok' && allSeries.length > 0 && (
           <div className="flex items-start justify-between gap-4 flex-wrap">
             {/* Left: week description */}
             <p className="text-body-fluid text-on-surface-variant max-w-prose">
@@ -305,49 +245,15 @@ export default function RecommendationsPage() {
           <CalculationSource value={paceSource} onChange={setPaceSource} />
         )}
 
-        {fetchState.status === 'loading' && (
-          <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
+        {selectedSeriesId != null && weekNumber != null && (
+          <ResourceView
+            resource={recommendations}
+            notLinkedReason="Link your iRacing account to see personalized recommendations."
+          />
         )}
 
-        {fetchState.status === 'error' && (
-          <div
-            className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-            style={cardStyle}
-          >
-            {fetchState.message}
-          </div>
-        )}
-
-        {fetchState.status === 'not-linked' && (
-          <div
-            className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
-            style={cardStyle}
-          >
-            <span
-              className="material-symbols-outlined text-4xl text-primary-container"
-              aria-hidden="true"
-            >
-              link_off
-            </span>
-            <p className="text-body-fluid text-on-surface-variant">
-              Link your iRacing account to see personalized recommendations. Add your iRacing
-              customer ID in{' '}
-              <Link
-                to="/settings"
-                className="text-primary-container underline hover:opacity-80 transition-opacity"
-              >
-                Settings
-              </Link>
-              .
-            </p>
-          </div>
-        )}
-
-        {fetchState.status === 'ok' && fetchState.recs.length === 0 && (
-          <div
-            className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
-            style={cardStyle}
-          >
+        {recommendations.status === 'ok' && recommendations.data.length === 0 && (
+          <div className="card-r card-shadow border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md">
             <span
               className="material-symbols-outlined text-4xl text-on-surface-variant"
               aria-hidden="true"
@@ -367,30 +273,24 @@ export default function RecommendationsPage() {
           </div>
         )}
 
-        {fetchState.status === 'ok' &&
-          fetchState.recs.length > 0 &&
+        {recommendations.status === 'ok' &&
+          recommendations.data.length > 0 &&
           selectedSeriesId != null &&
           weekNumber != null && (
             <>
               <HeroCard
-                rec={fetchState.recs[0]}
+                rec={recommendations.data[0]}
                 seriesId={selectedSeriesId}
                 weekNumber={weekNumber}
               />
 
-              {fetchState.recs.length > 1 && (
-                <div
-                  className="card-r border border-line-2 bg-surface overflow-hidden"
-                  style={cardStyle}
-                >
-                  <div
-                    className="flex items-center justify-between card-hp border-b border-line-2"
-                    style={scanTexture}
-                  >
+              {recommendations.data.length > 1 && (
+                <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+                  <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
                     <h2 className="text-section-head text-on-surface">Other Options</h2>
                   </div>
                   <RecommendationTable
-                    recs={fetchState.recs.slice(1)}
+                    recs={recommendations.data.slice(1)}
                     seriesId={selectedSeriesId}
                     weekNumber={weekNumber}
                   />

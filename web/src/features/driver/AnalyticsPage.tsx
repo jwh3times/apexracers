@@ -1,10 +1,12 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, type Series, type CarAnalytics } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,98 +26,7 @@ function isImproving(history: { percentileRank: number }[]): boolean {
   );
 }
 
-// ── Reducer ───────────────────────────────────────────────────────────────────
-
 type ViewMode = 'series' | 'car';
-
-type State = {
-  viewMode: ViewMode;
-  // Series mode
-  series: Series[];
-  selectedSeriesId: number | null;
-  analytics: CarAnalytics[];
-  seriesLoading: boolean;
-  analyticsLoading: boolean;
-  // Car mode
-  allAnalytics: CarAnalytics[];
-  allAnalyticsLoading: boolean;
-  selectedCarId: number | null;
-  // Shared
-  error: string | null;
-};
-
-type Action =
-  | { type: 'SET_VIEW_MODE'; mode: ViewMode }
-  | { type: 'SERIES_LOADED'; series: Series[] }
-  | { type: 'SELECT_SERIES'; seriesId: number }
-  | { type: 'ANALYTICS_LOADED'; analytics: CarAnalytics[] }
-  | { type: 'ALL_ANALYTICS_LOADED'; analytics: CarAnalytics[] }
-  | { type: 'SELECT_CAR'; carId: number }
-  | { type: 'ANALYTICS_ERROR'; message: string };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'SET_VIEW_MODE':
-      return {
-        ...state,
-        viewMode: action.mode,
-        error: null,
-        allAnalyticsLoading: action.mode === 'car' && state.allAnalytics.length === 0,
-      };
-    case 'SERIES_LOADED':
-      return {
-        ...state,
-        series: action.series,
-        seriesLoading: false,
-        selectedSeriesId: action.series[0]?.id ?? null,
-        analyticsLoading: action.series.length > 0,
-        error: null,
-      };
-    case 'SELECT_SERIES':
-      return { ...state, selectedSeriesId: action.seriesId, analyticsLoading: true, error: null };
-    case 'ANALYTICS_LOADED':
-      return { ...state, analytics: action.analytics, analyticsLoading: false };
-    case 'ALL_ANALYTICS_LOADED': {
-      const uniqueCarIds = [...new Set(action.analytics.map(a => a.carId))];
-      return {
-        ...state,
-        allAnalytics: action.analytics,
-        allAnalyticsLoading: false,
-        selectedCarId: uniqueCarIds[0] ?? null,
-      };
-    }
-    case 'SELECT_CAR':
-      return { ...state, selectedCarId: action.carId };
-    case 'ANALYTICS_ERROR':
-      return {
-        ...state,
-        error: action.message,
-        analyticsLoading: false,
-        allAnalyticsLoading: false,
-      };
-    default:
-      return state;
-  }
-}
-
-const initialState: State = {
-  viewMode: 'series',
-  series: [],
-  selectedSeriesId: null,
-  analytics: [],
-  seriesLoading: true,
-  analyticsLoading: false,
-  allAnalytics: [],
-  allAnalyticsLoading: false,
-  selectedCarId: null,
-  error: null,
-};
-
-// ── Shared styles ─────────────────────────────────────────────────────────────
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -140,10 +51,9 @@ function FeaturedCarCard({
 
   return (
     <div
-      className={`card-r border bg-surface overflow-hidden ${
+      className={`card-r card-shadow border bg-surface overflow-hidden ${
         isGold ? 'border-gold/40' : 'border-line-2'
       }`}
-      style={cardStyle}
     >
       <div className="card-p flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
@@ -239,7 +149,7 @@ function SecondaryCarCard({
   const secondaryLabel = flipLabels ? data.carName : data.seriesName;
 
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
       <div className="card-p flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -291,65 +201,34 @@ function SecondaryCarCard({
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const {
-    viewMode,
-    series,
-    selectedSeriesId,
-    analytics,
-    seriesLoading,
-    analyticsLoading,
-    allAnalytics,
-    allAnalyticsLoading,
-    selectedCarId,
-    error,
-  } = state;
+  const [viewMode, setViewMode] = useState<ViewMode>('series');
+  const [seriesSelection, setSeriesSelection] = useState<number | null>(null);
+  const [carSelection, setCarSelection] = useState<number | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [computing, setComputing] = useState(false);
   const [computeError, setComputeError] = useState<string | null>(null);
 
-  // Series list (for series mode chips)
-  useEffect(() => {
-    let active = true;
-    api
-      .getSeries()
-      .then(s => {
-        if (active) dispatch({ type: 'SERIES_LOADED', series: s });
-      })
-      .catch(() => {
-        if (active) dispatch({ type: 'SERIES_LOADED', series: [] });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Fetches analytics for the given series and dispatches the result; shared by the
-  // effect below and the first-visit "Compute my percentiles" CTA's refetch.
-  // `isActive` lets the effect below drop a result that landed after unmount; the CTA's
-  // refetch passes nothing and always applies.
-  const reloadAnalytics = (seriesId: number, isActive: () => boolean = () => true) =>
-    api
-      .getMyAnalytics(seriesId)
-      .then(a => {
-        if (isActive()) dispatch({ type: 'ANALYTICS_LOADED', analytics: a });
-      })
-      .catch((e: unknown) => {
-        if (isActive())
-          dispatch({
-            type: 'ANALYTICS_ERROR',
-            message: e instanceof Error ? e.message : 'Failed to load analytics.',
-          });
-      });
-
-  // Per-series analytics (series mode)
-  useEffect(() => {
-    if (!user || viewMode !== 'series' || selectedSeriesId === null) return;
-    let active = true;
-    void reloadAnalytics(selectedSeriesId, () => active);
-    return () => {
-      active = false;
-    };
-  }, [user, viewMode, selectedSeriesId]);
+  const seriesResource = useResource(signal => api.getSeries(signal), []);
+  const series = seriesResource.status === 'ok' ? seriesResource.data : [];
+  const selectedSeriesId = seriesSelection ?? series[0]?.id ?? null;
+  const analyticsResource = useResource(
+    signal => api.getMyAnalytics(selectedSeriesId!, signal),
+    [user, viewMode, selectedSeriesId, refreshVersion],
+    {
+      enabled: !!user && viewMode === 'series' && selectedSeriesId !== null,
+      fallbackMessage: 'Failed to load analytics.',
+    }
+  );
+  const allAnalyticsResource = useResource(
+    signal => api.getMyAnalytics(undefined, signal),
+    [user, viewMode],
+    {
+      enabled: !!user && viewMode === 'car',
+      fallbackMessage: 'Failed to load analytics.',
+    }
+  );
+  const analytics = analyticsResource.status === 'ok' ? analyticsResource.data : [];
+  const allAnalytics = allAnalyticsResource.status === 'ok' ? allAnalyticsResource.data : [];
 
   // Computing recommendations upserts the CarPercentileResult rows analytics reads,
   // so one call populates a first-visit-empty view (works in demo and live modes).
@@ -359,34 +238,13 @@ export default function AnalyticsPage() {
     setComputeError(null);
     try {
       await api.getRecommendations(sel.id, sel.currentWeekNumber);
-      await reloadAnalytics(sel.id);
+      setRefreshVersion(version => version + 1);
     } catch {
       setComputeError('Could not compute percentiles — try the Recommendations page.');
     } finally {
       setComputing(false);
     }
   };
-
-  // All analytics (car mode) — fetched once on demand
-  useEffect(() => {
-    if (!user || !allAnalyticsLoading) return;
-    let active = true;
-    api
-      .getMyAnalytics()
-      .then(a => {
-        if (active) dispatch({ type: 'ALL_ANALYTICS_LOADED', analytics: a });
-      })
-      .catch((e: unknown) => {
-        if (active)
-          dispatch({
-            type: 'ANALYTICS_ERROR',
-            message: e instanceof Error ? e.message : 'Failed to load analytics.',
-          });
-      });
-    return () => {
-      active = false;
-    };
-  }, [user, allAnalyticsLoading]);
 
   if (!user) {
     return (
@@ -415,15 +273,18 @@ export default function AnalyticsPage() {
   }
 
   // Derived display data
-  const isLoading = viewMode === 'series' ? analyticsLoading : allAnalyticsLoading;
-  const displayAnalytics =
-    viewMode === 'series' ? analytics : allAnalytics.filter(a => a.carId === selectedCarId);
-  const [featuredCard, ...otherCards] = displayAnalytics;
-
+  const currentResource = viewMode === 'series' ? analyticsResource : allAnalyticsResource;
+  const resourceEnabled = viewMode === 'car' || selectedSeriesId !== null;
+  const isLoading = resourceEnabled && currentResource.status === 'loading';
+  const resourceReady = currentResource.status === 'ok';
   const uniqueCars = allAnalytics.reduce<{ id: number; name: string }[]>((acc, a) => {
     if (!acc.some(c => c.id === a.carId)) acc.push({ id: a.carId, name: a.carName });
     return acc;
   }, []);
+  const selectedCarId = carSelection ?? uniqueCars[0]?.id ?? null;
+  const displayAnalytics =
+    viewMode === 'series' ? analytics : allAnalytics.filter(a => a.carId === selectedCarId);
+  const [featuredCard, ...otherCards] = displayAnalytics;
 
   const selectedSeries = series.find(s => s.id === selectedSeriesId) ?? null;
 
@@ -440,7 +301,7 @@ export default function AnalyticsPage() {
         {(['series', 'car'] as const).map(mode => (
           <button
             key={mode}
-            onClick={() => dispatch({ type: 'SET_VIEW_MODE', mode })}
+            onClick={() => setViewMode(mode)}
             className={`h-[28px] px-[14px] rounded-[7px] text-small-fluid font-semibold cursor-pointer transition-all ${
               viewMode === mode
                 ? 'bg-primary-container text-on-primary-fixed'
@@ -453,7 +314,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Series selector (series mode) */}
-      {viewMode === 'series' && !seriesLoading && series.length > 0 && (
+      {viewMode === 'series' && <ResourceView resource={seriesResource} />}
+
+      {viewMode === 'series' && seriesResource.status === 'ok' && series.length > 0 && (
         <div className="flex items-center gap-3 mb-6">
           <label
             htmlFor="analytics-series-select"
@@ -464,7 +327,7 @@ export default function AnalyticsPage() {
           <select
             id="analytics-series-select"
             value={selectedSeriesId ?? ''}
-            onChange={e => dispatch({ type: 'SELECT_SERIES', seriesId: Number(e.target.value) })}
+            onChange={e => setSeriesSelection(Number(e.target.value))}
             className="text-body-fluid text-on-surface bg-surface-container border border-line-2 rounded-[9px] px-3 py-[7px] cursor-pointer focus:outline-none focus:border-primary-container/50 transition-colors"
           >
             {series.map(s => (
@@ -476,12 +339,12 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {viewMode === 'series' && !seriesLoading && series.length === 0 && (
+      {viewMode === 'series' && seriesResource.status === 'ok' && series.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant mb-6">No active series found.</p>
       )}
 
       {/* Car selector (car mode) */}
-      {viewMode === 'car' && !allAnalyticsLoading && uniqueCars.length > 0 && (
+      {viewMode === 'car' && allAnalyticsResource.status === 'ok' && uniqueCars.length > 0 && (
         <div className="flex items-center gap-3 mb-6">
           <label
             htmlFor="analytics-car-select"
@@ -492,7 +355,7 @@ export default function AnalyticsPage() {
           <select
             id="analytics-car-select"
             value={selectedCarId ?? ''}
-            onChange={e => dispatch({ type: 'SELECT_CAR', carId: Number(e.target.value) })}
+            onChange={e => setCarSelection(Number(e.target.value))}
             className="text-body-fluid text-on-surface bg-surface-container border border-line-2 rounded-[9px] px-3 py-[7px] cursor-pointer focus:outline-none focus:border-primary-container/50 transition-colors"
           >
             {uniqueCars.map(c => (
@@ -511,13 +374,17 @@ export default function AnalyticsPage() {
         </p>
       )}
 
-      {/* Error */}
-      {!isLoading && error && <p className="text-body-fluid text-error">{error}</p>}
+      {resourceEnabled && !isLoading && (
+        <ResourceView
+          resource={currentResource}
+          notLinkedReason="Link your iRacing account to view personalized analytics."
+        />
+      )}
 
       {/* Empty state — series mode */}
       {viewMode === 'series' &&
         !isLoading &&
-        !error &&
+        resourceReady &&
         analytics.length === 0 &&
         selectedSeriesId !== null && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
@@ -559,7 +426,7 @@ export default function AnalyticsPage() {
         )}
 
       {/* Empty state — car mode */}
-      {viewMode === 'car' && !isLoading && !error && allAnalytics.length === 0 && (
+      {viewMode === 'car' && resourceReady && allAnalytics.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <span
             className="material-symbols-outlined text-4xl text-on-surface-variant"
@@ -581,7 +448,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* Analytics grid */}
-      {!isLoading && !error && displayAnalytics.length > 0 && (
+      {resourceReady && displayAnalytics.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-fluid">
           {featuredCard && (
             <div className="xl:col-span-3">

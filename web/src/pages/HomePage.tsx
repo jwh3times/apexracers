@@ -17,15 +17,9 @@ const TIMING_ROWS = [
   { p: 5, drv: 'S. Halberg', car: 'Audi R8 LMS EVO II', t: 112.087, gap: 0.669, make: 'Audi' },
 ];
 
-const SCAN_BG =
-  'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)';
-
 function TimingStrip() {
   return (
-    <div
-      className="card-r border border-line-2 bg-surface overflow-hidden w-full max-w-[clamp(320px,38vw,580px)] shrink-0"
-      style={{ backgroundImage: SCAN_BG }}
-    >
+    <div className="card-r scan-texture border border-line-2 bg-surface overflow-hidden w-full max-w-[clamp(320px,38vw,580px)] shrink-0">
       <div className="flex items-center justify-between px-[18px] py-[15px] border-b border-line-2">
         <div className="flex items-center gap-[9px]">
           <span
@@ -224,10 +218,7 @@ export default function HomePage() {
           {FEATURES.map(f => (
             <div
               key={f.title}
-              className="card-r border border-line-2 bg-surface card-p flex flex-col gap-fluid"
-              style={{
-                boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-              }}
+              className="card-r card-shadow border border-line-2 bg-surface card-p flex flex-col gap-fluid"
             >
               <div className="w-11 h-11 rounded-[12px] grid place-items-center bg-primary-container/[0.16] text-primary-container border border-primary-container/40">
                 <span className="material-symbols-outlined text-[22px]">{f.icon}</span>
@@ -247,7 +238,7 @@ export default function HomePage() {
           className="card-r border border-line-2 text-center px-[clamp(24px,4vw,64px)] py-[clamp(36px,4.5vw,72px)]"
           style={{
             backgroundImage: [
-              SCAN_BG,
+              'var(--scan-texture)',
               'linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-container-low) 100%)',
             ].join(', '),
           }}

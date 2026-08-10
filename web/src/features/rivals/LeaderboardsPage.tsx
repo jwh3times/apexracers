@@ -1,20 +1,8 @@
-import { useEffect, useState } from 'react';
-import { api, type GlobalLeaderboardEntry } from '../../services/api';
+import { useState } from 'react';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; rows: GlobalLeaderboardEntry[] }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 const CATEGORIES = [
   { id: 5, label: 'Sports Car' },
@@ -28,26 +16,9 @@ const CATEGORIES = [
 export default function LeaderboardsPage() {
   const { user } = useAuth();
   const [categoryId, setCategoryId] = useState(5);
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getLeaderboard(categoryId)
-      .then(rows => {
-        if (active) setState({ status: 'ok', rows });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load leaderboard.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [categoryId]);
+  const resource = useResource(signal => api.getLeaderboard(categoryId, signal), [categoryId], {
+    fallbackMessage: 'Failed to load leaderboard.',
+  });
 
   return (
     <main className="page-wrap">
@@ -73,29 +44,18 @@ export default function LeaderboardsPage() {
         ))}
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView resource={resource} />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'ok' && state.rows.length === 0 && (
+      {resource.status === 'ok' && resource.data.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant">No leaderboard data available.</p>
       )}
 
-      {state.status === 'ok' && state.rows.length > 0 && (
-        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
+      {resource.status === 'ok' && resource.data.length > 0 && (
+        <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-line-2" style={scanTexture}>
+                <tr className="scan-texture border-b border-line-2">
                   <th className="th-p text-th text-on-surface-variant text-right w-12">#</th>
                   <th className="th-p text-th text-on-surface-variant text-left">Driver</th>
                   <th className="th-p text-th text-on-surface-variant text-left">Loc</th>
@@ -107,7 +67,7 @@ export default function LeaderboardsPage() {
                 </tr>
               </thead>
               <tbody>
-                {state.rows.map(r => {
+                {resource.data.map(r => {
                   const isMe =
                     user?.iRacingCustomerId != null && r.custId === user.iRacingCustomerId;
                   return (

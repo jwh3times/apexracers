@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.2] - 2026-08-10
+
+### Changed
+
+- Read-only page data now uses one resource lifecycle for loading, typed unlinked-account responses, failures, stale-result suppression, and real network cancellation. Optional overlays declare their empty fallback at the request boundary, while user-facing resources render a shared loading/error/link-account presentation. Shared card elevation and scan textures also moved to theme-aware CSS utilities instead of being copied through page-local style objects.
+
+### Fixed
+
+- Driver-profile failures now render an actionable error instead of silently removing the stats section, and failed series requests on Analytics and Recommendations no longer masquerade as a valid empty-series response.
+
 ## [0.5.1] - 2026-08-10
 
 ### Changed
@@ -477,7 +487,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/jwh3times/apexracers/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jwh3times/apexracers/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jwh3times/apexracers/compare/v0.4.55...v0.5.0
 [0.4.55]: https://github.com/jwh3times/apexracers/compare/v0.4.54...v0.4.55

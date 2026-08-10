@@ -1,22 +1,10 @@
 import { Link } from 'react-router';
 
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
 export default function ComingSoonPage() {
   return (
     <main className="page-wrap">
-      <div
-        className="card-r border border-white/10 bg-surface overflow-hidden max-w-2xl mx-auto"
-        style={cardStyle}
-      >
-        <div className="card-hp border-b border-white/10" style={scanTexture}>
+      <div className="card-r card-shadow border border-white/10 bg-surface overflow-hidden max-w-2xl mx-auto">
+        <div className="card-hp scan-texture border-b border-white/10">
           <p className="text-eyebrow text-primary-container">Coming soon</p>
         </div>
         <div className="card-p flex flex-col items-center gap-4 text-center py-12">

@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import {
-  api,
-  type Series,
-  type PersonalLap,
-  type DriverProfile,
-  type CarAnalytics,
-} from '../../services/api';
+import { api, type DriverProfile, type PersonalLap } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
+import { NotLinkedCard } from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
 
@@ -16,87 +11,45 @@ function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
   const { enabled: showIracing } = useIracingSurface();
 
-  const [series, setSeries] = useState<Series[]>([]);
-  const [laps, setLaps] = useState<PersonalLap[]>([]);
-  const [profile, setProfile] = useState<DriverProfile | null>(null);
-  const [analytics, setAnalytics] = useState<CarAnalytics[]>([]);
-  const [seriesLoading, setSeriesLoading] = useState(true);
-  const [lapsLoading, setLapsLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
+    onError: { fallback: [] },
+  });
+  const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
+    enabled: showIracing,
+    onError: { fallback: [] },
+  });
+  const profileResource = useResource<DriverProfile | null>(
+    signal => api.getProfileStats(signal),
+    [showIracing],
+    {
+      enabled: showIracing,
+      onError: { fallback: null },
+    }
+  );
+  const analyticsResource = useResource(
+    signal => api.getMyAnalytics(undefined, signal),
+    [showIracing],
+    {
+      enabled: showIracing,
+      onError: { fallback: [] },
+    }
+  );
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getMyLaps()
-      .then(rows => {
-        if (active) setLaps(rows);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLapsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // When showIracing is false (neither iracing-live nor iracing-demo is on) we skip these
-  // fetches, so seriesLoading/profileLoading/analyticsLoading stay `true`. That's safe only
-  // because every widget reading them is also gated off below — if you un-gate one of those
-  // widgets, restore its fetch too.
-  useEffect(() => {
-    if (!showIracing) return;
-    let active = true;
-
-    api
-      .getSeries()
-      .then(rows => {
-        if (active) setSeries(rows);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setSeriesLoading(false);
-      });
-
-    api
-      .getProfileStats()
-      .then(data => {
-        if (active) setProfile(data);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setProfileLoading(false);
-      });
-
-    api
-      .getMyAnalytics()
-      .then(data => {
-        if (active) setAnalytics(data);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setAnalyticsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [showIracing]);
+  const laps = lapsResource.status === 'ok' ? lapsResource.data : [];
+  const series = seriesResource.status === 'ok' ? seriesResource.data : [];
+  const profile = profileResource.status === 'ok' ? profileResource.data : null;
+  const analytics = analyticsResource.status === 'ok' ? analyticsResource.data : [];
+  const lapsLoading = lapsResource.status === 'loading';
+  const seriesLoading = seriesResource.status === 'loading';
+  const profileLoading = profileResource.status === 'loading';
+  const analyticsLoading = analyticsResource.status === 'loading';
+  const notLinked =
+    profileResource.status === 'not-linked' || analyticsResource.status === 'not-linked';
 
   const recentLaps = laps.slice(0, 5);
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
@@ -154,14 +107,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {showIracing && notLinked && (
+        <div className="mb-6">
+          <NotLinkedCard reason="Link your iRacing account to personalize the Race Center." />
+        </div>
+      )}
+
       {/* KPI row — lap/series tiles + driver-stat tiles (iRating / SR / avg finish) */}
       <div className="grid-kpi mb-4">
         {/* Active series */}
         {showIracing && (
-          <div
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
-          >
+          <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 sports_motorsports
@@ -175,10 +131,7 @@ export default function DashboardPage() {
         )}
 
         {/* Laps recorded */}
-        <div
-          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-          style={cardStyle}
-        >
+        <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
             <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
               timer
@@ -189,10 +142,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Cars tracked — distinct car count, not car+track combos */}
-        <div
-          className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-          style={cardStyle}
-        >
+        <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
           <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
             <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
               directions_car
@@ -206,10 +156,7 @@ export default function DashboardPage() {
 
         {/* Best percentile — strongest rank across the driver's cars */}
         {showIracing && (
-          <div
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
-          >
+          <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 social_leaderboard
@@ -228,10 +175,7 @@ export default function DashboardPage() {
 
         {/* iRating — headline (highest-iRating category) */}
         {showIracing && (
-          <div
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
-          >
+          <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 trending_up
@@ -246,10 +190,7 @@ export default function DashboardPage() {
 
         {/* Safety Rating — same category */}
         {showIracing && (
-          <div
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
-          >
+          <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 shield
@@ -264,10 +205,7 @@ export default function DashboardPage() {
 
         {/* Average finish — same category career */}
         {showIracing && (
-          <div
-            className="bg-surface border border-line-2 card-r kpi-p relative overflow-hidden"
-            style={cardStyle}
-          >
+          <div className="bg-surface border border-line-2 card-r card-shadow kpi-p relative overflow-hidden">
             <div className="text-small-fluid text-on-surface-variant font-medium flex items-center gap-[7px]">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 sports_score
@@ -289,14 +227,8 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-fluid">
           {/* This week */}
           {showIracing && (
-            <div
-              className="card-r border border-line-2 bg-surface overflow-hidden"
-              style={cardStyle}
-            >
-              <div
-                className="flex items-center justify-between card-hp border-b border-line-2"
-                style={scanTexture}
-              >
+            <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+              <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
                 <h3 className="text-section-head text-on-surface">This week</h3>
                 <Link
                   to="/series"
@@ -344,11 +276,8 @@ export default function DashboardPage() {
           )}
 
           {/* Personal bests */}
-          <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-            <div
-              className="flex items-center justify-between card-hp border-b border-line-2"
-              style={scanTexture}
-            >
+          <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+            <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
               <h3 className="text-section-head text-on-surface">Personal bests</h3>
               <Link
                 to="/my-laps"
@@ -439,14 +368,8 @@ export default function DashboardPage() {
         {/* Right column: Active series list */}
         {showIracing && (
           <div>
-            <div
-              className="card-r border border-line-2 bg-surface overflow-hidden h-full"
-              style={cardStyle}
-            >
-              <div
-                className="flex items-center justify-between card-hp border-b border-line-2"
-                style={scanTexture}
-              >
+            <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden h-full">
+              <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
                 <h3 className="text-section-head text-on-surface">Active series</h3>
                 <Link
                   to="/series"

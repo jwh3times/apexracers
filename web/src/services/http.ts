@@ -103,7 +103,12 @@ export async function throwForResponse(
   throw new ApiError(res.status, humanMessageFor(parsed, raw, statusLine));
 }
 
-export type ReqInit = { method?: string; body?: BodyInit; json?: unknown };
+export type ReqInit = {
+  method?: string;
+  body?: BodyInit;
+  json?: unknown;
+  signal?: AbortSignal;
+};
 
 export interface HttpClient {
   /**
@@ -113,7 +118,7 @@ export interface HttpClient {
    * replays the request once (never more — a second 401 is a real failure). Throws
    * `IRacingNotLinkedError` for the typed 409, `ApiError` for every other non-ok response.
    * Returns `undefined` for 204. Pass a JSON payload via `json`, a raw body (e.g. FormData)
-   * via `body`.
+   * via `body`, and an `AbortSignal` via `signal`; the same signal is preserved on a 401 replay.
    */
   request<T>(path: string, init?: ReqInit): Promise<T>;
 }
@@ -138,7 +143,7 @@ export function createHttpClient(deps: HttpDeps): HttpClient {
           headers['Content-Type'] = 'application/json';
           body = JSON.stringify(init.json);
         }
-        return { method: init.method ?? 'GET', headers, body };
+        return { method: init.method ?? 'GET', headers, body, signal: init.signal };
       };
 
       let res = await deps.fetch(path, build());

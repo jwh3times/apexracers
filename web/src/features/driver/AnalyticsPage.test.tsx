@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import AnalyticsPage from './AnalyticsPage';
-import { api } from '../../services/api';
+import { api, IRacingNotLinkedError } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
 let mockUser: User | null = {
@@ -163,7 +163,7 @@ describe('AnalyticsPage', () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     renderPage();
     await waitFor(() => {
-      expect(mockGetMyAnalytics).toHaveBeenCalledWith(1);
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(1, expect.any(AbortSignal));
     });
   });
 
@@ -265,7 +265,9 @@ describe('AnalyticsPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
-    await waitFor(() => expect(mockGetMyAnalytics).toHaveBeenCalledWith(2));
+    await waitFor(() =>
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(2, expect.any(AbortSignal))
+    );
   });
 
   it('shows error message when getMyAnalytics fails', async () => {
@@ -283,6 +285,14 @@ describe('AnalyticsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/no active series found/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows the series error instead of the empty-series message when loading fails', async () => {
+    mockGetSeries.mockRejectedValue(new Error('Series unavailable'));
+    renderPage();
+
+    expect(await screen.findByText('Series unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/no active series found/i)).not.toBeInTheDocument();
   });
 
   // ── By Car mode + badge thresholds (T8) ────────────────────────────────────
@@ -357,5 +367,19 @@ describe('AnalyticsPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('2025')).toBeInTheDocument());
     expect(screen.getByText('2026')).toBeInTheDocument();
+  });
+
+  it('shows the shared account-link prompt for a typed 409', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    renderPage();
+
+    expect(
+      await screen.findByText(/link your iracing account to view personalized analytics/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 });

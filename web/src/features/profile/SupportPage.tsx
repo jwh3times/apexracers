@@ -1,7 +1,3 @@
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
 type SupportCard = {
   icon: string;
   title: string;
@@ -38,10 +34,7 @@ const CARDS: SupportCard[] = [
 
 function Card({ card }: { card: SupportCard }) {
   const inner = (
-    <div
-      className="card-r border border-line-2 bg-surface card-p flex items-start gap-3.5 h-full"
-      style={cardStyle}
-    >
+    <div className="card-r card-shadow border border-line-2 bg-surface card-p flex items-start gap-3.5 h-full">
       <div className="w-10 h-10 shrink-0 rounded-[11px] grid place-items-center bg-primary-container/15 text-primary-container">
         <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
           {card.icon}

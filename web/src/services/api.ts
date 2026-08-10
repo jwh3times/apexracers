@@ -643,13 +643,13 @@ const request = http.request;
 
 export const api = {
   /** GET /api/series — list active weekly series */
-  getSeries(): Promise<Series[]> {
-    return request('/api/series');
+  getSeries(signal?: AbortSignal): Promise<Series[]> {
+    return request('/api/series', { signal });
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber — series + track metadata and full car breakdown */
-  getWeekDetail(seriesId: number, weekNumber: number): Promise<WeekDetail> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}`);
+  getWeekDetail(seriesId: number, weekNumber: number, signal?: AbortSignal): Promise<WeekDetail> {
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}`, { signal });
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars — cars with aggregate lap stats */
@@ -659,8 +659,12 @@ export const api = {
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/my-percentiles — the caller's per-car percentile
    * for the week (only cars they've raced). Authorize; throws IRacingNotLinkedError when unlinked. */
-  getMyWeekPercentiles(seriesId: number, weekNumber: number): Promise<WeekCarPercentile[]> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles`);
+  getMyWeekPercentiles(
+    seriesId: number,
+    weekNumber: number,
+    signal?: AbortSignal
+  ): Promise<WeekCarPercentile[]> {
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles`, { signal });
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile?customerId= */
@@ -669,24 +673,28 @@ export const api = {
     weekNumber: number,
     carId: number,
     customerId: number,
-    options?: RecommendationOptions
+    options?: RecommendationOptions,
+    signal?: AbortSignal
   ): Promise<PercentileResult> {
     const qs = new URLSearchParams({ customerId: String(customerId) });
     if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
     options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`);
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`, {
+      signal,
+    });
   },
 
   /** GET /api/users/me/recommendations?seriesId=&weekNumber= */
   getRecommendations(
     seriesId: number,
     weekNumber: number,
-    options?: RecommendationOptions
+    options?: RecommendationOptions,
+    signal?: AbortSignal
   ): Promise<CarRecommendation[]> {
     const qs = new URLSearchParams({ seriesId: String(seriesId), weekNumber: String(weekNumber) });
     if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
     options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
-    return request(`/api/users/me/recommendations?${qs}`);
+    return request(`/api/users/me/recommendations?${qs}`, { signal });
   },
 
   /** POST /api/auth/login — email + password sign-in, returns JWT */
@@ -755,97 +763,114 @@ export const api = {
   },
 
   /** GET /api/telemetry/laps — personal best per track+car for the authenticated user */
-  getMyLaps(): Promise<PersonalLap[]> {
-    return request('/api/telemetry/laps');
+  getMyLaps(signal?: AbortSignal): Promise<PersonalLap[]> {
+    return request('/api/telemetry/laps', { signal });
   },
 
   /** GET /api/users/me/analytics?seriesId= — per-car percentile history and trend for the authenticated user */
-  getMyAnalytics(seriesId?: number): Promise<CarAnalytics[]> {
+  getMyAnalytics(seriesId?: number, signal?: AbortSignal): Promise<CarAnalytics[]> {
     const path =
       seriesId != null ? `/api/users/me/analytics?seriesId=${seriesId}` : '/api/users/me/analytics';
-    return request(path);
+    return request(path, { signal });
   },
 
   /** GET /api/users/me/progression — per-category iRating / SR / CPI / TT with iRating history */
-  getProgression(): Promise<MemberProgression> {
-    return request('/api/users/me/progression');
+  getProgression(signal?: AbortSignal): Promise<MemberProgression> {
+    return request('/api/users/me/progression', { signal });
   },
 
   /** GET /api/users/me/profile-stats — career stats, license badges, recap favorites */
-  getProfileStats(): Promise<DriverProfile> {
-    return request('/api/users/me/profile-stats');
+  getProfileStats(signal?: AbortSignal): Promise<DriverProfile> {
+    return request('/api/users/me/profile-stats', { signal });
   },
 
   /** GET /api/users/me/achievements — the driver's awards trophy case (newest first) */
-  getAchievements(): Promise<Achievements> {
-    return request('/api/users/me/achievements');
+  getAchievements(signal?: AbortSignal): Promise<Achievements> {
+    return request('/api/users/me/achievements', { signal });
   },
 
   /** GET /api/users/me/races — recent official race history (newest first) */
-  getRaceHistory(): Promise<RaceHistoryRow[]> {
-    return request('/api/users/me/races');
+  getRaceHistory(signal?: AbortSignal): Promise<RaceHistoryRow[]> {
+    return request('/api/users/me/races', { signal });
   },
 
   /** GET /api/subsessions/:id — full classified field + session context for one race */
-  getSubsession(id: number): Promise<SubsessionDetail> {
-    return request(`/api/subsessions/${id}`);
+  getSubsession(id: number, signal?: AbortSignal): Promise<SubsessionDetail> {
+    return request(`/api/subsessions/${id}`, { signal });
   },
 
   /** GET /api/subsessions/:id/laps?customerId= — a driver's per-lap pace (defaults to caller) */
-  getDriverLaps(subsessionId: number, customerId?: number): Promise<DriverLaps> {
+  getDriverLaps(
+    subsessionId: number,
+    customerId?: number,
+    signal?: AbortSignal
+  ): Promise<DriverLaps> {
     const qs = customerId != null ? `?customerId=${customerId}` : '';
-    return request(`/api/subsessions/${subsessionId}/laps${qs}`);
+    return request(`/api/subsessions/${subsessionId}/laps${qs}`, { signal });
   },
 
   /** GET /api/series/:seriesId/schedule — active-season calendar with weather, BoP, PB overlay */
-  getSchedule(seriesId: number): Promise<SeasonSchedule> {
-    return request(`/api/series/${seriesId}/schedule`);
+  getSchedule(seriesId: number, signal?: AbortSignal): Promise<SeasonSchedule> {
+    return request(`/api/series/${seriesId}/schedule`, { signal });
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/strategy — per-week BoP/weather/fuel strategy
    * briefing; personalizes the "optimal for you" overlay when the caller is iRacing-linked */
-  getWeekStrategy(seriesId: number, weekNumber: number): Promise<WeekStrategy> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/strategy`);
+  getWeekStrategy(
+    seriesId: number,
+    weekNumber: number,
+    signal?: AbortSignal
+  ): Promise<WeekStrategy> {
+    return request(`/api/series/${seriesId}/weeks/${weekNumber}/strategy`, { signal });
   },
 
   /** GET /api/leaderboards?categoryId= — global top-N drivers for a category (ranked by iRating) */
-  getLeaderboard(categoryId: number): Promise<GlobalLeaderboardEntry[]> {
-    return request(`/api/leaderboards?categoryId=${categoryId}`);
+  getLeaderboard(categoryId: number, signal?: AbortSignal): Promise<GlobalLeaderboardEntry[]> {
+    return request(`/api/leaderboards?categoryId=${categoryId}`, { signal });
   },
 
   /** GET /api/series/:seriesId/standings?carClassId= — active-season championship standings */
-  getStandings(seriesId: number, carClassId?: number): Promise<SeasonStandings> {
+  getStandings(
+    seriesId: number,
+    carClassId?: number,
+    signal?: AbortSignal
+  ): Promise<SeasonStandings> {
     const qs = carClassId != null ? `?carClassId=${carClassId}` : '';
-    return request(`/api/series/${seriesId}/standings${qs}`);
+    return request(`/api/series/${seriesId}/standings${qs}`, { signal });
   },
 
   /** GET /api/series/:seriesId/tt-standings?carClassId= — active-season Time Trial standings */
-  getTtStandings(seriesId: number, carClassId?: number): Promise<SeasonTtStandings> {
+  getTtStandings(
+    seriesId: number,
+    carClassId?: number,
+    signal?: AbortSignal
+  ): Promise<SeasonTtStandings> {
     const qs = carClassId != null ? `?carClassId=${carClassId}` : '';
-    return request(`/api/series/${seriesId}/tt-standings${qs}`);
+    return request(`/api/series/${seriesId}/tt-standings${qs}`, { signal });
   },
 
   /** GET /api/series/:seriesId/qualify-results?carClassId=&weekNumber= — weekly qualifying results */
   getQualifyResults(
     seriesId: number,
     carClassId?: number,
-    weekNumber?: number
+    weekNumber?: number,
+    signal?: AbortSignal
   ): Promise<SeasonQualifyResults> {
     const params = new URLSearchParams();
     if (carClassId != null) params.set('carClassId', String(carClassId));
     if (weekNumber != null) params.set('weekNumber', String(weekNumber));
     const qs = params.toString();
-    return request(`/api/series/${seriesId}/qualify-results${qs ? `?${qs}` : ''}`);
+    return request(`/api/series/${seriesId}/qualify-results${qs ? `?${qs}` : ''}`, { signal });
   },
 
   /** GET /api/race-guide — official sessions starting in the next ~3h (race-now board) */
-  getRaceGuide(): Promise<RaceGuideEntry[]> {
-    return request('/api/race-guide');
+  getRaceGuide(signal?: AbortSignal): Promise<RaceGuideEntry[]> {
+    return request('/api/race-guide', { signal });
   },
 
   /** GET /api/users/me/rivals — drivers the caller follows for comparison (newest first) */
-  getRivals(): Promise<Rival[]> {
-    return request('/api/users/me/rivals');
+  getRivals(signal?: AbortSignal): Promise<Rival[]> {
+    return request('/api/users/me/rivals', { signal });
   },
 
   /** POST /api/users/me/rivals — follow a driver (idempotent) */
@@ -864,8 +889,8 @@ export const api = {
   },
 
   /** GET /api/users/me/rivals/suggestions — drivers the caller has raced (409 if unlinked) */
-  getRivalSuggestions(): Promise<RivalSuggestion[]> {
-    return request('/api/users/me/rivals/suggestions');
+  getRivalSuggestions(signal?: AbortSignal): Promise<RivalSuggestion[]> {
+    return request('/api/users/me/rivals/suggestions', { signal });
   },
 
   /** GET /api/users/me/compare?rivalCustId= — head-to-head comparison (409 if unlinked) */
@@ -874,23 +899,23 @@ export const api = {
   },
 
   /** GET /api/cars — full car catalog (browse grid) */
-  getCars(): Promise<CarCatalogItem[]> {
-    return request('/api/cars');
+  getCars(signal?: AbortSignal): Promise<CarCatalogItem[]> {
+    return request('/api/cars', { signal });
   },
 
   /** GET /api/cars/:id — car detail (specs, classes, your best laps when signed in) */
-  getCar(carId: number): Promise<CarCatalogDetail> {
-    return request(`/api/cars/${carId}`);
+  getCar(carId: number, signal?: AbortSignal): Promise<CarCatalogDetail> {
+    return request(`/api/cars/${carId}`, { signal });
   },
 
   /** GET /api/tracks — full track catalog (browse grid) */
-  getTracks(): Promise<TrackCatalogItem[]> {
-    return request('/api/tracks');
+  getTracks(signal?: AbortSignal): Promise<TrackCatalogItem[]> {
+    return request('/api/tracks', { signal });
   },
 
   /** GET /api/tracks/:id — track detail (specs, map, your best laps when signed in) */
-  getTrack(trackId: number): Promise<TrackCatalogDetail> {
-    return request(`/api/tracks/${trackId}`);
+  getTrack(trackId: number, signal?: AbortSignal): Promise<TrackCatalogDetail> {
+    return request(`/api/tracks/${trackId}`, { signal });
   },
 
   /** PUT /api/auth/theme — update theme preference (auto/light/dark), returns fresh JWT */

@@ -488,17 +488,18 @@ JWT claim the page reads first is absent and it falls through to the form. Enter
 The typed API client is `web/src/services/api.ts`, built on the HTTP core in
 `web/src/services/http.ts`'s `createHttpClient(...).request<T>(path, init)` (attaches auth headers,
 retries once after silent refresh on 401, maps RFC-7807 errors, throws typed `IRacingNotLinkedError`
-on the `409`). Add endpoints by calling `request` with `{ method, json }` or `{ method, body }` —
-don't reintroduce per-verb helpers. `api.ts` response types must stay in sync with `ResponseDtos.cs`.
+on the `409`). Add endpoints by calling `request` with `{ method, json }` or `{ method, body }`, plus
+an optional `AbortSignal` for cancellable reads — don't reintroduce per-verb helpers. `api.ts` response
+types must stay in sync with `ResponseDtos.cs`.
 Full frontend patterns (auth/`AuthContext`, 401 interceptor, feature flags, **design-token system +
-card pattern**, Vitest rules) are in the `react-frontend` agent — don't duplicate the design-token
-tables here.
+card pattern, read-only page resources**, Vitest rules) are in the `react-frontend` agent — don't
+duplicate the detailed contracts here.
 
 **Design system:** all sizing is fluid via `clamp()` utility classes in `web/src/index.css` (not
 Tailwind breakpoints); use those classes for new UI. Primary accent is **cyan** —
 `text/bg/border-primary-container` for all accent use; never hardcode the old greens (`#00FF88`,
 `#00e479`, green RGBA glows). `primary-fixed-dim` is the allowed dim-accent token. (Class catalog +
-`cardStyle`/`scanTexture` pattern: `react-frontend` agent.)
+shared `card-shadow`/`scan-texture` pattern: `react-frontend` agent.)
 
 #### Routing (`web/src/App.tsx`)
 

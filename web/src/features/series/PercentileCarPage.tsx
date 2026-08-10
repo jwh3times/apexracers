@@ -80,15 +80,6 @@ function DistributionChart({ bins }: { bins: DistributionBin[] }) {
   );
 }
 
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
 export default function PercentileCarPage() {
   const { seriesId, weekNumber, carId } = useParams<{
     seriesId: string;
@@ -192,10 +183,7 @@ export default function PercentileCarPage() {
 
       {/* Manual lookup form — only shown when no iRacing ID is saved in the profile */}
       {!profileId && !loading && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 flex flex-col gap-4 mb-6"
-          style={cardStyle}
-        >
+        <div className="card-r card-shadow border border-line-2 bg-surface p-6 flex flex-col gap-4 mb-6">
           <div className="flex items-start gap-3 p-3 bg-surface-container rounded-lg border border-line">
             <span
               className="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5 shrink-0"
@@ -254,16 +242,10 @@ export default function PercentileCarPage() {
           const gapToP1 = formatGap(result.yourBestLapSeconds, result.fieldBestLapSeconds);
 
           return (
-            <div
-              className="card-r border border-line-2 bg-surface overflow-hidden"
-              style={cardStyle}
-            >
+            <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Left: badge + headline + stat grid */}
-                <div
-                  className="flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2"
-                  style={scanTexture}
-                >
+                <div className="scan-texture flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2">
                   <PercentileBadge rank={result.percentileRank} size="lg" />
 
                   <div className="text-center">
@@ -361,10 +343,7 @@ export default function PercentileCarPage() {
 
       {/* Not found */}
       {notFound && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 flex items-start gap-3 mb-4"
-          style={cardStyle}
-        >
+        <div className="card-r card-shadow border border-line-2 bg-surface p-6 flex items-start gap-3 mb-4">
           <span
             className="material-symbols-outlined text-on-surface-variant mt-0.5"
             aria-hidden="true"
@@ -384,7 +363,7 @@ export default function PercentileCarPage() {
 
       {/* Error */}
       {error && (
-        <div className="card-r border border-error/20 bg-surface p-6 mb-4" style={cardStyle}>
+        <div className="card-r card-shadow border border-error/20 bg-surface p-6 mb-4">
           <p className="text-body-fluid text-error">{error}</p>
         </div>
       )}

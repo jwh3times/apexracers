@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DashboardPage from './DashboardPage';
-import { api } from '../../services/api';
+import { api, IRacingNotLinkedError } from '../../services/api';
 import type { Series, PersonalLap, DriverProfile, CarAnalytics } from '../../services/api';
 
 vi.mock('../../context/AuthContext', () => ({
@@ -333,5 +333,18 @@ describe('DashboardPage', () => {
     expect(api.getSeries).toHaveBeenCalled();
     expect(api.getProfileStats).toHaveBeenCalled();
     expect(api.getMyAnalytics).toHaveBeenCalled();
+  });
+
+  it('shows the shared account-link prompt when personalization returns a typed 409', async () => {
+    vi.mocked(api.getProfileStats).mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    renderPage();
+
+    expect(
+      await screen.findByText(/link your iracing account to personalize the race center/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 });

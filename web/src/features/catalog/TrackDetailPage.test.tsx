@@ -59,7 +59,7 @@ describe('TrackDetailPage', () => {
 
   it('fetches the track by its route id', async () => {
     renderPage();
-    await waitFor(() => expect(mockGetTrack).toHaveBeenCalledWith(18));
+    await waitFor(() => expect(mockGetTrack).toHaveBeenCalledWith(18, expect.any(AbortSignal)));
   });
 
   it('renders the name, specs, and your best laps', async () => {

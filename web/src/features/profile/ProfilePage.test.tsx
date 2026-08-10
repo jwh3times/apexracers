@@ -310,12 +310,10 @@ describe('ProfilePage', () => {
     );
   });
 
-  it('hides the stats section on a generic error', async () => {
+  it('shows the shared error card when driver stats fail', async () => {
     mockGetProfileStats.mockRejectedValue(new Error('boom'));
     renderPage();
-    await waitFor(() =>
-      expect(screen.queryByText(/loading driver stats/i)).not.toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument());
     expect(screen.queryByText('Licenses')).not.toBeInTheDocument();
   });
 

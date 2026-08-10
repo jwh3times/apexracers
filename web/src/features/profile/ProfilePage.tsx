@@ -1,32 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   api,
-  IRacingNotLinkedError,
   type Achievements,
   type Award,
   type DriverProfile,
   type PersonalLap,
   type Series,
 } from '../../services/api';
+import ResourceView, { NotLinkedCard } from '../../components/ResourceView';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
+import type { Resource } from '../../hooks/useResource';
+import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
-
-type StatsState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: DriverProfile }
-  | { status: 'not-linked' }
-  | { status: 'error' };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -37,42 +24,12 @@ function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function DriverStats({ state }: { state: StatsState }) {
-  if (state.status === 'loading') {
-    return (
-      <p className="text-body-fluid text-on-surface-variant animate-pulse">
-        Loading driver stats&hellip;
-      </p>
-    );
-  }
-  if (state.status === 'error') return null;
-  if (state.status === 'not-linked') {
-    return (
-      <div
-        className="card-r border border-line-2 bg-surface card-p text-body-fluid text-on-surface-variant"
-        style={cardStyle}
-      >
-        Link your iRacing customer ID in{' '}
-        <Link
-          to="/settings"
-          className="text-primary-container underline hover:opacity-80 transition-opacity"
-        >
-          Settings
-        </Link>{' '}
-        to see your career stats, license badges, and favorites.
-      </div>
-    );
-  }
-
-  const d = state.data;
+function DriverStats({ data: d }: { data: DriverProfile }) {
   return (
     <div className="flex flex-col gap-fluid">
       {/* Licenses */}
-      <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-        <div
-          className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-          style={scanTexture}
-        >
+      <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+        <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
           <h3 className="text-section-head text-on-surface">Licenses</h3>
           <span className="text-small-fluid text-on-surface-variant">
             {[d.country, d.memberSince ? `Member since ${d.memberSince}` : null]
@@ -118,10 +75,7 @@ function DriverStats({ state }: { state: StatsState }) {
       {(d.favoriteCar || d.favoriteTrack) && (
         <div className="flex flex-wrap gap-fluid">
           {d.favoriteCar && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
-              style={cardStyle}
-            >
+            <div className="flex items-center gap-3 px-4 py-3 card-r card-shadow border border-line-2 bg-surface">
               <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
                 directions_car
               </span>
@@ -134,10 +88,7 @@ function DriverStats({ state }: { state: StatsState }) {
             </div>
           )}
           {d.favoriteTrack && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
-              style={cardStyle}
-            >
+            <div className="flex items-center gap-3 px-4 py-3 card-r card-shadow border border-line-2 bg-surface">
               <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
                 stadium
               </span>
@@ -154,14 +105,14 @@ function DriverStats({ state }: { state: StatsState }) {
 
       {/* Career by category */}
       {d.career.length > 0 && (
-        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-          <div className="card-hp border-b border-line-2" style={scanTexture}>
+        <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+          <div className="card-hp scan-texture border-b border-line-2">
             <h3 className="text-section-head text-on-surface">Career by Category</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-line-2" style={scanTexture}>
+                <tr className="scan-texture border-b border-line-2">
                   <th className="th-p text-th text-on-surface-variant text-left">Category</th>
                   <th className="th-p text-th text-on-surface-variant text-right">Starts</th>
                   <th className="th-p text-th text-on-surface-variant text-right">Wins</th>
@@ -204,8 +155,6 @@ function DriverStats({ state }: { state: StatsState }) {
   );
 }
 
-type AchState = { status: 'loading' } | { status: 'ok'; data: Achievements } | { status: 'hidden' };
-
 const TROPHY_PREVIEW = 18;
 
 // iRacing icon colors come as bare 6-digit hex; prefix '#' so CSS accepts them.
@@ -244,10 +193,10 @@ function AwardTile({ award }: { award: Award }) {
   );
 }
 
-function TrophyCase({ state }: { state: AchState }) {
+function TrophyCase({ resource }: { resource: Resource<Achievements> }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (state.status === 'loading') {
+  if (resource.status === 'loading') {
     return (
       <p className="text-body-fluid text-on-surface-variant animate-pulse">
         Loading trophy case&hellip;
@@ -255,16 +204,13 @@ function TrophyCase({ state }: { state: AchState }) {
     );
   }
   // Hidden when unlinked/errored/empty — the driver-stats section already prompts linking.
-  if (state.status !== 'ok' || state.data.awards.length === 0) return null;
+  if (resource.status !== 'ok' || resource.data.awards.length === 0) return null;
 
-  const { awards, awardCount } = state.data;
+  const { awards, awardCount } = resource.data;
   const shown = showAll ? awards : awards.slice(0, TROPHY_PREVIEW);
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
         <h3 className="text-section-head text-on-surface">Trophy Case</h3>
         <span className="text-small-fluid text-on-surface-variant">{awardCount} awards</span>
       </div>
@@ -350,70 +296,32 @@ export default function ProfilePage() {
   const displayName = user?.displayName ?? 'Driver';
   const { enabled: showIracing } = useIracingSurface();
 
-  const [laps, setLaps] = useState<PersonalLap[]>([]);
-  const [series, setSeries] = useState<Series[]>([]);
-  const [lapsLoading, setLapsLoading] = useState(true);
-  const [seriesLoading, setSeriesLoading] = useState(true);
-
   const linked = !!user?.iRacingCustomerId;
-  const [statsState, setStatsState] = useState<StatsState>({ status: 'loading' });
-  const [achState, setAchState] = useState<AchState>({ status: 'loading' });
+  const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
+    onError: { fallback: [] },
+  });
+  const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
+    enabled: showIracing,
+    onError: { fallback: [] },
+  });
+  const statsResource = useResource(signal => api.getProfileStats(signal), [linked, showIracing], {
+    enabled: linked && showIracing,
+    fallbackMessage: 'Failed to load driver stats.',
+  });
+  const achievementsResource = useResource(
+    signal => api.getAchievements(signal),
+    [linked, showIracing],
+    {
+      enabled: linked && showIracing,
+      onNotLinked: { fallback: { customerId: 0, awardCount: 0, awards: [] } },
+      onError: { fallback: { customerId: 0, awardCount: 0, awards: [] } },
+    }
+  );
 
-  useEffect(() => {
-    api
-      .getMyLaps()
-      .then(setLaps)
-      .catch(() => {})
-      .finally(() => setLapsLoading(false));
-  }, []);
-
-  // When showIracing is false (neither iracing-live nor iracing-demo is on) we skip these
-  // iRacing fetches, so seriesLoading stays `true` and statsState/achState stay 'loading'.
-  // Safe only because every section reading them is also gated off below — if you un-gate
-  // one of those sections, restore its fetch too.
-  useEffect(() => {
-    if (!showIracing) return;
-    api
-      .getSeries()
-      .then(setSeries)
-      .catch(() => {})
-      .finally(() => setSeriesLoading(false));
-  }, [showIracing]);
-
-  useEffect(() => {
-    if (!linked || !showIracing) return;
-    let active = true;
-    api
-      .getProfileStats()
-      .then(data => {
-        if (active) setStatsState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setStatsState(
-          err instanceof IRacingNotLinkedError ? { status: 'not-linked' } : { status: 'error' }
-        );
-      });
-    return () => {
-      active = false;
-    };
-  }, [linked, showIracing]);
-
-  useEffect(() => {
-    if (!linked || !showIracing) return;
-    let active = true;
-    api
-      .getAchievements()
-      .then(data => {
-        if (active) setAchState({ status: 'ok', data });
-      })
-      .catch(() => {
-        if (active) setAchState({ status: 'hidden' });
-      });
-    return () => {
-      active = false;
-    };
-  }, [linked, showIracing]);
+  const laps = lapsResource.status === 'ok' ? lapsResource.data : [];
+  const series = seriesResource.status === 'ok' ? seriesResource.data : [];
+  const lapsLoading = lapsResource.status === 'loading';
+  const seriesLoading = seriesResource.status === 'loading';
 
   const totalLaps = laps.reduce((sum, l) => sum + l.lapCount, 0);
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
@@ -496,10 +404,22 @@ export default function ProfilePage() {
       </div>
 
       {/* Driver stats — career, licenses, favorites */}
-      {showIracing && <DriverStats state={linked ? statsState : { status: 'not-linked' }} />}
+      {showIracing &&
+        (linked ? (
+          statsResource.status === 'ok' ? (
+            <DriverStats data={statsResource.data} />
+          ) : (
+            <ResourceView
+              resource={statsResource}
+              notLinkedReason="Link your iRacing customer ID to see career stats, licenses, and favorites."
+            />
+          )
+        ) : (
+          <NotLinkedCard reason="Link your iRacing customer ID to see career stats, licenses, and favorites." />
+        ))}
 
       {/* Trophy case — earned awards/achievements */}
-      {showIracing && <TrophyCase state={linked ? achState : { status: 'hidden' }} />}
+      {showIracing && linked && <TrophyCase resource={achievementsResource} />}
 
       {/* Active series */}
       {showIracing && (

@@ -1,27 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
-import {
-  api,
-  IRacingNotLinkedError,
-  type CategoryProgression,
-  type MemberProgression,
-} from '../../services/api';
+import { api, type CategoryProgression } from '../../services/api';
 import Sparkline from '../../components/Sparkline';
-
-type FetchState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: MemberProgression }
-  | { status: 'not-linked' }
-  | { status: 'error'; message: string };
-
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
+import ResourceView from '../../components/ResourceView';
+import { useResource } from '../../hooks/useResource';
 
 function Kpi({
   label,
@@ -45,11 +25,8 @@ function CategoryCard({ cat }: { cat: CategoryProgression }) {
   const delta = series.length >= 2 ? series[series.length - 1] - series[0] : null;
 
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
         <h3 className="text-section-head text-on-surface">{cat.categoryName}</h3>
         <span
           className="text-eyebrow px-2 py-1 rounded-[7px] border"
@@ -102,30 +79,9 @@ function CategoryCard({ cat }: { cat: CategoryProgression }) {
 }
 
 export default function ProgressionPage() {
-  const [state, setState] = useState<FetchState>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getProgression()
-      .then(data => {
-        if (active) setState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        if (err instanceof IRacingNotLinkedError) {
-          setState({ status: 'not-linked' });
-          return;
-        }
-        setState({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load progression.',
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const resource = useResource(signal => api.getProgression(signal), [], {
+    fallbackMessage: 'Failed to load progression.',
+  });
 
   return (
     <main className="page-wrap">
@@ -134,52 +90,20 @@ export default function ProgressionPage() {
         <h1 className="text-page-title text-on-surface mt-2">iRating &amp; Safety Rating</h1>
       </div>
 
-      {state.status === 'loading' && (
-        <p className="text-body-fluid text-on-surface-variant animate-pulse">Loading&hellip;</p>
-      )}
+      <ResourceView
+        resource={resource}
+        notLinkedReason="Link your iRacing account to see your progression."
+      />
 
-      {state.status === 'error' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-6 text-body-fluid text-error"
-          style={cardStyle}
-        >
-          {state.message}
-        </div>
-      )}
-
-      {state.status === 'not-linked' && (
-        <div
-          className="card-r border border-line-2 bg-surface p-8 flex flex-col items-center gap-4 text-center w-full max-w-md"
-          style={cardStyle}
-        >
-          <span
-            className="material-symbols-outlined text-4xl text-primary-container"
-            aria-hidden="true"
-          >
-            link_off
-          </span>
-          <p className="text-body-fluid text-on-surface-variant">
-            Link your iRacing account to see your progression. Add your iRacing customer ID in{' '}
-            <Link
-              to="/settings"
-              className="text-primary-container underline hover:opacity-80 transition-opacity"
-            >
-              Settings
-            </Link>
-            .
-          </p>
-        </div>
-      )}
-
-      {state.status === 'ok' && state.data.categories.length === 0 && (
+      {resource.status === 'ok' && resource.data.categories.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant">
           No license categories found for this account yet.
         </p>
       )}
 
-      {state.status === 'ok' && state.data.categories.length > 0 && (
+      {resource.status === 'ok' && resource.data.categories.length > 0 && (
         <div className="grid grid-cards gap-fluid">
-          {state.data.categories.map(cat => (
+          {resource.data.categories.map(cat => (
             <CategoryCard key={cat.categoryId} cat={cat} />
           ))}
         </div>

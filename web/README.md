@@ -108,9 +108,10 @@ src/
     auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
   pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
   pages/__tests__/    ← Vitest tests for the static pages
-  components/         ← shared UI (Sidebar, TopNav, Footer, Sparkline, …) + colocated *.test.tsx siblings
+  components/         ← shared UI (Sidebar, TopNav, Footer, ResourceView, …) + colocated *.test.tsx siblings
   context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext + colocated
                           *.test.tsx siblings
+  hooks/              ← useResource (read-only page request lifecycle) + colocated *.test.tsx sibling
   services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
                           session.ts (signed-in session: tokens, claims, persistence, silent
                           refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
@@ -129,6 +130,13 @@ displayed lower-is-better `TOP X%` value through `toTopPercent`. Pass the raw ra
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
 
 The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
+
+Read-only page requests use `src/hooks/useResource.ts`. Its fetcher receives an `AbortSignal`; pass
+that signal through the matching `api` method so dependency changes and unmounts cancel the request.
+The hook owns loading, stale-result suppression, typed `IRACING_NOT_LINKED` classification, and generic
+errors. Render those non-data states with `ResourceView`, and declare deliberately optional overlays
+with the hook's typed `onNotLinked` / `onError` fallbacks. Mutation-owned lists, debounced searches,
+uploads, and domain workflows keep their focused local state machines.
 
 ## Authentication
 
@@ -156,6 +164,8 @@ All sizing scales continuously with viewport width via `clamp()`. Use the utilit
 
 **Gold accent** — `text-gold` / `bg-gold` / `border-gold` / `shadow-gold` are the only sanctioned gold tokens, reserved for the ELITE/premium tier accent on badges and trophies. Never hardcode `#FFD700`.
 
-**Layout:** `page-wrap`, `card-r`, `card-p`, `card-hp`, `kpi-p`, `td-p`, `th-p`, `gap-fluid`, `gap-fluid-lg`, `btn-fluid`, `btn-fluid-sm`, `grid-kpi`, `grid-cards`
+**Layout:** `page-wrap`, `card-r`, `card-shadow`, `scan-texture`, `card-p`, `card-hp`, `kpi-p`, `td-p`, `th-p`, `gap-fluid`, `gap-fluid-lg`, `btn-fluid`, `btn-fluid-sm`, `grid-kpi`, `grid-cards`
 
-Every card uses `cardStyle` (box-shadow) + optional `scanTexture` (header background) CSS constants — see any existing page for the pattern.
+Use `card-shadow` for shared card elevation and `scan-texture` for the optional diagonal header/hero
+texture. Their theme-aware values live in `index.css`; do not copy the underlying CSS literals into
+components.

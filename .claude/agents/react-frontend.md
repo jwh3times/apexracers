@@ -92,6 +92,7 @@ src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext) + their Provider components
                           (AuthProvider, …), each with a colocated *.test.tsx sibling
+src/hooks/              ← shared hooks (`useResource`) with colocated *.test.tsx siblings
 src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
@@ -139,31 +140,29 @@ Tailwind CSS with a **fluid design system** — all sizing scales continuously w
 
 ### Standard card pattern
 
-Every card uses a consistent `cardStyle` + optional `scanTexture` for header rows:
+Use the shared `card-shadow` and `scan-texture` classes. Their theme-aware values are owned in
+`web/src/index.css`; do not copy their box-shadow or repeating-gradient literals into a component.
 
 ```tsx
-const cardStyle: React.CSSProperties = {
-  boxShadow:
-    "0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)",
-};
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    "repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)",
-};
-
-<div
-  className="card-r border border-white/10 bg-surface overflow-hidden"
-  style={cardStyle}
->
-  <div
-    className="card-hp border-b border-white/10 flex items-center justify-between"
-    style={scanTexture}
-  >
+<div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+  <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between">
     <h3 className="text-section-head text-on-surface">Section title</h3>
   </div>
   <div className="card-p">{/* body */}</div>
 </div>;
 ```
+
+### Read-only page resources
+
+Use `useResource` for remote data that a page reads without locally mutating the returned collection.
+Pass its `AbortSignal` through the matching `api` method to the shared HTTP client, and render loading,
+typed `IRACING_NOT_LINKED`, and error states with `ResourceView`. If an optional overlay deliberately
+disappears when it is unavailable, declare its typed fallback with `onNotLinked` and/or `onError` at
+the hook call instead of reinterpreting every non-`ok` state in the component.
+
+Keep local state machines for mutation-owned collections and domain workflows: admin CRUD lists that
+are updated in place after writes, debounced searches, uploads, and the percentile lookup's
+idle/not-found/compute flow are not read-only page resources.
 
 Icons use Material Symbols via `<span className="material-symbols-outlined" aria-hidden="true">icon_name</span>`. Always include `aria-hidden="true"` on decorative icons.
 
