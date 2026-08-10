@@ -12,7 +12,7 @@ vi.mock('../context/AuthContext', () => ({
 let mockLiveFlag = true;
 let mockDemoFlag = false;
 vi.mock('../context/FeatureFlagContext', () => ({
-  useFeatureFlag: (key: string) => (key === 'iracing-demo' ? mockDemoFlag : mockLiveFlag),
+  useIracingSurface: () => ({ enabled: mockLiveFlag || mockDemoFlag, ready: true }),
 }));
 
 vi.mock('../services/api', async importOriginal => {

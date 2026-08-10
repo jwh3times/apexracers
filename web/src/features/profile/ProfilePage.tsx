@@ -10,7 +10,7 @@ import {
   type Series,
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { useFeatureFlag } from '../../context/FeatureFlagContext';
+import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { formatLapTime } from '../../utils/lapTime';
 
 type StatsState =
@@ -348,10 +348,7 @@ function SeriesCard({ s }: { s: Series }) {
 export default function ProfilePage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
-  const liveFlag = useFeatureFlag('iracing-live');
-  const demoFlag = useFeatureFlag('iracing-demo');
-  // Show iRacing panels when real (live) OR synthetic demo data is available.
-  const showIracing = liveFlag || demoFlag;
+  const { enabled: showIracing } = useIracingSurface();
 
   const [laps, setLaps] = useState<PersonalLap[]>([]);
   const [series, setSeries] = useState<Series[]>([]);

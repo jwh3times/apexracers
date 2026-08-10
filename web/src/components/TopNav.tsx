@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { GUEST_NAV, AUTH_NAV, visibleNav } from './navItems';
-import { useFeatureFlag } from '../context/FeatureFlagContext';
+import { useIracingSurface } from '../context/FeatureFlagContext';
 import NotificationsBell from './NotificationsBell';
 import { breadcrumbs } from '../utils/breadcrumbs';
 
@@ -10,9 +10,8 @@ function MobileNav() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const live = useFeatureFlag('iracing-live');
-  const demo = useFeatureFlag('iracing-demo');
-  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, live || demo);
+  const { enabled: showIracing } = useIracingSurface();
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, showIracing);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -156,9 +155,8 @@ function ProfileDropdown() {
 
 export default function TopNav() {
   const { user } = useAuth();
-  const live = useFeatureFlag('iracing-live');
-  const demo = useFeatureFlag('iracing-demo');
-  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, live || demo);
+  const { enabled: showIracing } = useIracingSurface();
+  const navItems = visibleNav(user ? AUTH_NAV : GUEST_NAV, showIracing);
   const crumbs = breadcrumbs(useLocation().pathname);
   return (
     <nav className="bg-surface/80 backdrop-blur-xl text-primary-fixed-dim sticky top-0 w-full z-40 border-b border-line-2 shadow-[0_0_20px_rgba(0,224,255,0.15)] flex justify-between items-center px-6 h-16">

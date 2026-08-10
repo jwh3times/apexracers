@@ -25,7 +25,7 @@ vi.mock('../context/AuthContext', () => ({
 
 let mockFlag = true;
 vi.mock('../context/FeatureFlagContext', () => ({
-  useFeatureFlag: () => mockFlag,
+  useIracingSurface: () => ({ enabled: mockFlag, ready: true }),
 }));
 
 // ---------------------------------------------------------------------------

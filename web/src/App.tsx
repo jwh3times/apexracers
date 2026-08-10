@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router';
 import { useAuth } from './context/AuthContext';
-import { useFeatureFlag } from './context/FeatureFlagContext';
+import { useIracingSurface } from './context/FeatureFlagContext';
 import { AuthProvider } from './context/AuthProvider';
 import { FeatureFlagProvider } from './context/FeatureFlagProvider';
 import { ThemeProvider } from './context/ThemeProvider';
@@ -79,11 +79,9 @@ export function AdminGuard() {
 // links degrade gracefully instead of 404/redirect. Shows the surface when real data
 // (iracing-live) OR synthetic demo data (iracing-demo) is available.
 export function RequireFlag() {
-  // Both hooks must be called unconditionally (rules-of-hooks) — `||` on the calls
-  // would short-circuit the second, so evaluate each first, then OR the results.
-  const live = useFeatureFlag('iracing-live');
-  const demo = useFeatureFlag('iracing-demo');
-  return live || demo ? <Outlet /> : <ComingSoonPage />;
+  const { enabled, ready } = useIracingSurface();
+  if (!ready) return null;
+  return enabled ? <Outlet /> : <ComingSoonPage />;
 }
 
 function AppRoutes() {
