@@ -33,7 +33,8 @@ public class AdminServiceTests
 
     private static AdminService BuildService(ServiceProvider provider) =>
         new(provider.GetRequiredService<UserManager<ApplicationUser>>(),
-            provider.GetRequiredService<AppDbContext>());
+            provider.GetRequiredService<AppDbContext>(),
+            new FeatureFlagEligibility(provider.GetRequiredService<AppDbContext>()));
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
     {

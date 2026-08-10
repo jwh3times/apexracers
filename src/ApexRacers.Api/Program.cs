@@ -169,6 +169,7 @@ builder.Services.AddAuthorization(options =>
 // nullable parameter means. Container auto-wiring would fail to resolve it instead.
 builder.Services.AddScoped(sp =>
     new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>()));
+builder.Services.AddScoped<FeatureFlagEligibility>();
 builder.Services.AddScoped<MemberContext>();
 builder.Services.AddScoped<MemberStatsService>();
 builder.Services.AddScoped<AchievementsService>();

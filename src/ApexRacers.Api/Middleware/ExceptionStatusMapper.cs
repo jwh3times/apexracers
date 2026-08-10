@@ -12,6 +12,7 @@ public static class ExceptionStatusMapper
 {
     public static int MapStatusCode(Exception ex) => ex switch
     {
+        IRacingNotLinkedException => StatusCodes.Status409Conflict,
         IRacingNotConfiguredException => StatusCodes.Status503ServiceUnavailable,
         ArgumentException => StatusCodes.Status400BadRequest,
         InvalidOperationException => StatusCodes.Status400BadRequest,

@@ -11,6 +11,8 @@ namespace ApexRacers.Tests.Services;
 public class MemberContextTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+    private static MemberContext CreateContext(AppDbContext db) =>
+        new(db, new FeatureFlagEligibility(db));
 
     [Fact]
     public async Task GetCustIdAsync_UserWithLinkedId_ReturnsCustId()
@@ -20,7 +22,7 @@ public class MemberContextTests
         db.Users.Add(user);
         await db.SaveChangesAsync(Ct);
 
-        var result = await new MemberContext(db).GetCustIdAsync(user.Id, Ct);
+        var result = await CreateContext(db).GetCustIdAsync(user.Id, Ct);
 
         Assert.Equal(260514, result);
     }
@@ -33,7 +35,7 @@ public class MemberContextTests
         db.Users.Add(user);
         await db.SaveChangesAsync(Ct);
 
-        var result = await new MemberContext(db).GetCustIdAsync(user.Id, Ct);
+        var result = await CreateContext(db).GetCustIdAsync(user.Id, Ct);
 
         Assert.Null(result);
     }
@@ -43,7 +45,7 @@ public class MemberContextTests
     {
         await using var db = DbContextFactory.Create();
 
-        var result = await new MemberContext(db).GetCustIdAsync(Guid.NewGuid(), Ct);
+        var result = await CreateContext(db).GetCustIdAsync(Guid.NewGuid(), Ct);
 
         Assert.Null(result);
     }
@@ -70,7 +72,7 @@ public class MemberContextTests
         SeedAlphaUserWithDemoFlag(db, user, "Alpha", demoEnabled: true);
         await db.SaveChangesAsync(Ct);
 
-        var result = await new MemberContext(db).GetCustIdAsync(user.Id, Ct);
+        var result = await CreateContext(db).GetCustIdAsync(user.Id, Ct);
 
         Assert.Equal(DemoData.DriverCustId, result);
     }
@@ -83,7 +85,7 @@ public class MemberContextTests
         SeedAlphaUserWithDemoFlag(db, user, "Standard", demoEnabled: true);
         await db.SaveChangesAsync(Ct);
 
-        var result = await new MemberContext(db).GetCustIdAsync(user.Id, Ct);
+        var result = await CreateContext(db).GetCustIdAsync(user.Id, Ct);
 
         Assert.Equal(555, result); // override does NOT fire — Standard < Alpha
     }
@@ -96,8 +98,59 @@ public class MemberContextTests
         SeedAlphaUserWithDemoFlag(db, user, "Alpha", demoEnabled: false);
         await db.SaveChangesAsync(Ct);
 
-        var result = await new MemberContext(db).GetCustIdAsync(user.Id, Ct);
+        var result = await CreateContext(db).GetCustIdAsync(user.Id, Ct);
 
         Assert.Equal(555, result); // flag off — normal resolution
+    }
+
+    [Fact]
+    public async Task GetRequiredCustIdAsync_LinkedUser_ReturnsCustId()
+    {
+        await using var db = DbContextFactory.Create();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Jerry", IRacingCustomerId = 260514 };
+        db.Users.Add(user);
+        await db.SaveChangesAsync(Ct);
+
+        var result = await CreateContext(db).GetRequiredCustIdAsync(user.Id, Ct);
+
+        Assert.Equal(260514, result);
+    }
+
+    [Fact]
+    public async Task GetRequiredCustIdAsync_DemoFlagOnForUnlinkedAlphaUser_ReturnsDemoDriver()
+    {
+        await using var db = DbContextFactory.Create();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Alpha", IRacingCustomerId = null };
+        SeedAlphaUserWithDemoFlag(db, user, "Alpha", demoEnabled: true);
+        await db.SaveChangesAsync(Ct);
+
+        var result = await CreateContext(db).GetRequiredCustIdAsync(user.Id, Ct);
+
+        Assert.Equal(DemoData.DriverCustId, result);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0L)]
+    public async Task GetRequiredCustIdAsync_MissingOrZeroLink_ThrowsTypedException(long? customerId)
+    {
+        await using var db = DbContextFactory.Create();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Jerry", IRacingCustomerId = customerId };
+        db.Users.Add(user);
+        await db.SaveChangesAsync(Ct);
+
+        var ex = await Assert.ThrowsAsync<IRacingNotLinkedException>(() =>
+            CreateContext(db).GetRequiredCustIdAsync(user.Id, Ct));
+
+        Assert.Equal("IRACING_NOT_LINKED", IRacingNotLinkedException.Code);
+        Assert.Equal(IRacingNotLinkedException.DefaultMessage, ex.Message);
+    }
+
+    [Fact]
+    public void RequireCustId_ExplicitZero_ThrowsTypedException()
+    {
+        using var db = DbContextFactory.Create();
+
+        Assert.Throws<IRacingNotLinkedException>(() => CreateContext(db).RequireCustId(0));
     }
 }

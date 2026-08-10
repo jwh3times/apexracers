@@ -5,10 +5,9 @@ using Microsoft.EntityFrameworkCore;
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Resolves the authenticated user's iRacing customer id from the database. Returns
-/// null when the user has no linked iRacing account; controllers turn that into a
-/// typed 409 (see <c>ControllerExtensions.IRacingNotLinked</c>) so the client can
-/// prompt the user to link rather than showing an empty result or a generic error.
+/// Resolves the authenticated user's iRacing customer id from the database. Optional
+/// personalization uses <see cref="GetCustIdAsync"/>; endpoints that require a link use
+/// <see cref="GetRequiredCustIdAsync"/>, which owns the typed 409 failure contract.
 /// <para>
 /// Demo override: when the <c>iracing-demo</c> flag is active for the caller's role,
 /// every lookup resolves to the shared synthetic <see cref="DemoData.DriverCustId"/>
@@ -16,11 +15,11 @@ namespace ApexRacers.Api.Services;
 /// only demo-aware branch in the API.
 /// </para>
 /// </summary>
-public class MemberContext(AppDbContext db)
+public class MemberContext(AppDbContext db, FeatureFlagEligibility featureFlags)
 {
-    public async Task<long?> GetCustIdAsync(Guid userId, CancellationToken ct)
+    public async Task<long?> GetCustIdAsync(Guid userId, CancellationToken ct = default)
     {
-        if (await IsDemoActiveForUserAsync(userId, ct))
+        if (await featureFlags.IsActiveForUserAsync("iracing-demo", userId, ct))
             return DemoData.DriverCustId;
 
         return await db.Users
@@ -29,19 +28,12 @@ public class MemberContext(AppDbContext db)
             .FirstOrDefaultAsync(ct);
     }
 
-    private async Task<bool> IsDemoActiveForUserAsync(Guid userId, CancellationToken ct)
+    public async Task<long> GetRequiredCustIdAsync(Guid userId, CancellationToken ct = default)
     {
-        var flag = await db.FeatureFlags.FirstOrDefaultAsync(f => f.Key == "iracing-demo", ct);
-        if (flag is null || !flag.IsEnabled) return false;
-
-        var roleName = await (
-            from ur in db.UserRoles
-            where ur.UserId == userId
-            join r in db.Roles on ur.RoleId equals r.Id
-            select r.Name).FirstOrDefaultAsync(ct) ?? "Standard";
-
-        var userLevel = AdminService.RoleHierarchy.GetValueOrDefault(roleName, 0);
-        var minLevel = AdminService.RoleHierarchy.GetValueOrDefault(flag.MinimumRole, 0);
-        return userLevel >= minLevel;
+        var custId = await GetCustIdAsync(userId, ct);
+        return RequireCustId(custId);
     }
+
+    public long RequireCustId(long? custId) =>
+        custId is null or 0 ? throw new IRacingNotLinkedException() : custId.Value;
 }

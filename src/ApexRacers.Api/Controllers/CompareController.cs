@@ -25,10 +25,7 @@ public class CompareController(RivalComparisonService comparison, MemberContext 
         if (rivalCustId <= 0)
             return BadRequest("A valid rivalCustId is required.");
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await comparison.CompareAsync(custId.Value, rivalCustId, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await comparison.CompareAsync(custId, rivalCustId, ct));
     }
 }

@@ -1,11 +1,14 @@
 using System.Text.Json;
+using ApexRacers.Api.Dtos;
+using ApexRacers.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexRacers.Api.Middleware;
 
 /// <summary>
 /// Converts unhandled exceptions into RFC-7807 <c>application/problem+json</c>
-/// responses, with the status code chosen by <see cref="ExceptionStatusMapper"/>.
+/// responses, with the status code chosen by <see cref="ExceptionStatusMapper"/>. The
+/// typed iRacing-not-linked failure retains its established <c>{ code, message }</c> JSON shape.
 /// Registered first in the pipeline so it wraps everything downstream. Controllers
 /// may still return explicit status results (e.g. 423 lockout, 404, 501) — those are
 /// ordinary results, not exceptions, and bypass this layer untouched.
@@ -43,6 +46,18 @@ public class ExceptionHandlingMiddleware(
             {
                 logger.LogError(ex, "Exception thrown after the response started; cannot write ProblemDetails.");
                 throw;
+            }
+
+            if (ex is IRacingNotLinkedException notLinked)
+            {
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(
+                    JsonSerializer.Serialize(
+                        new NotLinkedDto(IRacingNotLinkedException.Code, notLinked.Message),
+                        JsonOptions),
+                    context.RequestAborted);
+                return;
             }
 
             var statusCode = ExceptionStatusMapper.MapStatusCode(ex);

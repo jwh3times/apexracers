@@ -11,13 +11,17 @@ namespace ApexRacers.Tests.Middleware;
 
 public class ExceptionHandlingMiddlewareTests
 {
-    private static async Task<(int Status, string ContentType, JsonElement Body)> InvokeWith(Exception ex)
+    private static async Task<(int Status, string ContentType, JsonElement Body)> InvokeWith(
+        Exception ex,
+        ILogger<ExceptionHandlingMiddleware>? logger = null)
     {
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
         RequestDelegate next = _ => throw ex;
 
-        await new ExceptionHandlingMiddleware(next, NullLogger<ExceptionHandlingMiddleware>.Instance)
+        await new ExceptionHandlingMiddleware(
+            next,
+            logger ?? NullLogger<ExceptionHandlingMiddleware>.Instance)
             .InvokeAsync(context);
 
         context.Response.Body.Seek(0, SeekOrigin.Begin);
@@ -64,6 +68,20 @@ public class ExceptionHandlingMiddlewareTests
         Assert.Equal(503, status);
         Assert.Equal("Service Unavailable", body.GetProperty("title").GetString());
         Assert.Contains("not configured", body.GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task IRacingNotLinked_WritesExactTyped409Contract()
+    {
+        var logger = new FakeLogger<ExceptionHandlingMiddleware>();
+        var (status, contentType, body) = await InvokeWith(new IRacingNotLinkedException(), logger);
+
+        Assert.Equal(409, status);
+        Assert.StartsWith("application/json", contentType);
+        Assert.Equal(2, body.EnumerateObject().Count());
+        Assert.Equal("IRACING_NOT_LINKED", body.GetProperty("code").GetString());
+        Assert.Equal(IRacingNotLinkedException.DefaultMessage, body.GetProperty("message").GetString());
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
     }
 
     [Fact]

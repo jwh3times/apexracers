@@ -18,10 +18,7 @@ public class RaceHistoryController(RaceHistoryService races, MemberContext membe
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetCustIdAsync(userId, ct);
-        if (custId is null or 0)
-            return this.IRacingNotLinked();
-
-        return Ok(await races.GetRecentRacesAsync(custId.Value, ct));
+        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        return Ok(await races.GetRecentRacesAsync(custId, ct));
     }
 }
