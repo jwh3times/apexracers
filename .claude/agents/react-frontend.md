@@ -92,6 +92,7 @@ src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext) + their Provider components
                           (AuthProvider, …), each with a colocated *.test.tsx sibling
+src/hooks/              ← shared hooks (`useResource`) with colocated *.test.tsx siblings
 src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
