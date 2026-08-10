@@ -17,7 +17,15 @@ test.describe('auth flows', () => {
     const respPromise = page.waitForResponse('**/api/auth/forgot-password');
     await page.getByLabel('Email Address').fill(email);
     await page.getByRole('button', { name: 'Send Reset Link' }).click();
-    const body = await (await respPromise).json();
+    const body: unknown = await (await respPromise).json();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('resetToken' in body) ||
+      typeof body.resetToken !== 'string'
+    ) {
+      throw new Error('Password-reset response did not contain a reset token.');
+    }
     // Development-only token echo (AuthController.cs:104-106); ForgotPasswordResult's
     // property is `resetToken`, not `token` (ForgotPasswordPage.tsx:24-26).
     expect(body.resetToken, 'Development-only token echo (AuthController.cs:104-106)').toBeTruthy();

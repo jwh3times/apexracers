@@ -178,7 +178,7 @@ export function createSession({ store, refreshTransport, now = Date.now }: Sessi
 
       inFlight = (async (): Promise<boolean> => {
         try {
-          const tokens = await refreshTransport(refreshToken!);
+          const tokens = await refreshTransport(refreshToken);
           if (!tokens) {
             await wipe();
             notify();

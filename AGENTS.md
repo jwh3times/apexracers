@@ -210,7 +210,7 @@ npm run dev:all      # starts dotnet API + Vite together
 npm run dev:docker   # proxies /api → http://localhost:8080 (API in Docker)
 npm run dev:cloud    # proxies /api to the configured cloud API host
 npm run build        # tsc + Vite production build
-npm run lint         # ESLint
+npm run lint         # Oxlint with TypeScript 7-powered type-aware rules
 npm run test         # Vitest one-shot   (test:watch for watch mode)
 npm run test:e2e     # Playwright E2E — requires app at http://localhost:8080 (e.g. docker compose up)
 npm run test:e2e:ui  # Playwright UI mode (interactive)

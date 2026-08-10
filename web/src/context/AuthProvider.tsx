@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../services/api';
 import type { AuthResult } from '../services/api';
@@ -36,12 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Theme lives in another provider, so syncing is a side effect of seeing a new token rather
   // than something the session itself should know about.
-  const syncThemeOnce = (claims: JwtClaims | null) => {
-    if (!didSyncRef.current && claims?.theme_preference) {
-      didSyncRef.current = true;
-      syncFromJwt(claims.theme_preference);
-    }
-  };
+  const syncThemeOnce = useCallback(
+    (claims: JwtClaims | null) => {
+      if (!didSyncRef.current && claims?.theme_preference) {
+        didSyncRef.current = true;
+        syncFromJwt(claims.theme_preference);
+      }
+    },
+    [syncFromJwt]
+  );
 
   useEffect(() => {
     // A subscription, not a callback slot: mounting a second provider (StrictMode's double
@@ -75,8 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [syncThemeOnce]);
 
   async function login(result: AuthResult, email: string) {
     await session.adopt({ accessToken: result.token, refreshToken: result.refreshToken });

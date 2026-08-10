@@ -80,7 +80,7 @@ export function useResource<T>(
       controller.abort();
     };
     // The dependency list is deliberately part of this hook's public interface.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, dependencies);
 
   return resource;

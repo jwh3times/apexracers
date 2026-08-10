@@ -42,7 +42,7 @@ export default function LoginPage() {
       const result =
         tab === 'signin' ? await api.login(email, password) : await api.register(email, password);
       await login(result, email);
-      navigate('/dashboard');
+      void navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');
     } finally {

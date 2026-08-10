@@ -19,7 +19,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (!linkValid) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         await api.confirmEmailChange(userId, email, token);
         if (!cancelled) setStatus('done');
