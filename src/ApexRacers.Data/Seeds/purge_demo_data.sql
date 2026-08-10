@@ -26,8 +26,10 @@ DELETE FROM iracing."Subsessions" WHERE "Id" < 0;
 -- Computed percentile snapshots (demo-derived at teardown time -- see header).
 DELETE FROM iracing."CarPercentileResults";
 
--- Demo cache rows are marked by the far-future ExpiresAt sentinel (>= 9000-01-01); real
--- cache rows have TTLs of 60 s - 24 h and can never reach it.
+-- SQL mirror of DemoCache.SentinelThreshold in
+-- src/ApexRacers.Seeder/Demo/DemoCache.cs. The >= range operator and threshold value are
+-- contract-load-bearing: demo rows use a later Sentinel value, while real cache TTLs cannot
+-- reach this range.
 DELETE FROM iracing."ExternalDataCaches" WHERE "ExpiresAt" >= '9000-01-01';
 
 -- Synthetic BoP + per-week weather for active seasons (real ingestion re-fills these idempotently).

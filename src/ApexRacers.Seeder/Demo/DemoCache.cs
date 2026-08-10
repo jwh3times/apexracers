@@ -13,7 +13,15 @@ namespace ApexRacers.Seeder.Demo;
 /// </summary>
 public static class DemoCache
 {
-    /// <summary>Far-future expiry: never treated as a miss; also the purge marker (>= 9000-01-01).</summary>
+    /// <summary>
+    /// Lower bound that identifies every synthetic demo cache row. The production teardown mirror
+    /// is <c>src/ApexRacers.Data/Seeds/purge_demo_data.sql</c>; its value and <c>&gt;=</c> operator
+    /// must remain in lockstep with this owner.
+    /// </summary>
+    public static readonly DateTimeOffset SentinelThreshold =
+        new(9000, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Far-future expiry written to demo cache rows; always inside the sentinel range.</summary>
     public static readonly DateTimeOffset Sentinel = new(9999, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     /// <summary>Fixed reference date for deterministic payload dates (keeps builders unit-testable).</summary>

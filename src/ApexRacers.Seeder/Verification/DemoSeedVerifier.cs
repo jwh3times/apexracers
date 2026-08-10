@@ -17,8 +17,6 @@ public sealed record VerificationCheck(string Name, bool Passed, string Detail);
 /// </summary>
 public static class DemoSeedVerifier
 {
-    private static readonly DateTimeOffset Sentinel = new(9000, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
     public static async Task<List<VerificationCheck>> VerifyDemoAsync(AppDbContext db, CancellationToken ct)
     {
         var checks = new List<VerificationCheck>();
@@ -99,7 +97,9 @@ public static class DemoSeedVerifier
         //    DateTimeOffset range predicates are the known SQLite-untranslatable case)
         var nonSentinel = (await db.ExternalDataCaches
                 .Select(c => new { c.CacheKey, c.ExpiresAt }).ToListAsync(ct))
-            .Where(c => c.ExpiresAt < Sentinel).Select(c => c.CacheKey).ToList();
+            .Where(c => c.ExpiresAt < DemoCache.SentinelThreshold)
+            .Select(c => c.CacheKey)
+            .ToList();
         checks.Add(new("sentinel-expiry", nonSentinel.Count == 0,
             nonSentinel.Count == 0 ? "all cache rows sentinel" : $"non-sentinel: {string.Join(", ", nonSentinel.Take(5))}…"));
 
@@ -125,7 +125,7 @@ public static class DemoSeedVerifier
         var checks = new List<VerificationCheck>();
         var sentinelRows = (await db.ExternalDataCaches
                 .Select(c => c.ExpiresAt).ToListAsync(ct))
-            .Count(e => e >= Sentinel);
+            .Count(e => e >= DemoCache.SentinelThreshold);
         checks.Add(new("no-sentinel-cache", sentinelRows == 0, $"{sentinelRows} sentinel rows remain"));
         var negSubs = await db.Subsessions.CountAsync(s => s.Id < 0, ct);
         checks.Add(new("no-synthetic-races", negSubs == 0, $"{negSubs} negative-id subsessions remain"));
