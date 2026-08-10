@@ -287,6 +287,14 @@ describe('AnalyticsPage', () => {
     });
   });
 
+  it('shows the series error instead of the empty-series message when loading fails', async () => {
+    mockGetSeries.mockRejectedValue(new Error('Series unavailable'));
+    renderPage();
+
+    expect(await screen.findByText('Series unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/no active series found/i)).not.toBeInTheDocument();
+  });
+
   // ── By Car mode + badge thresholds (T8) ────────────────────────────────────
 
   it('switches to By Car mode, fetches all analytics, and shows the car selector', async () => {
@@ -369,6 +377,9 @@ describe('AnalyticsPage', () => {
     expect(
       await screen.findByText(/link your iracing account to view personalized analytics/i)
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 });

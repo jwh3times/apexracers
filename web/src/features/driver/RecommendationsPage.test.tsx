@@ -172,13 +172,21 @@ describe('RecommendationsPage', () => {
   it('shows loading message while fetching series', () => {
     mockGetSeries.mockReturnValue(new Promise(() => {})); // never resolves
     renderPage();
-    expect(screen.getByText(/loading series/i)).toBeInTheDocument();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
   });
 
   it('shows no active series message when getSeries returns empty', async () => {
     mockGetSeries.mockResolvedValue([]);
     renderPage();
     await waitFor(() => expect(screen.getByText(/no active series found/i)).toBeInTheDocument());
+  });
+
+  it('shows the series error instead of the empty-series message when loading fails', async () => {
+    mockGetSeries.mockRejectedValue(new Error('Series unavailable'));
+    renderPage();
+
+    expect(await screen.findByText('Series unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/no active series found/i)).not.toBeInTheDocument();
   });
 
   it('switching to blend mode re-fetches with includePersonalLaps true', async () => {

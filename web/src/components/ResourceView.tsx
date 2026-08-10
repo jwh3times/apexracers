@@ -10,13 +10,10 @@ export function NotLinkedCard({ reason }: { reason: string }) {
       >
         link_off
       </span>
-      <p className="text-body-fluid text-on-surface-variant">
-        {reason}{' '}
-        <Link to="/settings" className="text-primary-container underline hover:opacity-80">
-          Settings
-        </Link>
-        .
-      </p>
+      <p className="text-body-fluid text-on-surface-variant">{reason}</p>
+      <Link to="/settings" className="text-primary-container underline hover:opacity-80">
+        Open Settings
+      </Link>
     </div>
   );
 }

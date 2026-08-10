@@ -411,11 +411,11 @@ export default function ProfilePage() {
           ) : (
             <ResourceView
               resource={statsResource}
-              notLinkedReason="Link your iRacing customer ID to see career stats, licenses, and favorites in"
+              notLinkedReason="Link your iRacing customer ID to see career stats, licenses, and favorites."
             />
           )
         ) : (
-          <NotLinkedCard reason="Link your iRacing customer ID to see career stats, licenses, and favorites in" />
+          <NotLinkedCard reason="Link your iRacing customer ID to see career stats, licenses, and favorites." />
         ))}
 
       {/* Trophy case — earned awards/achievements */}

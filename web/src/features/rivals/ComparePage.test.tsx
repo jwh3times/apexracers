@@ -387,6 +387,9 @@ describe('ComparePage', () => {
     expect(
       await screen.findByText(/link your iracing account to follow and compare rivals/i)
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 });

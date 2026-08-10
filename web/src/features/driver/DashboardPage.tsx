@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { api, type PersonalLap } from '../../services/api';
+import { api, type DriverProfile, type PersonalLap } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { NotLinkedCard } from '../../components/ResourceView';
@@ -16,18 +16,27 @@ export default function DashboardPage() {
   const displayName = user?.displayName ?? 'Driver';
   const { enabled: showIracing } = useIracingSurface();
 
-  const lapsResource = useResource(signal => api.getMyLaps(signal), []);
+  const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
+    onError: { fallback: [] },
+  });
   const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
     enabled: showIracing,
+    onError: { fallback: [] },
   });
-  const profileResource = useResource(signal => api.getProfileStats(signal), [showIracing], {
-    enabled: showIracing,
-  });
+  const profileResource = useResource<DriverProfile | null>(
+    signal => api.getProfileStats(signal),
+    [showIracing],
+    {
+      enabled: showIracing,
+      onError: { fallback: null },
+    }
+  );
   const analyticsResource = useResource(
     signal => api.getMyAnalytics(undefined, signal),
     [showIracing],
     {
       enabled: showIracing,
+      onError: { fallback: [] },
     }
   );
 

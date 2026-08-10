@@ -22,8 +22,11 @@ describe('ResourceView', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Progression needs an iRacing identity/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByText('Progression needs an iRacing identity.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 
   it('renders nothing for loaded data', () => {

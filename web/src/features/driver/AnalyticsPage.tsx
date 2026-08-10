@@ -273,7 +273,6 @@ export default function AnalyticsPage() {
   }
 
   // Derived display data
-  const seriesLoading = seriesResource.status === 'loading';
   const currentResource = viewMode === 'series' ? analyticsResource : allAnalyticsResource;
   const resourceEnabled = viewMode === 'car' || selectedSeriesId !== null;
   const isLoading = resourceEnabled && currentResource.status === 'loading';
@@ -315,7 +314,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Series selector (series mode) */}
-      {viewMode === 'series' && !seriesLoading && series.length > 0 && (
+      {viewMode === 'series' && <ResourceView resource={seriesResource} />}
+
+      {viewMode === 'series' && seriesResource.status === 'ok' && series.length > 0 && (
         <div className="flex items-center gap-3 mb-6">
           <label
             htmlFor="analytics-series-select"
@@ -338,7 +339,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {viewMode === 'series' && !seriesLoading && series.length === 0 && (
+      {viewMode === 'series' && seriesResource.status === 'ok' && series.length === 0 && (
         <p className="text-body-fluid text-on-surface-variant mb-6">No active series found.</p>
       )}
 

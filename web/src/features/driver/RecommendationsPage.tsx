@@ -194,17 +194,13 @@ export default function RecommendationsPage() {
         <p className="text-eyebrow text-primary-container">RECOMMENDATIONS</p>
         <h1 className="text-page-title text-on-surface mt-2 mb-4">My Car Recommendations</h1>
 
-        {seriesResource.status === 'loading' && (
-          <p className="text-body-fluid text-on-surface-variant animate-pulse">
-            Loading series&hellip;
-          </p>
-        )}
+        <ResourceView resource={seriesResource} />
 
-        {seriesResource.status !== 'loading' && allSeries.length === 0 && (
+        {seriesResource.status === 'ok' && allSeries.length === 0 && (
           <p className="text-body-fluid text-on-surface-variant">No active series found.</p>
         )}
 
-        {seriesResource.status !== 'loading' && allSeries.length > 0 && (
+        {seriesResource.status === 'ok' && allSeries.length > 0 && (
           <div className="flex items-start justify-between gap-4 flex-wrap">
             {/* Left: week description */}
             <p className="text-body-fluid text-on-surface-variant max-w-prose">
