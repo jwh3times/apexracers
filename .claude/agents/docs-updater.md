@@ -117,7 +117,8 @@ Linux, and web sessions, and never require permission approval:
 - **Core models that exist** — Glob `src/ApexRacers.Core/Models/*.cs`
 - **Tables in AppDbContext** — Grep pattern `DbSet<` in `src/ApexRacers.Data/AppDbContext.cs`
 - **Identity-schema table mappings** — Grep pattern `ToTable.*identity` in `src/ApexRacers.Data/AppDbContext.cs`
-- **JWT expiry configured in AuthService** — Grep pattern `AccessTokenMinutes|RefreshTokenDays` in `src/ApexRacers.Api/Services/AuthService.cs`
+- **JWT expiry configured in AuthService** — Grep pattern `AccessTokenMinutes` in `src/ApexRacers.Api/Services/AuthService.cs`
+- **Refresh-token lifetime, cap, and active predicate** — Grep pattern `RefreshTokenDays|MaxActiveTokensPerUser|ActiveAt` in `src/ApexRacers.Api/Services/RefreshTokenStore.cs`
 - **Design tokens defined** — Grep pattern `@layer components` in `web/src/index.css` with `-A 200` context
 
 ## What NOT to change

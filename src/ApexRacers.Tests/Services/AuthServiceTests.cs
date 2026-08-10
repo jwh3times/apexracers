@@ -24,8 +24,7 @@ public class AuthServiceTests
         // Password reset tokens are produced by DataProtectorTokenProvider, which needs
         // data-protection services + the default token providers registered.
         services.AddDataProtection();
-        services.AddDbContext<AppDbContext>(o =>
-            o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddScoped(_ => DbContextFactory.CreateInMemory());
         services.AddIdentityCore<ApplicationUser>(o =>
         {
             o.Password.RequireDigit          = false;
@@ -57,7 +56,9 @@ public class AuthServiceTests
         // Bound the same way production binds it, so the tests exercise the real defaults rather
         // than a second set invented here.
         var jwt = JwtSettings.FromConfiguration(config);
-        return new AuthService(userManager, config, jwt, db, emailSender ?? new FakeEmailSender());
+        var refreshTokens = new RefreshTokenStore(db, TimeProvider.System);
+        return new AuthService(
+            userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender());
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)

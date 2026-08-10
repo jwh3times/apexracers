@@ -47,54 +47,6 @@ public class CoreModelTests
     }
 
     [Fact]
-    public void RefreshToken_IsActive_True_WhenNotRevokedAndNotExpired()
-    {
-        var token = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            TokenHash = "abc",
-            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
-            CreatedAt = DateTimeOffset.UtcNow,
-            RevokedAt = null,
-        };
-
-        Assert.True(token.IsActive);
-    }
-
-    [Fact]
-    public void RefreshToken_IsActive_False_WhenRevoked()
-    {
-        var token = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            TokenHash = "abc",
-            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
-            RevokedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-        };
-
-        Assert.False(token.IsActive);
-    }
-
-    [Fact]
-    public void RefreshToken_IsActive_False_WhenExpired()
-    {
-        var token = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            TokenHash = "abc",
-            ExpiresAt = DateTimeOffset.UtcNow.AddHours(-1),
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-8),
-            RevokedAt = null,
-        };
-
-        Assert.False(token.IsActive);
-    }
-
-    [Fact]
     public void LapSessionType_EnumValues_AreCorrect()
     {
         Assert.Equal(0, (byte)LapSessionType.Unknown);

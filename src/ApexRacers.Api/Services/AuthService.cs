@@ -1,13 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services.Email;
-using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ApexRacers.Api.Services;
@@ -16,16 +12,10 @@ public class AuthService(
     UserManager<ApplicationUser> userManager,
     IConfiguration config,
     JwtSettings jwt,
-    AppDbContext db,
+    RefreshTokenStore refreshTokens,
     IEmailSender emailSender)
 {
     private const int AccessTokenMinutes = 15;
-    private const int RefreshTokenDays   = 7;
-
-    // Cap concurrent sessions per account: issuing a new refresh token past this many
-    // active ones revokes the oldest, so a single account can't accumulate unbounded
-    // long-lived tokens (e.g. from many devices or a token-harvesting attempt).
-    private const int MaxActiveRefreshTokensPerUser = 5;
 
     private static readonly string[] SelfAssignableRoles = ["Beta", "Alpha"];
 
@@ -51,7 +41,7 @@ public class AuthService(
         await userManager.AddToRoleAsync(user, "Standard");
 
         var jwt     = await GenerateJwtAsync(user);
-        var refresh = await CreateRefreshTokenAsync(user.Id, ct);
+        var refresh = await refreshTokens.IssueAsync(user.Id, ct);
         return new AuthResultDto(jwt, user.Id, user.DisplayName, refresh);
     }
 
@@ -78,7 +68,7 @@ public class AuthService(
         await userManager.ResetAccessFailedCountAsync(user);
 
         var jwt     = await GenerateJwtAsync(user);
-        var refresh = await CreateRefreshTokenAsync(user.Id, ct);
+        var refresh = await refreshTokens.IssueAsync(user.Id, ct);
         return LoginResult.Success(new AuthResultDto(jwt, user.Id, user.DisplayName, refresh));
     }
 
@@ -142,66 +132,26 @@ public class AuthService(
 
     public async Task<AuthResultDto> RefreshAsync(string rawToken, CancellationToken ct = default)
     {
-        var hash   = HashToken(rawToken);
-        var stored = await db.RefreshTokens
-            .FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
-
-        if (stored is null || !stored.IsActive)
-            throw new InvalidOperationException("Invalid or expired refresh token.");
-
-        var user = await userManager.FindByIdAsync(stored.UserId.ToString())
+        var rotation = await refreshTokens.RotateAsync(rawToken, ct);
+        var user = await userManager.FindByIdAsync(rotation.UserId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        // Rotate: revoke old, issue new in one SaveChanges
-        stored.RevokedAt = DateTimeOffset.UtcNow;
-
-        var rawNew = GenerateRawToken();
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            Id        = Guid.NewGuid(),
-            UserId    = stored.UserId,
-            TokenHash = HashToken(rawNew),
-            CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenDays),
-        });
-        await db.SaveChangesAsync(ct);
-
         var jwt = await GenerateJwtAsync(user);
-        return new AuthResultDto(jwt, user.Id, user.DisplayName, rawNew);
+        return new AuthResultDto(jwt, user.Id, user.DisplayName, rotation.RawToken);
     }
 
-    public async Task RevokeAsync(string rawToken, CancellationToken ct = default)
-    {
-        var hash   = HashToken(rawToken);
-        var stored = await db.RefreshTokens
-            .FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
-
-        if (stored is not null && stored.RevokedAt is null)
-        {
-            stored.RevokedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
-        }
-    }
+    public Task RevokeAsync(string rawToken, CancellationToken ct = default) =>
+        refreshTokens.RevokeAsync(rawToken, ct);
 
     /// <summary>
     /// Deletes refresh tokens whose expiry is older than <paramref name="retention"/>.
     /// Revoked and naturally-expired rows otherwise accumulate forever; this is invoked
     /// once at API startup. Uses a tracked delete so it works on every EF provider.
     /// </summary>
-    public async Task<int> PurgeExpiredRefreshTokensAsync(TimeSpan retention, CancellationToken ct = default)
-    {
-        var cutoff  = DateTimeOffset.UtcNow - retention;
-        var expired = await db.RefreshTokens
-            .Where(t => t.ExpiresAt < cutoff)
-            .ToListAsync(ct);
-
-        if (expired.Count == 0)
-            return 0;
-
-        db.RefreshTokens.RemoveRange(expired);
-        await db.SaveChangesAsync(ct);
-        return expired.Count;
-    }
+    public Task<int> PurgeExpiredRefreshTokensAsync(
+        TimeSpan retention,
+        CancellationToken ct = default) =>
+        refreshTokens.PurgeExpiredAsync(retention, ct);
 
     /// <summary>
     /// Changes the password for an authenticated user who supplies their current password.
@@ -280,7 +230,7 @@ public class AuthService(
             throw new InvalidOperationException(
                 string.Join(" ", result.Errors.Select(e => e.Description)));
 
-        await RevokeAllActiveTokensAsync(user.Id, ct);
+        await refreshTokens.RevokeAllActiveAsync(user.Id, ct);
     }
 
     /// <summary>
@@ -298,7 +248,7 @@ public class AuthService(
             throw new InvalidOperationException(string.Join(" ", result.Errors.Select(e => e.Description)));
 
         await userManager.SetUserNameAsync(user, trimmed);
-        await RevokeAllActiveTokensAsync(user.Id, ct);
+        await refreshTokens.RevokeAllActiveAsync(user.Id, ct);
     }
 
     // TODO: Validate state against a nonce store to prevent CSRF; exchange the authorization
@@ -309,71 +259,6 @@ public class AuthService(
         => throw new NotImplementedException();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private async Task<string> CreateRefreshTokenAsync(Guid userId, CancellationToken ct)
-    {
-        await EnforceActiveTokenCapAsync(userId, ct);
-
-        var raw = GenerateRawToken();
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            Id        = Guid.NewGuid(),
-            UserId    = userId,
-            TokenHash = HashToken(raw),
-            CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenDays),
-        });
-        await db.SaveChangesAsync(ct);
-        return raw;
-    }
-
-    /// <summary>
-    /// Revokes every active refresh token for the user (used on password reset).
-    /// </summary>
-    private async Task RevokeAllActiveTokensAsync(Guid userId, CancellationToken ct)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var active = await db.RefreshTokens
-            .Where(t => t.UserId == userId && t.RevokedAt == null)
-            .ToListAsync(ct);
-
-        foreach (var token in active)
-            token.RevokedAt = now;
-        await db.SaveChangesAsync(ct);
-    }
-
-    /// <summary>
-    /// Revokes the user's oldest active refresh tokens so that adding one more keeps
-    /// the active total at or below <see cref="MaxActiveRefreshTokensPerUser"/>. The
-    /// revocations are not persisted here — the caller's SaveChanges commits them
-    /// together with the newly-issued token. Rotation (RefreshAsync) is exempt: it
-    /// revokes one and issues one, so the active count never grows.
-    /// </summary>
-    private async Task EnforceActiveTokenCapAsync(Guid userId, CancellationToken ct)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var active = await db.RefreshTokens
-            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
-            .OrderBy(t => t.CreatedAt)
-            .ToListAsync(ct);
-
-        var excess = active.Count - (MaxActiveRefreshTokensPerUser - 1);
-        for (var i = 0; i < excess; i++)
-            active[i].RevokedAt = now;
-    }
-
-    private static string GenerateRawToken()
-    {
-        var bytes = new byte[64];
-        RandomNumberGenerator.Fill(bytes);
-        return Convert.ToBase64String(bytes);
-    }
-
-    private static string HashToken(string raw)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
 
     internal async Task<string> GenerateJwtAsync(ApplicationUser user)
     {

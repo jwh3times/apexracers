@@ -69,7 +69,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 - JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
 - Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
-- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, AppDbContext db, IEmailSender emailSender)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` argument; build it with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration` rather than hand-rolling one, so the test exercises the real `DefaultIssuer`/`DefaultAudience` fallbacks instead of a second, divergent set of literals.
+- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
 - RBAC policies use `RequireClaim("role", ...)`, **not** `RequireRole`. Existing policies:
   - `AdminOnly` → `RequireClaim("role", "Admin")`
@@ -80,13 +80,15 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 ### Refresh token rotation
 
-`AuthService` issues a **7-day rotating refresh token** alongside every JWT. Rules:
+`AuthService` delegates the complete refresh-token lifecycle to `RefreshTokenStore`, which issues a **7-day rotating refresh token** alongside every JWT. Rules:
 
 - Raw token: 64 random bytes (via `RandomNumberGenerator.Fill`) encoded as Base64.
 - Stored in DB as SHA-256 hash (`RefreshToken` entity in `identity.RefreshTokens`). The raw token is never persisted.
-- `RefreshAsync(rawToken)`: validates hash + `IsActive`, revokes the old token, inserts a new one, and returns a new JWT + new refresh token — all in a single `SaveChangesAsync`.
-- `RevokeAsync(rawToken)`: best-effort; no-op if token not found.
-- Issuing a refresh token caps active tokens per user at 5 (oldest revoked past the cap; rotation is exempt).
+- Active means exactly `RevokedAt == null && ExpiresAt > timeProvider.GetUtcNow()`; a token expiring exactly now is inactive. Keep every active-token query behind the store's canonical predicate rather than adding a time-reading property to the entity.
+- `RotateAsync(rawToken)`: validates the hash against that predicate, revokes the old token, inserts a replacement, and returns its user ID + raw credential in one `SaveChangesAsync`. Rotation is cap-exempt because it replaces one active credential with one.
+- `RevokeAsync(rawToken)`: best-effort; unknown and already-revoked credentials are no-ops. A specifically presented expired credential may still be stamped revoked.
+- Issuance caps active tokens per user at 5 by revoking the oldest before adding the new token; `RevokeAllActiveAsync` touches only canonically active rows.
+- `PurgeExpiredAsync(retention)` deletes only rows with `ExpiresAt < now - retention`; the exact boundary remains.
 - `POST /api/auth/refresh` and `POST /api/auth/logout` do **not** have `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT expires.
 
 ## Configuration
