@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
@@ -46,35 +47,29 @@ public class DemoCacheTests
     [Fact]
     public void ProductionPurgeSql_MatchesTheOwnedThresholdAndRangeOperator()
     {
-        var repoRoot = FindRepoRoot();
-        var path = Path.Combine(
-            repoRoot, "src", "ApexRacers.Data", "Seeds", "purge_demo_data.sql");
+        var path = PurgeSqlPath();
         var sql = File.ReadAllText(path);
         var delete = Regex.Match(
             sql,
-            """DELETE\s+FROM\s+iracing\."ExternalDataCaches"\s+WHERE\s+"ExpiresAt"\s*(?<operator>>=|<=|=|>|<)\s*'(?<threshold>\d{4}-\d{2}-\d{2})'\s*;""",
+            """DELETE\s+FROM\s+iracing\."ExternalDataCaches"\s+WHERE\s+"ExpiresAt"\s*(?<operator>>=|<=|=|>|<)\s*TIMESTAMPTZ\s*'(?<threshold>[^']+)'\s*;""",
             RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         Assert.True(delete.Success,
             $"Could not find the production ExternalDataCaches sentinel DELETE in {path}.");
         Assert.Equal(">=", delete.Groups["operator"].Value);
+        var threshold = DateTimeOffset.Parse(
+            delete.Groups["threshold"].Value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal);
         Assert.Equal(
-            DemoCache.SentinelThreshold.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            delete.Groups["threshold"].Value);
+            DemoCache.SentinelThreshold,
+            threshold);
         Assert.Contains("DemoCache.SentinelThreshold", sql, StringComparison.Ordinal);
+        Assert.Contains("DemoData.CacheSentinelThreshold", sql, StringComparison.Ordinal);
     }
 
-    private static string FindRepoRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
-             directory is not null;
-             directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "ApexRacers.sln")))
-                return directory.FullName;
-        }
-
-        throw new InvalidOperationException(
-            $"Could not locate the ApexRacers solution root above {AppContext.BaseDirectory}.");
-    }
+    private static string PurgeSqlPath([CallerFilePath] string sourceFile = "") =>
+        Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(sourceFile)!, "..", "..", "ApexRacers.Data", "Seeds",
+            "purge_demo_data.sql"));
 }

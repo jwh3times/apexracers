@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,15 +15,14 @@ namespace ApexRacers.Seeder.Demo;
 public static class DemoCache
 {
     /// <summary>
-    /// Lower bound that identifies every synthetic demo cache row. The production teardown mirror
-    /// is <c>src/ApexRacers.Data/Seeds/purge_demo_data.sql</c>; its value and <c>&gt;=</c> operator
-    /// must remain in lockstep with this owner.
+    /// Seeder-facing alias for the shared lower bound identifying every synthetic demo cache row.
+    /// The production teardown mirror is <c>src/ApexRacers.Data/Seeds/purge_demo_data.sql</c>; its
+    /// value and <c>&gt;=</c> operator must remain in lockstep with <see cref="DemoData"/>.
     /// </summary>
-    public static readonly DateTimeOffset SentinelThreshold =
-        new(9000, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    public static DateTimeOffset SentinelThreshold => DemoData.CacheSentinelThreshold;
 
     /// <summary>Far-future expiry written to demo cache rows; always inside the sentinel range.</summary>
-    public static readonly DateTimeOffset Sentinel = new(9999, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    public static DateTimeOffset Sentinel => DemoData.CacheSentinel;
 
     /// <summary>Fixed reference date for deterministic payload dates (keeps builders unit-testable).</summary>
     public static readonly DateTimeOffset RefDate = new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero);

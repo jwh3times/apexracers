@@ -59,8 +59,8 @@ public class ExternalDataCacheCleanupServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_AtSentinelThreshold_PreservesTheInclusiveSentinelRange()
     {
-        // Zero grace makes the cleanup predicate's strict < boundary explicit: the row one tick
-        // below the threshold is stale, while the threshold itself and the writer's Sentinel stay.
+        // MaxValue proves preservation is an explicit predicate, not an accident of today's date:
+        // every sentinel-range row is before this cutoff, but cleanup must still retain it.
         await using var db = DbContextFactory.CreateInMemory();
         db.ExternalDataCaches.AddRange(
             Row("below-threshold", DemoCache.SentinelThreshold.AddTicks(-1)),
@@ -69,7 +69,7 @@ public class ExternalDataCacheCleanupServiceTests
         await db.SaveChangesAsync(Ct);
 
         var removed = await ExternalDataCacheCleanupService.PurgeExpiredAsync(
-            db, DemoCache.SentinelThreshold, TimeSpan.Zero, Ct);
+            db, DateTimeOffset.MaxValue, TimeSpan.Zero, Ct);
 
         Assert.Equal(1, removed);
         var remaining = db.ExternalDataCaches
