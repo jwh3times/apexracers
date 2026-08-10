@@ -19,15 +19,6 @@ type StatsState =
   | { status: 'not-linked' }
   | { status: 'error' };
 
-const cardStyle: React.CSSProperties = {
-  boxShadow: '0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -24px rgba(0,0,0,.8)',
-};
-
-const scanTexture: React.CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 9px)',
-};
-
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="kpi-p card-r border border-line-2 bg-surface-container">
@@ -48,10 +39,7 @@ function DriverStats({ state }: { state: StatsState }) {
   if (state.status === 'error') return null;
   if (state.status === 'not-linked') {
     return (
-      <div
-        className="card-r border border-line-2 bg-surface card-p text-body-fluid text-on-surface-variant"
-        style={cardStyle}
-      >
+      <div className="card-r card-shadow border border-line-2 bg-surface card-p text-body-fluid text-on-surface-variant">
         Link your iRacing customer ID in{' '}
         <Link
           to="/settings"
@@ -68,11 +56,8 @@ function DriverStats({ state }: { state: StatsState }) {
   return (
     <div className="flex flex-col gap-fluid">
       {/* Licenses */}
-      <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-        <div
-          className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-          style={scanTexture}
-        >
+      <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+        <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
           <h3 className="text-section-head text-on-surface">Licenses</h3>
           <span className="text-small-fluid text-on-surface-variant">
             {[d.country, d.memberSince ? `Member since ${d.memberSince}` : null]
@@ -118,10 +103,7 @@ function DriverStats({ state }: { state: StatsState }) {
       {(d.favoriteCar || d.favoriteTrack) && (
         <div className="flex flex-wrap gap-fluid">
           {d.favoriteCar && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
-              style={cardStyle}
-            >
+            <div className="flex items-center gap-3 px-4 py-3 card-r card-shadow border border-line-2 bg-surface">
               <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
                 directions_car
               </span>
@@ -134,10 +116,7 @@ function DriverStats({ state }: { state: StatsState }) {
             </div>
           )}
           {d.favoriteTrack && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 card-r border border-line-2 bg-surface"
-              style={cardStyle}
-            >
+            <div className="flex items-center gap-3 px-4 py-3 card-r card-shadow border border-line-2 bg-surface">
               <span className="material-symbols-outlined text-primary-container" aria-hidden="true">
                 stadium
               </span>
@@ -154,14 +133,14 @@ function DriverStats({ state }: { state: StatsState }) {
 
       {/* Career by category */}
       {d.career.length > 0 && (
-        <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-          <div className="card-hp border-b border-line-2" style={scanTexture}>
+        <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+          <div className="card-hp scan-texture border-b border-line-2">
             <h3 className="text-section-head text-on-surface">Career by Category</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-line-2" style={scanTexture}>
+                <tr className="scan-texture border-b border-line-2">
                   <th className="th-p text-th text-on-surface-variant text-left">Category</th>
                   <th className="th-p text-th text-on-surface-variant text-right">Starts</th>
                   <th className="th-p text-th text-on-surface-variant text-right">Wins</th>
@@ -260,11 +239,8 @@ function TrophyCase({ state }: { state: AchState }) {
   const { awards, awardCount } = state.data;
   const shown = showAll ? awards : awards.slice(0, TROPHY_PREVIEW);
   return (
-    <div className="card-r border border-line-2 bg-surface overflow-hidden" style={cardStyle}>
-      <div
-        className="card-hp border-b border-line-2 flex items-center justify-between gap-3"
-        style={scanTexture}
-      >
+    <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
+      <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3">
         <h3 className="text-section-head text-on-surface">Trophy Case</h3>
         <span className="text-small-fluid text-on-surface-variant">{awardCount} awards</span>
       </div>
