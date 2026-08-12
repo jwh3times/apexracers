@@ -12,7 +12,6 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <!--
       Sqlite is the primary test DB provider (DbContextFactory.Create) — a real relational
       provider that validates SQL translatability. The vulnerable native lib
@@ -23,6 +22,8 @@
     -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.XunitV3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ApexRacers.Api\ApexRacers.Api.csproj" />

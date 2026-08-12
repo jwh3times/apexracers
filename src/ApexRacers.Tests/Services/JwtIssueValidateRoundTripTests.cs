@@ -28,17 +28,19 @@ namespace ApexRacers.Tests.Services;
 /// <para>These deliberately use <b>non-default</b> values, so agreement has to come from the shared
 /// <see cref="JwtSettings"/> rather than from both sides falling back to the same literal.</para>
 /// </summary>
-public class JwtIssueValidateRoundTripTests
+[Collection(PostgreSqlCollection.Name)]
+public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
 {
     private const string SigningKey = "round-trip-signing-key-minimum-32-bytes!!";
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static ServiceProvider BuildProvider()
+    private ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDataProtection();
-        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        var dbOptions = postgres.CreateOptions();
+        services.AddScoped(_ => new AppDbContext(dbOptions));
         services.AddIdentityCore<ApplicationUser>(o =>
         {
             o.Password.RequireDigit = false;

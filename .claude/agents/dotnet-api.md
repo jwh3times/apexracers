@@ -97,7 +97,16 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 ## Tests
 
-xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
+xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
+
+Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class into
+`PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only
+translation (including `DateTimeOffset` comparisons/order), PostgreSQL transactions, or production
+constraints such as a unique index, user foreign key, or cascade. The fixture shares one pinned
+container but creates a unique database per test; `EnsureCreated` validates the current model rather
+than migration application. Auth/JWT tests that issue refresh tokens use this path because the token
+must persist against its real user relationship. Keep fixtures provider-honest instead of replacing a
+production-valid query with a non-relational stand-in.
 
 The ingestion `Worker` is a coverage-excluded I/O shell. Put SDK field mapping in the covered
 `CatalogIngest`, `WeatherIngest`, `TrackStateIngest`, or `SubsessionMapper` seams and relational

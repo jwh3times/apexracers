@@ -6,7 +6,8 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class ExternalDataCacheCleanupServiceTests
+[Collection(PostgreSqlCollection.Name)]
+public class ExternalDataCacheCleanupServiceTests(PostgreSqlFixture postgres)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -23,9 +24,9 @@ public class ExternalDataCacheCleanupServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_DeletesOnlyRowsExpiredBeyondGrace()
     {
-        // InMemory (not SQLite): PurgeExpiredAsync filters on a DateTimeOffset range
-        // (ExpiresAt < cutoff), which Npgsql translates in production but SQLite cannot.
-        await using var db = DbContextFactory.CreateInMemory();
+        // PostgreSQL: PurgeExpiredAsync filters on a DateTimeOffset range
+        // (ExpiresAt < cutoff), which the production provider translates but SQLite cannot.
+        await using var db = await postgres.CreateDbContextAsync(Ct);
         db.ExternalDataCaches.AddRange(
             Row("abandoned", Now - TimeSpan.FromDays(3)), // expired 3 days ago → purged
             Row("recently-expired", Now - TimeSpan.FromHours(1)), // expired but within grace → kept
@@ -43,9 +44,9 @@ public class ExternalDataCacheCleanupServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_NothingStale_ReturnsZeroAndKeepsRows()
     {
-        // InMemory (not SQLite): PurgeExpiredAsync filters on a DateTimeOffset range
-        // (ExpiresAt < cutoff), which Npgsql translates in production but SQLite cannot.
-        await using var db = DbContextFactory.CreateInMemory();
+        // PostgreSQL: PurgeExpiredAsync filters on a DateTimeOffset range
+        // (ExpiresAt < cutoff), which the production provider translates but SQLite cannot.
+        await using var db = await postgres.CreateDbContextAsync(Ct);
         db.ExternalDataCaches.Add(Row("fresh", Now + TimeSpan.FromHours(1)));
         await db.SaveChangesAsync(Ct);
 
@@ -61,7 +62,7 @@ public class ExternalDataCacheCleanupServiceTests
     {
         // MaxValue proves preservation is an explicit predicate, not an accident of today's date:
         // every sentinel-range row is before this cutoff, but cleanup must still retain it.
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(Ct);
         db.ExternalDataCaches.AddRange(
             Row("below-threshold", DemoCache.SentinelThreshold.AddTicks(-1)),
             Row("at-threshold", DemoCache.SentinelThreshold),

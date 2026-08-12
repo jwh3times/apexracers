@@ -16,8 +16,7 @@ public class AdminServiceTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<AppDbContext>(o =>
-            o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddScoped(_ => DbContextFactory.Create());
         services.AddIdentityCore<ApplicationUser>(o =>
         {
             o.Password.RequireDigit = false;

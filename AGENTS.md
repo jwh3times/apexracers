@@ -178,7 +178,7 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 
 ```bash
 dotnet build                                          # build the solution
-dotnet test                                           # run the xUnit suite on Microsoft Testing Platform v2
+dotnet test                                           # run the full xUnit suite (Docker engine required for PostgreSQL integration tests)
 dotnet test --filter-class ApexRacers.Tests.Models.FieldPercentileTests  # run one test class
 dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
   --configuration Release \
@@ -579,12 +579,17 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
   (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
   in the `react-frontend` agent.
-- **Test DB provider:** `Helpers/DbContextFactory.Create()` uses **in-memory SQLite** (a real relational
-  provider — queries must translate), with `Foreign Keys=False` so tests use minimal partial fixtures.
-  Narrow exception `CreateInMemory()` is for the few production queries valid on Npgsql but untranslatable
-  by SQLite (**`DateTimeOffset` range filters/ordering** — `ExternalDataCacheCleanupService`,
-  `RivalService.ListAsync`). **Order/project by entity columns before constructing a DTO** — ordering by
-  a positional-record DTO property doesn't translate on Npgsql or SQLite.
+- **Test DB providers:** `Helpers/DbContextFactory.Create()` gives the fast tests a fresh **in-memory
+  SQLite** database. It validates relational SQL translation and column constraints; `Foreign Keys=False`
+  deliberately permits minimal partial fixtures. SQLite does **not** validate production foreign keys,
+  schemas, max-length enforcement, or migration fidelity. Tests that depend on Npgsql translation,
+  PostgreSQL transactions, or production relational constraints join `PostgreSqlCollection` and use
+  `PostgreSqlFixture`: one shared pinned `postgres:18.0-alpine` container, a unique database per test,
+  and `EnsureCreated` against the current EF model. That mandatory collection covers the production
+  `DateTimeOffset` queries and refresh-token/auth persistence invariants, so a running Docker engine is
+  required for the full `dotnet test` / coverage commands. **Order/project by entity columns before
+  constructing a DTO** — ordering by a positional-record DTO property doesn't translate on Npgsql or
+  SQLite.
 
 ---
 

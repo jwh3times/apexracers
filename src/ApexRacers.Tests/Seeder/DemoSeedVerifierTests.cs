@@ -45,7 +45,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task FullySeeded_Passes()
     {
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = DbContextFactory.Create();
         await SeedHappyPathAsync(db);
         var checks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
         Assert.All(checks, c => Assert.True(c.Passed, $"{c.Name}: {c.Detail}"));
@@ -54,7 +54,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task MissingKeyFamily_FailsThatCheckByName()
     {
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = DbContextFactory.Create();
         await SeedHappyPathAsync(db);
         db.ExternalDataCaches.RemoveRange(
             db.ExternalDataCaches.Where(c => c.CacheKey.StartsWith("leaderboard:")));
@@ -66,7 +66,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task SentinelChecks_UseTheOwnedThresholdAsAnInclusiveRange()
     {
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = DbContextFactory.Create();
         await SeedHappyPathAsync(db);
         var below = db.ExternalDataCaches.First();
         below.ExpiresAt = DemoCache.SentinelThreshold.AddTicks(-1);
@@ -93,7 +93,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task ZeroBestLapDemoResult_DoesNotProduceSpuriousLapDataFailure()
     {
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = DbContextFactory.Create();
         await SeedHappyPathAsync(db);
 
         // A second negative subsession for the demo driver with no valid best lap (e.g. a DNF).
@@ -117,11 +117,11 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task CleanDatabase_PassesTeardown_And_SeededFailsIt()
     {
-        await using var clean = DbContextFactory.CreateInMemory();
+        await using var clean = DbContextFactory.Create();
         var cleanChecks = await DemoSeedVerifier.VerifyTeardownAsync(clean, Ct);
         Assert.All(cleanChecks, c => Assert.True(c.Passed));
 
-        await using var seeded = DbContextFactory.CreateInMemory();
+        await using var seeded = DbContextFactory.Create();
         await SeedHappyPathAsync(seeded);
         var seededChecks = await DemoSeedVerifier.VerifyTeardownAsync(seeded, Ct);
         Assert.Contains(seededChecks, c => !c.Passed);

@@ -10,9 +10,10 @@ public static class DbContextFactory
     /// Creates an <see cref="AppDbContext"/> backed by a fresh in-memory SQLite database.
     ///
     /// SQLite is a real relational provider, so unlike the EF InMemory provider it forces every
-    /// query to actually translate to SQL and enforces FK / NOT NULL constraints. This catches
-    /// GroupBy/aggregate translation gaps and missing-relationship bugs in tests that would
-    /// otherwise only surface against Postgres in production.
+    /// query to actually translate to SQL and enforces relational column constraints. Foreign-key
+    /// enforcement is deliberately disabled below so focused service fixtures need not construct
+    /// the entire production relationship graph. This still catches GroupBy/aggregate translation
+    /// gaps that would otherwise only surface against PostgreSQL in production.
     ///
     /// An in-memory SQLite database lives only as long as its connection is open, so we hand the
     /// open connection to EF with <c>contextOwnsConnection: true</c> — disposing the returned
@@ -36,17 +37,6 @@ public static class DbContextFactory
         context.Database.EnsureCreated();
         return context;
     }
-
-    /// <summary>
-    /// Creates an <see cref="AppDbContext"/> on the EF InMemory provider. Reserved for the rare
-    /// test whose production query is valid on Npgsql but cannot be translated by SQLite — namely
-    /// a <c>DateTimeOffset</c> range filter (<see cref="ApexRacers.Api.Services.ExternalDataCacheCleanupService"/>).
-    /// Prefer <see cref="Create"/> (SQLite) everywhere else so queries are validated against real SQL.
-    /// </summary>
-    public static AppDbContext CreateInMemory() =>
-        new(new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
 
     /// <summary>
     /// One in-memory SQLite database that several <see cref="AppDbContext"/> instances share, for

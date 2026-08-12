@@ -10,7 +10,8 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class RivalServiceTests
+[Collection(PostgreSqlCollection.Name)]
+public class RivalServiceTests(PostgreSqlFixture postgres)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -86,11 +87,14 @@ public class RivalServiceTests
     [Fact]
     public async Task ListAsync_ReturnsOnlyCallersRivals_NewestFirst()
     {
-        // InMemory (not SQLite): ListAsync orders by CreatedAt (a DateTimeOffset), which EF Core
-        // blocks on SQLite but Npgsql orders natively in production.
-        await using var db = DbContextFactory.CreateInMemory();
+        // PostgreSQL: ListAsync orders by CreatedAt (a DateTimeOffset), which EF Core
+        // blocks on SQLite but the production provider orders natively.
+        await using var db = await postgres.CreateDbContextAsync(Ct);
         var me = Guid.NewGuid();
         var other = Guid.NewGuid();
+        db.Users.AddRange(
+            User(me, "Me"),
+            User(other, "Other"));
         db.Rivals.AddRange(
             new Rival { Id = Guid.NewGuid(), UserId = me, RivalCustId = 1, DisplayName = "Older", CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero) },
             new Rival { Id = Guid.NewGuid(), UserId = me, RivalCustId = 2, DisplayName = "Newer", CreatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero) },
@@ -102,6 +106,18 @@ public class RivalServiceTests
 
         Assert.Equal(["Newer", "Older"], result.Select(r => r.DisplayName).ToArray());
     }
+
+    private static ApplicationUser User(Guid id, string displayName) => new()
+    {
+        Id = id,
+        DisplayName = displayName,
+        UserName = $"{id:N}@example.com",
+        NormalizedUserName = $"{id:N}@EXAMPLE.COM",
+        Email = $"{id:N}@example.com",
+        NormalizedEmail = $"{id:N}@EXAMPLE.COM",
+        SecurityStamp = Guid.NewGuid().ToString(),
+        ConcurrencyStamp = Guid.NewGuid().ToString(),
+    };
 
     [Fact]
     public async Task RemoveAsync_DeletesOnlyThatUsersRival()

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.14] - 2026-08-12
+
+### Changed
+
+- Backend database tests now combine fast relational SQLite coverage with mandatory isolated PostgreSQL integration coverage for provider-specific `DateTimeOffset` queries, refresh-token constraints and rollback, and refresh-token-issuing auth flows. The EF InMemory provider has been removed; running the full backend suite now requires Docker.
+
 ## [0.5.13] - 2026-08-12
 
 ### Changed
@@ -529,7 +535,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.13...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.14...HEAD
+[0.5.14]: https://github.com/jwh3times/apexracers/compare/v0.5.13...v0.5.14
 [0.5.13]: https://github.com/jwh3times/apexracers/compare/v0.5.12...v0.5.13
 [0.5.12]: https://github.com/jwh3times/apexracers/compare/v0.5.11...v0.5.12
 [0.5.10]: https://github.com/jwh3times/apexracers/compare/v0.5.9...v0.5.10

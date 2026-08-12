@@ -11,7 +11,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | `src/ApexRacers.Api/`       | ASP.NET Core Web API (controllers, services, auth)                         |
 | `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API                     |
 | `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)                   |
-| `src/ApexRacers.Tests/`     | xUnit unit tests for services and domain helpers                           |
+| `src/ApexRacers.Tests/`     | xUnit unit and PostgreSQL integration tests                                |
 | `web/`                      | Vite + React + TypeScript frontend                                         |
 | `docs/`                     | Public product, roadmap, and documentation-index pages                     |
 | `infra/`                    | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
@@ -21,7 +21,8 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 26+](https://nodejs.org/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with the engine running for the
+  full backend test suite)
 - iRacing OAuth credentials are optional and only needed for the ingestion worker.
 
 ## Local development setup

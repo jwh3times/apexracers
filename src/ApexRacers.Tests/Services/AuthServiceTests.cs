@@ -13,18 +13,20 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class AuthServiceTests
+[Collection(PostgreSqlCollection.Name)]
+public class AuthServiceTests(PostgreSqlFixture postgres)
 {
     // ── Shared setup ─────────────────────────────────────────────────────────
 
-    private static ServiceProvider BuildProvider()
+    private ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         // Password reset tokens are produced by DataProtectorTokenProvider, which needs
         // data-protection services + the default token providers registered.
         services.AddDataProtection();
-        services.AddScoped(_ => DbContextFactory.CreateInMemory());
+        var dbOptions = postgres.CreateOptions();
+        services.AddScoped(_ => new AppDbContext(dbOptions));
         services.AddIdentityCore<ApplicationUser>(o =>
         {
             o.Password.RequireDigit          = false;
