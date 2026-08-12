@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.5.10] - 2026-08-12
+
 ### Removed
 
 - Removed the redundant explicit Autoprefixer PostCSS plugin and direct development dependency; Tailwind CSS v4 already handles vendor prefixing through `@tailwindcss/postcss`.
@@ -513,7 +517,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.10...HEAD
+[0.5.10]: https://github.com/jwh3times/apexracers/compare/v0.5.9...v0.5.10
 [0.5.9]: https://github.com/jwh3times/apexracers/compare/v0.5.8...v0.5.9
 [0.5.5]: https://github.com/jwh3times/apexracers/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/jwh3times/apexracers/compare/v0.5.3...v0.5.4
