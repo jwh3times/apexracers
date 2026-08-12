@@ -48,7 +48,8 @@ with review turnaround.
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 26+](https://nodejs.org/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with the engine running for the
+  full backend test suite)
 - The EF Core CLI: `dotnet tool install --global dotnet-ef` (version must match
   EF Core — currently **10.0.9**)
 - iRacing OAuth credentials are only needed for the ingestion worker — see the
@@ -88,7 +89,7 @@ worker — is documented in the [README](README.md#local-development-setup).
 | `src/ApexRacers.Api/`       | ASP.NET Core Web API — controllers, services, auth         |
 | `src/ApexRacers.Ingestion/` | Background worker that pulls data from the iRacing API     |
 | `src/ApexRacers.Seeder/`    | CLI tool that seeds synthetic lap time data (idempotent)   |
-| `src/ApexRacers.Tests/`     | xUnit tests                                                |
+| `src/ApexRacers.Tests/`     | xUnit unit and PostgreSQL integration tests                |
 | `web/`                      | Vite + React + TypeScript frontend                         |
 
 Architectural conventions (use-case-oriented controllers, services hold all
@@ -139,6 +140,9 @@ reportgenerator -reports:TestResults/coverage.cobertura.xml -targetdir:coverage-
   through the .NET 10 SDK. Use a current Visual Studio 2022/2026 Test Explorer,
   or VS Code with the current C# Dev Kit, for IDE discovery and debugging;
   older VSTest-only environments are not supported.
+- Keep Docker running for the full test and coverage commands. The suite's mandatory
+  PostgreSQL integration collection starts a pinned container and creates an isolated
+  database for each test; it is not skipped when Docker is unavailable.
 - Test and coverage attachments are written under `TestResults/` (including
   `backend-tests.trx` and `coverage.cobertura.xml`).
 - **Line and branch coverage must each remain above 85%.** CI gates line

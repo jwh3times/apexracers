@@ -10,7 +10,8 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class RefreshTokenStoreTests
+[Collection(PostgreSqlCollection.Name)]
+public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
 {
     private static readonly DateTimeOffset Now =
         new(2026, 8, 9, 16, 30, 0, TimeSpan.Zero);
@@ -19,9 +20,10 @@ public class RefreshTokenStoreTests
     public async Task IssueAsync_PersistsOnlyTheHashAndUsesTheCanonicalLifetime()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
         var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
 
         var rawToken = await store.IssueAsync(userId, ct);
 
@@ -39,10 +41,12 @@ public class RefreshTokenStoreTests
     public async Task RotateAsync_ExpiresExactlyNow_IsRejectedWithTheExistingMessage()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         const string rawToken = "expires-at-the-boundary";
+        var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         db.RefreshTokens.Add(Token(
-            Guid.NewGuid(), rawToken, Now.AddDays(-7), expiresAt: Now));
+            userId, rawToken, Now.AddDays(-7), expiresAt: Now));
         await db.SaveChangesAsync(ct);
         var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
 
@@ -58,14 +62,11 @@ public class RefreshTokenStoreTests
     {
         var ct = TestContext.Current.CancellationToken;
         var probe = new SaveShapeProbe();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .AddInterceptors(probe)
-            .Options;
-        await using var db = new AppDbContext(options);
+        await using var db = await postgres.CreateDbContextAsync(ct, probe);
         var clock = new TestTimeProvider(Now);
         var store = new RefreshTokenStore(db, clock);
         var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         var originalRaw = await store.IssueAsync(userId, ct);
         var original = await db.RefreshTokens.SingleAsync(ct);
         probe.Snapshots.Clear();
@@ -88,11 +89,69 @@ public class RefreshTokenStoreTests
     }
 
     [Fact]
+    public async Task RotateAsync_WhenReplacementInsertFails_RollsBackTheRevocation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var collision = new ReplacementHashCollision();
+        var options = await postgres.CreateOptionsAsync(ct, collision);
+        await using var db = new AppDbContext(options);
+        var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var rawToken = await store.IssueAsync(userId, ct);
+        var original = await db.RefreshTokens.SingleAsync(ct);
+        collision.CollideWith(original.TokenHash);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => store.RotateAsync(rawToken, ct));
+
+        await using var verification = new AppDbContext(options);
+        var persisted = await verification.RefreshTokens.AsNoTracking().SingleAsync(ct);
+        Assert.Null(persisted.RevokedAt);
+    }
+
+    [Fact]
+    public async Task RefreshTokenSchema_EnforcesUniqueHashForeignKeyAndUserCascade()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = await postgres.CreateOptionsAsync(ct);
+        var userId = Guid.NewGuid();
+        const string sharedRaw = "one-persisted-hash";
+        await using (var seed = new AppDbContext(options))
+        {
+            await SeedUsersAsync(seed, ct, userId);
+            seed.RefreshTokens.Add(Token(userId, sharedRaw, Now, Now.AddDays(1)));
+            await seed.SaveChangesAsync(ct);
+        }
+
+        await using (var duplicate = new AppDbContext(options))
+        {
+            duplicate.RefreshTokens.Add(Token(userId, sharedRaw, Now, Now.AddDays(1)));
+            await Assert.ThrowsAsync<DbUpdateException>(() => duplicate.SaveChangesAsync(ct));
+        }
+
+        await using (var orphan = new AppDbContext(options))
+        {
+            orphan.RefreshTokens.Add(Token(Guid.NewGuid(), "orphan", Now, Now.AddDays(1)));
+            await Assert.ThrowsAsync<DbUpdateException>(() => orphan.SaveChangesAsync(ct));
+        }
+
+        await using (var deleteUser = new AppDbContext(options))
+        {
+            deleteUser.Users.Remove(await deleteUser.Users.SingleAsync(user => user.Id == userId, ct));
+            await deleteUser.SaveChangesAsync(ct);
+        }
+
+        await using var verification = new AppDbContext(options);
+        Assert.Empty(await verification.RefreshTokens.AsNoTracking().ToListAsync(ct));
+    }
+
+    [Fact]
     public async Task IssueAsync_AtCap_RevokesTheOldestCanonicalActiveToken()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         var tokens = Enumerable.Range(0, 5)
             .Select(index => Token(
                 userId,
@@ -117,10 +176,11 @@ public class RefreshTokenStoreTests
     public async Task RotateAsync_AtCap_IsExemptAndKeepsFiveActiveTokens()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var clock = new TestTimeProvider(Now);
         var store = new RefreshTokenStore(db, clock);
         var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         var rawTokens = new List<string>();
         for (var index = 0; index < 5; index++)
         {
@@ -142,15 +202,17 @@ public class RefreshTokenStoreTests
     public async Task RevokeAllActiveAsync_LeavesExpiredAndPreviouslyRevokedRowsUnchanged()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId, otherUserId);
         var previouslyRevokedAt = Now.AddDays(-2);
         var active = Token(userId, "active", Now.AddDays(-1), Now.AddDays(1));
         var expired = Token(userId, "expired", Now.AddDays(-8), Now.AddSeconds(-1));
         var revoked = Token(
             userId, "revoked", Now.AddDays(-2), Now.AddDays(1), previouslyRevokedAt);
         var otherUser = Token(
-            Guid.NewGuid(), "other-user", Now.AddDays(-1), Now.AddDays(1));
+            otherUserId, "other-user", Now.AddDays(-1), Now.AddDays(1));
         db.RefreshTokens.AddRange(active, expired, revoked, otherUser);
         await db.SaveChangesAsync(ct);
         var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
@@ -170,11 +232,13 @@ public class RefreshTokenStoreTests
     public async Task RevokeAsync_IsBestEffortAndCanStampAnExpiredPresentedCredential()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var clock = new TestTimeProvider(Now);
         const string expiredRaw = "expired-presented-token";
+        var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         var expired = Token(
-            Guid.NewGuid(), expiredRaw, Now.AddDays(-8), Now.AddSeconds(-1));
+            userId, expiredRaw, Now.AddDays(-8), Now.AddSeconds(-1));
         db.RefreshTokens.Add(expired);
         await db.SaveChangesAsync(ct);
         var store = new RefreshTokenStore(db, clock);
@@ -194,8 +258,9 @@ public class RefreshTokenStoreTests
     public async Task PurgeExpiredAsync_RemovesOnlyRowsOlderThanTheRetentionBoundary()
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var db = DbContextFactory.CreateInMemory();
+        await using var db = await postgres.CreateDbContextAsync(ct);
         var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
         var beyondRetention = Token(
             userId, "too-old", Now.AddDays(-50), Now.AddDays(-31));
         var atBoundary = Token(
@@ -234,6 +299,25 @@ public class RefreshTokenStoreTests
             RevokedAt = revokedAt,
         };
 
+    private static async Task SeedUsersAsync(
+        AppDbContext db,
+        CancellationToken ct,
+        params Guid[] userIds)
+    {
+        db.Users.AddRange(userIds.Select(userId => new ApplicationUser
+        {
+            Id = userId,
+            DisplayName = "Refresh Token Test Driver",
+            UserName = $"driver-{userId:N}@example.com",
+            NormalizedUserName = $"DRIVER-{userId:N}@EXAMPLE.COM",
+            Email = $"driver-{userId:N}@example.com",
+            NormalizedEmail = $"DRIVER-{userId:N}@EXAMPLE.COM",
+            SecurityStamp = Guid.NewGuid().ToString(),
+            ConcurrencyStamp = Guid.NewGuid().ToString(),
+        }));
+        await db.SaveChangesAsync(ct);
+    }
+
     private static string Hash(string rawToken) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)))
             .ToLowerInvariant();
@@ -260,6 +344,28 @@ public class RefreshTokenStoreTests
             Snapshots.Add(new SaveShape(
                 entries.Count(entry => entry.State == EntityState.Added),
                 entries.Count(entry => entry.State == EntityState.Modified)));
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class ReplacementHashCollision : SaveChangesInterceptor
+    {
+        private string? _tokenHash;
+
+        public void CollideWith(string tokenHash) => _tokenHash = tokenHash;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (_tokenHash is not null)
+            {
+                var replacement = eventData.Context!.ChangeTracker.Entries<RefreshToken>()
+                    .Single(entry => entry.State == EntityState.Added);
+                replacement.Entity.TokenHash = _tokenHash;
+            }
+
             return ValueTask.FromResult(result);
         }
     }
