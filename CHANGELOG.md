@@ -15,6 +15,10 @@ No unreleased changes.
 
 - Backend database tests now combine fast relational SQLite coverage with mandatory isolated PostgreSQL integration coverage for provider-specific `DateTimeOffset` queries, refresh-token constraints and rollback, and refresh-token-issuing auth flows. The EF InMemory provider has been removed; running the full backend suite now requires Docker.
 
+### Security
+
+- Pinned Testcontainers' transitive SSH.NET dependency to 2026.0.0, removing the high-severity recursive-download path-traversal vulnerability from the backend test toolchain.
+
 ## [0.5.13] - 2026-08-12
 
 ### Changed
