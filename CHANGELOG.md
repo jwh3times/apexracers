@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Removed
+
+- Removed the redundant explicit Autoprefixer PostCSS plugin and direct development dependency; Tailwind CSS v4 already handles vendor prefixing through `@tailwindcss/postcss`.
 
 ## [0.5.9] - 2026-08-12
 
