@@ -292,6 +292,13 @@ Controllers do no logic beyond binding inputs and returning `Ok(result)`. Servic
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
 command/query handlers, no `IRepository<T>` (use `AppDbContext` directly).
 
+**Development API docs:** `Microsoft.AspNetCore.OpenApi` generates the `v1` document at
+`/openapi/v1.json`, with title `ApexRacers API` and version `v1`; `Scalar.AspNetCore` serves its
+interactive reference at `/scalar/v1`. Both endpoints are mapped only inside
+`app.Environment.IsDevelopment()` and are exempt from rate limiting. The API project's documentation
+stack is `Microsoft.AspNetCore.OpenApi` + `Scalar.AspNetCore`; package versions remain centrally
+managed in `Directory.Packages.props`.
+
 **Error handling:** `ExceptionHandlingMiddleware` (registered first) converts unhandled exceptions into
 RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper`
 (`ArgumentException`/`InvalidOperationException` → 400, `KeyNotFoundException` → 404,

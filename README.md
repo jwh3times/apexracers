@@ -59,7 +59,9 @@ dotnet ef database update --project src/ApexRacers.Data --startup-project src/Ap
 dotnet run --project src/ApexRacers.Api
 ```
 
-The API starts on `http://localhost:5000`. Swagger UI is available at `http://localhost:5000/swagger`.
+The API starts on `http://localhost:5000`. In Development, the Scalar API reference is available at
+`http://localhost:5000/scalar/v1`, backed by the OpenAPI document at
+`http://localhost:5000/openapi/v1.json`.
 
 ### 5. Run the frontend
 
