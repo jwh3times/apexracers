@@ -97,7 +97,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 ## Tests
 
-xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. AGENTS.md covers the rest: the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), the **85% line + branch** coverage gate, and the `dotnet-coverage` + `reportgenerator` commands. Add tests alongside new service logic before calling it done.
+xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the in-memory **SQLite** provider via `DbContextFactory.Create()` (plus the `CreateInMemory()` EF-InMemory exception and the order/project-by-entity-columns-before-DTO rule), and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
 
 The ingestion `Worker` is a coverage-excluded I/O shell. Put SDK field mapping in the covered
 `CatalogIngest`, `WeatherIngest`, `TrackStateIngest`, or `SubsessionMapper` seams and relational
