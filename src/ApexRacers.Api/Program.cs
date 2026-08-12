@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,9 +35,14 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddOpenApi("v1", options =>
 {
-    c.SwaggerDoc("v1", new() { Title = "ApexRacers API", Version = "v1" });
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "ApexRacers API";
+        document.Info.Version = "v1";
+        return Task.CompletedTask;
+    });
 });
 
 var connectionString =
@@ -277,8 +283,11 @@ app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ApexRacers API v1"));
+    app.MapOpenApi().DisableRateLimiting();
+    app.MapScalarApiReference(options => options
+            .WithTitle("ApexRacers API v1")
+            .WithOpenApiRoutePattern("/openapi/{documentName}.json"))
+        .DisableRateLimiting();
     app.UseCors("ViteDev");
 }
 
