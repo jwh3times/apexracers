@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.8] - 2026-08-12
+
+### Changed
+
+- Frontend tests now use `@testing-library/jest-dom` 7.0.1, keeping the test assertion tooling on its latest compatible patch release.
+
 ## [0.5.5] - 2026-08-10
 
 ### Fixed
@@ -505,7 +511,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.8...HEAD
+[0.5.8]: https://github.com/jwh3times/apexracers/compare/v0.5.7...v0.5.8
 [0.5.5]: https://github.com/jwh3times/apexracers/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/jwh3times/apexracers/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/jwh3times/apexracers/compare/v0.5.2...v0.5.3
