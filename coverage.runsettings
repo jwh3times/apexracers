@@ -1,39 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RunSettings>
-  <DataCollectionRunSettings>
-    <DataCollectors>
-      <DataCollector friendlyName="XPlat Code Coverage">
-        <Configuration>
-          <!--
-            Exclude generated/infrastructure code that has no business logic:
-              - Controllers      : parameter binding + Ok() only, per AGENTS.md
-              - EF Migrations    : auto-generated schema code
-              - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
-              - DesignTimeFactory: dotnet-ef dev tooling only
-              - Ingestion Worker : I/O orchestration shell; its decision/mapping logic lives in
-                                   covered SubsessionIndexer, *Ingest, and *Mapper modules
-              - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
-                                   orchestration shells with no unit tests; the pure lap-gen
-                                   helpers they call (SyntheticLaps) stay covered, as does the
-                                   Verification namespace (DemoSeedVerifier — tested directly)
-          -->
-          <Exclude>
-            [ApexRacers.Api]ApexRacers.Api.Controllers.*,
-            [ApexRacers.Data]ApexRacers.Data.Migrations.*,
-            [ApexRacers.Api]Program,
-            [ApexRacers.Api]HyphenToUnderscoreSecretManager,
-            [ApexRacers.Data]ApexRacers.Data.DesignTimeDbContextFactory,
-            [ApexRacers.Ingestion]ApexRacers.Ingestion.Worker,
-            [ApexRacers.Ingestion]Program,
-            [ApexRacers.Ingestion]HyphenToUnderscoreSecretManager,
-            [ApexRacers.Seeder]Program,
-            [ApexRacers.Seeder]ApexRacers.Seeder.CiCatalogSeeder,
-            [ApexRacers.Seeder]ApexRacers.Seeder.CiCatalog,
-            [ApexRacers.Seeder]ApexRacers.Seeder.Demo.DemoCacheSeeder
-          </Exclude>
-          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
-        </Configuration>
-      </DataCollector>
-    </DataCollectors>
-  </DataCollectionRunSettings>
-</RunSettings>
+<Configuration>
+  <CodeCoverage>
+    <!-- Only product assemblies belong in the backend coverage denominator. -->
+    <ModulePaths>
+      <Include>
+        <ModulePath>.*ApexRacers\..*\.dll$</ModulePath>
+      </Include>
+      <Exclude>
+        <ModulePath>.*ApexRacers\.Tests\.dll$</ModulePath>
+      </Exclude>
+    </ModulePaths>
+    <!--
+      Exclude generated/infrastructure code that has no business logic:
+        - Controllers      : parameter binding + Ok() only, per AGENTS.md
+        - EF Migrations    : auto-generated schema code
+        - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
+        - DesignTimeFactory: dotnet-ef dev tooling only
+        - Ingestion Worker : I/O orchestration shell; its decision/mapping logic lives in
+                             covered SubsessionIndexer, *Ingest, and *Mapper modules
+        - Seeder orchestration : Program, CiCatalogSeeder, DemoCacheSeeder are I/O/DB
+                             orchestration shells with no unit tests; the pure lap-gen
+                             helpers they call (SyntheticLaps) stay covered, as does the
+                             Verification namespace (DemoSeedVerifier — tested directly)
+    -->
+    <Functions>
+      <Exclude>
+        <Function>^ApexRacers\.Api\.Controllers\..*</Function>
+        <Function>^ApexRacers\.Data\.Migrations\..*</Function>
+        <Function>^Program\..*</Function>
+        <Function>^HyphenToUnderscoreSecretManager\..*</Function>
+        <Function>^ApexRacers\.Data\.DesignTimeDbContextFactory\..*</Function>
+        <Function>^ApexRacers\.Ingestion\.Worker\..*</Function>
+        <Function>^ApexRacers\.Seeder\.CiCatalogSeeder\..*</Function>
+        <Function>^ApexRacers\.Seeder\.CiCatalog\..*</Function>
+        <Function>^ApexRacers\.Seeder\.Demo\.DemoCacheSeeder\..*</Function>
+      </Exclude>
+    </Functions>
+    <Attributes>
+      <Exclude>
+        <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+        <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+      </Exclude>
+    </Attributes>
+    <IncludeTestAssembly>false</IncludeTestAssembly>
+  </CodeCoverage>
+</Configuration>

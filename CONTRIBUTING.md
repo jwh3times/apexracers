@@ -119,11 +119,28 @@ dotnet build
 # Run tests
 dotnet test
 
+# Run one test class (Microsoft Testing Platform uses direct filter options)
+dotnet test --filter-class ApexRacers.Tests.Models.FieldPercentileTests
+
 # Measure coverage (line AND branch must stay above 85%)
-dotnet-coverage collect "dotnet test" -f xml -o coverage.xml
-reportgenerator -reports:coverage.xml -targetdir:coverage-report -reporttypes:TextSummary
+dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+  --configuration Release \
+  --coverage \
+  --coverage-output coverage.cobertura.xml \
+  --coverage-output-format cobertura \
+  --coverage-settings coverage.runsettings \
+  --report-xunit-trx \
+  --report-xunit-trx-filename backend-tests.trx \
+  --results-directory ./TestResults
+reportgenerator -reports:TestResults/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:TextSummary
 ```
 
+- The repository's `global.json` selects native Microsoft Testing Platform v2
+  through the .NET 10 SDK. Use a current Visual Studio 2022/2026 Test Explorer,
+  or VS Code with the current C# Dev Kit, for IDE discovery and debugging;
+  older VSTest-only environments are not supported.
+- Test and coverage attachments are written under `TestResults/` (including
+  `backend-tests.trx` and `coverage.cobertura.xml`).
 - **Line and branch coverage must each remain above 85%.** CI gates line
   coverage via `irongut/CodeCoverageSummary` and branch coverage via a follow-up
   step that reads `branch-rate` from the Cobertura report.

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.13] - 2026-08-12
+
+### Changed
+
+- Backend tests now run xUnit natively on Microsoft Testing Platform v2, with direct filtering, built-in Microsoft code coverage, and current Visual Studio Test Explorer / VS Code C# Dev Kit integration. CI now retains stable TRX and Cobertura artifacts while preserving the existing >85% line and branch gates; the legacy VSTest SDK/adapter, Coverlet collector, and `dotnet-coverage` workflow have been removed.
+
 ## [0.5.12] - 2026-08-12
 
 ### Changed
@@ -523,7 +529,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.12...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.13...HEAD
+[0.5.13]: https://github.com/jwh3times/apexracers/compare/v0.5.12...v0.5.13
 [0.5.12]: https://github.com/jwh3times/apexracers/compare/v0.5.11...v0.5.12
 [0.5.10]: https://github.com/jwh3times/apexracers/compare/v0.5.9...v0.5.10
 [0.5.9]: https://github.com/jwh3times/apexracers/compare/v0.5.8...v0.5.9

@@ -178,6 +178,14 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 
 ```bash
 dotnet build                                          # build the solution
+dotnet test                                           # run the xUnit suite on Microsoft Testing Platform v2
+dotnet test --filter-class ApexRacers.Tests.Models.FieldPercentileTests  # run one test class
+dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+  --configuration Release \
+  --coverage --coverage-output coverage.cobertura.xml --coverage-output-format cobertura \
+  --coverage-settings coverage.runsettings \
+  --report-xunit-trx --report-xunit-trx-filename backend-tests.trx \
+  --results-directory ./TestResults                 # coverage + stable CI-style artifacts
 dotnet run --project src/ApexRacers.Api               # run the API (needs DATABASE_CONNECTION_STRING)
 dotnet run --project src/ApexRacers.Ingestion         # run the ingestion worker (needs iRacing + DB env vars)
 dotnet run --project src/ApexRacers.Seeder            # seed catalog + synthetic laps for 7 series (idempotent)
@@ -268,11 +276,17 @@ describe the pattern, not exact maintainer resource names or private deployment 
 ```text
 Core  ← no deps          Data  ← EF Core, Npgsql (references Core)
 Api / Ingestion / Seeder ← reference Core + Data (Api and Ingestion never reference each other)
-Tests ← xUnit (references Api + Ingestion + Seeder + Core + Data)
+Tests ← xUnit on Microsoft Testing Platform v2 (references Api + Ingestion + Seeder + Core + Data)
 ```
 
+The test executable uses `xunit.v3.mtp-v2` on Microsoft Testing Platform v2, selected repo-wide by
+`global.json`. Use the current Visual Studio MTP Test Explorer or the current VS Code C# Dev Kit for
+IDE discovery/debugging; older VSTest-only environments are unsupported. The coverage command above
+writes `TestResults/backend-tests.trx` and `TestResults/coverage.cobertura.xml`.
+
 > **Coverage note:** because Tests references Ingestion and Seeder, both assemblies are in the coverage
-> denominator. `coverage.runsettings` excludes the ingestion `Worker` / `Program` I/O shells while their
+> denominator. Microsoft code coverage reads `coverage.runsettings`, which excludes the ingestion
+> `Worker` / `Program` I/O shells while their
 > decision, mapping, and persistence modules stay covered; it also excludes seeder orchestration/data
 > (`Program`, `CiCatalogSeeder`, `CiCatalog`, `Demo.DemoCacheSeeder`) while pure logic like
 > `SyntheticLaps` and `Verification.DemoSeedVerifier` stays covered and tested.
@@ -557,8 +571,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   `cd web && npx vitest run --coverage`.
 - **Backend (.NET, xUnit in `src/ApexRacers.Tests/`):** 85% **line and branch** (CI gates both —
   `irongut/CodeCoverageSummary` for line, a `branch-rate` step for branch). Test services + `Core`
-  helpers directly; controllers are excluded. Measure with `dotnet-coverage collect "dotnet test" -f xml`
-  then `reportgenerator`.
+  helpers directly; controllers are excluded. Use the native Microsoft Testing Platform test,
+  class-filter, and Cobertura commands under [.NET](#net-run-from-repo-root); inspect the report with
+  `reportgenerator` when needed.
 - **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
   full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across public
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
