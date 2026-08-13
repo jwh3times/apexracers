@@ -27,7 +27,7 @@ Two schemas in one database:
 | `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                                                          |
 | `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                                                     |
 | `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK; `WeatherSummaryJson` is a serialized `WeatherForecastSnapshot`                                                              |
-| `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired)                                      |
+| `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired). One row is one configuration, not a venue — `Name` is shared and is never an identity |
 | `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                                                        |
 | `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                                                         |
 | `CarClassCars`         | composite   | Many-to-many: CarClass ↔ Car                                                                                                                                |
