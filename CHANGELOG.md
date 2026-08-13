@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.19] - 2026-08-13
+
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' lap-evidence vocabulary, separating how a lap reaches the product from what is chosen out of it. A **Race Lap** comes from iRacing's results and belongs to a **Driver**; an **Uploaded Lap** exists only because a **User** submitted the **Telemetry Upload** that recorded it, and the driver behind it is claimed by the file rather than established. A **Timed Lap** is one that produced a time and a **Clean Lap** one driven without an incident — **Pace** is summarized over Clean Laps, while best-lap selection is not, so a best lap may carry an incident. On top of those sit three bests that were previously one overloaded phrase: a **Race Best** (fastest Race Lap in one car during one race week), an **Uploaded Best** (fastest Uploaded Lap for one car at one track configuration), and the **Personal Best** — the fastest lap known for a **Subject Driver** from whichever evidence the User has allowed to count, and the lap that gets ranked against a field. *Personal Lap* and *Best Lap* are recorded as terms to avoid.
+
+### Fixed
+
+- Contributor guidance no longer describes a stored personal lap as "the user's personal best per track+car". Each row is one uploaded lap — every timed lap of a telemetry upload — and the corrected entries in `AGENTS.md`, the database specialist's schema reference, the .NET and code-review agent guides, and the public feature list now also record that the shared per-car-and-track projection sees uploaded laps only, so what it returns is an uploaded best rather than a personal best.
+
 ## [0.5.18] - 2026-08-13
 
 ### Added
@@ -568,7 +578,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.18...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.19...HEAD
+[0.5.19]: https://github.com/jwh3times/apexracers/compare/v0.5.18...v0.5.19
 [0.5.18]: https://github.com/jwh3times/apexracers/compare/v0.5.17...v0.5.18
 [0.5.17]: https://github.com/jwh3times/apexracers/compare/v0.5.16...v0.5.17
 [0.5.16]: https://github.com/jwh3times/apexracers/compare/v0.5.15...v0.5.16
