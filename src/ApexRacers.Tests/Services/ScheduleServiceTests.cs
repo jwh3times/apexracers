@@ -122,12 +122,29 @@ public class ScheduleServiceTests
     }
 
     [Fact]
-    public async Task GetScheduleAsync_NoActiveSeason_ThrowsKeyNotFound()
+    public async Task GetScheduleAsync_NoSeasonAtAll_ThrowsKeyNotFound()
     {
-        await using var db = await SeededAsync(active: false);
+        await using var db = DbContextFactory.Create();
+        db.Series.Add(new Series { Id = SeriesId, Name = "GT3 Cup" });
+        await db.SaveChangesAsync(Ct);
         var service = new ScheduleService(db);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetScheduleAsync(SeriesId, null, Ct));
+    }
+
+    [Fact]
+    public async Task GetScheduleAsync_SeasonDeactivatedUpstreamButAlreadyRaced_StillServesIt()
+    {
+        // The inter-season gap: iRacing can clear the active flag on the season drivers just
+        // finished before the next one starts. It stays the current season until a later season's
+        // first race week begins, so the schedule must keep resolving instead of 404-ing.
+        await using var db = await SeededAsync(active: false);
+        var service = new ScheduleService(db);
+
+        var dto = await service.GetScheduleAsync(SeriesId, null, Ct);
+
+        Assert.Equal(2, dto.Weeks.Count);
+        Assert.Equal("Thruxton", dto.Weeks.Single(w => w.WeekNumber == 1).TrackName);
     }
 
     [Theory]

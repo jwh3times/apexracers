@@ -19,7 +19,7 @@ public class StrategyService(AppDbContext db, CarRecommendationService recommend
     public async Task<WeekStrategyDto> GetStrategyAsync(
         int seriesId, int weekNumber, Guid? userId, CancellationToken ct)
     {
-        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var season = await db.CurrentSeasonOrThrowAsync(seriesId, ct);
         var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         var week = await db.Weeks

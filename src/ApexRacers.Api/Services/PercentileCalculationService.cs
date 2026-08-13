@@ -18,8 +18,11 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         IReadOnlyList<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
+        var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
+        if (seasonId is null) return null;
+
         var week = await db.Weeks
-            .InActiveSeason(seriesId, weekNumber)
+            .InSeason(seasonId.Value, weekNumber)
             .Select(w => new
             {
                 w.Id,

@@ -8,22 +8,49 @@ namespace ApexRacers.Api.Services;
 public class SeriesService(AppDbContext db)
 {
     /// <summary>
-    /// Every active season with the week it is currently in, that week's track, and how many cars
-    /// and drivers turned out for it.
+    /// One card per series that has racing to show: its current season, the week that season is in,
+    /// that week's track, and how many cars and drivers turned out for it.
     ///
-    /// Three queries rather than one: the previous version resolved "the current week" inside the
+    /// <para><b>One card per series, not per active season.</b> This used to project every active
+    /// season straight to a card, on the assumption that a series has one. It does not: iRacing
+    /// leaves the outgoing season active while marking the incoming one active, so through a
+    /// changeover a recurring series appeared in the browser twice — once for the quarter drivers
+    /// were actually racing and once for a quarter that had not started. Which of the two is real is
+    /// <see cref="SeasonCalendar.CurrentSeasonId"/>'s decision, resolved per series before anything
+    /// is projected; everything below then reads from that one season only.</para>
+    ///
+    /// <para>Four queries rather than one: an earlier version resolved "the current week" inside the
     /// projection, which meant repeating the same
     /// <c>Where(StartDate &lt;= today).OrderByDescending(StartDate)</c> subquery six times — six
     /// correlated subqueries per row — and left the rule expressed in SQL, where
     /// <see cref="SeasonCalendar"/> could not be shared with the standings page that answers the
-    /// same question. Resolving the week once in memory fixes both.
+    /// same question. Resolving season and week in memory fixes both, and keeps each query's row
+    /// count bounded by the series count rather than by stored history.</para>
     /// </summary>
-    public async Task<List<SeriesDto>> GetActiveSeriesAsync(CancellationToken ct = default)
+    /// <param name="today">Overridable only so tests can sit on a changeover boundary.</param>
+    public async Task<List<SeriesDto>> GetActiveSeriesAsync(
+        CancellationToken ct = default, DateOnly? today = null)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var onDate = today ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Which series to show is still "has an active season" — an upstream status change is how a
+        // series leaves the browser. Which *season* backs the card is the rule's call, and may be a
+        // season upstream has already deactivated but whose successor has not begun.
+        var activeSeriesIds = await db.Seasons
+            .Where(s => s.Active)
+            .Select(s => s.SeriesId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (activeSeriesIds.Count == 0) return [];
+
+        var currentSeasonIds = await db.CurrentSeasonIdsAsync(activeSeriesIds, ct, onDate);
+        if (currentSeasonIds.Count == 0) return [];
+
+        var selectedSeasonIds = currentSeasonIds.Values.ToList();
 
         var seasons = await db.Seasons
-            .Where(s => s.Active)
+            .Where(s => selectedSeasonIds.Contains(s.Id))
             .Select(s => new
             {
                 s.Id,
@@ -58,7 +85,7 @@ public class SeriesService(AppDbContext db)
             kvp =>
             {
                 var weekNumber = SeasonCalendar.CurrentWeekNumber(
-                    kvp.Value.Select(w => (w.WeekNumber, w.StartDate)), today);
+                    kvp.Value.Select(w => (w.WeekNumber, w.StartDate)), onDate);
                 return weekNumber is null
                     ? null
                     : kvp.Value.First(w => w.WeekNumber == weekNumber.Value);

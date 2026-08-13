@@ -18,7 +18,7 @@ public class ScheduleService(AppDbContext db)
     public async Task<SeasonScheduleDto> GetScheduleAsync(
         int seriesId, Guid? userId, CancellationToken ct)
     {
-        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var season = await db.CurrentSeasonOrThrowAsync(seriesId, ct);
         var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         var weeks = await db.Weeks
