@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- `CONTEXT.md` domain glossary defining the shared racing vocabulary — Series, Season, Active Season, Current Season, Upcoming Season, Race Week, Race Week Index, Race Week Number, and Current Race Week.
+
+### Fixed
+
+- The season backing a series is now selected by which season's first race week began most recently, instead of by the newest active year-and-quarter. iRacing marks the incoming season active before racing starts, so schedule, standings, strategy, week, percentile and recommendation data could all read an upcoming, empty season while the current quarter was still running. The season drivers are actually racing now stays current through its final week and the inter-season gap, and hands over on the date the next season's first race week begins — even when upstream active flags overlap or change.
+- The series browser now shows one card per series instead of one per active season, so a series no longer appears twice during a season changeover. The card's race week, track, car count and driver count are computed from the selected current season alone.
+- Driver-facing race week labels are now one-based across the series browser, schedule, week detail, percentile header, strategy header, breadcrumbs, race-now board, dashboard and profile, so the first week of a season reads as "Week 1" rather than "Week 0" (previously only the qualifying standings selector was correct). API payloads, request parameters, cache keys, persistence and route parameters keep iRacing's zero-based race week index.
 
 ## [0.5.14] - 2026-08-12
 
