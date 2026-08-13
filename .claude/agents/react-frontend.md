@@ -104,6 +104,17 @@ API percentile ranks are higher-is-better. Pass the raw `percentileRank` to `Per
 owns the lower-is-better `TOP X%` conversion through `utils/percentile.toTopPercent`. When only text
 is needed, use `topPercentLabel`; never invert or floor the rank in a page or another component.
 
+### Race week numbering contract
+
+Every race week number the API returns, every route param, and every `api.ts` call is the **Race Week
+Index** — iRacing's zero-based `race_week_num`. Never render one of those values directly as a driver
+label (`` `Week ${weekNumber}` `` reads "Week 0" for a season's opening week). Convert at the display
+boundary with `utils/raceWeek.ts`: `raceWeekLabel(index)` for the full label (`"Week 1"`), or
+`raceWeekNumber(index)` when only the **Race Week Number** (the one-based ordinal) is needed inline.
+Keep passing the original, unconverted index to `api.ts` methods and route params — the conversion is
+display-only and must not leak into a request or a link. `CONTEXT.md` is the canonical definition of
+Race Week Index vs. Race Week Number if a new component's naming is ambiguous.
+
 ## Styling
 
 Tailwind CSS with a **fluid design system** — all sizing scales continuously with viewport width via `clamp()`. Use the custom utility classes from `src/index.css`; do not reach for one-off Tailwind classes for the same purposes.

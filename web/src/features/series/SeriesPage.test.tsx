@@ -78,6 +78,26 @@ describe('SeriesPage', () => {
     });
   });
 
+  it('labels the opening race week as WK 1 while still routing to index 0', async () => {
+    // The bug: currentWeekNumber is iRacing's zero-based Race Week Index, so the first week of a
+    // season rendered as "WK 0". The label is one-based; the route it links to must not be.
+    mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: 0 })]);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/WK 1$/)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'GT3 Cup' })).toHaveAttribute(
+        'href',
+        '/series/1/weeks/0'
+      );
+    });
+  });
+
+  it('labels a later race week one-based', async () => {
+    mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: 5 })]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/WK 6$/)).toBeInTheDocument());
+  });
+
   it('renders series as plain text when currentWeekNumber is null', async () => {
     mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: null })]);
     renderPage();

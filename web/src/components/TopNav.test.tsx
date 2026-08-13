@@ -312,7 +312,8 @@ describe('TopNav', () => {
     renderTopNav('/series/444/weeks/5/strategy');
     const crumb = screen.getByRole('navigation', { name: /breadcrumb/i });
     expect(within(crumb).getByRole('link', { name: 'Series' })).toHaveAttribute('href', '/series');
-    expect(within(crumb).getByRole('link', { name: 'Week 5' })).toHaveAttribute(
+    // Race Week Index 5 in the route reads as Race Week Number 6, and the link keeps the index.
+    expect(within(crumb).getByRole('link', { name: 'Week 6' })).toHaveAttribute(
       'href',
       '/series/444/weeks/5'
     );

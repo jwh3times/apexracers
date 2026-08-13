@@ -6,6 +6,7 @@ import { NotLinkedCard } from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
+import { raceWeekLabel, raceWeekNumber } from '../../utils/raceWeek';
 
 function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
@@ -256,7 +257,7 @@ export default function DashboardPage() {
                         <div className="text-body-fluid font-medium text-on-surface">{s.name}</div>
                         <div className="text-small-fluid text-on-surface-variant mt-0.5">
                           {s.currentWeekNumber != null
-                            ? `Season ${s.seasonId} · Week ${s.currentWeekNumber}`
+                            ? `Season ${s.seasonId} · ${raceWeekLabel(s.currentWeekNumber)}`
                             : 'Season upcoming'}
                         </div>
                       </div>
@@ -393,7 +394,10 @@ export default function DashboardPage() {
                     </p>
                   )}
                   {series.map(s => {
-                    const weekNum = s.currentWeekNumber ?? 0;
+                    // 0 means "not started" here, which is why this converts rather than
+                    // defaulting: an upcoming season and the opening week were both 0 before.
+                    const weekNum =
+                      s.currentWeekNumber != null ? raceWeekNumber(s.currentWeekNumber) : 0;
                     const progressPct = Math.min(100, (weekNum / 12) * 100);
                     return (
                       <Link
@@ -408,7 +412,7 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-small-fluid font-mono text-primary-container font-semibold">
                             {s.currentWeekNumber != null
-                              ? `Week ${s.currentWeekNumber}`
+                              ? raceWeekLabel(s.currentWeekNumber)
                               : 'Upcoming'}
                           </span>
                           <span

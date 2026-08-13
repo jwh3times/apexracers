@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
+import { raceWeekLabel } from '../../utils/raceWeek';
 
 type View = 'championship' | 'tt' | 'qualifying';
 
@@ -154,7 +155,7 @@ function WeekSelector({
           onClick={() => onSelect(w)}
           className={chipClass(w === data.raceWeekNum)}
         >
-          Week {w + 1}
+          {raceWeekLabel(w)}
         </button>
       ))}
     </div>

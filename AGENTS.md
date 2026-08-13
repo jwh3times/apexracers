@@ -383,7 +383,7 @@ One responsibility per class; pure heuristics/mappers/parsers are extracted and 
 Field-percentile rank and field median are one such extraction, shared across services and the Seeder
 as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 
-- `SeriesService`, `WeekCarStatsService` — series list; per-car week lap stats (median via `Core.FieldPercentile`). Active-season/active-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate; "which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller.
+- `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller. Both zero-based race week indexes stay zero-based end-to-end; see `CONTEXT.md` for the Race Week Index / Race Week Number distinction the frontend renders.
 - `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
 - `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`).
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
@@ -557,7 +557,11 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   `FeatureFlagContext` (`useFeatureFlags()` exposes `isEnabled` + owner-specific `ready`;
   `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `toTopPercent` /
-  `topPercentLabel`, `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
+  `topPercentLabel`, `deriveAlerts`, `breadcrumbs`, `raceWeekNumber` / `raceWeekLabel` — **don't**
+  re-inline these in pages. `raceWeekNumber(index)` / `raceWeekLabel(index)` convert the zero-based
+  Race Week Index the API/router carry into the one-based Race Week Number drivers read (`CONTEXT.md`
+  is the canonical definition of both terms); convert only at the display boundary and keep passing
+  the original index to `api.ts` calls and route params.
 
 ---
 

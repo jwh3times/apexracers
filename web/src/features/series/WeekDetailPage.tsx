@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { api, type WeekDetail, type WeekCar } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
+import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
 import ResourceView from '../../components/ResourceView';
@@ -127,7 +128,7 @@ export default function WeekDetailPage() {
             Browse series
           </Link>
           <p className="text-eyebrow text-primary-container">
-            {weekNumber ? `WEEK ${weekNumber}` : 'WEEK DETAIL'}
+            {weekNumber ? `WEEK ${raceWeekNumber(Number(weekNumber))}` : 'WEEK DETAIL'}
             {detail?.category ? ` · ${detail.category.toUpperCase()}` : ''}
           </p>
           <h1 className="text-page-title text-on-surface mt-2 mb-1">

@@ -180,13 +180,28 @@ public class StandingsServiceTests
     }
 
     [Fact]
-    public async Task GetDriverStandingsAsync_NoActiveSeason_ThrowsKeyNotFound()
+    public async Task GetDriverStandingsAsync_SeasonNeitherBegunNorActive_ThrowsKeyNotFound()
     {
-        var h = Build(activeSeason: false, standings: [Standing(1, 111, "Leader", 950, 7)]);
+        // No race week has begun, so there is nothing to be "most recently begun"; with the active
+        // flag clear too, the fallback has no candidate either.
+        var h = Build(activeSeason: false, withWeeks: false, standings: [Standing(1, 111, "Leader", 950, 7)]);
         await using var _db = h.Db;
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => h.Service.GetDriverStandingsAsync(SeriesId, null, Ct));
+    }
+
+    [Fact]
+    public async Task GetDriverStandingsAsync_SeasonDeactivatedUpstreamButAlreadyRaced_StillServesIt()
+    {
+        // Standings for the season drivers just finished must survive the active flag clearing
+        // during the inter-season gap.
+        var h = Build(activeSeason: false, standings: [Standing(1, 111, "Leader", 950, 7)]);
+        await using var _db = h.Db;
+
+        var dto = await h.Service.GetDriverStandingsAsync(SeriesId, null, Ct);
+
+        Assert.Equal("Leader", Assert.Single(dto.Standings).DriverName);
     }
 
     [Fact]

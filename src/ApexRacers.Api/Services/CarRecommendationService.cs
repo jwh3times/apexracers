@@ -16,8 +16,11 @@ public class CarRecommendationService(AppDbContext db)
         IReadOnlyList<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
+        var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
+        if (seasonId is null) return [];
+
         var week = await db.Weeks
-            .InActiveSeason(seriesId, weekNumber)
+            .InSeason(seasonId.Value, weekNumber)
             .Select(w => new { w.Id, SeriesId = w.Season.SeriesId, w.WeekNumber, w.TrackId })
             .FirstOrDefaultAsync(ct);
 

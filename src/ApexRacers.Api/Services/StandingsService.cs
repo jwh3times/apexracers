@@ -131,7 +131,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
 
     private async Task<ResolvedContext> ResolveAsync(int seriesId, int? carClassId, CancellationToken ct)
     {
-        var season = await db.ActiveSeasonOrThrowAsync(seriesId, ct);
+        var season = await db.CurrentSeasonOrThrowAsync(seriesId, ct);
         var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         // Order by the CarClass column *before* projecting to the DTO. Ordering by a positional

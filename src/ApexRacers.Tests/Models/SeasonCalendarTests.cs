@@ -90,3 +90,122 @@ public class SeasonCalendarTests
         Assert.Equal(0, SeasonCalendar.CurrentWeekNumber(weeks, Today));
     }
 }
+
+/// <summary>
+/// The changeover rule. Ordering active seasons by year-and-quarter picked the upcoming season the
+/// moment iRacing flagged it — before a single race week had begun — so schedule, standings,
+/// strategy and week data could all read an empty season while the current quarter was still
+/// running. These pin the boundary that replaced it.
+/// </summary>
+public class SeasonCalendarCurrentSeasonTests
+{
+    private const int Q2 = 5001;
+    private const int Q3 = 5002;
+
+    /// <summary>Q2 began in March; Q3 is flagged active but does not begin until 1 June.</summary>
+    private static SeasonStart[] Changeover() =>
+    [
+        new(Q2, new DateOnly(2026, 3, 10), 2026, 2, Active: true),
+        new(Q3, new DateOnly(2026, 6, 1), 2026, 3, Active: true),
+    ];
+
+    [Theory]
+    [InlineData("2026-05-31", Q2)] // the day before  — Q2 still current
+    [InlineData("2026-06-01", Q3)] // the day itself  — Q3 takes over
+    [InlineData("2026-06-02", Q3)] // the day after   — and stays
+    public void SwitchesSeasonsOnTheLaterSeasonsFirstRaceWeekStartDate(string today, int expected)
+    {
+        Assert.Equal(expected, SeasonCalendar.CurrentSeasonId(Changeover(), DateOnly.Parse(today)));
+    }
+
+    [Fact]
+    public void KeepsThePriorSeasonThroughTheGapAfterItsFinalWeek()
+    {
+        // Weeks are irrelevant here beyond the first: the season holds the slot on its *start*
+        // date until a successor starts, so the gap after its last race is covered by the same rule.
+        Assert.Equal(Q2, SeasonCalendar.CurrentSeasonId(Changeover(), new DateOnly(2026, 5, 20)));
+    }
+
+    [Fact]
+    public void KeepsThePriorSeasonEvenAfterUpstreamClearsItsActiveFlag()
+    {
+        // The changeover case that motivated the rule: iRacing deactivates the outgoing season
+        // before the incoming one starts. Active is a status, not the selection rule.
+        SeasonStart[] seasons =
+        [
+            new(Q2, new DateOnly(2026, 3, 10), 2026, 2, Active: false),
+            new(Q3, new DateOnly(2026, 6, 1), 2026, 3, Active: true),
+        ];
+
+        Assert.Equal(Q2, SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 5, 31)));
+    }
+
+    [Fact]
+    public void IgnoresANewerQuarterThatHasNotBegun()
+    {
+        // Year and quarter are tiebreakers only. A Q4 season stored ahead of time must not
+        // outrank the quarter actually being raced.
+        SeasonStart[] seasons =
+        [
+            new(Q2, new DateOnly(2026, 3, 10), 2026, 2, Active: true),
+            new(9999, new DateOnly(2026, 12, 1), 2026, 4, Active: true),
+        ];
+
+        Assert.Equal(Q2, SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 5, 31)));
+    }
+
+    [Fact]
+    public void FallsBackToTheNewestActiveSeasonWhenNoneHasBegun()
+    {
+        // A series with only an upcoming season keeps its pre-existing behaviour: there is no
+        // "began most recently" to choose, so the newest active season stands in.
+        SeasonStart[] seasons =
+        [
+            new(Q2, new DateOnly(2026, 7, 1), 2026, 2, Active: true),
+            new(Q3, new DateOnly(2026, 9, 1), 2026, 3, Active: true),
+        ];
+
+        Assert.Equal(Q3, SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 6, 1)));
+    }
+
+    [Fact]
+    public void TreatsASeasonWithNoStoredWeeksAsNotBegun()
+    {
+        SeasonStart[] seasons =
+        [
+            new(Q2, new DateOnly(2026, 3, 10), 2026, 2, Active: false),
+            new(Q3, FirstRaceWeekStart: null, 2026, 3, Active: true),
+        ];
+
+        Assert.Equal(Q2, SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 5, 31)));
+    }
+
+    [Fact]
+    public void IsNullWhenNoSeasonHasBegunAndNoneIsActive()
+    {
+        SeasonStart[] seasons = [new(Q2, new DateOnly(2026, 7, 1), 2026, 2, Active: false)];
+
+        Assert.Null(SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 6, 1)));
+    }
+
+    [Fact]
+    public void IsNullForASeriesWithNoSeasons()
+    {
+        Assert.Null(SeasonCalendar.CurrentSeasonId([], new DateOnly(2026, 6, 1)));
+    }
+
+    [Fact]
+    public void BreaksAFirstWeekDateTieDeterministically()
+    {
+        // Two seasons sharing a first-week date is not expected, but leaving the answer to
+        // enumeration order would make it flap between requests.
+        SeasonStart[] seasons =
+        [
+            new(Q2, new DateOnly(2026, 3, 10), 2026, 2, Active: true),
+            new(Q3, new DateOnly(2026, 3, 10), 2026, 3, Active: true),
+        ];
+
+        Assert.Equal(Q3, SeasonCalendar.CurrentSeasonId(seasons, new DateOnly(2026, 5, 31)));
+        Assert.Equal(Q3, SeasonCalendar.CurrentSeasonId(seasons.Reverse(), new DateOnly(2026, 5, 31)));
+    }
+}

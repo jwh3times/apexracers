@@ -203,12 +203,27 @@ public class StrategyServiceTests
     }
 
     [Fact]
-    public async Task GetStrategyAsync_NoActiveSeason_ThrowsKeyNotFound()
+    public async Task GetStrategyAsync_NoSeasonAtAll_ThrowsKeyNotFound()
     {
-        await using var db = await SeededAsync(active: false);
+        await using var db = DbContextFactory.Create();
+        db.Series.Add(new Series { Id = SeriesId, Name = "GT Sprint" });
+        await db.SaveChangesAsync(Ct);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct));
+    }
+
+    [Fact]
+    public async Task GetStrategyAsync_SeasonDeactivatedUpstreamButAlreadyRaced_StillServesIt()
+    {
+        // See the schedule equivalent: the active flag can clear during the inter-season gap, and
+        // the briefing for the week drivers just ran must not disappear with it.
+        await using var db = await SeededAsync(active: false);
+
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct);
+
+        Assert.Equal(TargetWeek, dto.WeekNumber);
+        Assert.Equal("Thruxton", dto.TrackName);
     }
 
     [Fact]
