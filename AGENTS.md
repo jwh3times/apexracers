@@ -361,7 +361,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `RecommendationController`            | ranked car recommendations for the user                                                                                                                                                   |
 | `StrategyController`                  | week strategy briefing — track/pit, weather risk, per-car BoP + shift (**public**; personalizes)                                                                                          |
 | `AuthController`                      | register/login/refresh/logout, profile, theme, role self-service, password change + reset, email-change verify, iRacing OAuth callback (reset/forgot/confirm-email-change are **public**) |
-| `TelemetryController`                 | `.ibt` upload + personal best laps                                                                                                                                                        |
+| `TelemetryController`                 | `.ibt` upload + the caller's Uploaded Bests                                                                                                                                               |
 | `AdminController`                     | user role + feature flag CRUD (AdminOnly)                                                                                                                                                 |
 | `FeatureFlagsController`              | caller's active feature flags (**public** — anonymous callers get the enabled Standard-tier set)                                                                                          |
 | `UserAnalyticsController`             | per-user analytics, optional series filter                                                                                                                                                |
@@ -376,7 +376,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `RaceGuideController`                 | official sessions starting in the next ~3 h (**public**)                                                                                                                                  |
 | `RivalsController`                    | rivals a user follows — list/add (idempotent)/remove, search, suggestions                                                                                                                 |
 | `CompareController`                   | head-to-head between caller and a rival                                                                                                                                                   |
-| `CarsController` / `TracksController` | browsable car/track catalog + detail (**public**; "your best laps" overlay; `404`)                                                                                                        |
+| `CarsController` / `TracksController` | browsable car/track catalog + detail (**public**; Uploaded Best overlay; `404`)                                                                                                           |
 
 ### Services (`src/ApexRacers.Api/Services/`)
 
@@ -402,14 +402,16 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
 - `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + PB overlay; no creds at read time.
-- `PersonalBestQuery` — shared per-car-and-track personal-best projection (fastest or most-recent
-  order), used by `PersonalLapService` and the catalog services' PB overlays instead of each holding
-  its own copy. See `dotnet-api` for the two invariants it enforces.
+- `PersonalBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
+  order), used by `PersonalLapService` and the catalog services' overlays instead of each holding
+  its own copy. It sees Uploaded Laps only — a Personal Best also weighs the Race Best. See
+  `dotnet-api` for the two invariants it enforces.
 - `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired non-demo cache rows every 6 h.
 - `AuthService` — registration, login, JWT issuance, profile/password/email-change, and reset; delegates the refresh-token lifecycle to `RefreshTokenStore`. Needs `AddDefaultTokenProviders()`. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`) and injected into both the issuing side (`AuthService`) and the validating side (`TokenValidationParameters`) — see `dotnet-api` for the rule.
 - `RefreshTokenStore` — owns issue/rotate/revoke/revoke-all/retention cleanup over an injected `TimeProvider`. Its canonical active predicate is `RevokedAt == null && ExpiresAt > now`; issuance caps active tokens at 5 per user, and rotation revokes + inserts in one save. Raw tokens leave only as return values; persistence stores their SHA-256 hashes.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
-- `TelemetryUploadService`, `PersonalLapService` — parse `.ibt` → `PersonalLap`; query personal bests.
+- `TelemetryUploadService`, `PersonalLapService` — parse a Telemetry Upload into `PersonalLap` rows
+  (one per timed lap); query the caller's Uploaded Bests.
 - `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
   Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
@@ -436,7 +438,7 @@ indexes, FK/`OnDelete` behavior).
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
 | `Subsession` / `SubsessionResult`               | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |
-| `PersonalLap`                                   | user's personal best per track+car (from telemetry)                                            |
+| `PersonalLap`                                   | one Uploaded Lap — every timed lap of a Telemetry Upload, not a per-car-and-track best         |
 | `CarPercentileResult`                           | cached percentile rank per (UserId, CarId, SeriesId, WeekId)                                   |
 | `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
 | `RefreshToken`                                  | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                |

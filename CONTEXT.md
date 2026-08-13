@@ -123,3 +123,47 @@ _Avoid_: Demo user, Impersonated driver, Fake member, Linked demo account
 **Rival**:
 A Driver a User follows for head-to-head comparison against their own Subject Driver. A Rival need not be a User.
 _Avoid_: Friend, Opponent, Competitor, Followed member
+
+## Lap Evidence
+
+A Lap reaches ApexRacers as one of two kinds of evidence — a Race Lap from iRacing's results, or an Uploaded Lap from a User's telemetry — and the two are never interchangeable. Any best drawn from them names the evidence it came from. **Personal Lap** is not ApexRacers language: it reads as a lap that is a personal best, which is not what it names. **Best Lap** is likewise avoided — it says nothing about whose evidence produced it or over what scope it was chosen.
+
+**Lap**:
+One completed circuit of a track configuration by a Driver in one Car. ApexRacers knows a Lap only through the evidence that recorded it.
+_Avoid_: Tour, Run, Circuit
+
+**Timed Lap**:
+A Lap that produced a lap time. A Lap without one — an out-lap, an unfinished lap, a lap the sim did not time — can never be anyone's best.
+_Avoid_: Valid lap, Complete lap, Scored lap
+
+**Clean Lap**:
+A Timed Lap driven without an incident. Pace is summarized over Clean Laps; best-lap selection is not, so a best lap may carry an incident.
+_Avoid_: Green lap, Valid lap, Incident-free lap
+
+**Race Lap**:
+A Lap driven in the racing Sim Session of a Subsession, known to ApexRacers through iRacing's results and attributed to a Driver.
+_Avoid_: Official lap, Session lap, Result lap
+
+**Uploaded Lap**:
+A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User; the Driver who drove it is claimed by the file rather than established.
+_Avoid_: Personal Lap, Telemetry lap, Practice lap
+
+**Telemetry Upload**:
+One telemetry file a User submits, carrying the Laps of a single Sim Session and the conditions they were driven in.
+_Avoid_: Session, Telemetry session, Ibt
+
+**Pace**:
+How quickly a Driver laps over a run, summarized from their Clean Laps. Pace describes a run; a best lap describes one Lap.
+_Avoid_: Speed, Performance, Lap time
+
+**Race Best**:
+The fastest Race Lap a Driver set in one Car during one Race Week, across every Subsession they entered.
+_Avoid_: Personal Best, Best Lap, Driver Best
+
+**Uploaded Best**:
+The fastest Uploaded Lap a User holds for one Car at one track configuration, across all their Telemetry Uploads.
+_Avoid_: Personal Best, Telemetry best, Your best lap
+
+**Personal Best**:
+The fastest Lap known for a Subject Driver in one Car at one track configuration, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a field.
+_Avoid_: Best Lap, Driver Best, PB, Reference lap

@@ -45,9 +45,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any hand-rolled percentile-rank arithmetic (`slower * 100.0 / total` or a `driverInField ? total - 1 : total` denominator branch) instead of a call to `ApexRacers.Core.FieldPercentile.Rank`. Flag any inline even/odd median midpoint calculation instead of a call to `FieldPercentile.MedianOfSorted`.
 - Flag a `Rank` call whose `otherDriversLaps` argument wasn't filtered to exclude the ranked driver's own lap (e.g. passing the raw field instead of `.Where(d => d.CustId != customerId)`) — that silently inflates the rank by one driver when a personal lap supersedes their race result.
 
-**Personal-best projection**
+**Uploaded Best projection**
 
-- Flag any hand-rolled per-car-and-track personal-best grouping (`PersonalLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `PersonalBestQuery.RunAsync`.
+- Flag any hand-rolled per-car-and-track Uploaded Best grouping (`PersonalLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `PersonalBestQuery.RunAsync`.
 - Flag a caller's `scope` argument to `PersonalBestQuery.RunAsync` that already filters on `IsValidLap` — harmless (the module re-applies its own filter), but a sign the caller doesn't know the module owns that invariant.
 
 **Season / week resolution**
