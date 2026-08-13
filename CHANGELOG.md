@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.5.16] - 2026-08-13
+
 ### Added
 
 - `CONTEXT.md` domain glossary defining the shared racing vocabulary — Series, Season, Active Season, Current Season, Upcoming Season, Race Week, Race Week Index, Race Week Number, and Current Race Week.
@@ -547,7 +551,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.14...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.16...HEAD
+[0.5.16]: https://github.com/jwh3times/apexracers/compare/v0.5.15...v0.5.16
 [0.5.14]: https://github.com/jwh3times/apexracers/compare/v0.5.13...v0.5.14
 [0.5.13]: https://github.com/jwh3times/apexracers/compare/v0.5.12...v0.5.13
 [0.5.12]: https://github.com/jwh3times/apexracers/compare/v0.5.11...v0.5.12

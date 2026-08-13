@@ -557,7 +557,11 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   `FeatureFlagContext` (`useFeatureFlags()` exposes `isEnabled` + owner-specific `ready`;
   `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `toTopPercent` /
-  `topPercentLabel`, `deriveAlerts`, `breadcrumbs` — **don't** re-inline these in pages.
+  `topPercentLabel`, `deriveAlerts`, `breadcrumbs`, `raceWeekNumber` / `raceWeekLabel` — **don't**
+  re-inline these in pages. `raceWeekNumber(index)` / `raceWeekLabel(index)` convert the zero-based
+  Race Week Index the API/router carry into the one-based Race Week Number drivers read (`CONTEXT.md`
+  is the canonical definition of both terms); convert only at the display boundary and keep passing
+  the original index to `api.ts` calls and route params.
 
 ---
 

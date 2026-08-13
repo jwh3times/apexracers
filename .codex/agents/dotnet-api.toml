@@ -32,15 +32,22 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - Personal-best rows are never projected inline either: call `PersonalBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/PersonalBestQuery.cs`). Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
   - **The caller's `scope` must not filter on `IsValidLap`.** `PersonalBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a personal best.
   - **The `GroupBy` must not be pushed into SQL.** The group key spans navigation properties (`Car.Name`, `Track.Name`, `Track.ConfigName`) alongside the aggregates, which neither Npgsql nor SQLite translates, so the query materializes to a list first and groups in memory — deliberately, not an oversight. Getting this wrong throws at runtime rather than failing to compile; see the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section, which is the same underlying translation gap.
-- Resolving a series' active season or one numbered week of it is never a hand-written
-  `Where(... && s.Active).OrderByDescending(Year).ThenByDescending(Quarter)` — call the `SeasonQueries`
-  extensions (`src/ApexRacers.Api/Services/SeasonQueries.cs`): `IQueryable<Season>.ActiveForSeries`,
-  `IQueryable<Week>.InActiveSeason`, `AppDbContext.ActiveSeasonOrThrowAsync` (the one
-  `KeyNotFoundException("No active season for series {id}.")` wording), `AppDbContext.SeriesNameAsync`.
-  The Year/Quarter descending ordering is load-bearing, not decorative: a series can have more than one
-  season flagged active during a changeover, and getting the ordering wrong silently reads last
-  quarter's data instead of throwing. These are `IQueryable` composables rather than a method returning
-  a fixed record precisely so each caller can still `.Select(...)` its own projection.
+- Resolving a series' current season or one numbered week of it is never a hand-written
+  `Where(... && s.Active).OrderByDescending(Year).ThenByDescending(Quarter)` — that ordering picks
+  whichever season iRacing flagged active most recently, which during a changeover is the *incoming*
+  season before it has raced a single week, not the one drivers are actually racing. Call the
+  `SeasonQueries` extensions (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead:
+  `AppDbContext.CurrentSeasonIdAsync(seriesId, ct, today?)` / `CurrentSeasonIdsAsync(seriesIds, ct,
+  today?)` (batched — one query per set of series, not per series), `IQueryable<Week>.InSeason(seasonId,
+  weekNumber)`, `AppDbContext.CurrentSeasonOrThrowAsync` (the one
+  `KeyNotFoundException("No current season for series {id}.")` wording), `AppDbContext.SeriesNameAsync`.
+  The `today` parameter exists only so tests can sit exactly on a changeover boundary — production
+  callers never pass it. The selection rule itself — the season whose first race week began most
+  recently, `Active` deliberately not a filter — is
+  `ApexRacers.Core.SeasonCalendar.CurrentSeasonId(IEnumerable<SeasonStart>, DateOnly today)`; don't
+  reimplement it inline, and don't reintroduce a `Year`/`Quarter`-only ordering as a shortcut — that's
+  exactly the bug this replaced. `InSeason` composes on an already-resolved season id (a `CurrentSeasonId*`
+  call is a round trip, so callers await it once before composing the week projection they need).
 - "Which week is the season currently in" is never re-derived per caller either — call
   `ApexRacers.Core.SeasonCalendar.CurrentWeekNumber(weeks, today)`: latest week whose start date is
   on/before `today`, week number only breaking a tie. It returns `null` before the season starts

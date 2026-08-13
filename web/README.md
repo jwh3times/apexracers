@@ -115,7 +115,9 @@ src/
   services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
                           session.ts (signed-in session: tokens, claims, persistence, silent
                           refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
-  utils/              ← formatLapTime, toTopPercent/topPercentLabel, deriveAlerts, breadcrumbs + colocated *.test.ts siblings
+  utils/              ← formatLapTime, toTopPercent/topPercentLabel, deriveAlerts, breadcrumbs,
+                          raceWeekNumber/raceWeekLabel (0-based Race Week Index → 1-based Race Week
+                          Number) + colocated *.test.ts siblings
   test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory for tests)
   App.tsx             ← route definitions, AppShell layout
   index.css           ← Tailwind base + fluid design token utilities
