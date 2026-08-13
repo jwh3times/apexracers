@@ -12,7 +12,7 @@ This directory contains public, contributor-safe project documentation.
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
 | [../CHANGELOG.md](../CHANGELOG.md) | Public release notes. |
-| [../CONTEXT.md](../CONTEXT.md) | Domain-language glossary — canonical terms (e.g. Series/Season, User/Driver identity) shared across the product and its docs. |
+| [../CONTEXT.md](../CONTEXT.md) | Domain-language glossary — canonical terms (e.g. Series/Season, the Race Session/Split/Subsession hierarchy, User/Driver identity) shared across the product and its docs. |
 | [adr/](adr/) | Architecture decision records — why a structural decision was made and what alternative was rejected, not just what shipped. |
 
 ## Private docs

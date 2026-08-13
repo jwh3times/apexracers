@@ -40,6 +40,54 @@ _Avoid_: Race Week Index
 The Race Week in the Current Season with the latest start date that has arrived; when multiple Race Weeks share that date, the one with the highest Race Week Index is current. The final Race Week remains current through the inter-season gap and is replaced when the later Season's first Race Week begins.
 _Avoid_: Latest Week, Active Week
 
+## Race Sessions
+
+A Race Week schedules Race Sessions; each Race Session divides into one or more Splits; each Split is exactly one Subsession; and each Subsession runs one or more Sim Sessions in sequence. **Session** on its own is never ApexRacers language — it names three different levels of that hierarchy. **Event** is likewise avoided: it is iRacing's word for two of them at once.
+
+**Race Session**:
+One scheduled timeslot within a Race Week that Drivers register for, identified by iRacing's session identity. It divides into one or more Splits.
+_Avoid_: Session, Event, Race, Timeslot
+
+**Split**:
+One division of a Race Session, grouping Drivers of comparable Strength of Field so they race each other rather than the whole entry list. A Race Session always has at least one Split, even when it was never divided.
+_Avoid_: Session, Heat, Tier, Bracket
+
+**Split Index**:
+The zero-based position of a Split within its Race Session, ordered by Strength of Field descending; Split Index 0 is the strongest Split. There is no one-based counterpart, because Splits are not shown to Drivers.
+_Avoid_: Split Number, Split Num
+
+**Subsession**:
+The running of one Split and the results it produced, addressed by its iRacing subsession identity. Exactly one Subsession per Split — a Subsession never contains Splits.
+_Avoid_: Session, Event, Split
+
+**Event Type**:
+What a Subsession was held for — practice, qualifying, time trial, or race. It describes the whole Subsession, not any one segment of it.
+_Avoid_: Session type, Sim Session Type, Category
+
+**Sim Session**:
+One timed segment run in sequence within a Subsession, addressed by its simulation session number. The race segment is number 0; segments preceding it count down from -1.
+_Avoid_: Session, Subsession, Stint, Segment
+
+**Sim Session Type**:
+What a Sim Session is — practice, qualifying, or racing. A lap recorded from uploaded telemetry carries a Sim Session Type without belonging to any Subsession.
+_Avoid_: Event Type, Session type, Lap type
+
+**Race**:
+A Subsession whose Event Type is a race, and the word for one in URLs and driver-facing copy. Every Race is a Subsession; not every Subsession is a Race.
+_Avoid_: Event, Session, Subsession, Heat
+
+**Official Subsession**:
+A Subsession run under iRacing's own series scheduling, counting toward a Driver's iRating, Safety Rating, and championship points. A hosted or league Subsession carries the same identity shape but is not official.
+_Avoid_: Ranked session, Sanctioned session, Public session
+
+**Race Result**:
+One Driver's classified finishing record in a Race. A Race Result names exactly one Driver, so a team entry — which races under no Customer ID — produces none.
+_Avoid_: Result, Finish, Classification, Standing
+
+**Strength of Field**:
+iRacing's measure of the average skill of the Drivers entered in a Subsession. It is what Splits are ordered by.
+_Avoid_: SOF, Field strength, Field rating
+
 ## Identity
 
 ApexRacers accounts and iRacing racing identities are separate populations that mostly do not overlap. **Member** and **Customer** are iRacing's own words and are not ApexRacers language; they survive only where a name mirrors iRacing's API directly.

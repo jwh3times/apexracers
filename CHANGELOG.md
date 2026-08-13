@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' race-session vocabulary and its cardinalities: a **Race Session** is one scheduled timeslot that divides into **Splits**; each Split is exactly one **Subsession**; each Subsession runs **Sim Sessions** in sequence, of which the race segment is number 0. A **Race** is a Subsession whose **Event Type** is a race and is the word used in URLs and driver-facing copy, a **Race Result** names exactly one **Driver** (so team entries produce none), and **Split Index** is zero-based and ordered by **Strength of Field** descending. *Session* and *Event* are recorded as terms to avoid, each naming more than one level of the hierarchy.
 
 ## [0.5.17] - 2026-08-13
 
