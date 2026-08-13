@@ -434,7 +434,7 @@ indexes, FK/`OnDelete` behavior).
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `ApplicationUser`                               | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId` (nullable; the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), `ThemePreference` |
 | `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`) |
-| `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership                                                         |
+| `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership. One `Track` is one drivable configuration, not a venue — several share a `Name` (see `docs/adr/0002-track-identity-follows-iracing-track-id.md`) |
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
 | `Subsession` / `SubsessionResult`               | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |

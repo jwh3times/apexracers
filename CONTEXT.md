@@ -25,7 +25,7 @@ A Season whose first Race Week has not begun. An Upcoming Season does not replac
 _Avoid_: Current Season, next Current Season
 
 **Race Week**:
-A scheduled round within a Season, associated with a start date and track configuration.
+A scheduled round within a Season, associated with a start date and a Track.
 _Avoid_: Calendar Week, Schedule Week
 
 **Race Week Index**:
@@ -39,6 +39,30 @@ _Avoid_: Race Week Index
 **Current Race Week**:
 The Race Week in the Current Season with the latest start date that has arrived; when multiple Race Weeks share that date, the one with the highest Race Week Index is current. The final Race Week remains current through the inter-season gap and is replaced when the later Season's first Race Week begins.
 _Avoid_: Latest Week, Active Week
+
+## Tracks
+
+iRacing identifies what is driven, not where it is. Its track identifier addresses one layout at one facility as currently scanned, and several of those layouts share a single display name — so the name is the one thing that must never stand in for the identity.
+
+**Venue**:
+A physical racing facility, which several Tracks may share. iRacing identifies no Venue — ApexRacers sees one only as the name its Tracks have in common, so a Venue never establishes that two laps are comparable.
+_Avoid_: Track, Circuit, Location, Facility
+
+**Track**:
+One drivable configuration at a Venue, addressed by its iRacing track identifier — the only thing that makes lap times comparable. A rebuilt or rescanned Track receives a new identifier and is a different Track.
+_Avoid_: Circuit, Layout, Course, Track Configuration
+
+**Track Name**:
+The display name a Track carries. It is shared with every other Track at the same Venue, so it names the Venue rather than the Track and is never an identity.
+_Avoid_: Track, Venue name, Circuit name
+
+**Configuration Name**:
+The label distinguishing a Track from the others at its Venue. It is frequently absent, which costs no identity, since a Track is addressed by its identifier rather than by its labels.
+_Avoid_: Config, Layout name, Variant
+
+**Retired Track**:
+A Track iRacing no longer schedules. It keeps its identifier and everything driven at it, and its labels are prefixed to say so.
+_Avoid_: Inactive track, Removed track, Legacy track
 
 ## Race Sessions
 
@@ -129,7 +153,7 @@ _Avoid_: Friend, Opponent, Competitor, Followed member
 A Lap reaches ApexRacers as one of two kinds of evidence — a Race Lap from iRacing's results, or an Uploaded Lap from a User's telemetry — and the two are never interchangeable. Any best drawn from them names the evidence it came from. **Personal Lap** is not ApexRacers language: it reads as a lap that is a personal best, which is not what it names. **Best Lap** is likewise avoided — it says nothing about whose evidence produced it or over what scope it was chosen.
 
 **Lap**:
-One completed circuit of a track configuration by a Driver in one Car. ApexRacers knows a Lap only through the evidence that recorded it.
+One completed circuit of a Track by a Driver in one Car. ApexRacers knows a Lap only through the evidence that recorded it.
 _Avoid_: Tour, Run, Circuit
 
 **Timed Lap**:
@@ -161,9 +185,9 @@ The fastest Race Lap a Driver set in one Car during one Race Week, across every 
 _Avoid_: Personal Best, Best Lap, Driver Best
 
 **Uploaded Best**:
-The fastest Uploaded Lap a User holds for one Car at one track configuration, across all their Telemetry Uploads.
+The fastest Uploaded Lap a User holds for one Car at one Track, across all their Telemetry Uploads.
 _Avoid_: Personal Best, Telemetry best, Your best lap
 
 **Personal Best**:
-The fastest Lap known for a Subject Driver in one Car at one track configuration, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a field.
+The fastest Lap known for a Subject Driver in one Car at one Track, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a field.
 _Avoid_: Best Lap, Driver Best, PB, Reference lap

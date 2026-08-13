@@ -51,6 +51,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any hand-rolled per-car-and-track Uploaded Best grouping (`PersonalLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `PersonalBestQuery.RunAsync`.
 - Flag a caller's `scope` argument to `PersonalBestQuery.RunAsync` that already filters on `IsValidLap` — harmless (the module re-applies its own filter), but a sign the caller doesn't know the module owns that invariant.
 
+**Track identity**
+
+- Flag any `GroupBy`, join, or equality comparison keyed on `Track.Name` (or a `TrackName` DTO member) rather than `TrackId`. A track name belongs to a venue, not to a track: 95 of iRacing's 463 track identifiers share a name with another, so Homestead Miami Speedway is one name over a 1.5-mile oval, two road courses, and an open-wheel oval. Grouping by it merges lap times set on different layouts. See `docs/adr/0002-track-identity-follows-iracing-track-id.md`.
+
 **Season / week resolution**
 
 - Flag any hand-rolled active-season or active-week predicate (`Where(s => s.Active).OrderByDescending(Year).ThenByDescending(Quarter)`, on either `Season` or `Week`) instead of a call to the `SeasonQueries` extensions (`CurrentSeasonIdAsync`, `CurrentSeasonIdsAsync`, `InSeason`, `CurrentSeasonOrThrowAsync`, `SeriesNameAsync`). That predicate is the exact bug `SeasonQueries` replaced (issue #177): it picks whichever season iRacing flagged active most recently, which during a changeover is the *incoming* season before it has raced a single week, not the one the field is actually racing. The correct rule — the season whose first race week began most recently, holding the slot through the inter-season gap — is `Core.SeasonCalendar.CurrentSeasonId`; flag any reimplementation of it inline as well as any call site that reintroduces the old ordering as a shortcut.

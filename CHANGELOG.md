@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.20] - 2026-08-13
+
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' track vocabulary, separating where racing happens from what is driven. A **Venue** is a physical facility that several **Tracks** may share; a Track is one drivable configuration at a Venue, addressed by its iRacing track identifier, and that identifier is the only thing that makes two lap times comparable. A **Track Name** belongs to the Venue rather than the Track — 95 of iRacing's 463 track identifiers share a name with another, so Homestead Miami Speedway is one name over a 1.5-mile oval, two road courses, and an open-wheel oval — and is never an identity. A **Configuration Name** is frequently absent, which costs no identity. A **Retired Track** keeps its identifier and everything driven at it.
+- A second architecture decision record, documenting why track identity follows iRacing's track identifier — so a rebuilt or rescanned layout is a different Track rather than a continuation of the old one — and what follows from that: a driver's history at a venue splits when iRacing rebuilds, venue is not a stored concept, and grouping on a track name silently merges unrelated layouts.
+
 ## [0.5.19] - 2026-08-13
 
 ### Added
@@ -578,7 +585,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.19...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.20...HEAD
+[0.5.20]: https://github.com/jwh3times/apexracers/compare/v0.5.19...v0.5.20
 [0.5.19]: https://github.com/jwh3times/apexracers/compare/v0.5.18...v0.5.19
 [0.5.18]: https://github.com/jwh3times/apexracers/compare/v0.5.17...v0.5.18
 [0.5.17]: https://github.com/jwh3times/apexracers/compare/v0.5.16...v0.5.17
