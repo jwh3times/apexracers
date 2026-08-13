@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
 import CalculationSource, { type PaceSourceValue } from '../../components/CalculationSource';
 import { formatLapTime } from '../../utils/lapTime';
+import { raceWeekNumber } from '../../utils/raceWeek';
 
 type FetchState = {
   loading: boolean;
@@ -167,7 +168,9 @@ export default function PercentileCarPage() {
 
       {/* Header */}
       <div className="mb-6">
-        <p className="text-eyebrow text-primary-container">WEEK {weekNumber} · PERCENTILE</p>
+        <p className="text-eyebrow text-primary-container">
+          WEEK {raceWeekNumber(Number(weekNumber))} · PERCENTILE
+        </p>
         <h1 className="text-page-title text-on-surface mt-2 mb-1">{carName}</h1>
         {trackSubtitle && (
           <p className="text-body-fluid text-on-surface-variant">{trackSubtitle}</p>

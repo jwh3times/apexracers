@@ -240,7 +240,8 @@ describe('ProfilePage', () => {
   it('shows WK badge for active series and Off Season for inactive', async () => {
     mockGetSeries.mockResolvedValue(sampleSeries);
     renderPage();
-    await waitFor(() => expect(screen.getByText('WK 5')).toBeInTheDocument());
+    // currentWeekNumber is the zero-based Race Week Index 5, shown as Race Week Number 6.
+    await waitFor(() => expect(screen.getByText('WK 6')).toBeInTheDocument());
     expect(screen.getByText('Off Season')).toBeInTheDocument();
   });
 

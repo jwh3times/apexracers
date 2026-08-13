@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { api, type Series } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import { raceWeekNumber } from '../../utils/raceWeek';
 
 function SeriesCard({ s }: { s: Series }) {
   const active = s.currentWeekNumber != null;
@@ -35,7 +36,7 @@ function SeriesCard({ s }: { s: Series }) {
           )}
           <span className="text-[11px] font-mono text-on-surface-variant">
             S{s.seasonId}
-            {active ? ` · WK ${s.currentWeekNumber}` : ''}
+            {active ? ` · WK ${raceWeekNumber(s.currentWeekNumber!)}` : ''}
           </span>
         </div>
         <h3
@@ -153,7 +154,7 @@ export default function SeriesPage() {
 
   const firstActive = series.find(s => s.currentWeekNumber != null);
   const subtitle = firstActive
-    ? `Season ${firstActive.seasonId} · Week ${firstActive.currentWeekNumber} Data`
+    ? `Season ${firstActive.seasonId} · Week ${raceWeekNumber(firstActive.currentWeekNumber!)} Data`
     : `${series.length} series available`;
 
   return (

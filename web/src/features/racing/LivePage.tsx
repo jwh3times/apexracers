@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import { raceWeekNumber } from '../../utils/raceWeek';
 
 function startLabel(iso: string): string {
   const d = new Date(iso);
@@ -90,7 +91,7 @@ export default function LivePage() {
                         )}
                       </td>
                       <td className="td-p text-mono-fluid text-on-surface-variant text-right">
-                        {r.raceWeekNum}
+                        {raceWeekNumber(r.raceWeekNum)}
                       </td>
                       <td className="td-p text-mono-fluid text-on-surface-variant text-right">
                         {r.entryCount.toLocaleString()}

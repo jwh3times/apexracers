@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type CarRecommendation } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
+import { raceWeekLabel } from '../../utils/raceWeek';
 import CalculationSource, { type PaceSourceValue } from '../../components/CalculationSource';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
@@ -206,9 +207,9 @@ export default function RecommendationsPage() {
             <p className="text-body-fluid text-on-surface-variant max-w-prose">
               {weekNumber != null ? (
                 <>
-                  Week {weekNumber} &mdash; ranked by your fastest estimated lap. Cars you&apos;ve
-                  driven use your actual best time; others are projected from your historical
-                  percentile.
+                  {raceWeekLabel(weekNumber)} &mdash; ranked by your fastest estimated lap. Cars
+                  you&apos;ve driven use your actual best time; others are projected from your
+                  historical percentile.
                 </>
               ) : (
                 <>This series does not have an active week.</>

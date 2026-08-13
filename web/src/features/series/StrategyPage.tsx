@@ -4,6 +4,7 @@ import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topPercentLabel } from '../../utils/percentile';
+import { raceWeekNumber } from '../../utils/raceWeek';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
 
@@ -224,7 +225,9 @@ export default function StrategyPage() {
       {data && risk && (
         <>
           <div className="mb-6">
-            <p className="text-eyebrow text-primary-container">STRATEGY · WEEK {data.weekNumber}</p>
+            <p className="text-eyebrow text-primary-container">
+              STRATEGY · WEEK {raceWeekNumber(data.weekNumber)}
+            </p>
             <h1 className="text-page-title text-on-surface mt-2">{data.seriesName}</h1>
             <p className="text-body-fluid text-on-surface-variant mt-1">
               {data.trackName}

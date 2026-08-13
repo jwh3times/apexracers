@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { api, type ScheduleWeek } from '../../services/api';
+import { raceWeekLabel } from '../../utils/raceWeek';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 
@@ -81,7 +82,9 @@ function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | nu
     <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
       <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-eyebrow text-on-surface-variant">Week {week.weekNumber}</span>
+          <span className="text-eyebrow text-on-surface-variant">
+            {raceWeekLabel(week.weekNumber)}
+          </span>
           <h3 className="text-section-head text-on-surface">
             {week.trackName}
             {week.configName ? ` — ${week.configName}` : ''}

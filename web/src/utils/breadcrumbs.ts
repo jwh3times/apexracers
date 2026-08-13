@@ -1,3 +1,5 @@
+import { raceWeekLabel } from './raceWeek';
+
 export interface Crumb {
   label: string;
   /** Present for ancestor crumbs (navigable); omitted for the current page. */
@@ -26,7 +28,8 @@ const TOP_LABELS: Record<string, string> = {
 
 /**
  * Pure route → breadcrumb derivation for the top nav. Labels come from the URL only (no data
- * fetch), so dynamic segments render as e.g. "Week 5" rather than the resolved series name.
+ * fetch), so dynamic segments render as e.g. "Week 6" for `/weeks/5` rather than the resolved
+ * series name.
  * Ancestor crumbs carry a `to`; the final (current-page) crumb does not. Unit-tested directly.
  */
 export function breadcrumbs(pathname: string): Crumb[] {
@@ -43,15 +46,18 @@ export function breadcrumbs(pathname: string): Crumb[] {
     } else if (sub === 'standings') {
       crumbs.push({ label: 'Standings' });
     } else if (sub === 'weeks') {
-      const weekNum = segs[3];
-      const weekPath = `/series/${segs[1]}/weeks/${weekNum}`;
+      // The route segment is the zero-based Race Week Index and stays that way in `to`; only the
+      // label is the one-based Race Week Number drivers read.
+      const weekIndex = segs[3];
+      const weekPath = `/series/${segs[1]}/weeks/${weekIndex}`;
+      const label = raceWeekLabel(Number(weekIndex));
       const tail = segs[4];
       if (tail === 'strategy') {
-        crumbs.push({ label: `Week ${weekNum}`, to: weekPath }, { label: 'Strategy' });
+        crumbs.push({ label, to: weekPath }, { label: 'Strategy' });
       } else if (tail === 'cars') {
-        crumbs.push({ label: `Week ${weekNum}`, to: weekPath }, { label: 'Percentile' });
+        crumbs.push({ label, to: weekPath }, { label: 'Percentile' });
       } else {
-        crumbs.push({ label: `Week ${weekNum}` });
+        crumbs.push({ label });
       }
     }
     return crumbs;

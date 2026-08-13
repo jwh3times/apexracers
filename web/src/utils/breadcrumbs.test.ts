@@ -19,14 +19,22 @@ describe('breadcrumbs', () => {
   it('builds Series → Week N for a week detail route', () => {
     expect(breadcrumbs('/series/444/weeks/5')).toEqual([
       { label: 'Series', to: '/series' },
-      { label: 'Week 5' },
+      { label: 'Week 6' },
+    ]);
+  });
+
+  it('labels the opening race week as Week 1, not Week 0', () => {
+    expect(breadcrumbs('/series/444/weeks/0')).toEqual([
+      { label: 'Series', to: '/series' },
+      { label: 'Week 1' },
     ]);
   });
 
   it('builds Series → Week N → Strategy with a navigable week crumb', () => {
+    // The crumb reads one-based; the link it points at keeps the zero-based route index.
     expect(breadcrumbs('/series/444/weeks/5/strategy')).toEqual([
       { label: 'Series', to: '/series' },
-      { label: 'Week 5', to: '/series/444/weeks/5' },
+      { label: 'Week 6', to: '/series/444/weeks/5' },
       { label: 'Strategy' },
     ]);
   });
@@ -34,7 +42,7 @@ describe('breadcrumbs', () => {
   it('builds Series → Week N → Percentile for a car percentile route', () => {
     expect(breadcrumbs('/series/444/weeks/5/cars/132/percentile')).toEqual([
       { label: 'Series', to: '/series' },
-      { label: 'Week 5', to: '/series/444/weeks/5' },
+      { label: 'Week 6', to: '/series/444/weeks/5' },
       { label: 'Percentile' },
     ]);
   });

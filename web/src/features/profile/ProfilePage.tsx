@@ -9,6 +9,7 @@ import {
   type Series,
 } from '../../services/api';
 import ResourceView, { NotLinkedCard } from '../../components/ResourceView';
+import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
 import type { Resource } from '../../hooks/useResource';
@@ -250,7 +251,7 @@ function SeriesCard({ s }: { s: Series }) {
         <h4 className="font-body-lg font-bold text-on-surface pr-2 truncate">{s.name}</h4>
         {active && (
           <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2 py-1 rounded shrink-0">
-            WK {s.currentWeekNumber}
+            WK {raceWeekNumber(s.currentWeekNumber!)}
           </span>
         )}
       </div>
