@@ -44,7 +44,7 @@ Two schemas in one database:
 
 `Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims`, `RefreshTokens`
 
-`ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?`, and `ThemePreference string`.
+`ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?` (the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), and `ThemePreference string`.
 
 `RefreshTokens`: `Id` (Guid PK), `UserId` (Guid FK → Users, cascade delete), `TokenHash` (unique index — SHA-256 hex of the raw token, raw token is never stored), `ExpiresAt`, `CreatedAt`, `RevokedAt?`. A token is active when `RevokedAt` is null and `ExpiresAt > UtcNow`.
 
@@ -78,6 +78,8 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 `ExternalDataCache.CacheKey` has a unique index (max length 200) — the only lookup path for `CachedIRacingClient`'s get-or-fetch. Two concurrent misses on the same missing key both read null and both attempt an insert; the loser hits this unique index and `SaveChangesAsync` throws `DbUpdateException`, which `GetOrFetchAsync` catches (only when its own read was null, so a genuine update failure still surfaces) and returns the value it fetched rather than re-querying — the winner's row is already correct.
 
 `Rival` has a unique index on `(UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
+
+`ApplicationUser.IRacingCustomerId` has a filtered unique index (`WHERE "IRacingCustomerId" IS NOT NULL`) — enforces at most one User per Customer ID (a Claimed Identity) without constraining the many users who have none.
 
 `SeasonCarBop` has an index on `(SeasonId, WeekNumber)` — backs the per-week BoP lookup from `ScheduleService`/`StrategyService`.
 

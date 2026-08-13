@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.17] - 2026-08-13
+
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' identity vocabulary, separating an ApexRacers **User** from an iRacing **Driver** and naming the relationship between them: a **Claimed Identity** is the Driver a User asserts is them (at most one each way, asserted rather than proven), a **Verified Identity** is one proven by an iRacing sign-in, a **Subject Driver** is whoever a page or calculation represents, and a **Demo Driver** is resolved as the Subject Driver on the demo surface without becoming a claim. *Member* and *Customer* are recorded as iRacing's own words, retained only where a name mirrors their API.
+- `docs/adr/` with its first architecture decision record, documenting why Drivers are referenced by iRacing Customer ID rather than modelled as a local entity, and what follows from that — snapshotted driver names, no database-level guarantee that a Customer ID is real, and race data surviving deletion of the account that claimed it.
+
 ## [0.5.16] - 2026-08-13
 
 ### Added
@@ -551,7 +558,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.16...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.17...HEAD
+[0.5.17]: https://github.com/jwh3times/apexracers/compare/v0.5.16...v0.5.17
 [0.5.16]: https://github.com/jwh3times/apexracers/compare/v0.5.15...v0.5.16
 [0.5.14]: https://github.com/jwh3times/apexracers/compare/v0.5.13...v0.5.14
 [0.5.13]: https://github.com/jwh3times/apexracers/compare/v0.5.12...v0.5.13

@@ -163,7 +163,8 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 > - `iracing-live` (M1, shipped) — real creds. When off, iRacing routes render `ComingSoonPage` and nav
 >   items are hidden.
 > - `iracing-demo` (Alpha-gated) — reveals the same surface backed by clearly-labeled **synthetic** demo
->   data. `MemberContext` resolves demo users to `DemoData.DriverCustId`.
+>   data. `MemberContext` resolves the caller's Subject Driver to the Demo Driver
+>   (`DemoData.DriverCustId`) for any User on the demo surface.
 >
 > `useIracingSurface` owns the `iracing-live` **OR** `iracing-demo` decision used by `RequireFlag`,
 > `visibleNav`, and in-page panels. `RequireFlag` renders nothing until the current flag owner is
@@ -415,10 +416,12 @@ as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
   (`MinimumRole` level ≤ user level), shared by `AdminService` and `MemberContext`. Unknown or role-less
   users receive Standard eligibility; an unknown `MinimumRole` fails closed.
 - `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent.
-- `MemberContext` — owns optional vs required iRacing identity resolution: optional callers receive
-  null when unlinked; required callers use `GetRequiredCustIdAsync` / `RequireCustId`, which throw the
-  typed `IRacingNotLinkedException` mapped to the exact `409` contract above. The **only** demo-aware
-  branch: under an eligible `iracing-demo` flag it resolves to `DemoData.DriverCustId` (= 100001).
+- `MemberContext` — resolves the caller's Subject Driver, i.e. their Claimed Identity's Customer ID:
+  optional callers receive null when the caller has no Claimed Identity; required callers use
+  `GetRequiredCustIdAsync` / `RequireCustId`, which throw the typed `IRacingNotLinkedException` mapped
+  to the exact `409` contract above. The **only** demo-aware branch: under an eligible `iracing-demo`
+  flag it resolves the Subject Driver to the Demo Driver (`DemoData.DriverCustId` = 100001) instead.
+  `CONTEXT.md`'s Identity section defines Subject Driver / Claimed Identity / Demo Driver.
 
 ### Core models (`src/ApexRacers.Core/Models/`)
 
@@ -427,7 +430,7 @@ indexes, FK/`OnDelete` behavior).
 
 | Model                                           | Purpose                                                                                        |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `ApplicationUser`                               | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId`, `ThemePreference`      |
+| `ApplicationUser`                               | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId` (nullable; the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), `ThemePreference` |
 | `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`) |
 | `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership                                                         |
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
@@ -497,12 +500,12 @@ driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real ca
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
 `/compare` search only hits a curated term set (arbitrary terms 503 — use the suggestions list instead);
-the percentile page shows its manual customer-ID form rather than resolving the demo driver
+the percentile page shows its manual customer-ID form rather than resolving the Demo Driver
 automatically. That last one is **known and accepted**, not a bug to fix: `MemberContext` is the only
 demo-aware resolver, and `PercentileController` deliberately takes a caller-supplied `customerId` so
-the page can look up *any* driver. A demo user has no real `IRacingCustomerId`, so the `iracing_id`
-JWT claim the page reads first is absent and it falls through to the form. Enter
-`100001` (`DemoData.DriverCustId`) to see the demo driver's percentiles.
+the page can look up *any* Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
+so the `iracing_id` JWT claim the page reads first is absent and it falls through to the form. Enter
+`100001` (`DemoData.DriverCustId`) to see the Demo Driver's percentiles.
 
 ### Frontend (`web/`)
 
