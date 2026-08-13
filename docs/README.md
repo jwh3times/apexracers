@@ -12,6 +12,8 @@ This directory contains public, contributor-safe project documentation.
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
 | [../CHANGELOG.md](../CHANGELOG.md) | Public release notes. |
+| [../CONTEXT.md](../CONTEXT.md) | Domain-language glossary — canonical terms (e.g. Series/Season, User/Driver identity) shared across the product and its docs. |
+| [adr/](adr/) | Architecture decision records — why a structural decision was made and what alternative was rejected, not just what shipped. |
 
 ## Private docs
 
@@ -31,7 +33,8 @@ credentials, personal account data, or private deployment runbooks to them.
 installed engineering skills (`triage`, `to-tickets`, `domain-modeling`,
 `wayfinder`, and related flows) read before acting — issue-tracker conventions,
 the triage label vocabulary, and how those skills should consume this repo's
-domain docs. `AGENTS.md`'s "Agent skills" section links each one; edit the
+domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
+`AGENTS.md`'s "Agent skills" section links each one; edit the
 `docs/agents/` file itself when the underlying convention (tracker, label
 strings, doc layout) changes, not `AGENTS.md`.
 

@@ -43,6 +43,13 @@ generated from it by `node scripts/sync-agent-configs.mjs`. The `.agents/skills/
 opposite way — it is the **source**, and `.claude/skills/*/**` is generated from it. Edit the source
 side in either case, re-run the script, and commit both.
 
+`CONTEXT.md` (repo root) and `docs/adr/*.md` are not in the table above — they're the domain-modeling
+engineering skill's outputs (`docs/agents/domain.md` documents how skills consume them), not files you
+author. Your job with them is narrower: keep the docs you do own pointing at them (starting with
+`docs/README.md`'s public doc map) and keep their defined vocabulary from drifting elsewhere — see
+"New domain glossary term or ADR added" below. Never restate a `CONTEXT.md` term's definition in
+another doc; point at `CONTEXT.md` instead.
+
 ## What triggers what update
 
 **Any feature, milestone, or planned item completed (or cancelled/parked)**
@@ -93,6 +100,18 @@ side in either case, re-run the script, and commit both.
 - `azure-infrastructure.md`: only update public-safe patterns or required runtime configuration invariants
 - Do not add live resource names, credentials, personal account identifiers, or private runbook links to tracked docs
 
+**New domain glossary term or ADR added (`CONTEXT.md` / `docs/adr/`)**
+
+- `docs/README.md`: confirm the public doc map still lists both (add an entry if a new ADR file
+  doesn't fit the existing `adr/` link).
+- Any doc you own whose prose names the same concept: reword it to the glossary term only if it now
+  reads as a synonym that term's `_Avoid_` list rules out — a casual, non-conflicting usage doesn't
+  need to change. Point at `CONTEXT.md`; don't copy the definition.
+- `private/ROADMAP.md`: if a still-blocked milestone is what would produce a newly-defined term (e.g.
+  a sign-in milestone that would create a "Verified Identity"), cross-reference the term there.
+- Do not rename code symbols to match new vocabulary unless separately asked — a glossary landing is
+  documentation, not a refactor mandate.
+
 **Local Superpowers/spec planning docs**
 
 - `docs/superpowers/` and `.superpowers/` are local planning workspaces. They stay on disk but are ignored by git.
@@ -120,6 +139,7 @@ Linux, and web sessions, and never require permission approval:
 - **JWT expiry configured in AuthService** — Grep pattern `AccessTokenMinutes` in `src/ApexRacers.Api/Services/AuthService.cs`
 - **Refresh-token lifetime, cap, and active predicate** — Grep pattern `RefreshTokenDays|MaxActiveTokensPerUser|ActiveAt` in `src/ApexRacers.Api/Services/RefreshTokenStore.cs`
 - **Design tokens defined** — Grep pattern `@layer components` in `web/src/index.css` with `-A 200` context
+- **Domain glossary sections and ADRs that exist** — Read `CONTEXT.md`; Glob `docs/adr/*.md`
 
 ## What NOT to change
 
