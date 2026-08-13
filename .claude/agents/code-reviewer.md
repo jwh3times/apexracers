@@ -42,8 +42,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 
 **Field percentile / median**
 
-- Flag any hand-rolled percentile-rank arithmetic (`slower * 100.0 / total` or a `driverInField ? total - 1 : total` denominator branch) instead of a call to `ApexRacers.Core.FieldPercentile.Rank`. Flag any inline even/odd median midpoint calculation instead of a call to `FieldPercentile.MedianOfSorted`.
-- Flag a `Rank` call whose `otherDriversLaps` argument wasn't filtered to exclude the ranked driver's own lap (e.g. passing the raw field instead of `.Where(d => d.CustId != customerId)`) — that silently inflates the rank by one driver when a personal lap supersedes their race result.
+- Flag any hand-rolled percentile arithmetic (`slower * 100.0 / total`, or a `driverInField ? total - 1 : total` denominator branch) instead of a call to `ApexRacers.Core.FieldPercentile.Rank`. Flag any inline even/odd median midpoint calculation instead of a call to `FieldPercentile.MedianOfSorted`.
+- Flag a `Rank` / `Position` / `TopSharePercent` / `FieldSize` call whose `otherDriversLaps` argument wasn't filtered to exclude the ranked driver's own lap (e.g. passing the raw field instead of `.Where(d => d.CustId != customerId)`) — each reconstructs the Field internally as those laps plus the ranked lap, so an unfiltered field counts the driver twice.
+- Flag a `SampleSize` assigned from a queried row count rather than `FieldPercentile.FieldSize(otherLaps)`. The queried field holds the driver only when they raced, so the same field name would mean two different populations.
+- Flag any attempt to derive a "top X%" from a percentile rank (`100 - rank`, `ceil(100 - rank)`) in a service, a DTO, or the web client. The rank splits ties and counts the driver in its own denominator, so it does not invert to a placement — call `TopSharePercent` and carry the result.
 
 **Uploaded Best projection**
 

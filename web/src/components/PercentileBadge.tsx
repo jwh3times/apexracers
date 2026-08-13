@@ -1,12 +1,10 @@
-import { toTopPercent } from '../utils/percentile';
-
 interface Props {
-  rank: number; // Percentile rank from the API (higher = better).
+  topSharePercent: number; // Placement share of the Field from the API (lower = better).
   size?: 'lg' | 'md' | 'sm' | 'chip';
 }
 
-export default function PercentileBadge({ rank, size = 'md' }: Props) {
-  const pct = toTopPercent(rank);
+export default function PercentileBadge({ topSharePercent, size = 'md' }: Props) {
+  const pct = topSharePercent;
 
   // Compact inline pill for dense contexts (e.g. table cells) — not the ring gauge.
   if (size === 'chip') {

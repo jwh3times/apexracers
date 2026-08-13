@@ -3,7 +3,7 @@ import { api, type CarStrategy } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
-import { topPercentLabel } from '../../utils/percentile';
+import { topShareLabel } from '../../utils/percentile';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
@@ -80,12 +80,16 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
         {/* Personal overlay */}
         {car.percentileRank != null && (
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <span className="text-small-fluid text-on-surface-variant">
-              <span className="text-primary-container font-mono">
-                {topPercentLabel(car.percentileRank)}
-              </span>{' '}
-              your pace
-            </span>
+            {/* Only a car the driver has a lap in this week holds a placement in the field. A
+                projected car carries a running average of past readings and no placement. */}
+            {car.topSharePercent != null && (
+              <span className="text-small-fluid text-on-surface-variant">
+                <span className="text-primary-container font-mono">
+                  {topShareLabel(car.topSharePercent)}
+                </span>{' '}
+                your pace
+              </span>
+            )}
             {car.projectedLapSeconds != null && (
               <span className="text-small-fluid text-on-surface-variant">
                 <span className="text-on-surface font-mono">

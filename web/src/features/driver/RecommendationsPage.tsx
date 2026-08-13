@@ -7,8 +7,10 @@ import CalculationSource, { type PaceSourceValue } from '../../components/Calcul
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 
-function ordinal(p: number): string {
-  return `${p.toFixed(1)}th`;
+// A percentile is a share, not a placement — rendering 92.3 as "92.3th" read as an ordinal the
+// driver never held. The placement is carried separately as topSharePercent.
+function percentile(p: number): string {
+  return `${p.toFixed(1)}%`;
 }
 
 function HeroCard({
@@ -53,7 +55,7 @@ function HeroCard({
           <div>
             <p className="text-th text-on-surface-variant mb-1">Your Percentile</p>
             <span className="font-mono text-[22px] font-bold text-primary-container leading-none">
-              {ordinal(rec.percentileRank)}
+              {percentile(rec.percentileRank)}
             </span>
           </div>
           <div>
@@ -129,7 +131,7 @@ function RecommendationTable({
               {formatLapTime(r.projectedLapSeconds)}
             </td>
             <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
-              {ordinal(r.percentileRank)}
+              {percentile(r.percentileRank)}
             </td>
             <td className="td-p text-small-fluid text-on-surface-variant text-right tabular-nums">
               {r.sampleSize.toLocaleString()}

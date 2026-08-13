@@ -4,28 +4,28 @@ import PercentileBadge from './PercentileBadge';
 
 describe('PercentileBadge', () => {
   it('renders the TOP label', () => {
-    render(<PercentileBadge rank={88} />);
+    render(<PercentileBadge topSharePercent={12} />);
     expect(screen.getByText('TOP')).toBeInTheDocument();
   });
 
-  it('converts the percentile rank to a TOP value with percent sign', () => {
-    render(<PercentileBadge rank={88} />);
+  it('renders the placement share with a percent sign', () => {
+    render(<PercentileBadge topSharePercent={12} />);
     expect(screen.getByText('12%')).toBeInTheDocument();
   });
 
-  it('renders a different percentile rank correctly', () => {
-    render(<PercentileBadge rank={96} />);
+  it('renders a different placement share correctly', () => {
+    render(<PercentileBadge topSharePercent={4} />);
     expect(screen.getByText('4%')).toBeInTheDocument();
   });
 
   it('renders an SVG ring element', () => {
-    const { container } = render(<PercentileBadge rank={88} />);
+    const { container } = render(<PercentileBadge topSharePercent={12} />);
     const circles = container.querySelectorAll('circle');
     expect(circles.length).toBe(2);
   });
 
   it('applies lg size scaling', () => {
-    const { container } = render(<PercentileBadge rank={88} size="lg" />);
+    const { container } = render(<PercentileBadge topSharePercent={12} size="lg" />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -34,7 +34,7 @@ describe('PercentileBadge', () => {
   });
 
   it('applies sm size scaling', () => {
-    const { container } = render(<PercentileBadge rank={88} size="sm" />);
+    const { container } = render(<PercentileBadge topSharePercent={12} size="sm" />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -43,7 +43,7 @@ describe('PercentileBadge', () => {
   });
 
   it('applies md size (default) scaling', () => {
-    const { container } = render(<PercentileBadge rank={88} />);
+    const { container } = render(<PercentileBadge topSharePercent={12} />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const width = parseFloat(svg!.getAttribute('width') ?? '0');
@@ -51,8 +51,8 @@ describe('PercentileBadge', () => {
     expect(width).toBeCloseTo(92, 0);
   });
 
-  it('floors rank 100 at TOP 1% and renders a nearly full ring', () => {
-    const { container } = render(<PercentileBadge rank={100} />);
+  it('renders a top-1% placement as a nearly full ring', () => {
+    const { container } = render(<PercentileBadge topSharePercent={1} />);
     const circles = container.querySelectorAll('circle');
     const accentCircle = circles[1];
     const dashArray = parseFloat(
@@ -63,8 +63,8 @@ describe('PercentileBadge', () => {
     expect(dashOffset).toBeCloseTo(dashArray * 0.01, 4);
   });
 
-  it('renders rank 0 as TOP 100% with an empty ring', () => {
-    const { container } = render(<PercentileBadge rank={0} />);
+  it('renders a bottom-of-field placement as an empty ring', () => {
+    const { container } = render(<PercentileBadge topSharePercent={100} />);
     const circles = container.querySelectorAll('circle');
     const accentCircle = circles[1];
     const dashArray = parseFloat(
@@ -76,7 +76,7 @@ describe('PercentileBadge', () => {
   });
 
   it('renders a compact inline pill (no ring) for the chip size', () => {
-    const { container } = render(<PercentileBadge rank={96} size="chip" />);
+    const { container } = render(<PercentileBadge topSharePercent={4} size="chip" />);
     expect(screen.getByText('TOP 4%')).toBeInTheDocument();
     // The chip is a pill, not the SVG ring gauge.
     expect(container.querySelector('svg')).toBeNull();

@@ -33,6 +33,8 @@ const MOCK_RESULT: PercentileResult = {
   carId: 9001,
   customerId: 100001,
   percentileRank: 73.4,
+  fieldPosition: 134,
+  topSharePercent: 27,
   sampleSize: 500,
   computedAt: '2026-05-11T12:00:00Z',
   seriesName: 'VRS GT3 Sprint',

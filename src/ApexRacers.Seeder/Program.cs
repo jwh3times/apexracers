@@ -590,9 +590,10 @@ else
             if (!custIdToUser.TryGetValue(entry.CustId, out var appUser)) continue;
             if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldRows)) continue;
 
-            var total          = fieldRows.Count;
             var otherLaps      = fieldRows.Where(r => r.CustId != entry.CustId).Select(r => r.BestLap).ToList();
+            var total          = FieldPercentile.FieldSize(otherLaps);
             var percentileRank = FieldPercentile.Rank(entry.BestLap, otherLaps);
+            var topShare       = FieldPercentile.TopSharePercent(entry.BestLap, otherLaps);
 
             // Simulate the timestamp as the final day of the race week at 20:00 UTC.
             var weekStart  = weekStartDates.TryGetValue(entry.WeekId, out var sd) ? sd : DateOnly.FromDateTime(DateTime.UtcNow);
@@ -601,9 +602,10 @@ else
             var key = (appUser.Id, entry.CarId, entry.SeriesId, entry.WeekId);
             if (existingLookup.TryGetValue(key, out var existing))
             {
-                existing.PercentileRank = percentileRank;
-                existing.SampleSize     = total;
-                existing.ComputedAt     = computedAt;
+                existing.PercentileRank  = percentileRank;
+                existing.TopSharePercent = topShare;
+                existing.SampleSize      = total;
+                existing.ComputedAt      = computedAt;
             }
             else
             {
@@ -613,9 +615,10 @@ else
                     CarId          = entry.CarId,
                     SeriesId       = entry.SeriesId,
                     WeekId         = entry.WeekId,
-                    PercentileRank = percentileRank,
-                    SampleSize     = total,
-                    ComputedAt     = computedAt,
+                    PercentileRank  = percentileRank,
+                    TopSharePercent = topShare,
+                    SampleSize      = total,
+                    ComputedAt      = computedAt,
                 };
                 db.CarPercentileResults.Add(newRow);
                 existingLookup[key] = newRow;

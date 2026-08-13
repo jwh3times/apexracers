@@ -44,6 +44,7 @@ const MOCK_RECS = [
     carId: 2,
     carName: 'Ferrari 296 GT3',
     percentileRank: 87.5,
+    topSharePercent: 12,
     sampleSize: 200,
     bestLapSeconds: 78.5,
     projectedLapSeconds: 78.2,
@@ -53,6 +54,7 @@ const MOCK_RECS = [
     carId: 1,
     carName: 'Porsche 992 GT3',
     percentileRank: 72.0,
+    topSharePercent: 28,
     sampleSize: 180,
     bestLapSeconds: null,
     projectedLapSeconds: 79.1,
@@ -115,7 +117,7 @@ describe('RecommendationsPage', () => {
       expect(screen.getByText('1:18.500')).toBeInTheDocument();
       // projectedLapSeconds: 78.2 → 1:18.200
       expect(screen.getByText('1:18.200')).toBeInTheDocument();
-      expect(screen.getByText('87.5th')).toBeInTheDocument();
+      expect(screen.getByText('87.5%')).toBeInTheDocument();
     });
   });
 

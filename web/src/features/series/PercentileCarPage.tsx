@@ -240,8 +240,11 @@ export default function PercentileCarPage() {
       {/* Percentile result */}
       {result &&
         (() => {
-          const driversAhead = Math.round(result.sampleSize * (1 - result.percentileRank / 100));
-          const rank = Math.max(1, driversAhead + 1);
+          // Both come from the server, computed over the same field as the percentile — deriving
+          // them from the rank here cannot work, since the rank splits ties and counts the driver
+          // in its own denominator.
+          const driversAhead = result.fieldPosition - 1;
+          const rank = result.fieldPosition;
           const gapToP1 = formatGap(result.yourBestLapSeconds, result.fieldBestLapSeconds);
 
           return (
@@ -249,7 +252,7 @@ export default function PercentileCarPage() {
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Left: badge + headline + stat grid */}
                 <div className="scan-texture flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2">
-                  <PercentileBadge rank={result.percentileRank} size="lg" />
+                  <PercentileBadge topSharePercent={result.topSharePercent} size="lg" />
 
                   <div className="text-center">
                     <p className="text-section-head text-on-surface">
@@ -260,7 +263,7 @@ export default function PercentileCarPage() {
                       of the field
                     </p>
                     <p className="text-body-fluid text-on-surface-variant mt-1">
-                      P{rank} of {result.sampleSize.toLocaleString()} recorded drivers
+                      P{rank} of {result.sampleSize.toLocaleString()} drivers
                     </p>
                   </div>
 
@@ -320,7 +323,7 @@ export default function PercentileCarPage() {
                       [
                         { label: 'Percentile rank', value: `${result.percentileRank.toFixed(1)}%` },
                         { label: 'Drivers ahead', value: driversAhead.toLocaleString() },
-                        { label: 'Laps analysed', value: result.sampleSize.toLocaleString() },
+                        { label: 'Drivers in field', value: result.sampleSize.toLocaleString() },
                       ] as const
                     ).map(stat => (
                       <div key={stat.label} className="flex items-baseline justify-between gap-4">

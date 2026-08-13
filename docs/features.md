@@ -9,8 +9,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   track context, and aggregate lap-time statistics.
 - **Percentile calculation:** compare a driver's lap time against the field for a
   series, week, and car, with cached results for repeat visits.
-- **Car recommendations:** rank cars by where the signed-in driver appears most
-  competitive.
+- **Car recommendations:** order cars by the lap time the signed-in driver is projected
+  to set in each, with their percentile in that car shown alongside.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
 - **Telemetry upload:** parse `.ibt` files, store the laps they recorded, and surface the

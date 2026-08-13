@@ -59,7 +59,9 @@ const MOCK_ANALYTICS = [
     seriesId: 1,
     seriesName: 'VRS GT3 Sprint',
     latestPercentileRank: 92.0,
+    latestTopSharePercent: 8,
     bestPercentileRank: 92.0,
+    bestTopSharePercent: 8,
     personalBestLapSeconds: 137.2,
     medianLapSeconds: 139.5,
     totalWeeks: 48,
@@ -69,6 +71,7 @@ const MOCK_ANALYTICS = [
         trackName: 'Monza',
         configName: 'GP',
         percentileRank: 80.0,
+        topSharePercent: 20,
         sampleSize: 100,
         computedAt: '2026-01-01T00:00:00Z',
       },
@@ -77,6 +80,7 @@ const MOCK_ANALYTICS = [
         trackName: 'Spa',
         configName: 'Full',
         percentileRank: 92.0,
+        topSharePercent: 8,
         sampleSize: 110,
         computedAt: '2026-01-08T00:00:00Z',
       },
@@ -88,7 +92,9 @@ const MOCK_ANALYTICS = [
     seriesId: 1,
     seriesName: 'VRS GT3 Sprint',
     latestPercentileRank: 70.0,
+    latestTopSharePercent: 30,
     bestPercentileRank: 70.0,
+    bestTopSharePercent: 30,
     personalBestLapSeconds: 138.9,
     medianLapSeconds: 139.5,
     totalWeeks: 20,
@@ -98,6 +104,7 @@ const MOCK_ANALYTICS = [
         trackName: 'Monza',
         configName: 'GP',
         percentileRank: 60.0,
+        topSharePercent: 40,
         sampleSize: 100,
         computedAt: '2026-01-01T00:00:00Z',
       },
@@ -106,6 +113,7 @@ const MOCK_ANALYTICS = [
         trackName: 'Spa',
         configName: 'Full',
         percentileRank: 70.0,
+        topSharePercent: 30,
         sampleSize: 110,
         computedAt: '2026-01-08T00:00:00Z',
       },
@@ -173,7 +181,7 @@ describe('AnalyticsPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
-      // latestPercentileRank = 92, ceil(100-92) = 8 → TOP 8%
+      // latestTopSharePercent = 8 → TOP 8%
       expect(screen.getByText('TOP 8%')).toBeInTheDocument();
     });
   });
@@ -338,7 +346,13 @@ describe('AnalyticsPage', () => {
   it('shows the ELITE badge and gold styling for a ≥95 percentile car', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetMyAnalytics.mockResolvedValue([
-      { ...MOCK_ANALYTICS[0], bestPercentileRank: 97, latestPercentileRank: 97 },
+      {
+        ...MOCK_ANALYTICS[0],
+        bestPercentileRank: 97,
+        latestPercentileRank: 97,
+        latestTopSharePercent: 3,
+        bestTopSharePercent: 3,
+      },
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('ELITE')).toBeInTheDocument());

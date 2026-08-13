@@ -189,5 +189,45 @@ The fastest Uploaded Lap a User holds for one Car at one Track, across all their
 _Avoid_: Personal Best, Telemetry best, Your best lap
 
 **Personal Best**:
-The fastest Lap known for a Subject Driver in one Car at one Track, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a field.
+The fastest Lap known for a Subject Driver in one Car at one Track, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a Field.
 _Avoid_: Best Lap, Driver Best, PB, Reference lap
+
+## Competitiveness
+
+Three different shapes of number are all called a "rank" somewhere in racing, and ApexRacers keeps them apart: a **Percentile Rank** is a share of a population, a **Standing** is a position iRacing awards, and a **Recommendation Rank** is an ordering ApexRacers invents. **Rank** unqualified is never ApexRacers language. Every metric below is computed over a stated Field, and a Subject Driver is always a member of the Field they are measured in.
+
+**Field**:
+The Drivers a Subject Driver is measured against for one Car and one Race Week — one Personal Best each, the Subject Driver's included. Only Race Laps put another Driver in a Field; an Uploaded Lap can only change whose Personal Best is being ranked.
+_Avoid_: Sample, Population, Grid, Entry list
+
+**Field Size**:
+How many Drivers a Field holds, counting the Subject Driver.
+_Avoid_: Sample size, Total drivers, Laps analysed
+
+**Percentile Rank**:
+The share of a Field a Subject Driver is at least as fast as, with Drivers on an identical Personal Best splitting the tie between them. Higher is better; a Driver alone in a Field sits at its median, and nobody reaches 0 or 100.
+_Avoid_: Percentile, Rank, Drivers beaten, Top X%
+
+**Field Position**:
+A Subject Driver's place in their Field by Personal Best, counting from one. Drivers on an identical Personal Best share a Field Position.
+_Avoid_: Rank, Standing, P-number
+
+**Top Share**:
+A Field Position expressed as a share of the whole Field, rounded up — first of two Drivers is the top 50%, not the top 1%. Lower is better.
+_Avoid_: Percentile, Percentile Rank, Top percentile
+
+**Expected Percentile**:
+The average of a Subject Driver's past Percentile Ranks for one Car in one Series. It estimates a Driver who has not raced that Car this week and holds no Field Position, so it is never a reading against a Field.
+_Avoid_: Percentile Rank, Historical percentile, Average percentile
+
+**Projected Lap**:
+The lap time a Subject Driver's Percentile Rank corresponds to within a Field, read off that Field's spread of Personal Bests. An estimate of pace, never a Lap anyone drove.
+_Avoid_: Best Lap, Predicted lap, Estimated best
+
+**Recommendation Rank**:
+The order ApexRacers puts Cars in for a Subject Driver, fastest Projected Lap first. It ranks Cars, not Drivers, and a Car can lead it while the Driver's Percentile Rank in it is poor.
+_Avoid_: Rank, Optimal rank, Percentile Rank
+
+**Standing**:
+A Driver's position in a competition as iRacing awards it — championship, Time Trial, qualifying, or a category leaderboard. ApexRacers reports Standings rather than computing them.
+_Avoid_: Rank, Position, Placement, Percentile Rank

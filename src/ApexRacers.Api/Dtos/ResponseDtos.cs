@@ -35,6 +35,8 @@ public record PercentileResultDto(
     int CarId,
     long CustomerId,
     double PercentileRank,
+    int FieldPosition,
+    int TopSharePercent,
     int SampleSize,
     DateTimeOffset ComputedAt,
     string SeriesName,
@@ -52,6 +54,7 @@ public record CarRecommendationDto(
     int CarId,
     string CarName,
     double PercentileRank,
+    int? TopSharePercent,
     int SampleSize,
     double ProjectedLapSeconds,
     double? BestLapSeconds);
@@ -107,6 +110,7 @@ public record WeeklyPercentileDto(
     string TrackName,
     string ConfigName,
     double PercentileRank,
+    int TopSharePercent,
     int SampleSize,
     DateTimeOffset ComputedAt);
 
@@ -116,7 +120,9 @@ public record CarAnalyticsDto(
     int SeriesId,
     string SeriesName,
     double LatestPercentileRank,
+    int LatestTopSharePercent,
     double BestPercentileRank,
+    int BestTopSharePercent,
     double? PersonalBestLapSeconds,
     double? MedianLapSeconds,
     int TotalWeeks,
@@ -546,6 +552,7 @@ public record CarStrategyDto(
     string TireNote,
     bool RainEnabled,
     double? PercentileRank,
+    int? TopSharePercent,
     double? ProjectedLapSeconds,
     int? OptimalRank);
 
@@ -594,4 +601,4 @@ public record AchievementsDto(
 /// The caller's own percentile for one car in a week (for the Week Detail "Your pct" column).
 /// Only cars the caller actually has a lap for this week are returned.
 /// </summary>
-public record WeekCarPercentileDto(int CarId, double PercentileRank);
+public record WeekCarPercentileDto(int CarId, double PercentileRank, int TopSharePercent);

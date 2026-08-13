@@ -252,7 +252,9 @@ describe('WeekDetailPage', () => {
   it('renders the Your pct chip for a signed-in driver with a percentile', async () => {
     mockUser = LINKED_USER;
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
-    mockGetMyWeekPercentiles.mockResolvedValue([{ carId: 1, percentileRank: 92 }]);
+    mockGetMyWeekPercentiles.mockResolvedValue([
+      { carId: 1, percentileRank: 92, topSharePercent: 8 },
+    ]);
     renderPage('1', '10');
     await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
     expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(1, 10, expect.any(AbortSignal));

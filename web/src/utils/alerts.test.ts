@@ -23,7 +23,9 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
     seriesId: 1,
     seriesName: 'GT3 Challenge',
     latestPercentileRank: history[history.length - 1] ?? 0,
+    latestTopSharePercent: 100 - Math.round(history[history.length - 1] ?? 0),
     bestPercentileRank: Math.max(...history, 0),
+    bestTopSharePercent: 100 - Math.round(Math.max(...history, 0)),
     personalBestLapSeconds: null,
     medianLapSeconds: null,
     totalWeeks: history.length,
@@ -32,6 +34,7 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
       trackName: 'Spa',
       configName: '',
       percentileRank,
+      topSharePercent: 100 - Math.round(percentileRank),
       sampleSize: 100,
       computedAt: `2026-0${i + 1}-01T00:00:00Z`,
     })),
@@ -76,7 +79,7 @@ describe('deriveAlerts', () => {
     const alerts = deriveAlerts({ raceGuide: [], analytics: [analytics([80, 92])], now: NOW });
     expect(alerts).toHaveLength(1);
     expect(alerts[0].kind).toBe('percentile');
-    expect(alerts[0].message).toBe('Improved to TOP 8% in BMW M4 GT3'); // ceil(100-92)=8
+    expect(alerts[0].message).toBe('Improved to TOP 8% in BMW M4 GT3'); // topSharePercent = 8
   });
 
   it('does not alert when percentile did not improve or has too little history', () => {

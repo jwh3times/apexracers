@@ -98,6 +98,7 @@ public class StrategyService(AppDbContext db, CarRecommendationService recommend
                     tireNote,
                     car?.RainEnabled ?? false,
                     rec?.PercentileRank,
+                    rec?.TopSharePercent,
                     rec?.ProjectedLapSeconds,
                     rec?.Rank);
             })
