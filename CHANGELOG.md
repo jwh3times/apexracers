@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.5.18] - 2026-08-13
+
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' race-session vocabulary and, for the first time, the cardinalities between its levels: a **Race Session** is one scheduled timeslot that divides into one or more **Splits**; each Split is exactly one **Subsession**, so a Subsession never contains Splits; and each Subsession runs one or more **Sim Sessions** in sequence, of which the race segment is number 0. A **Race** is a Subsession whose **Event Type** is a race, and is the word used in URLs and driver-facing copy. A **Race Result** names exactly one **Driver**, so a team entry racing under no Customer ID produces none. **Split Index** is zero-based and ordered by **Strength of Field** descending, with no one-based counterpart because Splits are never shown to drivers. *Session* and *Event* are recorded as terms to avoid, each naming more than one level of the hierarchy.
+
+### Fixed
+
+- Contributor guidance no longer describes a subsession as "one race session". A subsession is one split *of* a race session, and the corrected entries in `AGENTS.md` and the database specialist's schema reference now also record that only the race sim session's results are stored, that only race event types are ingested, that the stored split number is a value ApexRacers derives rather than one iRacing supplies, and that the results key assumes a customer ID and therefore cannot represent a team entry.
+
 ## [0.5.17] - 2026-08-13
 
 ### Added
@@ -558,7 +568,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.17...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.18...HEAD
+[0.5.18]: https://github.com/jwh3times/apexracers/compare/v0.5.17...v0.5.18
 [0.5.17]: https://github.com/jwh3times/apexracers/compare/v0.5.16...v0.5.17
 [0.5.16]: https://github.com/jwh3times/apexracers/compare/v0.5.15...v0.5.16
 [0.5.14]: https://github.com/jwh3times/apexracers/compare/v0.5.13...v0.5.14
