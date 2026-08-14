@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
+using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Xunit;
 
@@ -7,6 +8,120 @@ namespace ApexRacers.Tests.Services;
 
 public class TelemetryUploadServiceTests
 {
+    // ── Driver attribution ────────────────────────────────────────────────────
+    //
+    // An accepted upload's laps become the uploader's own pace and are ranked against a field of
+    // real race laps, so a file recorded by someone else must not reach the database.
+
+    private static Guid SeedUser(AppDbContext db, long? claimedCustId)
+    {
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser
+        {
+            Id = userId,
+            DisplayName = "Jerry",
+            IRacingCustomerId = claimedCustId,
+        });
+        db.SaveChanges();
+        return userId;
+    }
+
+    [Fact]
+    public async Task ProcessAsync_FileRecordedByAnotherDriver_IsRejected()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = SeedUser(db, claimedCustId: 12345);
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 999999);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken));
+
+        // InvalidOperationException maps to 400 and the middleware surfaces the message, so it
+        // names both drivers and what to do about it.
+        Assert.Contains("999999", ex.Message);
+        Assert.Contains("12345", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_FileRecordedByAnotherDriver_WritesNothingAtAll()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = SeedUser(db, claimedCustId: 12345);
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 999999);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken));
+
+        // The rejection happens before the car/track upsert, so a refused upload leaves no trace —
+        // not even the catalog rows the happy path creates.
+        Assert.Empty(db.PersonalLaps);
+        Assert.Empty(db.Cars);
+        Assert.Empty(db.Tracks);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_FileMatchesClaimedIdentity_StoresTheRecordingDriver()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = SeedUser(db, claimedCustId: 12345);
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 12345);
+        await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, db.PersonalLaps.Count());
+        Assert.All(db.PersonalLaps.ToList(), l => Assert.Equal(12345L, l.DriverCustId));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CallerWithNoClaimedIdentity_IsAcceptedAndStillRecordsTheDriver()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = SeedUser(db, claimedCustId: null);
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 999999);
+        await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
+
+        // Nothing to check against, so the upload stands — but the lap still says whose it is.
+        Assert.Equal(2, db.PersonalLaps.Count());
+        Assert.All(db.PersonalLaps.ToList(), l => Assert.Equal(999999L, l.DriverCustId));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_FileNamesNoDriver_StoresNullRatherThanCustomerZero()
+    {
+        await using var db = DbContextFactory.Create();
+        var userId = SeedUser(db, claimedCustId: 12345);
+        var svc = new TelemetryUploadService(db);
+
+        // DriverUserID absent parses to 0, which is not a Customer ID and must not be compared
+        // against the claim — otherwise every such file would be refused.
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 0);
+        await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, db.PersonalLaps.Count());
+        Assert.All(db.PersonalLaps.ToList(), l => Assert.Null(l.DriverCustId));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnknownUserId_IsAcceptedWithNothingToCheckAgainst()
+    {
+        await using var db = DbContextFactory.Create();
+        var svc = new TelemetryUploadService(db);
+
+        // No user row at all: the claim lookup yields null, which must read as "no claim" rather
+        // than as a claim of 0 that every file would then fail against.
+        using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 999999);
+        await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, db.PersonalLaps.Count());
+    }
+
     [Fact]
     public async Task ProcessAsync_ValidStream_ReturnsSummaryWithCorrectCounts()
     {
