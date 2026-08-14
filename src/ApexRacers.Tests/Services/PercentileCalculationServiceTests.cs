@@ -71,7 +71,7 @@ public class PercentileCalculationServiceTests
     }
 
     [Fact]
-    public async Task ComputeAndCacheAsync_OnlyDriverInField_Returns100Percentile()
+    public async Task ComputeAndCacheAsync_OnlyDriverInField_IsThatFieldsMedian()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
@@ -80,13 +80,17 @@ public class PercentileCalculationServiceTests
 
         var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
+        // A Field of one: (0 slower + 0.5 x 1 tied) / 1. Alone, the driver is its median —
+        // reporting 100 would claim they had beaten a field that does not exist.
         Assert.NotNull(result);
-        Assert.Equal(100.0, result.PercentileRank);
+        Assert.Equal(50.0, result.PercentileRank);
         Assert.Equal(1, result.SampleSize);
+        Assert.Equal(1, result.FieldPosition);
+        Assert.Equal(100, result.TopSharePercent);
     }
 
     [Fact]
-    public async Task ComputeAndCacheAsync_DriverBeats3Of4Others_Returns75Percentile()
+    public async Task ComputeAndCacheAsync_DriverBeats3Of4Others_Returns70Percentile()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
@@ -99,9 +103,12 @@ public class PercentileCalculationServiceTests
 
         var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
+        // Field of 5: (3 slower + 0.5 x 1 tied) / 5 = 70. Second of five is the top 40%.
         Assert.NotNull(result);
-        Assert.Equal(75.0, result.PercentileRank);
+        Assert.Equal(70.0, result.PercentileRank);
         Assert.Equal(5, result.SampleSize);
+        Assert.Equal(2, result.FieldPosition);
+        Assert.Equal(40, result.TopSharePercent);
     }
 
     [Fact]
@@ -133,7 +140,8 @@ public class PercentileCalculationServiceTests
         await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(db.CarPercentileResults);
-        Assert.Equal(100.0, db.CarPercentileResults.Single().PercentileRank);
+        Assert.Equal(50.0, db.CarPercentileResults.Single().PercentileRank);
+        Assert.Equal(100, db.CarPercentileResults.Single().TopSharePercent);
     }
 
     [Fact]
@@ -154,9 +162,9 @@ public class PercentileCalculationServiceTests
     {
         // Race field: custId=1 (80s), 2 (60s), 3 (70s), 4 (90s), 5 (95s)
         // custId=1 also has a personal lap of 65s.
-        // Without personal laps: driverBest=80, beats 90+95 among others → 2/4 = 50th percentile.
-        // With personal laps:    driverBest=65, beats 70+90+95 among others → 3/4 = 75th percentile.
-        // Driver's own race lap (80s) is excluded from comparison in both cases.
+        // Field of 5 either way; the driver's own race lap (80s) is excluded from the comparison.
+        // Without personal laps: driverBest=80, 2 others slower → (2 + 0.5) / 5 = 50th percentile.
+        // With personal laps:    driverBest=65, 3 others slower → (3 + 0.5) / 5 = 70th percentile.
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -182,7 +190,7 @@ public class PercentileCalculationServiceTests
         Assert.NotNull(withoutPersonal);
         Assert.Equal(50.0, withoutPersonal.PercentileRank);
         Assert.NotNull(withPersonal);
-        Assert.Equal(75.0, withPersonal.PercentileRank);
+        Assert.Equal(70.0, withPersonal.PercentileRank);
     }
 
     [Fact]
@@ -214,7 +222,7 @@ public class PercentileCalculationServiceTests
     {
         // custId=1 never raced this week but has a personal lap.
         // Race field only has custId=2 (60s), 3 (70s), 4 (80s).
-        // Personal lap 65s → slower than 70 and 80 (2 of 3) → 66.67th percentile.
+        // Personal lap 65s joins a field of 3, making 4: (2 slower + 0.5) / 4 = 62.5th percentile.
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -237,7 +245,7 @@ public class PercentileCalculationServiceTests
 
         Assert.Null(withoutPersonal);
         Assert.NotNull(withPersonal);
-        Assert.Equal(200.0 / 3, withPersonal.PercentileRank, tolerance: 1e-10);
+        Assert.Equal(62.5, withPersonal.PercentileRank, tolerance: 1e-10);
     }
 
     [Fact]
@@ -270,7 +278,8 @@ public class PercentileCalculationServiceTests
                 personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
-        Assert.Equal(100.0, result.PercentileRank, tolerance: 1e-10); // 65s beats 70 and 80
+        // 65s beats both others in a Field of 3: (2 + 0.5) / 3.
+        Assert.Equal(250.0 / 3, result.PercentileRank, tolerance: 1e-10);
     }
 
     // ── World-record overlay ──────────────────────────────────────────────────

@@ -22,6 +22,7 @@ function makeCar(overrides: Partial<CarStrategy> = {}): CarStrategy {
     weightDeltaKg: 0,
     powerDeltaPct: 0,
     bopTrend: '—',
+    topSharePercent: null,
     fuelCapped: false,
     fuelNote: 'No fuel-fill restriction.',
     limitedTireSets: false,
@@ -75,6 +76,7 @@ function makeData(overrides: Partial<WeekStrategy> = {}): WeekStrategy {
         fuelNote: 'Fuel capped at 50% — shorter stints; plan an extra stop.',
         rainEnabled: true,
         percentileRank: 92,
+        topSharePercent: 8,
         projectedLapSeconds: 65.123,
         optimalRank: 1,
       }),
@@ -156,7 +158,7 @@ describe('StrategyPage', () => {
     mockGet.mockResolvedValue(makeData());
     renderPage();
     await waitFor(() => expect(screen.getByText('#1 for you')).toBeInTheDocument());
-    expect(screen.getByText('TOP 8%')).toBeInTheDocument(); // percentileRank 92 → TOP 8%
+    expect(screen.getByText('TOP 8%')).toBeInTheDocument(); // topSharePercent 8 → TOP 8%
   });
 
   it('shows a link-account hint per car when not personalized', async () => {

@@ -149,9 +149,10 @@ public class CarRecommendationServiceTests
 
         var dto = Assert.Single(result);
         Assert.Null(dto.BestLapSeconds);
-        Assert.Equal(100.0, dto.PercentileRank); // beat all 3 others in prev week
-        // 100th percentile in [70, 80, 90]: pos = 0 → fastest = 70 s
-        Assert.Equal(70.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
+        // Field of 4 in the previous week: (3 slower + 0.5 tied) / 4 = 87.5.
+        Assert.Equal(87.5, dto.PercentileRank);
+        // 87.5th percentile in [70, 80, 90]: pos = 2 x 0.125 = 0.25 → 70 + 0.25 x 10 = 72.5 s
+        Assert.Equal(72.5, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
 
     [Fact]
@@ -216,8 +217,9 @@ public class CarRecommendationServiceTests
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap shown as best
-        // 65s beats all 3 → slowerCount = 3, total = 3 → 100%
-        Assert.Equal(100.0, dto.PercentileRank, tolerance: 1e-6);
+        // 65s beats all 3 in a Field of 4: (3 + 0.5) / 4 = 87.5%
+        Assert.Equal(87.5, dto.PercentileRank, tolerance: 1e-6);
+        Assert.Equal(25, dto.TopSharePercent); // 1st of 4
     }
 
     [Fact]
@@ -364,12 +366,14 @@ public class CarRecommendationServiceTests
             seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
 
         var dto = result.Single(r => r.CarId == car1.Id);
-        Assert.Equal(100.0, dto.PercentileRank); // 60 s beat both other drivers (2/2)
+        // Field of 3: (2 slower + 0.5 tied) / 3.
+        Assert.Equal(250.0 / 3, dto.PercentileRank, tolerance: 1e-10);
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
         Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(100.0, rows[0].PercentileRank);
+        Assert.Equal(250.0 / 3, rows[0].PercentileRank, tolerance: 1e-10);
+        Assert.Equal(34, rows[0].TopSharePercent); // 1st of 3 = 33.3%, rounded up
         Assert.Equal(3, rows[0].SampleSize);  // refreshed to the current field size
     }
 
@@ -405,12 +409,12 @@ public class CarRecommendationServiceTests
 
         var dto = result.Single(r => r.CarId == car1.Id);
         Assert.Equal(65.0, dto.BestLapSeconds);
-        Assert.Equal(100.0, dto.PercentileRank); // 65 s beats all 3 (3/3)
+        Assert.Equal(87.5, dto.PercentileRank); // 65 s beats all 3 in a Field of 4
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
         Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(100.0, rows[0].PercentileRank);
+        Assert.Equal(87.5, rows[0].PercentileRank);
     }
 
     [Fact]
@@ -444,7 +448,9 @@ public class CarRecommendationServiceTests
 
         var entry = Assert.Single(result); // only car1 (raced); car2 is projected-only → excluded
         Assert.Equal(car1.Id, entry.CarId);
-        Assert.Equal(100.0, entry.PercentileRank); // 60 s beat both other drivers (2/2)
+        // Field of 3: (2 slower + 0.5 tied) / 3.
+        Assert.Equal(250.0 / 3, entry.PercentileRank, tolerance: 1e-10);
+        Assert.Equal(34, entry.TopSharePercent); // 1st of 3 = 33.3%, rounded up
     }
 
     // ── RunningAveragePercentile (pure helper) ───────────────────────────────

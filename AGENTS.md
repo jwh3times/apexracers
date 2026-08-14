@@ -381,8 +381,11 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 ### Services (`src/ApexRacers.Api/Services/`)
 
 One responsibility per class; pure heuristics/mappers/parsers are extracted and unit-tested directly.
-Field-percentile rank and field median are one such extraction, shared across services and the Seeder
-as `ApexRacers.Core.FieldPercentile` — not a per-service formula.
+The competitiveness metrics are one such extraction, shared across services and the Seeder as
+`ApexRacers.Core.FieldPercentile` — not a per-service formula. It owns percentile rank, field
+position, top share, field size, and field median, and every one of them takes the *other* drivers'
+laps and reconstructs the Field internally. `CONTEXT.md`'s Competitiveness section defines what each
+one means; the `dotnet-api` agent carries the call rules.
 
 - `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller. Both zero-based race week indexes stay zero-based end-to-end; see `CONTEXT.md` for the Race Week Index / Race Week Number distinction the frontend renders.
 - `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
@@ -439,7 +442,7 @@ indexes, FK/`OnDelete` behavior).
 | `Subsession` / `SubsessionResult`               | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |
 | `PersonalLap`                                   | one Uploaded Lap — every timed lap of a Telemetry Upload, not a per-car-and-track best         |
-| `CarPercentileResult`                           | cached percentile rank per (UserId, CarId, SeriesId, WeekId)                                   |
+| `CarPercentileResult`                           | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                       |
 | `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
 | `RefreshToken`                                  | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                |
 | `ExternalDataCache`                             | cached iRacing response (`CacheKey` unique, serialized DTO JSON) — backs `CachedIRacingClient` |

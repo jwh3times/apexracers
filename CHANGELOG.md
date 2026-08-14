@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.0] - 2026-08-13
+
+### Changed
+
+- **Percentile rank is now a true percentile rank.** It was previously the share of *other* drivers a driver had beaten, which meant beating everyone you were compared with reported 100 however small that group was — and a driver alone in a field, having beaten nobody at all, was also shown 100. A percentile is now computed over the whole field with the driver counted in it and drivers on an identical lap splitting the tie, so it no longer reaches 0 or 100 and a lone driver sits at the median of their field of one. Every displayed percentile changes.
+- **"TOP X%" now means a placement in the field rather than the complement of a percentile.** Fastest of two drivers is the top 50%, not the top 1%. The share is computed where the field is known and carried through the API, because a percentile rank cannot be turned back into a placement once ties have been split.
+- The percentile page reports the driver's actual position and field size instead of estimating them from the percentile, and no longer labels the driver count "Laps analysed" — it is drivers, one best lap each. Its field best and field median are now taken over the same field the percentile was computed against, so a driver whose uploaded lap leads the field sees a zero gap to the field best rather than a negative one.
+- The recommendations page shows a percentile as a percentage. It previously rendered it as an ordinal — a 92.3 percentile read as "92.3th".
+- Sample size now consistently means the number of drivers in the field, counting the driver themselves. It previously counted the driver only when they had raced, so the same field meant two different populations depending on whether the lap came from a race or an upload.
+
+### Added
+
+- `CONTEXT.md` now defines ApexRacers' competitiveness vocabulary, separating three shapes of number that were all called a rank. A **Field** is the drivers a **Subject Driver** is measured against for one car and race week, one personal best each and the subject included; **Percentile Rank** is their share of it; **Field Position** is their place in it; **Top Share** is that position as a share of the whole field. An **Expected Percentile** averages past readings for a car the driver has not raced this week and so has no position behind it, a **Projected Lap** is a pace estimate rather than a lap anyone drove, a **Recommendation Rank** orders cars rather than drivers, and a **Standing** is a position iRacing awards. *Rank* unqualified is recorded as a term to avoid.
+- Percentile responses carry the driver's field position and top share, and the analytics, dashboard, strategy, and week-detail surfaces read the share from the API rather than deriving it. Cached percentile rows store the share alongside the rank for the same reason.
+
+### Fixed
+
+- Cached percentile rows computed under the previous formula are cleared on upgrade. They are recomputed on the next visit; left in place they would have been blended with new readings in the running average behind car recommendations, mixing two conventions in one number.
+
 ## [0.5.20] - 2026-08-13
 
 ### Added
@@ -585,7 +604,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.5.20...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jwh3times/apexracers/compare/v0.5.20...v0.6.0
 [0.5.20]: https://github.com/jwh3times/apexracers/compare/v0.5.19...v0.5.20
 [0.5.19]: https://github.com/jwh3times/apexracers/compare/v0.5.18...v0.5.19
 [0.5.18]: https://github.com/jwh3times/apexracers/compare/v0.5.17...v0.5.18

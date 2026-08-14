@@ -1,5 +1,5 @@
 import type { RaceGuideEntry, CarAnalytics } from '../services/api';
-import { topPercentLabel } from './percentile';
+import { topShareLabel } from './percentile';
 
 export interface Alert {
   id: string;
@@ -52,7 +52,7 @@ export function deriveAlerts({
       alerts.push({
         id: `pct-${c.carId}-${c.seriesId}`,
         kind: 'percentile',
-        message: `Improved to ${topPercentLabel(h[h.length - 1].percentileRank)} in ${c.carName}`,
+        message: `Improved to ${topShareLabel(h[h.length - 1].topSharePercent)} in ${c.carName}`,
       });
     }
   }

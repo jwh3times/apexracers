@@ -30,6 +30,7 @@ public class UserAnalyticsService(AppDbContext db)
                 ConfigName = r.Week.Track.ConfigName,
                 TrackId = r.Week.TrackId,
                 r.PercentileRank,
+                r.TopSharePercent,
                 r.SampleSize,
                 r.ComputedAt,
             })
@@ -122,7 +123,7 @@ public class UserAnalyticsService(AppDbContext db)
                 var history = ordered
                     .Select(r => new WeeklyPercentileDto(
                         r.WeekNumber, r.TrackName, r.ConfigName,
-                        r.PercentileRank, r.SampleSize, r.ComputedAt))
+                        r.PercentileRank, r.TopSharePercent, r.SampleSize, r.ComputedAt))
                     .ToList();
 
                 return new CarAnalyticsDto(
@@ -131,7 +132,11 @@ public class UserAnalyticsService(AppDbContext db)
                     group.Key.SeriesId,
                     group.First().SeriesName,
                     latest.PercentileRank,
-                    group.Max(r => r.PercentileRank),
+                    latest.TopSharePercent,
+                    bestWeek.PercentileRank,
+                    // The placement from the same week the best rank came from, not the best
+                    // placement across weeks — the two could otherwise name different weeks.
+                    bestWeek.TopSharePercent,
                     personalBest,
                     median,
                     totalWeeks,

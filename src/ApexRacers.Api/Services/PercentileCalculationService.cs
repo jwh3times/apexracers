@@ -69,8 +69,6 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         if (driverBest is null) return null;
 
-        var total = fieldByDriver.Count;
-
         // Rank against other drivers' race laps only: the driver's own slower race result would
         // otherwise count as one more driver beaten whenever a personal lap supersedes it.
         var otherDriversLaps = fieldByDriver
@@ -78,7 +76,14 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             .Select(d => d.BestLap)
             .ToList();
 
+        // The Field is those drivers plus the subject on the lap actually being ranked — which is
+        // not the row bearing their customer id when an uploaded lap superseded it. Every metric
+        // below is computed over that same population, so the rank, the position, the median and
+        // the distribution can never disagree about who was counted.
+        var total = FieldPercentile.FieldSize(otherDriversLaps);
         var percentileRank = FieldPercentile.Rank(driverBest.Value, otherDriversLaps);
+        var fieldPosition = FieldPercentile.Position(driverBest.Value, otherDriversLaps);
+        var topSharePercent = FieldPercentile.TopSharePercent(driverBest.Value, otherDriversLaps);
 
         var computedAt = DateTimeOffset.UtcNow;
 
@@ -92,27 +97,31 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             {
                 db.CarPercentileResults.Add(new CarPercentileResult
                 {
-                    UserId         = user.Id,
-                    CarId          = carId,
-                    SeriesId       = seriesId,
-                    WeekId         = week.Id,
-                    PercentileRank = percentileRank,
-                    SampleSize     = total,
-                    ComputedAt     = computedAt,
+                    UserId          = user.Id,
+                    CarId           = carId,
+                    SeriesId        = seriesId,
+                    WeekId          = week.Id,
+                    PercentileRank  = percentileRank,
+                    TopSharePercent = topSharePercent,
+                    SampleSize      = total,
+                    ComputedAt      = computedAt,
                 });
             }
             else
             {
-                cached.PercentileRank = percentileRank;
-                cached.SampleSize     = total;
-                cached.ComputedAt     = computedAt;
+                cached.PercentileRank  = percentileRank;
+                cached.TopSharePercent = topSharePercent;
+                cached.SampleSize      = total;
+                cached.ComputedAt      = computedAt;
             }
 
             await db.SaveChangesAsync(ct);
         }
 
-        // Field stats and distribution
-        var sortedLaps = fieldByDriver.Select(d => d.BestLap).OrderBy(x => x).ToList();
+        // Field stats and distribution — over the same Field the rank was computed against, so a
+        // driver whose uploaded lap leads the Field sees a zero gap to the field best rather than
+        // a negative one against a race best they beat.
+        var sortedLaps = otherDriversLaps.Append(driverBest.Value).OrderBy(x => x).ToList();
         var fieldBest = sortedLaps[0];
         var fieldMedian = FieldPercentile.MedianOfSorted(sortedLaps);
         var distribution = BuildDistribution(sortedLaps, driverBest.Value);
@@ -125,7 +134,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         return new PercentileResultDto(
             seriesId, weekNumber, carId, customerId,
-            percentileRank, total, computedAt,
+            percentileRank, fieldPosition, topSharePercent, total, computedAt,
             week.SeriesName, week.TrackName, week.TrackConfigName,
             driverBest.Value, fieldBest, fieldMedian,
             distribution, wrLap, wrGap);

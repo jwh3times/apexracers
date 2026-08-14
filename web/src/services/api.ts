@@ -45,6 +45,7 @@ export interface WeeklyPercentile {
   trackName: string;
   configName: string;
   percentileRank: number;
+  topSharePercent: number;
   sampleSize: number;
   computedAt: string; // ISO 8601
 }
@@ -55,7 +56,9 @@ export interface CarAnalytics {
   seriesId: number;
   seriesName: string;
   latestPercentileRank: number;
+  latestTopSharePercent: number;
   bestPercentileRank: number;
+  bestTopSharePercent: number;
   personalBestLapSeconds: number | null;
   medianLapSeconds: number | null;
   totalWeeks: number;
@@ -93,6 +96,7 @@ export interface WeekDetail {
 export interface WeekCarPercentile {
   carId: number;
   percentileRank: number; // higher is better (e.g. 92 → faster than 92% of the field)
+  topSharePercent: number; // placement share of the field; lower is better
 }
 
 export interface DistributionBin {
@@ -108,6 +112,8 @@ export interface PercentileResult {
   carId: number;
   customerId: number;
   percentileRank: number;
+  fieldPosition: number;
+  topSharePercent: number;
   sampleSize: number;
   computedAt: string; // ISO 8601
   seriesName: string;
@@ -126,6 +132,7 @@ export interface CarRecommendation {
   carId: number;
   carName: string;
   percentileRank: number;
+  topSharePercent: number | null;
   sampleSize: number;
   projectedLapSeconds: number;
   bestLapSeconds: number | null;
@@ -387,6 +394,7 @@ export interface CarStrategy {
   tireNote: string;
   rainEnabled: boolean;
   percentileRank: number | null;
+  topSharePercent: number | null;
   projectedLapSeconds: number | null;
   optimalRank: number | null;
 }

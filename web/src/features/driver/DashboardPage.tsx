@@ -5,7 +5,7 @@ import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { NotLinkedCard } from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
-import { topPercentLabel } from '../../utils/percentile';
+import { topShareLabel } from '../../utils/percentile';
 import { raceWeekLabel, raceWeekNumber } from '../../utils/raceWeek';
 
 function trackLabel(lap: PersonalLap): string {
@@ -68,9 +68,9 @@ export default function DashboardPage() {
     ? (profile!.career.find(c => c.categoryId === topLicense.categoryId) ?? null)
     : null;
 
-  // Best percentile = the strongest (highest) rank across all the driver's cars.
-  const bestPercentileRank =
-    analytics.length > 0 ? Math.max(...analytics.map(a => a.bestPercentileRank)) : null;
+  // Best placement = the strongest (lowest) top share across all the driver's cars.
+  const bestTopSharePercent =
+    analytics.length > 0 ? Math.min(...analytics.map(a => a.bestTopSharePercent)) : null;
 
   return (
     <main className="page-wrap">
@@ -167,8 +167,8 @@ export default function DashboardPage() {
             <div className="text-kpi-value mt-2 text-on-surface">
               {analyticsLoading
                 ? '—'
-                : bestPercentileRank != null
-                  ? topPercentLabel(bestPercentileRank)
+                : bestTopSharePercent != null
+                  ? topShareLabel(bestTopSharePercent)
                   : '—'}
             </div>
           </div>

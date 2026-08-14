@@ -180,7 +180,9 @@ public class StrategyServiceTests
         var bmw = dto.Cars[0];
         Assert.Equal("BMW M4 GT3", bmw.CarName);
         Assert.Equal(1, bmw.OptimalRank);
-        Assert.Equal(100.0, bmw.PercentileRank); // 60 s beat both other drivers
+        // Field of 3: (2 slower + 0.5 tied) / 3.
+        Assert.Equal(250.0 / 3, bmw.PercentileRank!.Value, tolerance: 1e-10);
+        Assert.Equal(34, bmw.TopSharePercent); // 1st of 3 = 33.3%, rounded up
         Assert.NotNull(bmw.ProjectedLapSeconds);
 
         // Porsche had no caller lap → no overlay, sorts last.
@@ -188,6 +190,7 @@ public class StrategyServiceTests
         Assert.Equal("Porsche 718 GT4", porsche.CarName);
         Assert.Null(porsche.OptimalRank);
         Assert.Null(porsche.PercentileRank);
+        Assert.Null(porsche.TopSharePercent);
     }
 
     [Fact]

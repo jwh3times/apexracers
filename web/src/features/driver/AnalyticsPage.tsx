@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { api, type Series, type CarAnalytics } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
-import { topPercentLabel } from '../../utils/percentile';
+import { topShareLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
@@ -77,7 +77,7 @@ function FeaturedCarCard({
               isGold ? 'text-gold' : 'text-primary-container'
             }`}
           >
-            {topPercentLabel(data.latestPercentileRank)}
+            {topShareLabel(data.latestTopSharePercent)}
           </div>
           {isGold && (
             <span className="mb-1 px-2 py-0.5 rounded-[6px] bg-gold text-black text-[11px] font-bold">
@@ -164,7 +164,7 @@ function SecondaryCarCard({
         </div>
 
         <div className="font-mono text-[22px] font-bold text-primary-container leading-none">
-          {topPercentLabel(data.latestPercentileRank)}
+          {topShareLabel(data.latestTopSharePercent)}
         </div>
 
         {sparkData.length >= 2 && (

@@ -82,7 +82,7 @@ export default function WeekDetailPage() {
   );
   const myPercentiles =
     percentileResource.status === 'ok'
-      ? new Map(percentileResource.data.map(r => [r.carId, r.percentileRank]))
+      ? new Map(percentileResource.data.map(r => [r.carId, r.topSharePercent]))
       : new Map<number, number>();
 
   if (detailResource.status !== 'ok') {
@@ -367,7 +367,10 @@ export default function WeekDetailPage() {
                       {showMyPct && (
                         <td className="td-p border-b border-line-2 text-right">
                           {myPercentiles.has(car.carId) ? (
-                            <PercentileBadge rank={myPercentiles.get(car.carId)!} size="chip" />
+                            <PercentileBadge
+                              topSharePercent={myPercentiles.get(car.carId)!}
+                              size="chip"
+                            />
                           ) : (
                             <span className="text-on-surface-variant/40">—</span>
                           )}
