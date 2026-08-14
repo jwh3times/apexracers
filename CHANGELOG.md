@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.6.3] - 2026-08-14
+
 ### Fixed
 
 - Recent races now say which track a race was run at. iRacing's history payload gives a track identifier and a name but no configuration, and only the name was kept — so a race at the Nordschleife's Industriefahrten layout and one at its Touristenfahrten layout both read "Nürburgring Nordschleife" with nothing to tell them apart. The identifier is now kept, the configuration is resolved from the local catalog the way the car name already was, and each row links to the track it was run at. A track iRacing named but the catalog has not ingested still shows its name, without a configuration.
@@ -626,7 +630,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/jwh3times/apexracers/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jwh3times/apexracers/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jwh3times/apexracers/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jwh3times/apexracers/compare/v0.5.20...v0.6.0

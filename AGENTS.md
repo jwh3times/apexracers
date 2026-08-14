@@ -394,7 +394,7 @@ one means; the `dotnet-api` agent carries the call rules.
 - `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`).
 - `MemberStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
 - `AchievementsService` (+ pure `AchievementsMapper`) — awards trophy case (6 h).
-- `RaceHistoryService` — recent official races (10 min); resolves car names from local catalog.
+- `RaceHistoryService` — recent official races (10 min); resolves car names and track configuration from the local catalog, keyed on the track identifier the payload carries (never the track name — see `docs/adr/0002-track-identity-follows-iracing-track-id.md`).
 - `SubsessionDetailService` — one ingested subsession from the DB; normalizes stored weather units.
 - `LapDataService` (+ pure `LapAnalysis`) — per-lap pace + pace stats (24 h).
 - `ScheduleService` — active-season schedule (weeks + track + weather/BoP) + PB overlay.
