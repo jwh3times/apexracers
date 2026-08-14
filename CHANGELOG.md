@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- The `docs-updater` agent's drift-detection rules now record that `private/` is gitignored, so git history is never evidence about the maintainer-only docs. Every commit looks as though it left `private/archive.md` untouched, because none of them can touch it observably — and three consecutive sessions each skipped the completed-work log by citing the previous session's apparent skip, leaving seven shipped issues unrecorded before anyone read the file. The agent is now told to compare the archive's newest headings against recent merge history instead of inferring a cadence from a method that cannot observe the file.
 
 ## [0.6.4] - 2026-08-14
 
