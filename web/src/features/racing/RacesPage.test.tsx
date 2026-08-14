@@ -16,7 +16,9 @@ const ROWS: RaceHistoryRow[] = [
     subsessionId: 200,
     startTime: '2026-05-29T17:15:00Z',
     seriesName: 'GT4 Challenge',
+    trackId: 47,
     trackName: 'Laguna Seca',
+    configName: 'Full Course',
     carId: 119,
     carName: 'Porsche 718 GT4',
     startPosition: 20,
@@ -31,7 +33,9 @@ const ROWS: RaceHistoryRow[] = [
     subsessionId: 100,
     startTime: '2026-05-01T10:00:00Z',
     seriesName: 'GT3 Challenge',
-    trackName: 'Thruxton',
+    trackId: 532,
+    trackName: 'Thruxton Circuit',
+    configName: null,
     carId: 132,
     carName: 'BMW M4 GT3 EVO',
     startPosition: 11,
@@ -67,8 +71,10 @@ describe('RacesPage', () => {
     mockGetRaceHistory.mockResolvedValue(ROWS);
     renderPage();
     // Track and car names appear only in the table (series names also appear as filter chips).
-    await waitFor(() => expect(screen.getByText('Laguna Seca')).toBeInTheDocument());
-    expect(screen.getByText('Thruxton')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /laguna seca/i })).toBeInTheDocument()
+    );
+    expect(screen.getByRole('link', { name: /thruxton circuit/i })).toBeInTheDocument();
     expect(screen.getByText('BMW M4 GT3 EVO')).toBeInTheDocument();
     expect(screen.getByText('Porsche 718 GT4')).toBeInTheDocument();
     // Each series renders both as a filter chip and a table cell.
@@ -93,13 +99,15 @@ describe('RacesPage', () => {
   it('filters rows by series when a chip is selected', async () => {
     mockGetRaceHistory.mockResolvedValue(ROWS);
     renderPage();
-    await waitFor(() => expect(screen.getByText('Laguna Seca')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /laguna seca/i })).toBeInTheDocument()
+    );
 
     // Click the GT3 Challenge chip (button, not the table cell).
     fireEvent.click(screen.getByRole('button', { name: 'GT3 Challenge' }));
 
-    expect(screen.getByText('Thruxton')).toBeInTheDocument();
-    expect(screen.queryByText('Laguna Seca')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /thruxton circuit/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /laguna seca/i })).not.toBeInTheDocument();
   });
 
   it('links each row to its race detail page', async () => {
@@ -111,6 +119,36 @@ describe('RacesPage', () => {
         '/races/100'
       )
     );
+  });
+
+  it('links each track by identity and names the configuration that tells layouts apart', async () => {
+    mockGetRaceHistory.mockResolvedValue(ROWS);
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /laguna seca/i })).toHaveAttribute(
+        'href',
+        '/tracks/47'
+      )
+    );
+    expect(screen.getByRole('link', { name: /laguna seca/i })).toHaveTextContent(
+      'Laguna Seca · Full Course'
+    );
+    // A track with no configuration shows the name alone, still linked by identity.
+    const thruxton = screen.getByRole('link', { name: /thruxton circuit/i });
+    expect(thruxton).toHaveAttribute('href', '/tracks/532');
+    expect(thruxton).toHaveTextContent('Thruxton Circuit');
+    expect(thruxton).not.toHaveTextContent('·');
+  });
+
+  it('renders an unidentified track as plain text rather than a link to track 0', async () => {
+    mockGetRaceHistory.mockResolvedValue([
+      { ...ROWS[0], trackId: 0, trackName: 'Unknown Track', configName: null },
+    ]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Unknown Track')).toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: /unknown track/i })).not.toBeInTheDocument();
   });
 
   it('shows the link-iRacing prompt when not linked', async () => {

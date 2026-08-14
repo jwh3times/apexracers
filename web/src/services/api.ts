@@ -268,7 +268,9 @@ export interface RaceHistoryRow {
   subsessionId: number;
   startTime: string; // ISO 8601
   seriesName: string;
+  trackId: number; // 0 = iRacing named no track; the name alone is the venue's
   trackName: string;
+  configName: string | null; // null when the track has none or isn't in the local catalog
   carId: number;
   carName: string;
   startPosition: number;

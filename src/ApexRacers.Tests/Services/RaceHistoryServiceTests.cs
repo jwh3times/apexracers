@@ -7,6 +7,7 @@ using Aydsko.iRacingData.Common;
 using Aydsko.iRacingData.Stats;
 using NSubstitute;
 using Xunit;
+using Track = ApexRacers.Core.Models.Track;
 
 namespace ApexRacers.Tests.Services;
 
@@ -76,6 +77,7 @@ public class RaceHistoryServiceTests
 
         var win = rows[1]; // subsession 100
         Assert.Equal("GT3 Cup", win.SeriesName);
+        Assert.Equal(532, win.TrackId);
         Assert.Equal("Thruxton", win.TrackName);
         Assert.Equal("BMW M4 GT3 EVO", win.CarName);
         Assert.Equal(3, win.FinishPosition);
@@ -100,6 +102,75 @@ public class RaceHistoryServiceTests
 
         var row = Assert.Single(await service.GetRecentRacesAsync(CustId, Ct));
         Assert.Equal("Car 999", row.CarName);
+    }
+
+    [Fact]
+    public async Task GetRecentRacesAsync_KeepsTrackIdentityAndResolvesConfigurationFromCatalog()
+    {
+        // Tracks 249 and 253 are both named "Nürburgring Nordschleife"; only the configuration
+        // (and the identifier behind it) says which one was raced.
+        var (service, _, db) = Build(
+            Race(100, "2026-05-01T10:00:00Z", "Series", 249, "Nürburgring Nordschleife", 132,
+                1, 1, 0, 1000, 1000, 200, 200, 1500, 10),
+            Race(200, "2026-05-02T10:00:00Z", "Series", 253, "Nürburgring Nordschleife", 132,
+                1, 1, 0, 1000, 1000, 200, 200, 1500, 10));
+        db.Tracks.Add(new Track { Id = 249, Name = "Nürburgring Nordschleife", ConfigName = "Industriefahrten" });
+        db.Tracks.Add(new Track { Id = 253, Name = "Nürburgring Nordschleife", ConfigName = "Touristenfahrten" });
+        await db.SaveChangesAsync(Ct);
+
+        var rows = await service.GetRecentRacesAsync(CustId, Ct);
+
+        var industrie = rows.Single(r => r.SubsessionId == 100);
+        Assert.Equal(249, industrie.TrackId);
+        Assert.Equal("Industriefahrten", industrie.ConfigName);
+        var touristen = rows.Single(r => r.SubsessionId == 200);
+        Assert.Equal(253, touristen.TrackId);
+        Assert.Equal("Touristenfahrten", touristen.ConfigName);
+    }
+
+    [Fact]
+    public async Task GetRecentRacesAsync_TrackWithNoConfiguration_ReportsNullNotEmpty()
+    {
+        // 56 of the 463 catalog tracks carry no configuration at all.
+        var (service, _, db) = Build(
+            Race(100, "2026-05-01T10:00:00Z", "Series", 532, "Thruxton Circuit", 132,
+                1, 1, 0, 1000, 1000, 200, 200, 1500, 10));
+        db.Tracks.Add(new Track { Id = 532, Name = "Thruxton Circuit", ConfigName = "" });
+        await db.SaveChangesAsync(Ct);
+
+        var row = Assert.Single(await service.GetRecentRacesAsync(CustId, Ct));
+        Assert.Equal(532, row.TrackId);
+        Assert.Null(row.ConfigName);
+    }
+
+    [Fact]
+    public async Task GetRecentRacesAsync_TrackNotInCatalog_KeepsIdentityAndPayloadName()
+    {
+        var (service, _, db) = Build(
+            Race(100, "2026-05-01T10:00:00Z", "Series", 999, "Brand New Circuit", 132,
+                1, 1, 0, 1000, 1000, 200, 200, 1500, 10));
+        // No Track row for 999 — the catalog has not ingested it yet.
+        await db.SaveChangesAsync(Ct);
+
+        var row = Assert.Single(await service.GetRecentRacesAsync(CustId, Ct));
+        Assert.Equal(999, row.TrackId);
+        Assert.Equal("Brand New Circuit", row.TrackName);
+        Assert.Null(row.ConfigName);
+    }
+
+    [Fact]
+    public async Task GetRecentRacesAsync_PayloadNamesNoTrack_ReportsIdentityZero()
+    {
+        var race = Race(100, "2026-05-01T10:00:00Z", "Series", 1, "ignored", 132,
+            1, 1, 0, 1000, 1000, 200, 200, 1500, 10);
+        race.Track = null!; // the wire block is optional even though the SDK types it non-nullable
+        var (service, _, db) = Build(race);
+        await db.SaveChangesAsync(Ct);
+
+        var row = Assert.Single(await service.GetRecentRacesAsync(CustId, Ct));
+        Assert.Equal(0, row.TrackId);
+        Assert.Equal(string.Empty, row.TrackName);
+        Assert.Null(row.ConfigName);
     }
 
     [Fact]

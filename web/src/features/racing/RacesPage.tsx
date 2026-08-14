@@ -15,6 +15,16 @@ function deltaClass(n: number): string {
   return n >= 0 ? 'text-primary-container' : 'text-error';
 }
 
+/** A track name names the venue — the configuration is what says which layout was raced. */
+function TrackLabel({ row }: { row: RaceHistoryRow }) {
+  return (
+    <>
+      {row.trackName}
+      {row.configName && <span className="text-on-surface-variant/70"> · {row.configName}</span>}
+    </>
+  );
+}
+
 function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
   return (
     <div className="overflow-x-auto">
@@ -47,7 +57,18 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
                 <span className="block truncate">{r.seriesName}</span>
               </td>
               <td className="td-p text-small-fluid text-on-surface-variant max-w-0">
-                <span className="block truncate">{r.trackName}</span>
+                {r.trackId > 0 ? (
+                  <Link
+                    to={`/tracks/${r.trackId}`}
+                    className="block truncate hover:text-primary-container transition-colors"
+                  >
+                    <TrackLabel row={r} />
+                  </Link>
+                ) : (
+                  <span className="block truncate">
+                    <TrackLabel row={r} />
+                  </span>
+                )}
               </td>
               <td className="td-p text-small-fluid text-on-surface-variant max-w-0">
                 <span className="block truncate">{r.carName}</span>
