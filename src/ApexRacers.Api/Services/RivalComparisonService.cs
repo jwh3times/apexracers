@@ -20,7 +20,7 @@ public class RivalComparisonService(MemberStatsService stats, AppDbContext db)
         return new DriverComparisonDto(you, rival, shared);
     }
 
-    /// <summary>Races both drivers ran, joined from local subsession results + track names.</summary>
+    /// <summary>Races both drivers ran, joined from local subsession results + track identity.</summary>
     private async Task<SharedRaceSummaryDto> BuildSharedAsync(long me, long rival, CancellationToken ct)
     {
         var mine = db.SubsessionResults.Where(r => r.CustId == me);
@@ -34,7 +34,9 @@ public class RivalComparisonService(MemberStatsService stats, AppDbContext db)
             select new SharedRaceInput(
                 m.SubsessionId,
                 sub.StartTime,
+                trk.Id,
                 trk.Name,
+                trk.ConfigName,
                 m.FinishPosition,
                 t.FinishPosition,
                 m.NewIRating - m.OldIRating,

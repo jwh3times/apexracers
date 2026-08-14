@@ -43,11 +43,12 @@ public class RivalComparisonServiceTests
         return new RivalComparisonService(new MemberStatsService(cached), db);
     }
 
-    private static void SeedRace(AppDbContext db, int subId, int trackId, string trackName, DateTimeOffset start)
+    private static void SeedRace(AppDbContext db, int subId, int trackId, string trackName,
+        DateTimeOffset start, string configName = "")
     {
         db.Subsessions.Add(new Subsession { Id = subId, TrackId = trackId, StartTime = start });
         if (!db.Tracks.Local.Any(t => t.Id == trackId))
-            db.Tracks.Add(new Track { Id = trackId, Name = trackName });
+            db.Tracks.Add(new Track { Id = trackId, Name = trackName, ConfigName = configName });
     }
 
     private static void SeedResult(AppDbContext db, int subId, long custId, int finish,
@@ -103,6 +104,32 @@ public class RivalComparisonServiceTests
         var spaPace = result.Shared.TrackPace.Single(p => p.TrackName == "Spa");
         Assert.Equal(120.0, spaPace.YourBestLapSeconds, precision: 3);
         Assert.Equal(121.0, spaPace.RivalBestLapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public async Task CompareAsync_TrackPace_SeparatesLayoutsSharingAVenueName()
+    {
+        await using var db = DbContextFactory.Create();
+        SeedRace(db, 1, 20, "Homestead Miami Speedway",
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), configName: "Oval");
+        SeedRace(db, 2, 22, "Homestead Miami Speedway",
+            new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero), configName: "Road Course B");
+        SeedResult(db, 1, Me, finish: 2, oldIr: 2000, newIr: 2025, incidents: 1, bestLap: 30.1);
+        SeedResult(db, 1, Rival, finish: 5, oldIr: 1900, newIr: 1880, incidents: 4, bestLap: 30.4);
+        SeedResult(db, 2, Me, finish: 3, oldIr: 2025, newIr: 2010, incidents: 0, bestLap: 95.2);
+        SeedResult(db, 2, Rival, finish: 1, oldIr: 1880, newIr: 1905, incidents: 0, bestLap: 94.8);
+        await db.SaveChangesAsync(Ct);
+        var service = Build(db);
+
+        var result = await service.CompareAsync(Me, Rival, Ct);
+
+        Assert.Equal(2, result.Shared.TrackPace.Count);
+        var oval = result.Shared.TrackPace.Single(p => p.TrackId == 20);
+        Assert.Equal("Oval", oval.ConfigName);
+        Assert.Equal(30.1, oval.YourBestLapSeconds, precision: 3);
+        var road = result.Shared.TrackPace.Single(p => p.TrackId == 22);
+        Assert.Equal("Road Course B", road.ConfigName);
+        Assert.Equal(95.2, road.YourBestLapSeconds, precision: 3);
     }
 
     [Fact]

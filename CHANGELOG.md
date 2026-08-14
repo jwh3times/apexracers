@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.2] - 2026-08-13
+
+### Fixed
+
+- Head-to-head track pace no longer merges different layouts at the same venue. Best laps were grouped by track name, so a lap set on Homestead's 1.50-mile oval could be compared against one set on its 2.30-mile road course and reported as faster; the eight tracks whose names carry a trailing space were also split into rows of their own. Pace is now grouped by track identifier, and each row names its configuration and links to that track.
+
 ## [0.6.1] - 2026-08-13
 
 ### Security
@@ -618,7 +624,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/jwh3times/apexracers/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jwh3times/apexracers/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jwh3times/apexracers/compare/v0.5.20...v0.6.0
 [0.5.20]: https://github.com/jwh3times/apexracers/compare/v0.5.19...v0.5.20

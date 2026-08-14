@@ -93,7 +93,15 @@ const COMPARISON: DriverComparison = {
         rivalIncidents: 4,
       },
     ],
-    trackPace: [{ trackName: 'Spa', yourBestLapSeconds: 120.5, rivalBestLapSeconds: 121.0 }],
+    trackPace: [
+      {
+        trackId: 18,
+        trackName: 'Spa',
+        configName: null,
+        yourBestLapSeconds: 120.5,
+        rivalBestLapSeconds: 121.0,
+      },
+    ],
   },
 };
 
@@ -180,6 +188,41 @@ describe('ComparePage', () => {
       expect(screen.getByText(/3 shared races/i)).toBeInTheDocument();
       expect(screen.getAllByText('Spa').length).toBeGreaterThan(0);
     });
+  });
+
+  it('lists each layout at a shared venue separately and links it by track identity', async () => {
+    mockCompare.mockResolvedValue({
+      ...COMPARISON,
+      shared: {
+        ...COMPARISON.shared,
+        trackPace: [
+          {
+            trackId: 20,
+            trackName: 'Homestead Miami Speedway',
+            configName: 'Oval',
+            yourBestLapSeconds: 30.1,
+            rivalBestLapSeconds: 30.4,
+          },
+          {
+            trackId: 22,
+            trackName: 'Homestead Miami Speedway',
+            configName: 'Road Course B',
+            yourBestLapSeconds: 95.2,
+            rivalBestLapSeconds: 94.8,
+          },
+        ],
+      },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+
+    const trackLinks = () =>
+      screen.getAllByRole('link').filter(a => a.getAttribute('href')?.startsWith('/tracks/'));
+    await waitFor(() => expect(trackLinks()).toHaveLength(2));
+    const links = trackLinks();
+    expect(links.map(a => a.getAttribute('href'))).toEqual(['/tracks/20', '/tracks/22']);
+    expect(links[0]).toHaveTextContent('Homestead Miami Speedway · Oval');
+    expect(links[1]).toHaveTextContent('Homestead Miami Speedway · Road Course B');
   });
 
   it('shows a link-iRacing prompt when comparison is not linked', async () => {

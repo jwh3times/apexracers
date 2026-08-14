@@ -255,10 +255,21 @@ function HeadToHead({ data }: { data: DriverComparison }) {
           <p className="text-th text-on-surface-variant">Best lap at shared tracks</p>
           {s.trackPace.map(p => (
             <div
-              key={p.trackName}
+              key={p.trackId}
               className="grid grid-cols-[1fr_auto_auto] gap-fluid items-baseline py-1 border-b border-line-2/60 last:border-0"
             >
-              <span className="text-body-fluid text-on-surface">{p.trackName}</span>
+              <Link
+                to={`/tracks/${p.trackId}`}
+                className="text-body-fluid text-on-surface hover:text-primary-container transition-colors"
+              >
+                {p.trackName}
+                {p.configName && (
+                  <span className="text-small-fluid text-on-surface-variant">
+                    {' '}
+                    · {p.configName}
+                  </span>
+                )}
+              </Link>
               <span className="text-mono-fluid text-primary-container text-right w-24">
                 {lap(p.yourBestLapSeconds)}
               </span>

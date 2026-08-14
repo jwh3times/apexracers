@@ -560,7 +560,9 @@ export interface SharedRaceRow {
 }
 
 export interface SharedTrackPace {
+  trackId: number; // the track identity — a name alone is the venue's, shared by every layout
   trackName: string;
+  configName: string | null;
   yourBestLapSeconds: number; // -1 = no valid lap
   rivalBestLapSeconds: number;
 }
