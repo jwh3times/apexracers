@@ -11,6 +11,28 @@ public class TelemetryUploadService(AppDbContext db)
     {
         var session = IbtParser.Parse(ibtStream);
 
+        // A file that names no driver parses to 0 — treat that as "not established" rather than
+        // as customer 0, so it is never compared against or stored as a real Customer ID.
+        var recordedBy = session.DriverCustomerId > 0 ? session.DriverCustomerId : (long?)null;
+
+        var claimedCustId = await db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.IRacingCustomerId)
+            .FirstOrDefaultAsync(ct);
+
+        // Reject before anything is written. An accepted upload's laps become the uploader's own
+        // pace and are ranked against a field of real race laps, so telemetry driven by someone
+        // else must not reach the database at all — not even the catalog rows upserted below.
+        // A caller with no Claimed Identity has nothing to check against and is let through; the
+        // recording Driver is still stored, so the lap says whose it is either way.
+        if (recordedBy is { } fileCustId && claimedCustId is { } claimed && fileCustId != claimed)
+        {
+            throw new InvalidOperationException(
+                $"This telemetry was recorded by driver {fileCustId}, not by the iRacing account " +
+                $"linked to your profile ({claimed}). Upload telemetry you drove, or update your " +
+                "linked Customer ID in Settings.");
+        }
+
         // Upsert the car — the ingestion worker is the authoritative source but
         // telemetry files can arrive before ingestion has run.
         var car = await db.Cars.FindAsync([session.IracingCarId], ct);
@@ -60,6 +82,7 @@ public class TelemetryUploadService(AppDbContext db)
                 db.PersonalLaps.Add(new PersonalLap
                 {
                     UserId           = userId,
+                    DriverCustId     = recordedBy,
                     CarId            = session.IracingCarId,
                     TrackId          = session.IracingTrackId,
                     LapTimeSeconds   = lap.LapTimeSeconds,

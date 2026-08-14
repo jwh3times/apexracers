@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.1] - 2026-08-13
+
+### Security
+
+- Telemetry recorded by a different driver is no longer accepted as your own pace. An `.ibt` file names the driver who recorded it, and that name was previously read, shown back on the upload page, and then discarded — so a file driven by anyone could be uploaded, stored as the uploader's laps, and ranked against a field of real race results under their account. An upload whose recording driver disagrees with the iRacing customer ID linked to the account is now refused, with a message naming both and pointing at Settings. The check runs before anything is written, so a refused upload leaves nothing behind.
+
+### Added
+
+- Uploaded laps record the driver the telemetry named, so a lap now says whose it is. Where the file names nobody the value is stored as unknown rather than as customer 0. Uploading still works without a linked iRacing customer ID — there is simply nothing to check the file against, and the recording driver is stored either way.
+
+### Changed
+
+- Laps uploaded before this release carry no recording driver and cannot be backfilled, since the value was never captured. They are indistinguishable from laps whose file named no driver, and both read as "not established".
+
 ## [0.6.0] - 2026-08-13
 
 ### Changed
@@ -604,7 +618,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/jwh3times/apexracers/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jwh3times/apexracers/compare/v0.5.20...v0.6.0
 [0.5.20]: https://github.com/jwh3times/apexracers/compare/v0.5.19...v0.5.20
 [0.5.19]: https://github.com/jwh3times/apexracers/compare/v0.5.18...v0.5.19

@@ -169,7 +169,7 @@ A Lap driven in the racing Sim Session of a Subsession, known to ApexRacers thro
 _Avoid_: Official lap, Session lap, Result lap
 
 **Uploaded Lap**:
-A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User; the Driver who drove it is claimed by the file rather than established.
+A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User and attributed to the Driver the file names, which is accepted only where it agrees with the User's Claimed Identity — itself an assertion rather than proof.
 _Avoid_: Personal Lap, Telemetry lap, Practice lap
 
 **Telemetry Upload**:

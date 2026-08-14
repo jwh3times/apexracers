@@ -414,7 +414,9 @@ one means; the `dotnet-api` agent carries the call rules.
 - `RefreshTokenStore` — owns issue/rotate/revoke/revoke-all/retention cleanup over an injected `TimeProvider`. Its canonical active predicate is `RevokedAt == null && ExpiresAt > now`; issuance caps active tokens at 5 per user, and rotation revokes + inserts in one save. Raw tokens leave only as return values; persistence stores their SHA-256 hashes.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
 - `TelemetryUploadService`, `PersonalLapService` — parse a Telemetry Upload into `PersonalLap` rows
-  (one per timed lap); query the caller's Uploaded Bests.
+  (one per timed lap); query the caller's Uploaded Bests. The upload is refused with a `400` when
+  the file's recording Driver disagrees with the caller's Claimed Identity, **before** any row is
+  written — see `dotnet-api` for why the ordering is load-bearing.
 - `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
   Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
@@ -441,7 +443,7 @@ indexes, FK/`OnDelete` behavior).
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
 | `Subsession` / `SubsessionResult`               | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |
-| `PersonalLap`                                   | one Uploaded Lap — every timed lap of a Telemetry Upload, not a per-car-and-track best         |
+| `PersonalLap`                                   | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established) |
 | `CarPercentileResult`                           | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                       |
 | `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
 | `RefreshToken`                                  | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                |
