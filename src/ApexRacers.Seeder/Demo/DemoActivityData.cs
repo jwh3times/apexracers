@@ -17,13 +17,15 @@ public static class DemoActivityData
     ];
 
     // Synthetic negative subsession ids so they never collide with real ingested races and are
-    // removed by purge_demo_data.sql (Id < 0). Car 132 (BMW M4 GT3) is in the seeded catalog.
+    // removed by purge_demo_data.sql (Id < 0). Car 132 (BMW M4 GT3) and track 47 (Laguna Seca)
+    // are in the seeded catalog, so the row's configuration resolves and its track link lands.
     public static List<RecentRaceCacheRow> BuildRecentRaces(long custId) =>
         Enumerable.Range(0, 6)
             .Select(i => new RecentRaceCacheRow(
                 SubsessionId: -900_000 - i,
                 SessionStartTime: DemoCache.RefDate.AddDays(-i * 3),
                 SeriesName: "GT3 Challenge Fixed",
+                TrackId: 47,
                 TrackName: "Laguna Seca",
                 CarId: 132,
                 StartPosition: 5 + (i % 4),

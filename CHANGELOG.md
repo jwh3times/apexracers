@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Recent races now say which track a race was run at. iRacing's history payload gives a track identifier and a name but no configuration, and only the name was kept — so a race at the Nordschleife's Industriefahrten layout and one at its Touristenfahrten layout both read "Nürburgring Nordschleife" with nothing to tell them apart. The identifier is now kept, the configuration is resolved from the local catalog the way the car name already was, and each row links to the track it was run at. A track iRacing named but the catalog has not ingested still shows its name, without a configuration.
 
 ## [0.6.2] - 2026-08-13
 

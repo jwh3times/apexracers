@@ -196,12 +196,19 @@ public record DriverProfileDto(
     FavoriteCarDto? FavoriteCar,
     FavoriteTrackDto? FavoriteTrack);
 
-/// <summary>One row in the driver's recent-race history. SrDelta is in SR points (sub-level / 100).</summary>
+/// <summary>
+/// One row in the driver's recent-race history. SrDelta is in SR points (sub-level / 100).
+/// <c>TrackId</c> identifies the track raced (0 when iRacing named none); <c>TrackName</c> is
+/// shared with every layout at that venue, so <c>ConfigName</c> is what tells them apart. The
+/// configuration is null when the track carries none or is absent from the local catalog.
+/// </summary>
 public record RaceHistoryRowDto(
     int SubsessionId,
     DateTimeOffset StartTime,
     string SeriesName,
+    int TrackId,
     string TrackName,
+    string? ConfigName,
     int CarId,
     string CarName,
     int StartPosition,
