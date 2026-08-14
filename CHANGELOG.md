@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.6.4] - 2026-08-14
+
 ### Fixed
 
 - The "Unique Tracks" count on My Laps counted distinct track *names*, so laps driven on all four Homestead Miami Speedway layouts reported as one track. It now counts the tracks themselves.
@@ -636,7 +640,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/jwh3times/apexracers/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jwh3times/apexracers/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jwh3times/apexracers/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jwh3times/apexracers/compare/v0.6.0...v0.6.1
