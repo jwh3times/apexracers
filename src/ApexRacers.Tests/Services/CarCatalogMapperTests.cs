@@ -77,7 +77,7 @@ public class CarCatalogMapperTests
         var classes = new List<CarClassRefDto> { new(2523, "GT3 Class") };
         var bests = new List<PersonalLapDto>
         {
-            new(132, "Mercedes-AMG GT3 2020", "Spa", "Grand Prix", 138.5, 3, DateTimeOffset.UtcNow),
+            new(132, "Mercedes-AMG GT3 2020", 341, "Spa", "Grand Prix", 138.5, 3, DateTimeOffset.UtcNow),
         };
 
         var detail = CarCatalogMapper.ToDetail(SampleCar(), classes, bests);

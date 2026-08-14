@@ -36,6 +36,7 @@ describe('MyLapsPage', () => {
       {
         carId: 1,
         carName: 'Porsche 992 GT3',
+        trackId: 341,
         trackName: 'Spa-Francorchamps',
         configName: 'Full',
         bestLapSeconds: 131.456,
@@ -62,6 +63,7 @@ describe('MyLapsPage', () => {
       {
         carId: 2,
         carName: 'Mazda MX-5',
+        trackId: 149,
         trackName: 'Lime Rock Park',
         configName: '',
         bestLapSeconds: 60.0,
@@ -81,6 +83,7 @@ describe('MyLapsPage', () => {
       {
         carId: 1,
         carName: 'Slow Car',
+        trackId: 201,
         trackName: 'Track A',
         configName: '',
         bestLapSeconds: 150.0,
@@ -90,6 +93,7 @@ describe('MyLapsPage', () => {
       {
         carId: 2,
         carName: 'Fast Car',
+        trackId: 202,
         trackName: 'Track B',
         configName: '',
         bestLapSeconds: 88.5,
@@ -99,6 +103,7 @@ describe('MyLapsPage', () => {
       {
         carId: 3,
         carName: 'Medium Car',
+        trackId: 203,
         trackName: 'Track C',
         configName: '',
         bestLapSeconds: 120.0,
@@ -122,6 +127,7 @@ describe('MyLapsPage', () => {
       {
         carId: 1,
         carName: 'Porsche 992 GT3',
+        trackId: 341,
         trackName: 'Spa-Francorchamps',
         configName: 'Full',
         bestLapSeconds: 131.456,
@@ -131,6 +137,7 @@ describe('MyLapsPage', () => {
       {
         carId: 2,
         carName: 'Mazda MX-5',
+        trackId: 149,
         trackName: 'Lime Rock Park',
         configName: '',
         bestLapSeconds: 60.0,
@@ -155,6 +162,7 @@ describe('MyLapsPage', () => {
       {
         carId: 1,
         carName: 'Porsche 992 GT3',
+        trackId: 341,
         trackName: 'Spa-Francorchamps',
         configName: 'Full',
         bestLapSeconds: 131.456,
@@ -164,6 +172,7 @@ describe('MyLapsPage', () => {
       {
         carId: 2,
         carName: 'Mazda MX-5',
+        trackId: 149,
         trackName: 'Lime Rock Park',
         configName: '',
         bestLapSeconds: 60.0,
@@ -180,6 +189,60 @@ describe('MyLapsPage', () => {
       expect(screen.getByText('1 record')).toBeInTheDocument();
       expect(screen.queryByText('1 records')).not.toBeInTheDocument();
     });
+  });
+
+  it('counts unique tracks by identity, not by the venue name they share', async () => {
+    // Two Homestead layouts: one venue name, two tracks.
+    mockGetMyLaps.mockResolvedValue([
+      {
+        carId: 1,
+        carName: 'Porsche 992 GT3',
+        trackId: 20,
+        trackName: 'Homestead Miami Speedway',
+        configName: 'Oval',
+        bestLapSeconds: 30.1,
+        lapCount: 4,
+        lastRecordedAt: '2026-05-01T10:00:00Z',
+      },
+      {
+        carId: 1,
+        carName: 'Porsche 992 GT3',
+        trackId: 22,
+        trackName: 'Homestead Miami Speedway',
+        configName: 'Road Course B',
+        bestLapSeconds: 95.2,
+        lapCount: 6,
+        lastRecordedAt: '2026-05-02T10:00:00Z',
+      },
+    ]);
+    renderPage();
+
+    // The card's value is the <p> immediately after its label. Keyed on the name this reads 1.
+    await waitFor(() => expect(screen.getByText('Unique Tracks')).toBeInTheDocument());
+    expect(screen.getByText('Unique Tracks').nextElementSibling).toHaveTextContent(/^2$/);
+  });
+
+  it('links each lap to the track it was set at', async () => {
+    mockGetMyLaps.mockResolvedValue([
+      {
+        carId: 1,
+        carName: 'Porsche 992 GT3',
+        trackId: 341,
+        trackName: 'Spa-Francorchamps',
+        configName: 'Full',
+        bestLapSeconds: 131.456,
+        lapCount: 12,
+        lastRecordedAt: '2026-05-01T10:00:00Z',
+      },
+    ]);
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /spa-francorchamps/i })).toHaveAttribute(
+        'href',
+        '/tracks/341'
+      )
+    );
   });
 
   it('shows fallback error message for non-Error rejection', async () => {

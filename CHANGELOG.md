@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.4] - 2026-08-14
+
+### Fixed
+
+- The "Unique Tracks" count on My Laps counted distinct track *names*, so laps driven on all four Homestead Miami Speedway layouts reported as one track. It now counts the tracks themselves.
+
+### Changed
+
+- Uploaded best laps are grouped by car and track identifier instead of by the car and track display names. The names had kept the layouts apart only because iRacing happens to label every configuration distinctly today — nothing enforced it, and eight tracks are already named with a trailing space that any later cleanup would have merged. Best-lap rows on My Laps and on a car's detail page now also link to the track they were set at.
+
 ## [0.6.3] - 2026-08-14
 
 ### Fixed
@@ -630,7 +640,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/jwh3times/apexracers/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jwh3times/apexracers/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jwh3times/apexracers/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jwh3times/apexracers/compare/v0.6.0...v0.6.1

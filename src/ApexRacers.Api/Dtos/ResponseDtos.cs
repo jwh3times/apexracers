@@ -96,9 +96,15 @@ public record TelemetryUploadResultDto(
     long CustomerId,
     string DriverName);
 
+/// <summary>
+/// One driver's best uploaded lap for a car at a track. Identified by <c>CarId</c> and
+/// <c>TrackId</c> — <c>TrackName</c> is the venue's and is shared by every layout there, so it
+/// is a label, not an identity.
+/// </summary>
 public record PersonalLapDto(
     int CarId,
     string CarName,
+    int TrackId,
     string TrackName,
     string ConfigName,
     double BestLapSeconds,

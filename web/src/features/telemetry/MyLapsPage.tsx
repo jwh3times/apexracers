@@ -73,7 +73,9 @@ export default function MyLapsPage() {
   const [search, setSearch] = useState('');
 
   const uniqueCars = new Set(laps.map(l => l.carId)).size;
-  const uniqueTracks = new Set(laps.map(l => l.trackName)).size;
+  // By identity, not name — a name is the venue's, so counting names counts venues, and the
+  // four Homestead layouts would report as one track.
+  const uniqueTracks = new Set(laps.map(l => l.trackId)).size;
   const bestLap =
     laps.length > 0
       ? laps.reduce((best, l) => (l.bestLapSeconds < best.bestLapSeconds ? l : best))
@@ -201,9 +203,9 @@ export default function MyLapsPage() {
                   </tr>
                 </thead>
                 <tbody className="font-body-sm text-body-sm divide-y divide-surface-variant/50">
-                  {filtered.map((lap, i) => (
+                  {filtered.map(lap => (
                     <tr
-                      key={i}
+                      key={`${lap.carId}-${lap.trackId}`}
                       className="hover:bg-surface-container-highest transition-colors group cursor-pointer"
                     >
                       <td className="py-3 px-4">
@@ -221,7 +223,14 @@ export default function MyLapsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-on-surface-variant">{trackLabel(lap)}</td>
+                      <td className="py-3 px-4 text-on-surface-variant">
+                        <Link
+                          to={`/tracks/${lap.trackId}`}
+                          className="hover:text-primary-fixed-dim transition-colors"
+                        >
+                          {trackLabel(lap)}
+                        </Link>
+                      </td>
                       <td className="py-3 px-4 font-data-md text-data-md text-right text-primary-fixed-dim">
                         {formatLapTime(lap.bestLapSeconds)}
                       </td>
