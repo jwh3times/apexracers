@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Head-to-head track pace no longer merges different layouts at the same venue. Best laps were grouped by track name, so a lap set on Homestead's 1.50-mile oval could be compared against one set on its 2.30-mile road course and reported as faster; the eight tracks whose names carry a trailing space were also split into rows of their own. Pace is now grouped by track identifier, and each row names its configuration and links to that track.
 
 ## [0.6.1] - 2026-08-13
 

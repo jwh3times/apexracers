@@ -415,8 +415,16 @@ public record SharedRaceRowDto(
     int YourIncidents,
     int RivalIncidents);
 
-/// <summary>Best lap each driver set at a track they both raced. -1 = no valid lap.</summary>
-public record SharedTrackPaceDto(string TrackName, double YourBestLapSeconds, double RivalBestLapSeconds);
+/// <summary>
+/// Best lap each driver set at a track they both raced. -1 = no valid lap. Identified by
+/// <c>TrackId</c> — the name alone names the venue and is shared by every layout there.
+/// </summary>
+public record SharedTrackPaceDto(
+    int TrackId,
+    string TrackName,
+    string? ConfigName,
+    double YourBestLapSeconds,
+    double RivalBestLapSeconds);
 
 /// <summary>
 /// Head-to-head record over races both drivers ran: totals, who finished ahead more often,
