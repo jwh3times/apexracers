@@ -141,6 +141,17 @@ Linux, and web sessions, and never require permission approval:
 - **Design tokens defined** — Grep pattern `@layer components` in `web/src/index.css` with `-A 200` context
 - **Domain glossary sections and ADRs that exist** — Read `CONTEXT.md`; Glob `docs/adr/*.md`
 
+**`private/` is gitignored, so git history is never evidence about it.** `git log`, `git show --stat`,
+and `git diff` cannot see `private/ROADMAP.md`, `private/archive.md`, or `private/PRD.md` — every
+commit looks like it "didn't touch the archive," because none of them can. Do not conclude from that
+silence that the archive is maintained on some other cadence, or that skipping it matches precedent:
+the method cannot observe the thing it is being used to judge. Read the file instead — compare the
+newest headings at the top of `private/archive.md` against recently merged work (`git log --oneline
+main`, whose squash subjects carry the PR number). Shipped work with no entry means the archive is
+behind, and the prepend rule above applies. This has already failed in practice: three consecutive
+sessions each skipped the archive by citing the previous session's apparent skip, and seven shipped
+issues went unrecorded before anyone read the file.
+
 ## What NOT to change
 
 - Do not edit agent frontmatter (`name`, `description`, `tools`, `model`) unless you are explicitly asked to.

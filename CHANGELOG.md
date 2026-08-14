@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.5] - 2026-08-14
+
+### Changed
+
+- The `docs-updater` agent's drift-detection rules now record that `private/` is gitignored, so git history is never evidence about the maintainer-only docs. Every commit looks as though it left `private/archive.md` untouched, because none of them can touch it observably — and three consecutive sessions each skipped the completed-work log by citing the previous session's apparent skip, leaving seven shipped issues unrecorded before anyone read the file. The agent is now told to compare the archive's newest headings against recent merge history instead of inferring a cadence from a method that cannot observe the file.
+
 ## [0.6.4] - 2026-08-14
 
 ### Fixed
@@ -640,7 +646,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.5...HEAD
+[0.6.5]: https://github.com/jwh3times/apexracers/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/jwh3times/apexracers/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jwh3times/apexracers/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jwh3times/apexracers/compare/v0.6.1...v0.6.2
