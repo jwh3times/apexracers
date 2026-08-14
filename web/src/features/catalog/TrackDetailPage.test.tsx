@@ -32,6 +32,7 @@ const DETAIL: TrackCatalogDetail = {
     {
       carId: 132,
       carName: 'Mercedes-AMG GT3',
+      trackId: 341,
       trackName: 'Spa-Francorchamps',
       configName: 'Grand Prix',
       bestLapSeconds: 138.5,

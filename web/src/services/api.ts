@@ -68,6 +68,7 @@ export interface CarAnalytics {
 export interface PersonalLap {
   carId: number;
   carName: string;
+  trackId: number; // the track identity; trackName is the venue's and is shared by every layout
   trackName: string;
   configName: string;
   bestLapSeconds: number;

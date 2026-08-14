@@ -90,13 +90,15 @@ export default function CarDetailPage() {
                   </thead>
                   <tbody>
                     {resource.data.yourBestLaps.map(l => (
-                      <tr
-                        key={`${l.trackName}-${l.configName}`}
-                        className="border-b border-line-2/60 last:border-0"
-                      >
+                      <tr key={l.trackId} className="border-b border-line-2/60 last:border-0">
                         <td className="td-p text-body-fluid text-on-surface">
-                          {l.trackName}
-                          {l.configName ? ` · ${l.configName}` : ''}
+                          <Link
+                            to={`/tracks/${l.trackId}`}
+                            className="hover:text-primary-container transition-colors"
+                          >
+                            {l.trackName}
+                            {l.configName ? ` · ${l.configName}` : ''}
+                          </Link>
                         </td>
                         <td className="td-p text-mono-fluid text-primary-container text-right">
                           {formatLapTime(l.bestLapSeconds)}

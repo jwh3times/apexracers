@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- The "Unique Tracks" count on My Laps counted distinct track *names*, so laps driven on all four Homestead Miami Speedway layouts reported as one track. It now counts the tracks themselves.
+
+### Changed
+
+- Uploaded best laps are grouped by car and track identifier instead of by the car and track display names. The names had kept the layouts apart only because iRacing happens to label every configuration distinctly today — nothing enforced it, and eight tracks are already named with a trailing space that any later cleanup would have merged. Best-lap rows on My Laps and on a car's detail page now also link to the track they were set at.
 
 ## [0.6.3] - 2026-08-14
 

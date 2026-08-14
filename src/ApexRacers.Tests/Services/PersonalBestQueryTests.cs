@@ -27,7 +27,11 @@ public class PersonalBestQueryTests
             new Car { Id = 2, Name = "Porsche 911", NameAbbreviated = "P911" });
         db.Tracks.AddRange(
             new Track { Id = 10, Name = "Spa", ConfigName = "Grand Prix" },
-            new Track { Id = 11, Name = "Spa", ConfigName = "Endurance" });
+            new Track { Id = 11, Name = "Spa", ConfigName = "Endurance" },
+            // 12 and 13 are labelled identically on purpose: iRacing happens to label every
+            // configuration apart today, and the grouping must not depend on that holding.
+            new Track { Id = 12, Name = "Twin Ring", ConfigName = "Full" },
+            new Track { Id = 13, Name = "Twin Ring", ConfigName = "Full" });
         db.PersonalLaps.AddRange(laps);
         await db.SaveChangesAsync(Ct);
         return db;
@@ -85,8 +89,42 @@ public class PersonalBestQueryTests
             db.PersonalLaps.Where(l => l.UserId == UserId), PersonalBestOrder.FastestFirst, Ct);
 
         Assert.Equal(3, result.Count);
-        Assert.Contains(result, r => r.TrackName == "Spa" && r.ConfigName == "Grand Prix" && r.CarId == 1);
-        Assert.Contains(result, r => r.TrackName == "Spa" && r.ConfigName == "Endurance" && r.CarId == 1);
+        Assert.Contains(result, r => r.TrackId == 10 && r.TrackName == "Spa" && r.ConfigName == "Grand Prix" && r.CarId == 1);
+        Assert.Contains(result, r => r.TrackId == 11 && r.TrackName == "Spa" && r.ConfigName == "Endurance" && r.CarId == 1);
+    }
+
+    [Fact]
+    public async Task KeysOnTrackIdentity_SoIdenticallyLabelledTracksStayApart()
+    {
+        // Tracks 12 and 13 share a name *and* a configuration. Keyed on labels these collapse into
+        // one row and report a best lap set at a track the driver never drove; keyed on identity
+        // they stay two. Nothing ApexRacers controls keeps iRacing's labels distinct.
+        await using var db = await SeedAsync(
+            Lap(1, 12, 100.0),
+            Lap(1, 13, 200.0));
+
+        var result = await PersonalBestQuery.RunAsync(
+            db.PersonalLaps.Where(l => l.UserId == UserId), PersonalBestOrder.FastestFirst, Ct);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(100.0, result.Single(r => r.TrackId == 12).BestLapSeconds);
+        Assert.Equal(200.0, result.Single(r => r.TrackId == 13).BestLapSeconds);
+        Assert.All(result, r => Assert.Equal("Twin Ring", r.TrackName));
+    }
+
+    [Fact]
+    public async Task CarriesTheLabelsAlongsideTheIdentifiers()
+    {
+        await using var db = await SeedAsync(Lap(1, 11, 100.0));
+
+        var row = Assert.Single(await PersonalBestQuery.RunAsync(
+            db.PersonalLaps.Where(l => l.UserId == UserId), PersonalBestOrder.FastestFirst, Ct));
+
+        Assert.Equal(1, row.CarId);
+        Assert.Equal("Ferrari 296", row.CarName);
+        Assert.Equal(11, row.TrackId);
+        Assert.Equal("Spa", row.TrackName);
+        Assert.Equal("Endurance", row.ConfigName);
     }
 
     [Fact]

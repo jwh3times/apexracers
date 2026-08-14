@@ -42,16 +42,19 @@ public static class PersonalBestQuery
         PersonalBestOrder order,
         CancellationToken ct = default)
     {
-        // Materialize before grouping, deliberately. The group key spans navigation properties
-        // (Car.Name, Track.Name, Track.ConfigName) alongside the aggregates, which neither Npgsql
-        // nor SQLite will translate — pushing the GroupBy into SQL throws at runtime rather than
-        // failing to compile. The row count here is one user's uploaded laps, so this is cheap.
+        // Materialize before grouping, deliberately. The projection reaches through navigation
+        // properties (Car.Name, Track.Name, Track.ConfigName) for the labels, and selecting those
+        // alongside the aggregates is what neither Npgsql nor SQLite will translate — pushing the
+        // GroupBy into SQL throws at runtime rather than failing to compile. Keying on identifiers
+        // rather than names does not change that. The row count here is one user's uploaded laps,
+        // so this is cheap.
         var rows = await scope
             .Where(l => l.IsValidLap)
             .Select(l => new
             {
                 l.CarId,
                 CarName = l.Car.Name,
+                l.TrackId,
                 TrackName = l.Track.Name,
                 ConfigName = l.Track.ConfigName,
                 l.LapTimeSeconds,
@@ -59,13 +62,19 @@ public static class PersonalBestQuery
             })
             .ToListAsync(ct);
 
+        // Key on the identifiers, never the labels. A Track Name belongs to the venue and is
+        // shared by every layout there, so a name-keyed group is correct only for as long as
+        // iRacing happens to label the configurations apart — and eight tracks are already named
+        // with a trailing space, which any later whitespace normalization would silently merge.
+        // The names ride along as labels, taken from the first row of each group.
         var bests = rows
-            .GroupBy(l => new { l.CarId, l.CarName, l.TrackName, l.ConfigName })
+            .GroupBy(l => new { l.CarId, l.TrackId })
             .Select(g => new PersonalLapDto(
                 g.Key.CarId,
-                g.Key.CarName,
-                g.Key.TrackName,
-                g.Key.ConfigName,
+                g.First().CarName,
+                g.Key.TrackId,
+                g.First().TrackName,
+                g.First().ConfigName,
                 g.Min(l => l.LapTimeSeconds),
                 g.Count(),
                 g.Max(l => l.RecordedAt)));

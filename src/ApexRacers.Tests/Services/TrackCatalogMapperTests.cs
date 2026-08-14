@@ -64,7 +64,7 @@ public class TrackCatalogMapperTests
     {
         var bests = new List<PersonalLapDto>
         {
-            new(132, "Merc GT3", "Lime Rock Park", "Grand Prix", 48.9, 5, DateTimeOffset.UtcNow),
+            new(132, "Merc GT3", 149, "Lime Rock Park", "Grand Prix", 48.9, 5, DateTimeOffset.UtcNow),
         };
 
         var detail = TrackCatalogMapper.ToDetail(SampleTrack(), bests);

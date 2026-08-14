@@ -98,6 +98,7 @@ const sampleLaps = [
   {
     carId: 1,
     carName: 'Porsche 911 GT3 R',
+    trackId: 341,
     trackName: 'Spa-Francorchamps',
     configName: '',
     bestLapSeconds: 137.482,
@@ -107,6 +108,7 @@ const sampleLaps = [
   {
     carId: 2,
     carName: 'Ferrari 296 GT3',
+    trackId: 250,
     trackName: 'Nürburgring',
     configName: 'GP',
     bestLapSeconds: 120.015,
@@ -207,6 +209,7 @@ describe('ProfilePage', () => {
       {
         carId: 1,
         carName: 'Porsche 911 GT3 R',
+        trackId: 18,
         trackName: 'Monza',
         configName: '',
         bestLapSeconds: 140.0,

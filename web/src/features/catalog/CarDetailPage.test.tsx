@@ -31,6 +31,7 @@ const DETAIL: CarCatalogDetail = {
     {
       carId: 132,
       carName: 'Mercedes-AMG GT3',
+      trackId: 341,
       trackName: 'Spa',
       configName: 'GP',
       bestLapSeconds: 138.5,
@@ -70,6 +71,13 @@ describe('CarDetailPage', () => {
       expect(screen.getByText(/Spa/)).toBeInTheDocument(); // best-lap track ("Spa · GP")
       expect(screen.getByText(/2:18/)).toBeInTheDocument(); // formatLapTime(138.5)
     });
+  });
+
+  it('links each best-lap row to the track it was set at', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /spa · gp/i })).toHaveAttribute('href', '/tracks/341')
+    );
   });
 
   it('shows an error state when the car is not found', async () => {
