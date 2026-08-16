@@ -70,6 +70,10 @@ Policies in `Program.cs`:
 
 **Cross-user data access**
 
+- `PUT /api/auth/profile` accepts a self-asserted Customer ID. Claim the same ID from two Users,
+  including concurrent requests: exactly one claim must persist and the loser must receive a
+  non-disclosing `409 Conflict` that identifies no account. The filtered unique index, not a
+  read-before-write check, is the race-safe control.
 - `GET /api/series/:id/weeks/:num/cars/:id/percentile?customerId=<X>` — `customerId` is a query parameter, not derived from the JWT. Any authenticated user can query any driver's percentile by passing their iRacing customer ID.
 - Test: can an unauthenticated user query percentiles?
 - Assess: is exposing other drivers' percentile data a privacy concern, or is this public race data?

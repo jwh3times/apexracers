@@ -4,7 +4,9 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
 namespace ApexRacers.Api.Services;
 
@@ -87,7 +89,21 @@ public class AuthService(
             request.ThemePreference is "auto" or "light" or "dark")
             user.ThemePreference = request.ThemePreference;
 
-        var result = await userManager.UpdateAsync(user);
+        IdentityResult result;
+        try
+        {
+            result = await userManager.UpdateAsync(user);
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "IX_Users_IRacingCustomerId",
+            })
+        {
+            throw new ClaimedIdentityConflictException(ex);
+        }
+
         if (!result.Succeeded)
             throw new InvalidOperationException("Update failed. Please try again.");
 

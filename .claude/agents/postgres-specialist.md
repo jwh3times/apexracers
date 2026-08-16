@@ -79,7 +79,7 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 `Rival` has a unique index on `(UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
 
-`ApplicationUser.IRacingCustomerId` has a filtered unique index (`WHERE "IRacingCustomerId" IS NOT NULL`) — enforces at most one User per Customer ID (a Claimed Identity) without constraining the many users who have none.
+`ApplicationUser.IRacingCustomerId` has a filtered unique index (`WHERE "IRacingCustomerId" IS NOT NULL`) — enforces at most one User per Customer ID (a Claimed Identity) without constraining the many users who have none. `AuthService` translates only PostgreSQL unique violations naming this constraint into `ClaimedIdentityConflictException` → 409; the constraint remains the concurrent-write source of truth.
 
 `SeasonCarBop` has an index on `(SeasonId, WeekNumber)` — backs the per-week BoP lookup from `ScheduleService`/`StrategyService`.
 

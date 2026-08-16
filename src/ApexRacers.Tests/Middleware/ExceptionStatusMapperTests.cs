@@ -11,6 +11,10 @@ public class ExceptionStatusMapperTests
         Assert.Equal(409, ExceptionStatusMapper.MapStatusCode(new IRacingNotLinkedException()));
 
     [Fact]
+    public void ClaimedIdentityConflict_MapsTo409() =>
+        Assert.Equal(409, ExceptionStatusMapper.MapStatusCode(new ClaimedIdentityConflictException()));
+
+    [Fact]
     public void IRacingNotConfigured_MapsTo503() =>
         Assert.Equal(503, ExceptionStatusMapper.MapStatusCode(new IRacingNotConfiguredException()));
 
