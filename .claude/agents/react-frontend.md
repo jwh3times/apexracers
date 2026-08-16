@@ -82,6 +82,15 @@ hooks rather than re-deriving them in consumers.
 
 React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`. No Redux, Zustand, Jotai, Recoil, or similar. For cross-component state, use the existing contexts or add a new context file following the same pattern as `AuthContext`.
 
+`PaceSourceProvider` owns the app-lifetime Personal Best evidence choice. Consumers call
+`usePaceSource()` and pass its memoized `evidenceOptions` to every Personal Best API read; selectors
+edit the same `value`/`setValue` pair instead of keeping page-local copies. Official Race Laps are the
+default. Blend mode with no selected sessions sends no `personalLapTypes` values, which deliberately
+means all Uploaded Lap session types. The provider resets the choice when `userId` changes so one
+User's evidence preference cannot leak into another User's session. Keep that reset synchronous by
+keying the state-owning child on the current User/guest owner; an effect-based reset renders the new
+owner once with the previous owner's evidence before the effect runs.
+
 ## File structure
 
 ```
@@ -90,7 +99,7 @@ src/features/<area>/    ← feature-grouped route pages, each with a colocated *
 src/pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
 src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
-src/context/            ← React contexts (AuthContext, FeatureFlagContext) + their Provider components
+src/context/            ← React contexts (AuthContext, FeatureFlagContext, PaceSourceContext) + their Provider components
                           (AuthProvider, …), each with a colocated *.test.tsx sibling
 src/hooks/              ← shared hooks (`useResource`) with colocated *.test.tsx siblings
 src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling

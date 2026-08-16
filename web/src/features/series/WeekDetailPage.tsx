@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import CalculationSource from '../../components/CalculationSource';
+import { usePaceSource } from '../../context/PaceSourceContext';
 
 type SortMode = 'best' | 'consistency' | 'volume';
 
@@ -59,6 +61,7 @@ export default function WeekDetailPage() {
   const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
   const [sort, setSort] = useState<SortMode>('best');
   const detailResource = useResource<WeekDetail>(
     signal => api.getWeekDetail(Number(seriesId), Number(weekNumber), signal),
@@ -72,8 +75,9 @@ export default function WeekDetailPage() {
   // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the
   // column blank rather than surfacing an error on this otherwise-public page.
   const percentileResource = useResource(
-    signal => api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber), signal),
-    [seriesId, weekNumber, user],
+    signal =>
+      api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber), evidenceOptions, signal),
+    [seriesId, weekNumber, user, evidenceOptions],
     {
       enabled: !!seriesId && !!weekNumber && !!user,
       onNotLinked: { fallback: [] },
@@ -183,6 +187,8 @@ export default function WeekDetailPage() {
           </Link>
         </div>
       </div>
+
+      {user && <CalculationSource value={paceSource} onChange={setPaceSource} className="mb-6" />}
 
       {/* KPI strip */}
       <div className="grid-kpi mb-6">

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,13 +29,19 @@ public class WeekController(
 
     [HttpGet("my-percentiles")]
     [Authorize]
-    public async Task<IActionResult> GetMyPercentilesAsync(int seriesId, int weekNumber, CancellationToken ct)
+    public async Task<IActionResult> GetMyPercentilesAsync(
+        int seriesId,
+        int weekNumber,
+        [FromQuery] bool includePersonalLaps = false,
+        [FromQuery] List<LapSessionType>? personalLapTypes = null,
+        CancellationToken ct = default)
     {
         var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
         var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await recommendations.GetMyPercentilesAsync(seriesId, weekNumber, custId, ct));
+        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
+        return Ok(await recommendations.GetMyPercentilesAsync(seriesId, weekNumber, custId, evidence, ct));
     }
 }

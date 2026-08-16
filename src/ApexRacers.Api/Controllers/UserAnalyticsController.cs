@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,12 +15,15 @@ public class UserAnalyticsController(UserAnalyticsService analytics) : Controlle
     [HttpGet]
     public async Task<IActionResult> GetAnalyticsAsync(
         [FromQuery] int? seriesId,
-        CancellationToken ct)
+        [FromQuery] bool includePersonalLaps = false,
+        [FromQuery] List<LapSessionType>? personalLapTypes = null,
+        CancellationToken ct = default)
     {
         var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        return Ok(await analytics.GetAnalyticsAsync(userId, seriesId, ct));
+        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
+        return Ok(await analytics.GetAnalyticsAsync(userId, seriesId, evidence, ct));
     }
 }

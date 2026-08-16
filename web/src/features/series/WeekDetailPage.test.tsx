@@ -5,6 +5,7 @@ import WeekDetailPage from './WeekDetailPage';
 import { api } from '../../services/api';
 import type { WeekDetail } from '../../services/api';
 import type { User } from '../../context/AuthContext';
+import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
 let mockUser: User | null = null;
 vi.mock('../../context/AuthContext', () => ({
@@ -51,11 +52,13 @@ function makeCar(overrides: Partial<WeekDetail['cars'][number]> = {}): WeekDetai
 
 function renderPage(seriesId = '1', weekNumber = '10') {
   return render(
-    <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekNumber}`]}>
-      <Routes>
-        <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
-      </Routes>
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekNumber}`]}>
+        <Routes>
+          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </PaceSourceProvider>
   );
 }
 
@@ -183,15 +186,17 @@ describe('WeekDetailPage', () => {
   it('navigates to the car percentile page when a row is clicked', async () => {
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carName: 'Alpha' })] });
     render(
-      <MemoryRouter initialEntries={['/series/1/weeks/10']}>
-        <Routes>
-          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
-          <Route
-            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
-            element={<div>Percentile Detail</div>}
-          />
-        </Routes>
-      </MemoryRouter>
+      <PaceSourceProvider>
+        <MemoryRouter initialEntries={['/series/1/weeks/10']}>
+          <Routes>
+            <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+            <Route
+              path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+              element={<div>Percentile Detail</div>}
+            />
+          </Routes>
+        </MemoryRouter>
+      </PaceSourceProvider>
     );
     await waitFor(() => expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0));
     // Click the table-row occurrence (not the KPI strip), which carries the row onClick.
@@ -257,9 +262,32 @@ describe('WeekDetailPage', () => {
     ]);
     renderPage('1', '10');
     await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
-    expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(1, 10, expect.any(AbortSignal));
+    expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(
+      1,
+      10,
+      { includePersonalLaps: false, personalLapTypes: undefined },
+      expect.any(AbortSignal)
+    );
     // percentileRank 92 → ceil(100-92) = TOP 8%
     expect(screen.getByText('TOP 8%')).toBeInTheDocument();
+  });
+
+  it('lets a signed-in driver apply Uploaded Lap evidence to the Your pct overlay', async () => {
+    mockUser = LINKED_USER;
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar()] });
+    renderPage('1', '10');
+    await screen.findByRole('radiogroup', { name: /how we calculate your pace/i });
+
+    fireEvent.click(screen.getByRole('radio', { name: /official \+ my uploaded laps/i }));
+
+    await waitFor(() =>
+      expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(
+        1,
+        10,
+        { includePersonalLaps: true, personalLapTypes: undefined },
+        expect.any(AbortSignal)
+      )
+    );
   });
 
   it('shows a dash in the Your pct column for cars the driver has no percentile for', async () => {

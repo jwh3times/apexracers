@@ -4,6 +4,7 @@ import { api, type RaceGuideEntry, type CarAnalytics } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useIracingSurface } from '../context/FeatureFlagContext';
 import { deriveAlerts, type Alert } from '../utils/alerts';
+import { usePaceSource } from '../context/PaceSourceContext';
 
 /**
  * Bell + dropdown of client-side-derived notifications (races starting soon, percentile
@@ -14,6 +15,7 @@ import { deriveAlerts, type Alert } from '../utils/alerts';
 export default function NotificationsBell() {
   const { alertsEnabled } = useAuth();
   const { enabled: showIracing } = useIracingSurface();
+  const { evidenceOptions } = usePaceSource();
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
@@ -25,14 +27,14 @@ export default function NotificationsBell() {
     let active = true;
     void Promise.all([
       api.getRaceGuide().catch((): RaceGuideEntry[] => []),
-      api.getMyAnalytics().catch((): CarAnalytics[] => []),
+      api.getMyAnalytics(undefined, evidenceOptions).catch((): CarAnalytics[] => []),
     ]).then(([raceGuide, analytics]) => {
       if (active) setAlerts(deriveAlerts({ raceGuide, analytics }));
     });
     return () => {
       active = false;
     };
-  }, [alertsEnabled, showIracing]);
+  }, [alertsEnabled, showIracing, evidenceOptions]);
 
   const count = alerts.length;
 

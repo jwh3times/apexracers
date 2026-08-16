@@ -8,7 +8,10 @@ namespace ApexRacers.Api.Services;
 public class UserAnalyticsService(AppDbContext db)
 {
     public async Task<List<CarAnalyticsDto>> GetAnalyticsAsync(
-        Guid userId, int? seriesId, CancellationToken ct = default)
+        Guid userId,
+        int? seriesId,
+        PersonalBestEvidence evidence,
+        CancellationToken ct = default)
     {
         var iracingId = await db.Users
             .Where(u => u.Id == userId)
@@ -77,27 +80,29 @@ public class UserAnalyticsService(AppDbContext db)
 
             foreach (var row in driverRaceRows)
                 driverRaceBests[(row.CarId, row.WeekId)] = row.BestLap;
+        }
 
-            // Also consider PersonalLap data for personal best
+        if (evidence.IncludesUploadedLaps)
+        {
             var trackIds = rawResults.Select(r => r.TrackId).Distinct().ToList();
             var carIds = rawResults.Select(r => r.CarId).Distinct().ToList();
 
-            var personalLapBests = await db.PersonalLaps
-                .Where(p => p.UserId == userId && p.IsValidLap
-                         && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId))
-                .GroupBy(p => new { p.CarId, p.TrackId })
-                .Select(g => new { g.Key.CarId, g.Key.TrackId, BestLap = g.Min(p => p.LapTimeSeconds) })
-                .ToListAsync(ct);
+            var personalLapBests = await PersonalBestQuery.RunAsync(
+                evidence
+                    .ScopeUploadedLaps(db.PersonalLaps)
+                    .Where(p => p.UserId == userId
+                             && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId)),
+                PersonalBestOrder.FastestFirst,
+                ct);
 
-            // Map personal lap bests onto week entries by (carId, trackId)
             var personalLapByCarTrack = personalLapBests.ToDictionary(p => (p.CarId, p.TrackId));
 
             foreach (var result in rawResults)
             {
                 if (!personalLapByCarTrack.TryGetValue((result.CarId, result.TrackId), out var plap)) continue;
                 var key = (result.CarId, result.WeekId);
-                if (!driverRaceBests.TryGetValue(key, out var raceBest) || plap.BestLap < raceBest)
-                    driverRaceBests[key] = plap.BestLap;
+                if (!driverRaceBests.TryGetValue(key, out var raceBest) || plap.BestLapSeconds < raceBest)
+                    driverRaceBests[key] = plap.BestLapSeconds;
             }
         }
 

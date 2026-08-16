@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.6.8] - 2026-08-16
+
+### Fixed
+
+- Personal Best evidence now has one consistent application-wide choice across percentile detail, Week Detail's "Your pct," recommendations, analytics, dashboard summaries, and alerts. Official race laps are the default; drivers can opt in uploaded laps and optionally filter them by session type from any pace-source selector, and that choice follows them between pages until the signed-in user changes.
+
 ## [0.6.7] - 2026-08-16
 
 ### Fixed
@@ -652,7 +658,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.7...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.8...HEAD
+[0.6.8]: https://github.com/jwh3times/apexracers/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/jwh3times/apexracers/compare/v0.6.6...v0.6.7
 [0.6.5]: https://github.com/jwh3times/apexracers/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/jwh3times/apexracers/compare/v0.6.3...v0.6.4

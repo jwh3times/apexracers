@@ -8,6 +8,8 @@ namespace ApexRacers.Tests.Services;
 
 public class CarRecommendationServiceTests
 {
+    private static PersonalBestEvidence OfficialEvidence => PersonalBestEvidence.OfficialRaceLapsOnly;
+
     private static (Week week, Car car1, Car car2, CarClass carClass, Subsession subsession) SeedWeekWithTwoCars(AppDbContext db)
     {
         var series = new Series { Id = 1, Name = "GT3 Cup" };
@@ -63,7 +65,7 @@ public class CarRecommendationServiceTests
     {
         await using var db = DbContextFactory.Create();
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -77,7 +79,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 999, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -104,7 +106,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession2, car2, carClass, custId: 3, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Rank);
@@ -145,7 +147,7 @@ public class CarRecommendationServiceTests
         AddResult(db, prevSubsession, car1, carClass, custId: 103, lapSeconds: 75);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Null(dto.BestLapSeconds);
@@ -176,7 +178,7 @@ public class CarRecommendationServiceTests
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
@@ -212,7 +214,9 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: PersonalBestEvidence.FromRequest(true, null),
+            ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
@@ -244,7 +248,9 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: false, ct: TestContext.Current.CancellationToken);
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: OfficialEvidence,
+            ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -272,8 +278,8 @@ public class CarRecommendationServiceTests
 
         var result = await CreateService(db).GetRecommendationsAsync(
             seriesId: 1, weekNumber: 1, customerId: 1,
-            includePersonalLaps: true,
-            personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
+            evidence: PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]),
+            ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -302,8 +308,8 @@ public class CarRecommendationServiceTests
 
         var result = await CreateService(db).GetRecommendationsAsync(
             seriesId: 1, weekNumber: 1, customerId: 1,
-            includePersonalLaps: true,
-            personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
+            evidence: PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]),
+            ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds);
@@ -334,7 +340,9 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: PersonalBestEvidence.FromRequest(true, null),
+            ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap
@@ -363,7 +371,9 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: OfficialEvidence,
+            ct: TestContext.Current.CancellationToken);
 
         var dto = result.Single(r => r.CarId == car1.Id);
         // Field of 3: (2 slower + 0.5 tied) / 3.
@@ -404,7 +414,8 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, includePersonalLaps: true,
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: PersonalBestEvidence.FromRequest(true, null),
             ct: TestContext.Current.CancellationToken);
 
         var dto = result.Single(r => r.CarId == car1.Id);
@@ -436,6 +447,16 @@ public class CarRecommendationServiceTests
 
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId,
+            CarId = car2.Id,
+            TrackId = 99,
+            LapTimeSeconds = 65,
+            IsValidLap = true,
+            SessionType = LapSessionType.Race,
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
         db.CarPercentileResults.Add(new CarPercentileResult
         {
             UserId = userId, CarId = car2.Id, SeriesId = 1, WeekId = Guid.NewGuid(),
@@ -444,7 +465,9 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetMyPercentilesAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+            seriesId: 1, weekNumber: 1, customerId: 1,
+            evidence: PersonalBestEvidence.OfficialRaceLapsOnly,
+            ct: TestContext.Current.CancellationToken);
 
         var entry = Assert.Single(result); // only car1 (raced); car2 is projected-only → excluded
         Assert.Equal(car1.Id, entry.CarId);

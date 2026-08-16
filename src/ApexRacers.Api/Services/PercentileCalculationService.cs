@@ -13,9 +13,8 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         int weekNumber,
         int carId,
         long customerId,
+        PersonalBestEvidence evidence,
         Guid? callerUserId = null,
-        bool includePersonalLaps = false,
-        IReadOnlyList<LapSessionType>? personalLapTypes = null,
         CancellationToken ct = default)
     {
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
@@ -47,21 +46,22 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         var driverRaceBest = fieldByDriver.FirstOrDefault(d => d.CustId == customerId)?.BestLap;
         double? driverBest = driverRaceBest;
 
-        // Fetch the authenticated caller's profile for personal-lap lookup and cache upsert.
+        // Fetch the authenticated caller's profile for Uploaded Lap lookup and cache upsert.
         // Never use the caller-supplied customerId for this lookup — that would allow any user
         // to read another user's private personal laps or write cache rows under their account.
         var user = callerUserId.HasValue
             ? await db.Users.FirstOrDefaultAsync(u => u.Id == callerUserId.Value, ct)
             : null;
 
-        if (includePersonalLaps && user is not null)
+        if (evidence.IncludesUploadedLaps && user?.IRacingCustomerId == customerId)
         {
-            var types = personalLapTypes ?? [];
-            var personalBest = await db.PersonalLaps
-                .Where(p => p.UserId == user.Id && p.CarId == carId
-                         && p.TrackId == week.TrackId && p.IsValidLap
-                         && (!types.Any() || types.Contains(p.SessionType) || p.SessionType == LapSessionType.Unknown))
-                .MinAsync(p => (double?)p.LapTimeSeconds, ct);
+            var uploadedBests = await PersonalBestQuery.RunAsync(
+                evidence
+                    .ScopeUploadedLaps(db.PersonalLaps)
+                    .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId),
+                PersonalBestOrder.FastestFirst,
+                ct);
+            var personalBest = uploadedBests.FirstOrDefault()?.BestLapSeconds;
 
             if (personalBest is not null && (driverBest is null || personalBest < driverBest))
                 driverBest = personalBest;
@@ -70,14 +70,14 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         if (driverBest is null) return null;
 
         // Rank against other drivers' race laps only: the driver's own slower race result would
-        // otherwise count as one more driver beaten whenever a personal lap supersedes it.
+        // otherwise count as one more driver beaten whenever an Uploaded Lap supersedes it.
         var otherDriversLaps = fieldByDriver
             .Where(d => d.CustId != customerId)
             .Select(d => d.BestLap)
             .ToList();
 
         // The Field is those drivers plus the subject on the lap actually being ranked — which is
-        // not the row bearing their customer id when an uploaded lap superseded it. Every metric
+        // not the row bearing their customer id when an Uploaded Lap superseded it. Every metric
         // below is computed over that same population, so the rank, the position, the median and
         // the distribution can never disagree about who was counted.
         var total = FieldPercentile.FieldSize(otherDriversLaps);

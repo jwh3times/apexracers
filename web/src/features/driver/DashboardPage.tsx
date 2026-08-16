@@ -7,6 +7,7 @@ import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topShareLabel } from '../../utils/percentile';
 import { raceWeekLabel, raceWeekNumber } from '../../utils/raceWeek';
+import { usePaceSource } from '../../context/PaceSourceContext';
 
 function trackLabel(lap: PersonalLap): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
   const { enabled: showIracing } = useIracingSurface();
+  const { evidenceOptions } = usePaceSource();
 
   const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
     onError: { fallback: [] },
@@ -33,8 +35,8 @@ export default function DashboardPage() {
     }
   );
   const analyticsResource = useResource(
-    signal => api.getMyAnalytics(undefined, signal),
-    [showIracing],
+    signal => api.getMyAnalytics(undefined, evidenceOptions, signal),
+    [showIracing, evidenceOptions],
     {
       enabled: showIracing,
       onError: { fallback: [] },

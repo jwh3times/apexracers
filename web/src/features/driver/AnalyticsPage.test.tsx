@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import AnalyticsPage from './AnalyticsPage';
 import { api, IRacingNotLinkedError } from '../../services/api';
 import type { User } from '../../context/AuthContext';
+import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
 let mockUser: User | null = {
   token: 'tok',
@@ -123,9 +124,11 @@ const MOCK_ANALYTICS = [
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <AnalyticsPage />
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter>
+        <AnalyticsPage />
+      </MemoryRouter>
+    </PaceSourceProvider>
   );
 }
 
@@ -171,8 +174,35 @@ describe('AnalyticsPage', () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     renderPage();
     await waitFor(() => {
-      expect(mockGetMyAnalytics).toHaveBeenCalledWith(1, expect.any(AbortSignal));
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(
+        1,
+        { includePersonalLaps: false, personalLapTypes: undefined },
+        expect.any(AbortSignal)
+      );
     });
+  });
+
+  it('applies the active evidence choice to series analytics and percentile computation', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    renderPage();
+    await screen.findByRole('radiogroup', { name: /how we calculate your pace/i });
+
+    fireEvent.click(screen.getByRole('radio', { name: /official \+ my uploaded laps/i }));
+
+    await waitFor(() =>
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(
+        1,
+        { includePersonalLaps: true, personalLapTypes: undefined },
+        expect.any(AbortSignal)
+      )
+    );
+    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
+    await waitFor(() =>
+      expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
+        includePersonalLaps: true,
+        personalLapTypes: undefined,
+      })
+    );
   });
 
   it('renders featured car name and TOP X% percentile label', async () => {
@@ -231,7 +261,12 @@ describe('AnalyticsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
 
     // MOCK_SERIES[0] has id 1 and currentWeekNumber 5
-    await waitFor(() => expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5));
+    await waitFor(() =>
+      expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
+        includePersonalLaps: false,
+        personalLapTypes: undefined,
+      })
+    );
     await waitFor(() => {
       expect(mockGetMyAnalytics).toHaveBeenCalledTimes(2);
       expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
@@ -274,7 +309,11 @@ describe('AnalyticsPage', () => {
     await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
     await waitFor(() =>
-      expect(mockGetMyAnalytics).toHaveBeenCalledWith(2, expect.any(AbortSignal))
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(
+        2,
+        { includePersonalLaps: false, personalLapTypes: undefined },
+        expect.any(AbortSignal)
+      )
     );
   });
 

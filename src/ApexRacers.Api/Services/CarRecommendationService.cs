@@ -12,8 +12,7 @@ public class CarRecommendationService(AppDbContext db)
         int seriesId,
         int weekNumber,
         long customerId,
-        bool includePersonalLaps = false,
-        IReadOnlyList<LapSessionType>? personalLapTypes = null,
+        PersonalBestEvidence evidence,
         CancellationToken ct = default)
     {
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
@@ -72,17 +71,17 @@ public class CarRecommendationService(AppDbContext db)
                 .ToDictionaryAsync(r => r.CarId, ct)
             : new Dictionary<int, CarPercentileResult>();
 
-        // Personal lap bests per car at this track (when requested).
+        // Uploaded Bests per car at this Track (when the evidence choice allows them).
         var personalBestByCar = new Dictionary<int, double>();
-        if (includePersonalLaps && user is not null)
+        if (evidence.IncludesUploadedLaps && user is not null)
         {
-            var types = personalLapTypes ?? [];
-            personalBestByCar = await db.PersonalLaps
-                .Where(p => p.UserId == user.Id && p.IsValidLap && p.TrackId == week.TrackId
-                         && (!types.Any() || types.Contains(p.SessionType) || p.SessionType == LapSessionType.Unknown))
-                .GroupBy(p => p.CarId)
-                .Select(g => new { CarId = g.Key, BestLap = g.Min(p => p.LapTimeSeconds) })
-                .ToDictionaryAsync(x => x.CarId, x => x.BestLap, ct);
+            var uploadedBests = await PersonalBestQuery.RunAsync(
+                evidence
+                    .ScopeUploadedLaps(db.PersonalLaps)
+                    .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId),
+                PersonalBestOrder.FastestFirst,
+                ct);
+            personalBestByCar = uploadedBests.ToDictionary(x => x.CarId, x => x.BestLapSeconds);
         }
 
         // Batch-compute historical percentile for projected cars that lack a cached value.
@@ -254,10 +253,14 @@ public class CarRecommendationService(AppDbContext db)
     /// whose percentile is a historical estimate rather than a real reading, are excluded.
     /// </summary>
     public async Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
-        int seriesId, int weekNumber, long customerId, CancellationToken ct = default)
+        int seriesId,
+        int weekNumber,
+        long customerId,
+        PersonalBestEvidence evidence,
+        CancellationToken ct = default)
     {
         var recs = await GetRecommendationsAsync(
-            seriesId, weekNumber, customerId, includePersonalLaps: true, ct: ct);
+            seriesId, weekNumber, customerId, evidence, ct);
 
         return recs
             .Where(r => r.BestLapSeconds is not null && r.TopSharePercent is not null)
