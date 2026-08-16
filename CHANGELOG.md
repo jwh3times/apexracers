@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.6.7] - 2026-08-16
+
 ### Fixed
 
 - Claiming an iRacing Customer ID already claimed by another account now returns a non-disclosing `409 Conflict` with an actionable message instead of an opaque 500. The filtered database unique index remains the race-safe source of truth, including for concurrent claims.
@@ -648,7 +652,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.5...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.7...HEAD
+[0.6.7]: https://github.com/jwh3times/apexracers/compare/v0.6.6...v0.6.7
 [0.6.5]: https://github.com/jwh3times/apexracers/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/jwh3times/apexracers/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jwh3times/apexracers/compare/v0.6.2...v0.6.3
