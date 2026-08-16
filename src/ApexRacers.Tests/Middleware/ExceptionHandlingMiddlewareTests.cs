@@ -85,6 +85,19 @@ public class ExceptionHandlingMiddlewareTests
     }
 
     [Fact]
+    public async Task ClaimedIdentityConflict_WritesActionableNonDisclosingProblemDetails()
+    {
+        var (status, contentType, body) = await InvokeWith(new ClaimedIdentityConflictException());
+
+        Assert.Equal(409, status);
+        Assert.StartsWith("application/problem+json", contentType);
+        Assert.Equal(409, body.GetProperty("status").GetInt32());
+        Assert.Equal("Conflict", body.GetProperty("title").GetString());
+        Assert.Equal(ClaimedIdentityConflictException.DefaultMessage, body.GetProperty("detail").GetString());
+        Assert.DoesNotContain("first@example.com", body.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task UnexpectedException_MapsTo500AndHidesMessage()
     {
         var (status, _, body) = await InvokeWith(new Exception("super secret internal detail"));

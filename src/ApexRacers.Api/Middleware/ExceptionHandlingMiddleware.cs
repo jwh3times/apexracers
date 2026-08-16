@@ -88,6 +88,7 @@ public class ExceptionHandlingMiddleware(
     {
         StatusCodes.Status400BadRequest => "Bad Request",
         StatusCodes.Status401Unauthorized => "Unauthorized",
+        StatusCodes.Status409Conflict => "Conflict",
         StatusCodes.Status404NotFound => "Not Found",
         StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
         _ => "Internal Server Error",

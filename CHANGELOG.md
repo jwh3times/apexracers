@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Claiming an iRacing Customer ID already claimed by another account now returns a non-disclosing `409 Conflict` with an actionable message instead of an opaque 500. The filtered database unique index remains the race-safe source of truth, including for concurrent claims.
 
 ## [0.6.5] - 2026-08-14
 

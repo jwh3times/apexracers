@@ -317,10 +317,11 @@ managed in `Directory.Packages.props`.
 **Error handling:** `ExceptionHandlingMiddleware` (registered first) converts unhandled exceptions into
 RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper`
 (`ArgumentException`/`InvalidOperationException` → 400, `KeyNotFoundException` → 404,
-`UnauthorizedAccessException` → 401, `IRacingNotLinkedException` → 409,
+`UnauthorizedAccessException` → 401, `IRacingNotLinkedException` / `ClaimedIdentityConflictException` → 409,
 `IRacingNotConfiguredException` → 503, else 500 with its message hidden). The not-linked exception is
 the deliberate format exception: middleware preserves the established exact JSON
-`{ code: "IRACING_NOT_LINKED", message: "…" }` instead of ProblemDetails. Services should just `throw`;
+`{ code: "IRACING_NOT_LINKED", message: "…" }` instead of ProblemDetails. A claimed-identity conflict
+uses ordinary ProblemDetails with a non-disclosing `detail`. Services should just `throw`;
 don't catch to `BadRequest(string)`. Controllers still return explicit results for non-exception
 outcomes needing a specific code (e.g. AuthController's 423 lockout).
 **Client disconnects are handled ahead of that mapping:** the pure `ClientDisconnectDetector` matches an

@@ -7,6 +7,8 @@ using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -18,14 +20,14 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 {
     // ── Shared setup ─────────────────────────────────────────────────────────
 
-    private ServiceProvider BuildProvider()
+    private ServiceProvider BuildProvider(DbContextOptions<AppDbContext>? options = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         // Password reset tokens are produced by DataProtectorTokenProvider, which needs
         // data-protection services + the default token providers registered.
         services.AddDataProtection();
-        var dbOptions = postgres.CreateOptions();
+        var dbOptions = options ?? postgres.CreateOptions();
         services.AddScoped(_ => new AppDbContext(dbOptions));
         services.AddIdentityCore<ApplicationUser>(o =>
         {
@@ -260,6 +262,80 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
         Assert.Contains(jwt.Claims, c => c.Type == "iracing_id" && c.Value == "123456789");
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_CustomerIdClaimedByAnotherUser_ThrowsClaimedIdentityConflict()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var first = await svc.RegisterAsync(
+            new RegisterRequest("first@example.com", "Pass1234"),
+            TestContext.Current.CancellationToken);
+        var second = await svc.RegisterAsync(
+            new RegisterRequest("second@example.com", "Pass1234"),
+            TestContext.Current.CancellationToken);
+        await svc.UpdateProfileAsync(
+            first.UserId,
+            new UpdateProfileRequest("First Driver", 123456L),
+            TestContext.Current.CancellationToken);
+
+        var ex = await Assert.ThrowsAsync<ClaimedIdentityConflictException>(() =>
+            svc.UpdateProfileAsync(
+                second.UserId,
+                new UpdateProfileRequest("Second Driver", 123456L),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(ClaimedIdentityConflictException.DefaultMessage, ex.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_ConcurrentClaims_OneUserWinsAndOneReceivesClaimedIdentityConflict()
+    {
+        const long customerId = 123456L;
+        var barrier = new ConcurrentClaimSaveBarrier(customerId);
+        var options = postgres.CreateOptions(barrier);
+
+        Guid firstUserId;
+        Guid secondUserId;
+        await using (var setupProvider = BuildProvider(options))
+        {
+            await SeedRolesAsync(setupProvider);
+            var setupService = BuildService(setupProvider);
+            firstUserId = (await setupService.RegisterAsync(
+                new RegisterRequest("first@example.com", "Pass1234"),
+                TestContext.Current.CancellationToken)).UserId;
+            secondUserId = (await setupService.RegisterAsync(
+                new RegisterRequest("second@example.com", "Pass1234"),
+                TestContext.Current.CancellationToken)).UserId;
+        }
+
+        await using var firstProvider = BuildProvider(options);
+        await using var secondProvider = BuildProvider(options);
+        var firstService = BuildService(firstProvider);
+        var secondService = BuildService(secondProvider);
+
+        var outcomes = await Task.WhenAll(
+            CaptureAsync(() => firstService.UpdateProfileAsync(
+                firstUserId,
+                new UpdateProfileRequest("First Driver", customerId),
+                TestContext.Current.CancellationToken)),
+            CaptureAsync(() => secondService.UpdateProfileAsync(
+                secondUserId,
+                new UpdateProfileRequest("Second Driver", customerId),
+                TestContext.Current.CancellationToken)));
+
+        Assert.Single(outcomes, outcome => outcome is null);
+        var conflict = Assert.Single(outcomes.OfType<ClaimedIdentityConflictException>());
+        Assert.Equal(ClaimedIdentityConflictException.DefaultMessage, conflict.Message);
+
+        await using var verificationDb = new AppDbContext(options);
+        Assert.Single(await verificationDb.Users
+            .Where(user => user.IRacingCustomerId == customerId)
+            .Select(user => user.Id)
+            .ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -951,6 +1027,46 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
     private static int CountActiveTokens(AppDbContext db) =>
         db.RefreshTokens.Count(t => t.RevokedAt == null && t.ExpiresAt > DateTimeOffset.UtcNow);
+
+    private static async Task<Exception?> CaptureAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
+    private sealed class ConcurrentClaimSaveBarrier(long customerId) : SaveChangesInterceptor
+    {
+        private readonly TaskCompletionSource release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int arrivals;
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<ApplicationUser>()
+                    .Any(IsCompetingClaim) is not true)
+                return result;
+
+            if (Interlocked.Increment(ref arrivals) == 2)
+                release.TrySetResult();
+
+            await release.Task.WaitAsync(cancellationToken);
+            return result;
+        }
+
+        private bool IsCompetingClaim(EntityEntry<ApplicationUser> entry) =>
+            entry.State == EntityState.Modified &&
+            entry.Property(user => user.IRacingCustomerId).CurrentValue == customerId;
+    }
 
     [Fact]
     public async Task IssuingRefreshToken_BeyondCap_KeepsActiveCountAtTheCap()
