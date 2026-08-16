@@ -87,7 +87,9 @@ React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`. N
 edit the same `value`/`setValue` pair instead of keeping page-local copies. Official Race Laps are the
 default. Blend mode with no selected sessions sends no `personalLapTypes` values, which deliberately
 means all Uploaded Lap session types. The provider resets the choice when `userId` changes so one
-User's evidence preference cannot leak into another User's session.
+User's evidence preference cannot leak into another User's session. Keep that reset synchronous by
+keying the state-owning child on the current User/guest owner; an effect-based reset renders the new
+owner once with the previous owner's evidence before the effect runs.
 
 ## File structure
 
