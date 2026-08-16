@@ -3,10 +3,12 @@ import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import NotificationsBell from './NotificationsBell';
 import { api, type RaceGuideEntry } from '../services/api';
+import { usePaceSource } from '../context/PaceSourceContext';
+import { PaceSourceProvider } from '../context/PaceSourceProvider';
 
 let mockAlertsEnabled = true;
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ alertsEnabled: mockAlertsEnabled }),
+  useAuth: () => ({ alertsEnabled: mockAlertsEnabled, user: { userId: 'user-1' } }),
 }));
 
 let mockLiveFlag = true;
@@ -36,9 +38,19 @@ function soonRace(): RaceGuideEntry {
 
 function renderBell() {
   return render(
-    <MemoryRouter>
-      <NotificationsBell />
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter>
+        <EvidenceControl />
+        <NotificationsBell />
+      </MemoryRouter>
+    </PaceSourceProvider>
+  );
+}
+
+function EvidenceControl() {
+  const { setValue } = usePaceSource();
+  return (
+    <button onClick={() => setValue({ mode: 'blend', sessions: [] })}>Use Uploaded Laps</button>
   );
 }
 
@@ -58,6 +70,20 @@ describe('NotificationsBell', () => {
     await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument()); // badge count
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
     expect(screen.getByText(/GT3 Challenge starts in/i)).toBeInTheDocument();
+  });
+
+  it('refreshes percentile alerts with the app-wide Personal Best evidence choice', async () => {
+    renderBell();
+    await waitFor(() => expect(mockGetMyAnalytics).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: /use uploaded laps/i }));
+
+    await waitFor(() =>
+      expect(mockGetMyAnalytics).toHaveBeenCalledWith(undefined, {
+        includePersonalLaps: true,
+        personalLapTypes: undefined,
+      })
+    );
   });
 
   it('shows an empty state in the dropdown when there are no alerts', async () => {

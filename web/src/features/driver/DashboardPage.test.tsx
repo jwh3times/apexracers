@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DashboardPage from './DashboardPage';
 import { api, IRacingNotLinkedError } from '../../services/api';
 import type { Series, PersonalLap, DriverProfile, CarAnalytics } from '../../services/api';
+import { usePaceSource } from '../../context/PaceSourceContext';
+import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { displayName: 'Jerry', token: 't', userId: 'u1', email: 'j@j.com' } }),
@@ -22,9 +24,19 @@ vi.mock('../../context/FeatureFlagContext', () => ({
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <DashboardPage />
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter>
+        <EvidenceControl />
+        <DashboardPage />
+      </MemoryRouter>
+    </PaceSourceProvider>
+  );
+}
+
+function EvidenceControl() {
+  const { setValue } = usePaceSource();
+  return (
+    <button onClick={() => setValue({ mode: 'blend', sessions: [] })}>Use Uploaded Laps</button>
   );
 }
 
@@ -142,6 +154,21 @@ describe('DashboardPage', () => {
     vi.mocked(api.getMyLaps).mockResolvedValue([]);
     vi.mocked(api.getProfileStats).mockResolvedValue(emptyProfile);
     vi.mocked(api.getMyAnalytics).mockResolvedValue([]);
+  });
+
+  it('refreshes dashboard analytics with the app-wide Personal Best evidence choice', async () => {
+    renderPage();
+    await waitFor(() => expect(api.getMyAnalytics).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: /use uploaded laps/i }));
+
+    await waitFor(() =>
+      expect(api.getMyAnalytics).toHaveBeenCalledWith(
+        undefined,
+        { includePersonalLaps: true, personalLapTypes: undefined },
+        expect.any(AbortSignal)
+      )
+    );
   });
 
   it('renders the Race Center heading', async () => {

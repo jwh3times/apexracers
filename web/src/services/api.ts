@@ -142,7 +142,7 @@ export interface CarRecommendation {
 export type LapSessionType =
   'Unknown' | 'Practice' | 'Qualifying' | 'TimeTrial' | 'Race' | 'LoneQualify';
 
-export interface RecommendationOptions {
+export interface PersonalBestEvidenceOptions {
   includePersonalLaps?: boolean;
   personalLapTypes?: LapSessionType[];
 }
@@ -652,6 +652,15 @@ const http = createHttpClient({
 
 const request = http.request.bind(http);
 
+function appendPersonalBestEvidence(
+  params: URLSearchParams,
+  options?: PersonalBestEvidenceOptions
+): URLSearchParams {
+  if (options?.includePersonalLaps) params.set('includePersonalLaps', 'true');
+  options?.personalLapTypes?.forEach(type => params.append('personalLapTypes', type));
+  return params;
+}
+
 // ── Public API surface ────────────────────────────────────────────────────────
 
 export const api = {
@@ -675,9 +684,14 @@ export const api = {
   getMyWeekPercentiles(
     seriesId: number,
     weekNumber: number,
+    options?: PersonalBestEvidenceOptions,
     signal?: AbortSignal
   ): Promise<WeekCarPercentile[]> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles`, { signal });
+    const qs = appendPersonalBestEvidence(new URLSearchParams(), options).toString();
+    return request(
+      `/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles${qs ? `?${qs}` : ''}`,
+      { signal }
+    );
   },
 
   /** GET /api/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile?customerId= */
@@ -686,12 +700,11 @@ export const api = {
     weekNumber: number,
     carId: number,
     customerId: number,
-    options?: RecommendationOptions,
+    options?: PersonalBestEvidenceOptions,
     signal?: AbortSignal
   ): Promise<PercentileResult> {
     const qs = new URLSearchParams({ customerId: String(customerId) });
-    if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
-    options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
+    appendPersonalBestEvidence(qs, options);
     return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`, {
       signal,
     });
@@ -701,12 +714,11 @@ export const api = {
   getRecommendations(
     seriesId: number,
     weekNumber: number,
-    options?: RecommendationOptions,
+    options?: PersonalBestEvidenceOptions,
     signal?: AbortSignal
   ): Promise<CarRecommendation[]> {
     const qs = new URLSearchParams({ seriesId: String(seriesId), weekNumber: String(weekNumber) });
-    if (options?.includePersonalLaps) qs.set('includePersonalLaps', 'true');
-    options?.personalLapTypes?.forEach(t => qs.append('personalLapTypes', t));
+    appendPersonalBestEvidence(qs, options);
     return request(`/api/users/me/recommendations?${qs}`, { signal });
   },
 
@@ -781,10 +793,16 @@ export const api = {
   },
 
   /** GET /api/users/me/analytics?seriesId= — per-car percentile history and trend for the authenticated user */
-  getMyAnalytics(seriesId?: number, signal?: AbortSignal): Promise<CarAnalytics[]> {
-    const path =
-      seriesId != null ? `/api/users/me/analytics?seriesId=${seriesId}` : '/api/users/me/analytics';
-    return request(path, { signal });
+  getMyAnalytics(
+    seriesId?: number,
+    options?: PersonalBestEvidenceOptions,
+    signal?: AbortSignal
+  ): Promise<CarAnalytics[]> {
+    const qs = new URLSearchParams();
+    if (seriesId != null) qs.set('seriesId', String(seriesId));
+    appendPersonalBestEvidence(qs, options);
+    const query = qs.toString();
+    return request(`/api/users/me/analytics${query ? `?${query}` : ''}`, { signal });
   },
 
   /** GET /api/users/me/progression — per-category iRating / SR / CPI / TT with iRating history */

@@ -1,11 +1,5 @@
 import type { LapSessionType } from '../services/api';
-
-export type PaceMode = 'official' | 'blend';
-
-export interface PaceSourceValue {
-  mode: PaceMode;
-  sessions: LapSessionType[];
-}
+import type { PaceMode, PaceSourceValue } from '../context/PaceSourceContext';
 
 const UPLOAD_SESSIONS: { id: LapSessionType; label: string }[] = [
   { id: 'Race', label: 'Race' },

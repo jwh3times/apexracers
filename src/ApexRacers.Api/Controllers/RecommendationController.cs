@@ -27,8 +27,9 @@ public class RecommendationsController(
             return Unauthorized();
 
         var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, weekNumber, custId, includePersonalLaps, personalLapTypes, ct));
+            seriesId, weekNumber, custId, evidence, ct));
     }
 }

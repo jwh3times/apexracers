@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Personal Best evidence now has one consistent application-wide choice across percentile detail, Week Detail's "Your pct," recommendations, analytics, dashboard summaries, and alerts. Official race laps are the default; drivers can opt in uploaded laps and optionally filter them by session type from any pace-source selector, and that choice follows them between pages until the signed-in user changes.
 
 ## [0.6.7] - 2026-08-16
 

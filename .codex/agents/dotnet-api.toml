@@ -37,6 +37,12 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - Uploaded Best rows are never projected inline either: call `PersonalBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/PersonalBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
   - **The caller's `scope` must not filter on `IsValidLap`.** `PersonalBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
   - **The `GroupBy` must not be pushed into SQL.** The group key is `{ CarId, TrackId }` — identifiers, never `Car.Name`/`Track.Name`/`Track.ConfigName` labels, since a Track's `Name` belongs to the venue and is shared by every layout there. Those labels ride along via `g.First()` instead: selecting navigation-property labels alongside the aggregates is what neither Npgsql nor SQLite translates, so the query materializes to a list first and groups in memory — deliberately, not an oversight. Getting this wrong throws at runtime rather than failing to compile; see the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section, which is the same underlying translation gap.
+- Personal Best read paths take a `PersonalBestEvidence` value rather than separate booleans or lists.
+  Controllers construct it with `FromRequest(includePersonalLaps, personalLapTypes)`; internal callers
+  with no user choice pass `OfficialRaceLapsOnly`. Use `ScopeUploadedLaps` to apply source and session-type
+  eligibility, then pass that scope to `PersonalBestQuery.RunAsync` so it remains the owner of validity
+  filtering and Uploaded Best projection. An empty selected-type list means all types; do not duplicate
+  either module's predicates in a service.
 - Resolving a series' current season or one numbered week of it is never a hand-written
   `Where(... && s.Active).OrderByDescending(Year).ThenByDescending(Quarter)` — that ordering picks
   whichever season iRacing flagged active most recently, which during a changeover is the *incoming*

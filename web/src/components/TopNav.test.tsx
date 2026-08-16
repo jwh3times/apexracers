@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import TopNav from './TopNav';
 import type { User } from '../context/AuthContext';
+import { PaceSourceProvider } from '../context/PaceSourceProvider';
 
 // ---------------------------------------------------------------------------
 // Module mocks — must be declared before any imports that use them
@@ -34,9 +35,11 @@ vi.mock('../context/FeatureFlagContext', () => ({
 
 function renderTopNav(initialPath = '/') {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <TopNav />
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <TopNav />
+      </MemoryRouter>
+    </PaceSourceProvider>
   );
 }
 

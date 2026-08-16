@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import PercentileCarPage from './PercentileCarPage';
 import { api, ApiError } from '../../services/api';
 import type { PercentileResult } from '../../services/api';
+import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
 // Keeps the real error classes — the page branches on `instanceof ApiError`, so a hand-rolled
 // stand-in would make the test pass against itself rather than against the module's contract.
@@ -17,7 +18,7 @@ let mockIRacingCustomerId: number | null = null;
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
-    user: { iRacingCustomerId: mockIRacingCustomerId },
+    user: { userId: 'user-1', iRacingCustomerId: mockIRacingCustomerId },
   }),
 }));
 
@@ -56,21 +57,23 @@ function renderPage(
 ) {
   const carId = options.carId ?? '9001';
   return render(
-    <MemoryRouter
-      initialEntries={[
-        {
-          pathname: `/series/9001/weeks/1/cars/${carId}/percentile`,
-          state: options.state,
-        },
-      ]}
-    >
-      <Routes>
-        <Route
-          path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
-          element={<PercentileCarPage />}
-        />
-      </Routes>
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: `/series/9001/weeks/1/cars/${carId}/percentile`,
+            state: options.state,
+          },
+        ]}
+      >
+        <Routes>
+          <Route
+            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+            element={<PercentileCarPage />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </PaceSourceProvider>
   );
 }
 

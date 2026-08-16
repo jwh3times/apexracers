@@ -391,6 +391,9 @@ one means; the `dotnet-api` agent carries the call rules.
 - `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller. Both zero-based race week indexes stay zero-based end-to-end; see `CONTEXT.md` for the Race Week Index / Race Week Number distinction the frontend renders.
 - `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
 - `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`).
+- `PersonalBestEvidence` — one request policy for whether Uploaded Laps may contribute to the Subject
+  Driver's Personal Best and which session types qualify. Percentile detail, Week Detail's "Your pct,"
+  recommendations, and analytics all use it and default to official Race Laps only.
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
 - `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`).
 - `MemberStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
@@ -566,7 +569,9 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   thin React binding over the session module, which owns the token pair, claims, persistence, and
   silent refresh), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
   `FeatureFlagContext` (`useFeatureFlags()` exposes `isEnabled` + owner-specific `ready`;
-  `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union).
+  `useFeatureFlag(key)` handles one key; `useIracingSurface()` owns the live/demo union), and
+  `PaceSourceContext` (the app-lifetime official-only vs. Uploaded-Lap evidence choice; resets when
+  the signed-in User changes).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `toTopPercent` /
   `topPercentLabel`, `deriveAlerts`, `breadcrumbs`, `raceWeekNumber` / `raceWeekLabel` — **don't**
   re-inline these in pages. `raceWeekNumber(index)` / `raceWeekLabel(index)` convert the zero-based

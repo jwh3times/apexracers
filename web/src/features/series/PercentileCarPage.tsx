@@ -1,15 +1,10 @@
 import { useEffect, useReducer, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
-import {
-  api,
-  ApiError,
-  type DistributionBin,
-  type PercentileResult,
-  type RecommendationOptions,
-} from '../../services/api';
+import { api, ApiError, type DistributionBin, type PercentileResult } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
-import CalculationSource, { type PaceSourceValue } from '../../components/CalculationSource';
+import CalculationSource from '../../components/CalculationSource';
+import { usePaceSource } from '../../context/PaceSourceContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
@@ -93,7 +88,7 @@ export default function PercentileCarPage() {
 
   const [customerId, setCustomerId] = useState('');
   const [lookedUpId, setLookedUpId] = useState<number | null>(null);
-  const [paceSource, setPaceSource] = useState<PaceSourceValue>({ mode: 'official', sessions: [] });
+  const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
   const [{ loading, result, error, notFound }, dispatch] = useReducer(fetchReducer, {
     loading: false,
     result: null,
@@ -106,15 +101,16 @@ export default function PercentileCarPage() {
 
   useEffect(() => {
     if (!effectiveId || !seriesId || !weekNumber || !carId) return;
-    const blended = paceSource.mode === 'blend';
-    const options: RecommendationOptions = {
-      includePersonalLaps: blended,
-      personalLapTypes: blended && paceSource.sessions.length > 0 ? paceSource.sessions : undefined,
-    };
     let active = true;
     dispatch({ type: 'start' });
     api
-      .getPercentile(Number(seriesId), Number(weekNumber), Number(carId), effectiveId, options)
+      .getPercentile(
+        Number(seriesId),
+        Number(weekNumber),
+        Number(carId),
+        effectiveId,
+        evidenceOptions
+      )
       .then(data => {
         if (active) dispatch({ type: 'success', result: data });
       })
@@ -132,7 +128,7 @@ export default function PercentileCarPage() {
     return () => {
       active = false;
     };
-  }, [effectiveId, seriesId, weekNumber, carId, paceSource]);
+  }, [effectiveId, seriesId, weekNumber, carId, evidenceOptions]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

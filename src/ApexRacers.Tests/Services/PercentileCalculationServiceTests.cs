@@ -10,6 +10,8 @@ namespace ApexRacers.Tests.Services;
 
 public class PercentileCalculationServiceTests
 {
+    private static PersonalBestEvidence OfficialEvidence => PersonalBestEvidence.OfficialRaceLapsOnly;
+
     private static (Week week, Car car, CarClass carClass, Subsession subsession) SeedWeekAndCar(AppDbContext db)
     {
         var series = new Series { Id = 1, Name = "GT3 Cup" };
@@ -65,7 +67,7 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 999, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -78,7 +80,7 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         // A Field of one: (0 slower + 0.5 x 1 tied) / 1. Alone, the driver is its median —
         // reporting 100 would claim they had beaten a field that does not exist.
@@ -101,7 +103,7 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 5, lapSeconds: 90);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         // Field of 5: (3 slower + 0.5 x 1 tied) / 5 = 70. Second of five is the top 40%.
         Assert.NotNull(result);
@@ -121,7 +123,7 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, ct: TestContext.Current.CancellationToken);
+        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(db.CarPercentileResults);
     }
@@ -137,7 +139,7 @@ public class PercentileCalculationServiceTests
         db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 50, SampleSize = 2, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, ct: TestContext.Current.CancellationToken);
+        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(db.CarPercentileResults);
         Assert.Equal(50.0, db.CarPercentileResults.Single().PercentileRank);
@@ -152,9 +154,44 @@ public class PercentileCalculationServiceTests
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+        await new PercentileCalculationService(db).ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(db.CarPercentileResults);
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_UploadedEvidenceCannotOverlayDifferentSubjectDriver()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Caller" });
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 80);
+        AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 90);
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId,
+            CarId = car.Id,
+            TrackId = week.TrackId,
+            LapTimeSeconds = 60,
+            IsValidLap = true,
+            RecordedAt = DateTimeOffset.UtcNow,
+            Car = car,
+            Track = week.Track,
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new PercentileCalculationService(db).ComputeAndCacheAsync(
+            seriesId: 1,
+            weekNumber: 1,
+            carId: car.Id,
+            customerId: 2,
+            evidence: PersonalBestEvidence.FromRequest(true, null),
+            callerUserId: userId,
+            ct: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Equal(80, result.YourBestLapSeconds);
     }
 
     [Fact]
@@ -183,9 +220,13 @@ public class PercentileCalculationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var withoutPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: false, ct: TestContext.Current.CancellationToken);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: PersonalBestEvidence.OfficialRaceLapsOnly,
+                callerUserId: userId, ct: TestContext.Current.CancellationToken);
         var withPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: PersonalBestEvidence.FromRequest(true, null),
+                callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(withoutPersonal);
         Assert.Equal(50.0, withoutPersonal.PercentileRank);
@@ -204,7 +245,8 @@ public class PercentileCalculationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, ct: TestContext.Current.CancellationToken);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("GT3 Cup", result.SeriesName);
@@ -239,9 +281,12 @@ public class PercentileCalculationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var withoutPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: false, ct: TestContext.Current.CancellationToken);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
         var withPersonal = await new PercentileCalculationService(db)
-            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1, callerUserId: userId, includePersonalLaps: true, ct: TestContext.Current.CancellationToken);
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: PersonalBestEvidence.FromRequest(true, null), callerUserId: userId,
+                ct: TestContext.Current.CancellationToken);
 
         Assert.Null(withoutPersonal);
         Assert.NotNull(withPersonal);
@@ -273,9 +318,9 @@ public class PercentileCalculationServiceTests
         // With a Race filter active the Unknown lap must still be included.
         var result = await new PercentileCalculationService(db)
             .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]),
                 callerUserId: userId,
-                includePersonalLaps: true,
-                personalLapTypes: [LapSessionType.Race], TestContext.Current.CancellationToken);
+                ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         // 65s beats both others in a Field of 3: (2 + 0.5) / 3.
@@ -305,6 +350,7 @@ public class PercentileCalculationServiceTests
 
         var result = await new PercentileCalculationService(db, worldRecords)
             .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: OfficialEvidence,
                 ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
@@ -322,6 +368,7 @@ public class PercentileCalculationServiceTests
 
         var result = await new PercentileCalculationService(db)
             .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: OfficialEvidence,
                 ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);

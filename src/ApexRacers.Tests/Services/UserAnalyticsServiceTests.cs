@@ -12,7 +12,8 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_NoPercentileData_ReturnsEmptyList()
     {
         await using var db = DbContextFactory.Create();
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            Guid.NewGuid(), null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
         Assert.Empty(result);
     }
 
@@ -37,7 +38,8 @@ public class UserAnalyticsServiceTests
         AddResult(db, subsession, car, carClass, custId: 99, lapSeconds: 65.0);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         var dto = result[0];
@@ -77,10 +79,18 @@ public class UserAnalyticsServiceTests
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, TestContext.Current.CancellationToken);
+        var officialOnly = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
+        var withUploaded = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
+        var practiceOnly = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null,
+            PersonalBestEvidence.FromRequest(true, [LapSessionType.Practice]),
+            TestContext.Current.CancellationToken);
 
-        Assert.Equal(60.0, result[0].PersonalBestLapSeconds); // telemetry lap beats the 62.5 race best
+        Assert.Equal(62.5, officialOnly[0].PersonalBestLapSeconds);
+        Assert.Equal(60.0, withUploaded[0].PersonalBestLapSeconds);
+        Assert.Equal(62.5, practiceOnly[0].PersonalBestLapSeconds);
     }
 
     [Fact]
@@ -104,7 +114,8 @@ public class UserAnalyticsServiceTests
             new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 80.0, SampleSize = 90, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7), Car = car, Week = week2 });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         var dto = result[0];
@@ -128,14 +139,15 @@ public class UserAnalyticsServiceTests
             new CarPercentileResult { UserId = userId, CarId = car2.Id, SeriesId = 2, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week2 });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, seriesId: 1, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, seriesId: 1, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(car1.Id, result[0].CarId);
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_NoIRacingId_ReturnsZeroLapsAndNullPersonalBest()
+    public async Task GetAnalyticsAsync_NoIRacingId_UsesOnlyAllowedUploadedEvidence()
     {
         await using var db = DbContextFactory.Create();
         var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
@@ -147,13 +159,26 @@ public class UserAnalyticsServiceTests
             PercentileRank = 75.0, SampleSize = 60, ComputedAt = DateTimeOffset.UtcNow,
             Car = car, Week = week,
         });
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId,
+            CarId = car.Id,
+            TrackId = week.TrackId,
+            LapTimeSeconds = 61.25,
+            IsValidLap = true,
+            SessionType = LapSessionType.Practice,
+            RecordedAt = DateTimeOffset.UtcNow,
+        });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
+        var service = new UserAnalyticsService(db);
+        var officialOnly = await service.GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
+        var withUploaded = await service.GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.Equal(0, result[0].TotalWeeks);
-        Assert.Null(result[0].PersonalBestLapSeconds);
+        Assert.Null(Assert.Single(officialOnly).PersonalBestLapSeconds);
+        Assert.Equal(61.25, Assert.Single(withUploaded).PersonalBestLapSeconds);
     }
 
     [Fact]
@@ -177,7 +202,8 @@ public class UserAnalyticsServiceTests
             new CarPercentileResult { UserId = userId, CarId = 2, SeriesId = 1, WeekId = week.Id, PercentileRank = 90.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(2, result[0].CarId);
@@ -219,7 +245,8 @@ public class UserAnalyticsServiceTests
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(userId, null, TestContext.Current.CancellationToken);
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(70.0, result[0].MedianLapSeconds);

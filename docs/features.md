@@ -8,7 +8,9 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 - **Series and week browsing:** view active series, current race weeks, eligible cars,
   track context, and aggregate lap-time statistics.
 - **Percentile calculation:** compare a driver's lap time against the field for a
-  series, week, and car, with cached results for repeat visits.
+  series, week, and car, with cached results for repeat visits. Personal Best surfaces
+  consistently use official race laps by default and let the driver opt in uploaded laps
+  with an optional session-type filter; that choice follows them between related pages.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
   to set in each, with their percentile in that car shown alongside.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for

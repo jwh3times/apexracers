@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router';
 import { useAuth } from './context/AuthContext';
 import { useIracingSurface } from './context/FeatureFlagContext';
 import { AuthProvider } from './context/AuthProvider';
+import { PaceSourceProvider } from './context/PaceSourceProvider';
 import { FeatureFlagProvider } from './context/FeatureFlagProvider';
 import { ThemeProvider } from './context/ThemeProvider';
 import ComingSoonPage from './pages/ComingSoonPage';
@@ -149,11 +150,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <FeatureFlagProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </FeatureFlagProvider>
+        <PaceSourceProvider>
+          <FeatureFlagProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </FeatureFlagProvider>
+        </PaceSourceProvider>
       </AuthProvider>
     </ThemeProvider>
   );

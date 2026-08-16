@@ -181,6 +181,20 @@ describe('api', () => {
       expect(result).toEqual(data);
     });
 
+    it('serializes the shared Personal Best evidence options', async () => {
+      mockFetchOk([]);
+
+      await api.getMyWeekPercentiles(7, 12, {
+        includePersonalLaps: true,
+        personalLapTypes: ['Race', 'Practice'],
+      });
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/7/weeks/12/my-percentiles?includePersonalLaps=true&personalLapTypes=Race&personalLapTypes=Practice',
+        expect.objectContaining({})
+      );
+    });
+
     it('throws IRacingNotLinkedError on a 409 carrying the not-linked code', async () => {
       mockFetchError({
         status: 409,
@@ -212,6 +226,17 @@ describe('api', () => {
       );
       expect(result.percentileRank).toBe(75.0);
     });
+
+    it('treats blend with no selected types as all Uploaded Lap types', async () => {
+      mockFetchOk({});
+
+      await api.getPercentile(1, 5, 3, 99, { includePersonalLaps: true });
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/series/1/weeks/5/cars/3/percentile?customerId=99&includePersonalLaps=true',
+        expect.objectContaining({})
+      );
+    });
   });
 
   // ── getRecommendations ──────────────────────────────────────────────────────
@@ -222,6 +247,20 @@ describe('api', () => {
       await api.getRecommendations(1, 4);
       expect(fetch).toHaveBeenCalledWith(
         '/api/users/me/recommendations?seriesId=1&weekNumber=4',
+        expect.objectContaining({})
+      );
+    });
+
+    it('serializes selected Uploaded Lap types through the shared evidence contract', async () => {
+      mockFetchOk([]);
+
+      await api.getRecommendations(1, 4, {
+        includePersonalLaps: true,
+        personalLapTypes: ['Qualifying'],
+      });
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/recommendations?seriesId=1&weekNumber=4&includePersonalLaps=true&personalLapTypes=Qualifying',
         expect.objectContaining({})
       );
     });
@@ -504,6 +543,20 @@ describe('api', () => {
       mockFetchOk([]);
       await api.getMyAnalytics();
       expect(fetch).toHaveBeenCalledWith('/api/users/me/analytics', expect.objectContaining({}));
+    });
+
+    it('serializes evidence options for the all-series analytics view', async () => {
+      mockFetchOk([]);
+
+      await api.getMyAnalytics(undefined, {
+        includePersonalLaps: true,
+        personalLapTypes: ['TimeTrial'],
+      });
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/analytics?includePersonalLaps=true&personalLapTypes=TimeTrial',
+        expect.objectContaining({})
+      );
     });
 
     it('throws on non-ok response', async () => {

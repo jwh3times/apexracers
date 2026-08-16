@@ -67,7 +67,12 @@ public class StrategyService(AppDbContext db, CarRecommendationService recommend
         var custId = userId is null ? null : await member.GetCustIdAsync(userId.Value, ct);
         var personalized = custId is not null and not 0;
         var recsByCar = personalized
-            ? (await recommendations.GetRecommendationsAsync(seriesId, weekNumber, custId!.Value, ct: ct))
+            ? (await recommendations.GetRecommendationsAsync(
+                seriesId,
+                weekNumber,
+                custId!.Value,
+                PersonalBestEvidence.OfficialRaceLapsOnly,
+                ct))
                 .ToDictionary(r => r.CarId)
             : [];
 

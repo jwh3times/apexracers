@@ -109,7 +109,8 @@ src/
   pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
   pages/__tests__/    ← Vitest tests for the static pages
   components/         ← shared UI (Sidebar, TopNav, Footer, ResourceView, …) + colocated *.test.tsx siblings
-  context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext + colocated
+  context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext, PaceSourceContext
+                          + provider components and colocated
                           *.test.tsx siblings
   hooks/              ← useResource (read-only page request lifecycle) + colocated *.test.tsx sibling
   services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
@@ -150,11 +151,12 @@ The signed-in session — tokens, decoded claims, persistence, and the silent re
 
 ## Contexts
 
-| Context              | Hook(s)                                                           | Purpose                                                                                                                                                |
-| -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `AuthContext`        | `useAuth()`                                                       | User (binding over `session.ts`), login/logout, profile updates, role, alerts toggle                                                                   |
-| `ThemeContext`       | `useTheme()`                                                      | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API                                                                                |
-| `FeatureFlagContext` | `useFeatureFlags()`, `useFeatureFlag(key)`, `useIracingSurface()` | Fetches the public/current-user flag set; exposes `isEnabled` + owner-specific `ready`, a single-key helper, and the shared live-or-demo surface state |
+| Context              | Hook(s)                                                           | Purpose                                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthContext`        | `useAuth()`                                                       | User (binding over `session.ts`), login/logout, profile updates, role, alerts toggle                                                                                                      |
+| `ThemeContext`       | `useTheme()`                                                      | `auto`/`light`/`dark` theme; applies class to `<html>`; persists to API                                                                                                                   |
+| `FeatureFlagContext` | `useFeatureFlags()`, `useFeatureFlag(key)`, `useIracingSurface()` | Fetches the public/current-user flag set; exposes `isEnabled` + owner-specific `ready`, a single-key helper, and the shared live-or-demo surface state                                    |
+| `PaceSourceContext`  | `usePaceSource()`                                                 | App-lifetime Personal Best evidence choice shared by percentile, week, recommendations, analytics, dashboard, and alerts; defaults to official Race Laps and resets when the User changes |
 
 ## Design system
 

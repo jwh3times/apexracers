@@ -7,6 +7,8 @@ import { topShareLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import CalculationSource from '../../components/CalculationSource';
+import { usePaceSource } from '../../context/PaceSourceContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -201,6 +203,7 @@ function SecondaryCarCard({
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
+  const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
   const [viewMode, setViewMode] = useState<ViewMode>('series');
   const [seriesSelection, setSeriesSelection] = useState<number | null>(null);
   const [carSelection, setCarSelection] = useState<number | null>(null);
@@ -212,16 +215,16 @@ export default function AnalyticsPage() {
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];
   const selectedSeriesId = seriesSelection ?? series[0]?.id ?? null;
   const analyticsResource = useResource(
-    signal => api.getMyAnalytics(selectedSeriesId, signal),
-    [user, viewMode, selectedSeriesId, refreshVersion],
+    signal => api.getMyAnalytics(selectedSeriesId, evidenceOptions, signal),
+    [user, viewMode, selectedSeriesId, refreshVersion, evidenceOptions],
     {
       enabled: !!user && viewMode === 'series' && selectedSeriesId !== null,
       fallbackMessage: 'Failed to load analytics.',
     }
   );
   const allAnalyticsResource = useResource(
-    signal => api.getMyAnalytics(undefined, signal),
-    [user, viewMode],
+    signal => api.getMyAnalytics(undefined, evidenceOptions, signal),
+    [user, viewMode, evidenceOptions],
     {
       enabled: !!user && viewMode === 'car',
       fallbackMessage: 'Failed to load analytics.',
@@ -237,7 +240,7 @@ export default function AnalyticsPage() {
     setComputing(true);
     setComputeError(null);
     try {
-      await api.getRecommendations(sel.id, sel.currentWeekNumber);
+      await api.getRecommendations(sel.id, sel.currentWeekNumber, evidenceOptions);
       setRefreshVersion(version => version + 1);
     } catch {
       setComputeError('Could not compute percentiles — try the Recommendations page.');
@@ -295,6 +298,8 @@ export default function AnalyticsPage() {
         <p className="text-eyebrow text-primary-container">ANALYTICS</p>
         <h1 className="text-page-title text-on-surface mt-2 mb-1">Performance Deep Dive</h1>
       </div>
+
+      <CalculationSource value={paceSource} onChange={setPaceSource} className="mb-6" />
 
       {/* View mode toggle */}
       <div className="flex gap-1 mb-4 p-1 rounded-[10px] bg-white/[0.04] border border-white/[0.08] w-fit">

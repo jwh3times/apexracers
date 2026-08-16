@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import CalculationSource, { type PaceSourceValue } from './CalculationSource';
+import CalculationSource from './CalculationSource';
+import type { PaceSourceValue } from '../context/PaceSourceContext';
 
 function renderWith(value: PaceSourceValue, onChange = vi.fn()) {
   return { onChange, ...render(<CalculationSource value={value} onChange={onChange} />) };

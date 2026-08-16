@@ -3,6 +3,11 @@ import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RecommendationsPage from './RecommendationsPage';
 import { api, IRacingNotLinkedError } from '../../services/api';
+import { PaceSourceProvider } from '../../context/PaceSourceProvider';
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { userId: 'user-1' } }),
+}));
 
 vi.mock('../../services/api', async importOriginal => {
   const { mockApiModule } = await import('../../test/apiMock');
@@ -63,9 +68,11 @@ const MOCK_RECS = [
 
 function renderPage(search = '') {
   return render(
-    <MemoryRouter initialEntries={[`/recommendations${search}`]}>
-      <RecommendationsPage />
-    </MemoryRouter>
+    <PaceSourceProvider>
+      <MemoryRouter initialEntries={[`/recommendations${search}`]}>
+        <RecommendationsPage />
+      </MemoryRouter>
+    </PaceSourceProvider>
   );
 }
 
