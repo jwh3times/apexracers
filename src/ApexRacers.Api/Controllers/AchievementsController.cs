@@ -9,7 +9,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/users/me/achievements")]
 [Authorize]
-public class AchievementsController(AchievementsService achievements, MemberContext member) : ControllerBase
+public class AchievementsController(
+    AchievementsService achievements,
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -18,7 +20,8 @@ public class AchievementsController(AchievementsService achievements, MemberCont
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await achievements.GetAchievementsAsync(custId, ct));
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
+        return Ok(await achievements.GetAchievementsAsync(subjectDriverCustId, ct));
     }
 }

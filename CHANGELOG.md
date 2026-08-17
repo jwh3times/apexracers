@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- ApexRacers-owned identity names now follow the domain language: `SubjectDriverContext` resolves the requesting User's Subject Driver, `DriverStatsService` assembles Driver statistics, and progression uses `DriverProgressionDto` / `DriverProgression`. Aydsko SDK types that mirror iRacing's `member_*` endpoints retain their upstream names, and no HTTP route, JSON field, or response shape changed.
 
 ## [0.6.8] - 2026-08-16
 

@@ -14,7 +14,10 @@ namespace ApexRacers.Api.Services;
 /// the bulk-ingested BoP/weather (2.1) and the existing recommendation engine — the pure heuristics
 /// live in <see cref="StrategyAnalysis"/>.
 /// </summary>
-public class StrategyService(AppDbContext db, CarRecommendationService recommendations, MemberContext member)
+public class StrategyService(
+    AppDbContext db,
+    CarRecommendationService recommendations,
+    SubjectDriverContext subjectDriverContext)
 {
     public async Task<WeekStrategyDto> GetStrategyAsync(
         int seriesId, int weekNumber, Guid? userId, CancellationToken ct)
@@ -64,13 +67,15 @@ public class StrategyService(AppDbContext db, CarRecommendationService recommend
             weather?.PrecipChancePct ?? 0, fieldRainCapable);
 
         // Personal overlay — only when the caller resolves to a linked iRacing cust_id.
-        var custId = userId is null ? null : await member.GetCustIdAsync(userId.Value, ct);
-        var personalized = custId is not null and not 0;
+        var subjectDriverCustId = userId is null
+            ? null
+            : await subjectDriverContext.GetSubjectDriverCustIdAsync(userId.Value, ct);
+        var personalized = subjectDriverCustId is not null and not 0;
         var recsByCar = personalized
             ? (await recommendations.GetRecommendationsAsync(
                 seriesId,
                 weekNumber,
-                custId!.Value,
+                subjectDriverCustId!.Value,
                 PersonalBestEvidence.OfficialRaceLapsOnly,
                 ct))
                 .ToDictionary(r => r.CarId)

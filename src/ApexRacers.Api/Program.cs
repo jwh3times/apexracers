@@ -176,8 +176,8 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped(sp =>
     new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>()));
 builder.Services.AddScoped<FeatureFlagEligibility>();
-builder.Services.AddScoped<MemberContext>();
-builder.Services.AddScoped<MemberStatsService>();
+builder.Services.AddScoped<SubjectDriverContext>();
+builder.Services.AddScoped<DriverStatsService>();
 builder.Services.AddScoped<AchievementsService>();
 builder.Services.AddScoped<RaceHistoryService>();
 builder.Services.AddScoped<SubsessionDetailService>();

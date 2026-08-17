@@ -12,7 +12,7 @@ namespace ApexRacers.Api.Controllers;
 [Route("api/users/me/recommendations")]
 public class RecommendationsController(
     CarRecommendationService recommendations,
-    MemberContext member) : ControllerBase
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetRecommendationsAsync(
@@ -26,10 +26,11 @@ public class RecommendationsController(
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
         var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, weekNumber, custId, evidence, ct));
+            seriesId, weekNumber, subjectDriverCustId, evidence, ct));
     }
 }

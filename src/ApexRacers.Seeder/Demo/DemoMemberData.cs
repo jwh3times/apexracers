@@ -54,7 +54,7 @@ public static class DemoMemberData
     public static List<CategoryCareerDto> BuildCareer(long custId) =>
         Categories
             .Select(c => new CategoryCareerDto(
-                c.Id, MemberStatsService.PrettifyCategory(c.Slug),
+                c.Id, DriverStatsService.PrettifyCategory(c.Slug),
                 Starts: 240, Wins: 18, Top5: 96, Poles: 12,
                 AvgStartPosition: 8, AvgFinishPosition: 6,
                 Laps: 7400, LapsLed: 320,

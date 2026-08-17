@@ -183,7 +183,7 @@ export interface CategoryProgression {
   iRatingHistory: TimeSeriesPoint[];
 }
 
-export interface MemberProgression {
+export interface DriverProgression {
   customerId: number;
   categories: CategoryProgression[];
 }
@@ -806,7 +806,7 @@ export const api = {
   },
 
   /** GET /api/users/me/progression — per-category iRating / SR / CPI / TT with iRating history */
-  getProgression(signal?: AbortSignal): Promise<MemberProgression> {
+  getProgression(signal?: AbortSignal): Promise<DriverProgression> {
     return request('/api/users/me/progression', { signal });
   },
 

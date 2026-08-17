@@ -163,7 +163,7 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 > - `iracing-live` (M1, shipped) — real creds. When off, iRacing routes render `ComingSoonPage` and nav
 >   items are hidden.
 > - `iracing-demo` (Alpha-gated) — reveals the same surface backed by clearly-labeled **synthetic** demo
->   data. `MemberContext` resolves the caller's Subject Driver to the Demo Driver
+>   data. `SubjectDriverContext` resolves the caller's Subject Driver to the Demo Driver
 >   (`DemoData.DriverCustId`) for any User on the demo surface.
 >
 > `useIracingSurface` owns the `iracing-live` **OR** `iracing-demo` decision used by `RequireFlag`,
@@ -396,7 +396,9 @@ one means; the `dotnet-api` agent carries the call rules.
   recommendations, and analytics all use it and default to official Race Laps only.
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
 - `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`).
-- `MemberStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
+- `DriverStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
+  Aydsko SDK types such as `MemberSummary` and `MemberProfileInfo` keep iRacing's `member_*` endpoint
+  language at that adapter boundary; ApexRacers-owned names use the terms in `CONTEXT.md`.
 - `AchievementsService` (+ pure `AchievementsMapper`) — awards trophy case (6 h).
 - `RaceHistoryService` — recent official races (10 min); resolves car names and track configuration from the local catalog, keyed on the track identifier the payload carries (never the track name — see `docs/adr/0002-track-identity-follows-iracing-track-id.md`).
 - `SubsessionDetailService` — one ingested subsession from the DB; normalizes stored weather units.
@@ -424,12 +426,14 @@ one means; the `dotnet-api` agent carries the call rules.
 - `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
   Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
-  (`MinimumRole` level ≤ user level), shared by `AdminService` and `MemberContext`. Unknown or role-less
+  (`MinimumRole` level ≤ user level), shared by `AdminService` and `SubjectDriverContext`. Unknown or role-less
   users receive Standard eligibility; an unknown `MinimumRole` fails closed.
 - `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent.
-- `MemberContext` — resolves the caller's Subject Driver, i.e. their Claimed Identity's Customer ID:
-  optional callers receive null when the caller has no Claimed Identity; required callers use
-  `GetRequiredCustIdAsync` / `RequireCustId`, which throw the typed `IRacingNotLinkedException` mapped
+- `SubjectDriverContext` — resolves the caller's Subject Driver, i.e. their Claimed Identity's Customer ID:
+  optional callers use `GetSubjectDriverCustIdAsync` and receive null when the caller has no Claimed
+  Identity; required callers use
+  `GetRequiredSubjectDriverCustIdAsync` / `RequireSubjectDriverCustId`, which throw the typed
+  `IRacingNotLinkedException` mapped
   to the exact `409` contract above. The **only** demo-aware branch: under an eligible `iracing-demo`
   flag it resolves the Subject Driver to the Demo Driver (`DemoData.DriverCustId` = 100001) instead.
   `CONTEXT.md`'s Identity section defines Subject Driver / Claimed Identity / Demo Driver.
@@ -512,7 +516,7 @@ JSON matches what live services write. **Demo caveats** (not page-breakers): `/a
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
 `/compare` search only hits a curated term set (arbitrary terms 503 — use the suggestions list instead);
 the percentile page shows its manual customer-ID form rather than resolving the Demo Driver
-automatically. That last one is **known and accepted**, not a bug to fix: `MemberContext` is the only
+automatically. That last one is **known and accepted**, not a bug to fix: `SubjectDriverContext` is the only
 demo-aware resolver, and `PercentileController` deliberately takes a caller-supplied `customerId` so
 the page can look up *any* Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
 so the `iracing_id` JWT claim the page reads first is absent and it falls through to the form. Enter

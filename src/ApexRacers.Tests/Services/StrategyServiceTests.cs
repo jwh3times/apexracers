@@ -80,7 +80,10 @@ public class StrategyServiceTests
     }
 
     private static StrategyService CreateService(AppDbContext db) =>
-        new(db, new CarRecommendationService(db), new MemberContext(db, new FeatureFlagEligibility(db)));
+        new(
+            db,
+            new CarRecommendationService(db),
+            new SubjectDriverContext(db, new FeatureFlagEligibility(db)));
 
     [Fact]
     public async Task GetStrategyAsync_Anonymous_MapsTrackWeatherRiskAndBopContext()
