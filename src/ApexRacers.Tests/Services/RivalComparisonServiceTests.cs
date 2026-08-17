@@ -40,7 +40,7 @@ public class RivalComparisonServiceTests
             .Returns(new DataResponse<MemberChart> { Data = new MemberChart { CategoryId = 5, Points = [] } });
 
         var cached = new CachedIRacingClient(db, client);
-        return new RivalComparisonService(new MemberStatsService(cached), db);
+        return new RivalComparisonService(new DriverStatsService(cached), db);
     }
 
     private static void SeedRace(AppDbContext db, int subId, int trackId, string trackName,

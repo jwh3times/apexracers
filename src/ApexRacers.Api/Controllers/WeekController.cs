@@ -14,7 +14,7 @@ namespace ApexRacers.Api.Controllers;
 public class WeekController(
     WeekCarStatsService weekCarStats,
     CarRecommendationService recommendations,
-    MemberContext member) : ControllerBase
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetWeekDetailAsync(int seriesId, int weekNumber, CancellationToken ct)
@@ -40,8 +40,10 @@ public class WeekController(
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
         var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
-        return Ok(await recommendations.GetMyPercentilesAsync(seriesId, weekNumber, custId, evidence, ct));
+        return Ok(await recommendations.GetMyPercentilesAsync(
+            seriesId, weekNumber, subjectDriverCustId, evidence, ct));
     }
 }

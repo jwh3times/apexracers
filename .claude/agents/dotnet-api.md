@@ -18,7 +18,7 @@ The project guide `AGENTS.md` (already loaded into this session) already covers:
 
 ## Controllers — the .NET specifics
 
-AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
+AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. When that User's Subject Driver is needed, resolve it through `SubjectDriverContext` and name the resulting local `subjectDriverCustId`; a Customer ID supplied for an arbitrary Driver lookup is already the Subject Driver and does not go through that context. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
 
 ## Services — the .NET specifics
 

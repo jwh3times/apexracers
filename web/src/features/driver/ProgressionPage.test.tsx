@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProgressionPage from './ProgressionPage';
-import { api, IRacingNotLinkedError, type MemberProgression } from '../../services/api';
+import { api, IRacingNotLinkedError, type DriverProgression } from '../../services/api';
 
 vi.mock('../../services/api', async importOriginal => {
   const { mockApiModule } = await import('../../test/apiMock');
@@ -11,7 +11,7 @@ vi.mock('../../services/api', async importOriginal => {
 
 const mockGetProgression = vi.mocked(api.getProgression);
 
-const MOCK: MemberProgression = {
+const MOCK: DriverProgression = {
   customerId: 691062,
   categories: [
     {

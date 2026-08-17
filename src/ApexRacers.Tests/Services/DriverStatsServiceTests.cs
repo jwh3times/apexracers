@@ -10,7 +10,7 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class MemberStatsServiceTests
+public class DriverStatsServiceTests
 {
     private const long CustId = 691062;
 
@@ -45,7 +45,7 @@ public class MemberStatsServiceTests
             }).ToArray(),
         };
 
-    private static (MemberStatsService Service, IDataClient Client, AppDbContext Db) Build(
+    private static (DriverStatsService Service, IDataClient Client, AppDbContext Db) Build(
         MemberProfile profile, params MemberChart[] charts)
     {
         var client = Substitute.For<IDataClient>();
@@ -60,7 +60,7 @@ public class MemberStatsServiceTests
 
         var db = DbContextFactory.Create();
         var cached = new CachedIRacingClient(db, client);
-        return (new MemberStatsService(cached), client, db);
+        return (new DriverStatsService(cached), client, db);
     }
 
     [Fact]
@@ -162,11 +162,11 @@ public class MemberStatsServiceTests
     [InlineData(null, "")]
     [InlineData("   ", "")]
     public void PrettifyCategory_TitleCasesUnderscoreSlug(string? input, string expected) =>
-        Assert.Equal(expected, MemberStatsService.PrettifyCategory(input));
+        Assert.Equal(expected, DriverStatsService.PrettifyCategory(input));
 
     // ── GetDriverProfileAsync ─────────────────────────────────────────────────
 
-    private static (MemberStatsService Service, IDataClient Client, AppDbContext Db) BuildProfile(
+    private static (DriverStatsService Service, IDataClient Client, AppDbContext Db) BuildProfile(
         MemberProfile profile, MemberCareer career, MemberSummary summary, MemberRecap recap)
     {
         var client = Substitute.For<IDataClient>();
@@ -181,7 +181,7 @@ public class MemberStatsServiceTests
 
         var db = DbContextFactory.Create();
         var cached = new CachedIRacingClient(db, client);
-        return (new MemberStatsService(cached), client, db);
+        return (new DriverStatsService(cached), client, db);
     }
 
     private static MemberProfile ProfileWithInfo() => new()
@@ -328,7 +328,7 @@ public class MemberStatsServiceTests
 
     // ── GetComparisonSideAsync ────────────────────────────────────────────────
 
-    private static (MemberStatsService Service, IDataClient Client, AppDbContext Db) BuildSide(
+    private static (DriverStatsService Service, IDataClient Client, AppDbContext Db) BuildSide(
         MemberProfile profile, MemberCareer career, params MemberChart[] charts)
     {
         var client = Substitute.For<IDataClient>();
@@ -345,7 +345,7 @@ public class MemberStatsServiceTests
 
         var db = DbContextFactory.Create();
         var cached = new CachedIRacingClient(db, client);
-        return (new MemberStatsService(cached), client, db);
+        return (new DriverStatsService(cached), client, db);
     }
 
     [Fact]

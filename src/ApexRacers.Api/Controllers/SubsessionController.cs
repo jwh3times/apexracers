@@ -11,7 +11,7 @@ namespace ApexRacers.Api.Controllers;
 public class SubsessionController(
     SubsessionDetailService detail,
     LapDataService lapData,
-    MemberContext member) : ControllerBase
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     // Public — official race results, mirroring WeekController. Unknown ids surface as a
     // 404 via the KeyNotFoundException mapping in ExceptionHandlingMiddleware.
@@ -25,15 +25,19 @@ public class SubsessionController(
     public async Task<IActionResult> GetLapsAsync(
         int id, [FromQuery] long? customerId, CancellationToken ct)
     {
-        var custId = customerId;
-        if (custId is null)
+        var subjectDriverCustId = customerId;
+        if (subjectDriverCustId is null)
         {
             var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             if (!Guid.TryParse(userIdStr, out var userId))
                 return Unauthorized();
-            custId = await member.GetRequiredCustIdAsync(userId, ct);
+            subjectDriverCustId = await subjectDriverContext
+                .GetRequiredSubjectDriverCustIdAsync(userId, ct);
         }
 
-        return Ok(await lapData.GetDriverLapsAsync(id, member.RequireCustId(custId), ct));
+        return Ok(await lapData.GetDriverLapsAsync(
+            id,
+            subjectDriverContext.RequireSubjectDriverCustId(subjectDriverCustId),
+            ct));
     }
 }

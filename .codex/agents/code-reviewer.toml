@@ -26,6 +26,11 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Response shapes live in `ResponseDtos.cs`; request shapes in `RequestDtos.cs`. Flag DTOs defined elsewhere.
 - When a response DTO is added or changed, the matching TypeScript interface in `web/src/services/api.ts` must also change. Flag backend DTO changes that have no corresponding frontend update.
 
+**Identity language**
+
+- Flag ApexRacers-owned `Member*` / `Customer*` names for a User, Driver, or Subject Driver concept. Names on Aydsko SDK types and direct `member_*` endpoint adapters are intentionally upstream language and remain correct; `MemberSummary` and `MemberProfileInfo` are examples, not rename targets.
+- At an authenticated controller boundary, flag a Customer ID resolved from the requesting User if it is named only `custId` or obtained anywhere except `SubjectDriverContext`; use `subjectDriverCustId` so the User and the Driver whose data is represented stay distinct.
+
 **Package management**
 
 - No `Version=""` attribute on any `<PackageReference>` in `.csproj` files. Flag any version pinned in `.csproj` — it belongs in `Directory.Packages.props`.

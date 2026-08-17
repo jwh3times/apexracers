@@ -25,12 +25,12 @@ public class DemoCacheRoundTripTests
     private static CachedIRacingClient Offline(ApexRacers.Data.AppDbContext db) => new(db, null);
 
     [Fact]
-    public async Task SeededMemberCache_IsReadableByMemberStatsService()
+    public async Task SeededMemberCache_IsReadableByDriverStatsService()
     {
         await using var db = DbContextFactory.Create();
         await new DemoCacheSeeder(db).SeedMembersAsync(Ct);
 
-        var service = new MemberStatsService(Offline(db));
+        var service = new DriverStatsService(Offline(db));
 
         var progression = await service.GetProgressionAsync(DemoData.DriverCustId, Ct);
         Assert.Equal(DemoData.DriverCustId, progression.CustomerId);
@@ -80,6 +80,6 @@ public class DemoCacheRoundTripTests
         await using var db = DbContextFactory.Create();
 
         await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
-            new MemberStatsService(Offline(db)).GetProgressionAsync(DemoData.DriverCustId, Ct));
+            new DriverStatsService(Offline(db)).GetProgressionAsync(DemoData.DriverCustId, Ct));
     }
 }

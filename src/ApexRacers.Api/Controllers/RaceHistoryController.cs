@@ -9,7 +9,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/users/me/races")]
 [Authorize]
-public class RaceHistoryController(RaceHistoryService races, MemberContext member) : ControllerBase
+public class RaceHistoryController(
+    RaceHistoryService races,
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -18,7 +20,8 @@ public class RaceHistoryController(RaceHistoryService races, MemberContext membe
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await races.GetRecentRacesAsync(custId, ct));
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
+        return Ok(await races.GetRecentRacesAsync(subjectDriverCustId, ct));
     }
 }

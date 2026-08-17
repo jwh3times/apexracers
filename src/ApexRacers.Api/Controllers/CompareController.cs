@@ -13,7 +13,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/users/me/compare")]
 [Authorize]
-public class CompareController(RivalComparisonService comparison, MemberContext member) : ControllerBase
+public class CompareController(
+    RivalComparisonService comparison,
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAsync([FromQuery] long rivalCustId, CancellationToken ct)
@@ -25,7 +27,8 @@ public class CompareController(RivalComparisonService comparison, MemberContext 
         if (rivalCustId <= 0)
             return BadRequest("A valid rivalCustId is required.");
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await comparison.CompareAsync(custId, rivalCustId, ct));
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
+        return Ok(await comparison.CompareAsync(subjectDriverCustId, rivalCustId, ct));
     }
 }
