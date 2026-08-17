@@ -14,7 +14,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/users/me/rivals")]
 [Authorize]
-public class RivalsController(RivalService rivals, MemberContext member) : ControllerBase
+public class RivalsController(
+    RivalService rivals,
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -49,8 +51,9 @@ public class RivalsController(RivalService rivals, MemberContext member) : Contr
     public async Task<IActionResult> SuggestionsAsync(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await rivals.SuggestionsAsync(userId, custId, ct));
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
+        return Ok(await rivals.SuggestionsAsync(userId, subjectDriverCustId, ct));
     }
 
     private bool TryGetUserId(out Guid userId) =>

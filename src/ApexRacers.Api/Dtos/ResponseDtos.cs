@@ -151,7 +151,7 @@ public record CategoryProgressionDto(
     IReadOnlyList<TimeSeriesPointDto> IRatingHistory);
 
 /// <summary>A driver's per-category progression (one card per license category).</summary>
-public record MemberProgressionDto(long CustomerId, IReadOnlyList<CategoryProgressionDto> Categories);
+public record DriverProgressionDto(long CustomerId, IReadOnlyList<CategoryProgressionDto> Categories);
 
 /// <summary>Current license standing for one category (for the colored profile badges).</summary>
 public record LicenseBadgeDto(

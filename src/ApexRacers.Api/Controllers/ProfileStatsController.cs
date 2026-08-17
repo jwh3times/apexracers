@@ -9,7 +9,9 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/users/me/profile-stats")]
 [Authorize]
-public class ProfileStatsController(MemberStatsService stats, MemberContext member) : ControllerBase
+public class ProfileStatsController(
+    DriverStatsService stats,
+    SubjectDriverContext subjectDriverContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -18,7 +20,8 @@ public class ProfileStatsController(MemberStatsService stats, MemberContext memb
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var custId = await member.GetRequiredCustIdAsync(userId, ct);
-        return Ok(await stats.GetDriverProfileAsync(custId, ct));
+        var subjectDriverCustId = await subjectDriverContext
+            .GetRequiredSubjectDriverCustIdAsync(userId, ct);
+        return Ok(await stats.GetDriverProfileAsync(subjectDriverCustId, ct));
     }
 }
