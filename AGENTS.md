@@ -32,11 +32,11 @@ Agents and hooks are authored for Claude Code, with Codex generated from them; *
 opposite direction** — authored under `.agents/skills/`, with the Claude Code tree generated from
 that:
 
-| Source (edit this)               | Generated (never edit)           |
-| --------------------------------- | ---------------------------------- |
-| `.claude/agents/<name>.md`       | `.codex/agents/<name>.toml`      |
-| `.agents/skills/<name>/**`       | `.claude/skills/<name>/**`       |
-| `.claude/hooks/<file>`           | `.codex/hooks/<file>`            |
+| Source (edit this)         | Generated (never edit)      |
+| -------------------------- | --------------------------- |
+| `.claude/agents/<name>.md` | `.codex/agents/<name>.toml` |
+| `.agents/skills/<name>/**` | `.claude/skills/<name>/**`  |
+| `.claude/hooks/<file>`     | `.codex/hooks/<file>`       |
 
 Skills are authored under `.agents/skills/` — not `.claude/skills/` — because that is where
 third-party skill installers write; keeping the install target as the authored source means
@@ -384,7 +384,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 One responsibility per class; pure heuristics/mappers/parsers are extracted and unit-tested directly.
 The competitiveness metrics are one such extraction, shared across services and the Seeder as
 `ApexRacers.Core.FieldPercentile` — not a per-service formula. It owns percentile rank, field
-position, top share, field size, and field median, and every one of them takes the *other* drivers'
+position, top share, field size, and field median, and every one of them takes the _other_ drivers'
 laps and reconstructs the Field internally. `CONTEXT.md`'s Competitiveness section defines what each
 one means; the `dotnet-api` agent carries the call rules.
 
@@ -443,20 +443,20 @@ one means; the `dotnet-api` agent carries the call rules.
 Domain entities below — see the `postgres-specialist` agent for full schema (PK types, schemas,
 indexes, FK/`OnDelete` behavior).
 
-| Model                                           | Purpose                                                                                        |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `ApplicationUser`                               | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId` (nullable; the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), `ThemePreference` |
-| `Series` / `Season` / `Week`                    | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`) |
-| `Track` / `Car` / `CarClass` / `CarClassCar`    | iRacing catalog + car-class membership. One `Track` is one drivable configuration, not a venue — several share a `Name` (see `docs/adr/0002-track-identity-follows-iracing-track-id.md`) |
-| `SeasonCar` / `SeasonCarClass` / `SeasonCarBop` | per-season cars/classes; per-week BoP (composite PK)                                           |
-| `Subsession` / `SubsessionResult`               | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
-| `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names |
-| `PersonalLap`                                   | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established) |
-| `CarPercentileResult`                           | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                       |
-| `FeatureFlag`                                   | feature flag (`Key` unique; `MinimumRole`)                                                     |
-| `RefreshToken`                                  | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                |
-| `ExternalDataCache`                             | cached iRacing response (`CacheKey` unique, serialized DTO JSON) — backs `CachedIRacingClient` |
-| `Rival`                                         | a driver a user follows (unique on (UserId, RivalCustId); cascade FK to Users)                 |
+| Model                                                                | Purpose                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ApplicationUser`                                                    | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId` (nullable; the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), `ThemePreference`                                                              |
+| `Series` / `Season` / `Week`                                         | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`)                                                                                                                                     |
+| `Track` / `Car` / `CarClass` / `CarClassCar`                         | iRacing catalog + car-class membership. One `Track` is one drivable configuration, not a venue — several share a `Name` (see `docs/adr/0002-track-identity-follows-iracing-track-id.md`)                                                                  |
+| `SeasonCar` / `SeasonCarClass` / `SeasonCarBop`                      | per-season cars/classes; per-week BoP (composite PK)                                                                                                                                                                                                      |
+| `Subsession` / `SubsessionResult`                                    | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy |
+| `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names                                                                                                                                                                                           |
+| `PersonalLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
+| `CarPercentileResult`                                                | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
+| `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
+| `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
+| `ExternalDataCache`                                                  | cached iRacing response (`CacheKey` unique, serialized DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
+| `Rival`                                                              | a driver a user follows (unique on (UserId, RivalCustId); cascade FK to Users)                                                                                                                                                                            |
 
 ### iRacing data ingestion
 
@@ -518,7 +518,7 @@ after a Recommendations/percentile visit; the race-guide board shows static "in-
 the percentile page shows its manual customer-ID form rather than resolving the Demo Driver
 automatically. That last one is **known and accepted**, not a bug to fix: `SubjectDriverContext` is the only
 demo-aware resolver, and `PercentileController` deliberately takes a caller-supplied `customerId` so
-the page can look up *any* Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
+the page can look up _any_ Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
 so the `iracing_id` JWT claim the page reads first is absent and it falls through to the form. Enter
 `100001` (`DemoData.DriverCustId`) to see the Demo Driver's percentiles.
 
