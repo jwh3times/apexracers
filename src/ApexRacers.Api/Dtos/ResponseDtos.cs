@@ -1,3 +1,5 @@
+using ApexRacers.Core.Models;
+
 namespace ApexRacers.Api.Dtos;
 
 public record SeriesDto(
@@ -29,6 +31,11 @@ public record WeekDetailDto(
 
 public record DistributionBin(double MinSeconds, double MaxSeconds, int Count, bool ContainsUser);
 
+/// <summary>
+/// A Subject Driver's standing in one Race Week's Field for one Car. <c>YourBestLapEvidence</c>
+/// names which evidence produced <c>YourBestLapSeconds</c>; the Field itself is composed entirely
+/// of Race Laps, so an Uploaded Lap is ranked against laps of a kind it is not.
+/// </summary>
 public record PercentileResultDto(
     int SeriesId,
     int WeekNumber,
@@ -43,12 +50,18 @@ public record PercentileResultDto(
     string? TrackName,
     string? TrackConfigName,
     double YourBestLapSeconds,
+    LapEvidence YourBestLapEvidence,
     double FieldBestLapSeconds,
     double FieldMedianLapSeconds,
     IReadOnlyList<DistributionBin> Distribution,
     double? WorldRecordLapSeconds = null,
     double? WorldRecordGapSeconds = null);
 
+/// <summary>
+/// One ranked Car recommendation for a Race Week. <c>BestLapEvidence</c> names which evidence
+/// produced <c>BestLapSeconds</c> and is null exactly when that lap is — a projected Car the
+/// Driver holds no lap for.
+/// </summary>
 public record CarRecommendationDto(
     int Rank,
     int CarId,
@@ -57,7 +70,8 @@ public record CarRecommendationDto(
     int? TopSharePercent,
     int SampleSize,
     double ProjectedLapSeconds,
-    double? BestLapSeconds);
+    double? BestLapSeconds,
+    LapEvidence? BestLapEvidence);
 
 public record AuthResultDto(string Token, Guid UserId, string DisplayName, string? RefreshToken = null);
 
@@ -120,6 +134,11 @@ public record WeeklyPercentileDto(
     int SampleSize,
     DateTimeOffset ComputedAt);
 
+/// <summary>
+/// Per-Car percentile history for one Series. <c>PersonalBestLapEvidence</c> names which evidence
+/// produced <c>PersonalBestLapSeconds</c> — the fastest across every Race Week counted here — and
+/// is null exactly when that lap is.
+/// </summary>
 public record CarAnalyticsDto(
     int CarId,
     string CarName,
@@ -130,6 +149,7 @@ public record CarAnalyticsDto(
     double BestPercentileRank,
     int BestTopSharePercent,
     double? PersonalBestLapSeconds,
+    LapEvidence? PersonalBestLapEvidence,
     double? MedianLapSeconds,
     int TotalWeeks,
     IReadOnlyList<WeeklyPercentileDto> PercentileHistory);

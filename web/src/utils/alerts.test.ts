@@ -24,6 +24,7 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
     seriesName: 'GT3 Challenge',
     latestPercentileRank: history[history.length - 1] ?? 0,
     latestTopSharePercent: 100 - Math.round(history[history.length - 1] ?? 0),
+    personalBestLapEvidence: null,
     bestPercentileRank: Math.max(...history, 0),
     bestTopSharePercent: 100 - Math.round(Math.max(...history, 0)),
     personalBestLapSeconds: null,

@@ -50,6 +50,12 @@ export interface WeeklyPercentile {
   computedAt: string; // ISO 8601
 }
 
+/**
+ * Which kind of evidence produced a lap. A personal best drawn from either one names the evidence
+ * it came from, because the two are never interchangeable.
+ */
+export type LapEvidence = 'RaceLap' | 'UploadedLap';
+
 export interface CarAnalytics {
   carId: number;
   carName: string;
@@ -60,6 +66,8 @@ export interface CarAnalytics {
   bestPercentileRank: number;
   bestTopSharePercent: number;
   personalBestLapSeconds: number | null;
+  /** Which evidence produced personalBestLapSeconds; null exactly when that lap is. */
+  personalBestLapEvidence: LapEvidence | null;
   medianLapSeconds: number | null;
   totalWeeks: number;
   percentileHistory: WeeklyPercentile[];
@@ -121,6 +129,8 @@ export interface PercentileResult {
   trackName: string | null;
   trackConfigName: string | null;
   yourBestLapSeconds: number;
+  /** Which evidence produced yourBestLapSeconds. The field itself is all race laps. */
+  yourBestLapEvidence: LapEvidence;
   fieldBestLapSeconds: number;
   fieldMedianLapSeconds: number;
   distribution: DistributionBin[];
@@ -137,6 +147,8 @@ export interface CarRecommendation {
   sampleSize: number;
   projectedLapSeconds: number;
   bestLapSeconds: number | null;
+  /** Which evidence produced bestLapSeconds; null exactly when that lap is. */
+  bestLapEvidence: LapEvidence | null;
 }
 
 export type LapSessionType =

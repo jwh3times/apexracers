@@ -1,5 +1,6 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Core;
+using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,9 +64,10 @@ public class UserAnalyticsService(AppDbContext db)
                 g => g.Key,
                 g => g.Select(l => l.BestLap).OrderBy(t => t).ToList());
 
-        // Driver's race laps for personal best
+        // The Driver's Personal Best per (car, week), and which evidence produced it. Seeded from
+        // their Race Bests, then re-selected against any Uploaded Best the evidence choice allows.
         var allWeekIds = rawResults.Select(r => r.WeekId).Distinct().ToList();
-        Dictionary<(int CarId, Guid WeekId), double> driverRaceBests = new();
+        Dictionary<(int CarId, Guid WeekId), PersonalBest> driverBests = new();
 
         if (iracingId is > 0)
         {
@@ -79,7 +81,7 @@ public class UserAnalyticsService(AppDbContext db)
                 .ToListAsync(ct);
 
             foreach (var row in driverRaceRows)
-                driverRaceBests[(row.CarId, row.WeekId)] = row.BestLap;
+                driverBests[(row.CarId, row.WeekId)] = new PersonalBest(row.BestLap, LapEvidence.RaceLap);
         }
 
         if (evidence.IncludesUploadedLaps)
@@ -101,8 +103,9 @@ public class UserAnalyticsService(AppDbContext db)
             {
                 if (!personalLapByCarTrack.TryGetValue((result.CarId, result.TrackId), out var plap)) continue;
                 var key = (result.CarId, result.WeekId);
-                if (!driverRaceBests.TryGetValue(key, out var raceBest) || plap.BestLapSeconds < raceBest)
-                    driverRaceBests[key] = plap.BestLapSeconds;
+                var raceBest = driverBests.TryGetValue(key, out var seeded) ? seeded.LapSeconds : (double?)null;
+                if (PersonalBest.Select(raceBest, plap.BestLapSeconds) is { } best)
+                    driverBests[key] = best;
             }
         }
 
@@ -114,11 +117,15 @@ public class UserAnalyticsService(AppDbContext db)
                 var latest = ordered[^1];
 
                 var carPersonalBests = ordered
-                    .Select(r => driverRaceBests.TryGetValue((r.CarId, r.WeekId), out var b) ? (double?)b : null)
-                    .Where(b => b is not null)
+                    .Select(r => driverBests.TryGetValue((r.CarId, r.WeekId), out var b) ? (PersonalBest?)b : null)
+                    .OfType<PersonalBest>()
                     .ToList();
 
-                double? personalBest = carPersonalBests.Count > 0 ? carPersonalBests.Min()! : null;
+                // The fastest across the weeks counted here keeps its own evidence, rather than
+                // the number surviving and the provenance being taken from whichever week is last.
+                PersonalBest? personalBest = carPersonalBests.Count > 0
+                    ? carPersonalBests.MinBy(b => b.LapSeconds)
+                    : null;
                 int totalWeeks = carPersonalBests.Count;
 
                 double? median = null;
@@ -142,7 +149,8 @@ public class UserAnalyticsService(AppDbContext db)
                     // The placement from the same week the best rank came from, not the best
                     // placement across weeks — the two could otherwise name different weeks.
                     bestWeek.TopSharePercent,
-                    personalBest,
+                    personalBest?.LapSeconds,
+                    personalBest?.Evidence,
                     median,
                     totalWeeks,
                     history);

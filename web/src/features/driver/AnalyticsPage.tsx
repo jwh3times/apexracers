@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { api, type Series, type CarAnalytics } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
+import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
 import { topShareLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
@@ -117,6 +118,14 @@ function FeaturedCarCard({
               <p className="font-mono text-mono-fluid font-semibold text-primary-container mt-0.5">
                 {formatLapTime(data.personalBestLapSeconds)}
               </p>
+              {data.personalBestLapEvidence != null && (
+                <p
+                  className="text-small-fluid text-on-surface-variant mt-0.5"
+                  title={lapEvidenceDescription(data.personalBestLapEvidence)}
+                >
+                  {lapEvidenceLabel(data.personalBestLapEvidence)}
+                </p>
+              )}
             </div>
           )}
           {lapDelta != null && (
@@ -191,6 +200,15 @@ function SecondaryCarCard({
               <span className="text-primary-container font-semibold font-mono">
                 {formatLapTime(data.personalBestLapSeconds)}
               </span>
+              {data.personalBestLapEvidence != null && (
+                <span
+                  className="text-on-surface-variant"
+                  title={lapEvidenceDescription(data.personalBestLapEvidence)}
+                >
+                  {' '}
+                  ({lapEvidenceLabel(data.personalBestLapEvidence).toLowerCase()})
+                </span>
+              )}
             </div>
           )}
         </div>

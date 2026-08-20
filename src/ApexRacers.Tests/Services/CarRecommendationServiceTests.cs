@@ -113,10 +113,12 @@ public class CarRecommendationServiceTests
         Assert.Equal(2, result[0].CarId);        // Car2: fastest actual lap (60 s)
         Assert.Equal(60.0, result[0].BestLapSeconds);
         Assert.NotNull(result[0].BestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, result[0].BestLapEvidence);
         Assert.Equal(2, result[1].Rank);
         Assert.Equal(1, result[1].CarId);        // Car1: slower actual lap (90 s)
         Assert.Equal(90.0, result[1].BestLapSeconds);
         Assert.NotNull(result[1].BestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, result[1].BestLapEvidence);
     }
 
     [Fact]
@@ -151,6 +153,8 @@ public class CarRecommendationServiceTests
 
         var dto = Assert.Single(result);
         Assert.Null(dto.BestLapSeconds);
+        // No lap, so no evidence produced one — the two are absent together.
+        Assert.Null(dto.BestLapEvidence);
         // Field of 4 in the previous week: (3 slower + 0.5 tied) / 4 = 87.5.
         Assert.Equal(87.5, dto.PercentileRank);
         // 87.5th percentile in [70, 80, 90]: pos = 2 x 0.125 = 0.25 → 70 + 0.25 x 10 = 72.5 s
@@ -183,6 +187,7 @@ public class CarRecommendationServiceTests
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
         Assert.Null(dto.BestLapSeconds);
+        Assert.Null(dto.BestLapEvidence);
         Assert.Equal(50.0, dto.PercentileRank);
         // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
         Assert.Equal(80.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
@@ -221,6 +226,7 @@ public class CarRecommendationServiceTests
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap shown as best
+        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
         // 65s beats all 3 in a Field of 4: (3 + 0.5) / 4 = 87.5%
         Assert.Equal(87.5, dto.PercentileRank, tolerance: 1e-6);
         Assert.Equal(25, dto.TopSharePercent); // 1st of 4
@@ -346,6 +352,9 @@ public class CarRecommendationServiceTests
 
         var dto = Assert.Single(result);
         Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap
+        // The driver did race this car this week, so the number alone cannot tell them the
+        // ranked lap was an uploaded one. The evidence is what makes that legible.
+        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
     }
 
     [Fact]

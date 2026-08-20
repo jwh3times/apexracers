@@ -42,6 +42,7 @@ const MOCK_RESULT: PercentileResult = {
   trackName: 'Spa-Francorchamps',
   trackConfigName: 'Full',
   yourBestLapSeconds: 132.5,
+  yourBestLapEvidence: 'RaceLap',
   fieldBestLapSeconds: 130.0,
   fieldMedianLapSeconds: 136.0,
   distribution: Array.from({ length: 20 }, (_, i) => makeBin(i, i === 10)),
@@ -182,6 +183,25 @@ describe('PercentileCarPage', () => {
       expect(screen.getByText('Field median')).toBeInTheDocument();
       expect(screen.getByText('Gap to P1')).toBeInTheDocument();
     });
+  });
+
+  it('names the evidence behind your best lap', async () => {
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT); // yourBestLapEvidence: 'RaceLap'
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Race lap')).toBeInTheDocument());
+  });
+
+  it('says so when the ranked lap was uploaded rather than raced', async () => {
+    // The field is composed entirely of race laps, so a driver ranked on an uploaded lap is being
+    // compared with laps of a kind theirs is not. The number alone cannot tell them that.
+    mockGetPercentile.mockResolvedValue({ ...MOCK_RESULT, yourBestLapEvidence: 'UploadedLap' });
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Uploaded lap')).toBeInTheDocument());
+    expect(screen.queryByText('Race lap')).not.toBeInTheDocument();
   });
 
   it('shows distribution chart label', async () => {

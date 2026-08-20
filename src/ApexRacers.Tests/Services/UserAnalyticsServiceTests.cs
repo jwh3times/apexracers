@@ -50,6 +50,7 @@ public class UserAnalyticsServiceTests
         Assert.Equal(85.0, dto.LatestPercentileRank);
         Assert.Equal(85.0, dto.BestPercentileRank);
         Assert.Equal(62.5, dto.PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, dto.PersonalBestLapEvidence);
         Assert.Equal(1, dto.TotalWeeks);
         Assert.Single(dto.PercentileHistory);
     }
@@ -89,8 +90,13 @@ public class UserAnalyticsServiceTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(62.5, officialOnly[0].PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, officialOnly[0].PersonalBestLapEvidence);
         Assert.Equal(60.0, withUploaded[0].PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.UploadedLap, withUploaded[0].PersonalBestLapEvidence);
         Assert.Equal(62.5, practiceOnly[0].PersonalBestLapSeconds);
+        // The session-type filter excluded the uploaded lap, so the Race Best stands and the
+        // evidence follows it rather than naming a lap that was filtered out.
+        Assert.Equal(LapEvidence.RaceLap, practiceOnly[0].PersonalBestLapEvidence);
     }
 
     [Fact]
@@ -178,7 +184,9 @@ public class UserAnalyticsServiceTests
             userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
 
         Assert.Null(Assert.Single(officialOnly).PersonalBestLapSeconds);
+        Assert.Null(Assert.Single(officialOnly).PersonalBestLapEvidence);
         Assert.Equal(61.25, Assert.Single(withUploaded).PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.UploadedLap, Assert.Single(withUploaded).PersonalBestLapEvidence);
     }
 
     [Fact]

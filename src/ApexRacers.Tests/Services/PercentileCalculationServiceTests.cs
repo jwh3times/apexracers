@@ -230,8 +230,42 @@ public class PercentileCalculationServiceTests
 
         Assert.NotNull(withoutPersonal);
         Assert.Equal(50.0, withoutPersonal.PercentileRank);
+        Assert.Equal(LapEvidence.RaceLap, withoutPersonal.YourBestLapEvidence);
         Assert.NotNull(withPersonal);
         Assert.Equal(70.0, withPersonal.PercentileRank);
+        // The percentile now rests on a lap that was never raced, against a Field composed
+        // entirely of Race Laps. The response has to say so.
+        Assert.Equal(LapEvidence.UploadedLap, withPersonal.YourBestLapEvidence);
+    }
+
+    [Fact]
+    public async Task ComputeAndCacheAsync_UploadedLapSlowerThanRace_KeepsRaceLapEvidence()
+    {
+        // The driver uploaded a lap, but their Race Best is the faster of the two. Allowing
+        // Uploaded Laps to count does not by itself make one the Personal Best.
+        await using var db = DbContextFactory.Create();
+        var (week, car, carClass, subsession) = SeedWeekAndCar(db);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 80);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 60);
+        AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 90);
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = car.Id, TrackId = week.TrackId,
+            LapTimeSeconds = 85, IsValidLap = true,
+            RecordedAt = DateTimeOffset.UtcNow, Car = car, Track = week.Track,
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new PercentileCalculationService(db)
+            .ComputeAndCacheAsync(seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+                evidence: PersonalBestEvidence.FromRequest(true, null), callerUserId: userId,
+                ct: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Equal(80.0, result.YourBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, result.YourBestLapEvidence);
     }
 
     [Fact]
@@ -253,6 +287,7 @@ public class PercentileCalculationServiceTests
         Assert.Equal("Spa", result.TrackName);
         Assert.Equal("Full", result.TrackConfigName);
         Assert.Equal(65.0, result.YourBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, result.YourBestLapEvidence);
         Assert.Equal(60.0, result.FieldBestLapSeconds);
         Assert.Equal(65.0, result.FieldMedianLapSeconds);
         Assert.Equal(20, result.Distribution.Count);
@@ -291,6 +326,7 @@ public class PercentileCalculationServiceTests
         Assert.Null(withoutPersonal);
         Assert.NotNull(withPersonal);
         Assert.Equal(62.5, withPersonal.PercentileRank, tolerance: 1e-10);
+        Assert.Equal(LapEvidence.UploadedLap, withPersonal.YourBestLapEvidence);
     }
 
     [Fact]
