@@ -25,6 +25,12 @@ impact, invokes `docs-updater` scoped to the branch diff, then rolls `[Unrelease
 section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a branch is
 ready for review.
 
+A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
+it captures what the session learned into memory, brings the GitHub issues it touched and the
+`private/` planning docs up to date, and cleans the regenerable build/test leftovers out of the
+working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
+section, or pushes. Run `/ship` first if a branch is finished, then `/end-session`.
+
 ## Agent config parity (Claude Code ↔ Codex)
 
 Both tools run the same agents, skills, and session hooks from **one** set of sources per row below.

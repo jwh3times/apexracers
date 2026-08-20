@@ -1,0 +1,205 @@
+---
+# GENERATED — DO NOT EDIT. Source: .agents/skills/end-session/SKILL.md. Regenerate: npm run sync:agents
+name: end-session
+description: End a work session cleanly — capture what was learned into memory, bring GitHub issues and the private/ planning docs up to date, and clean up the local workspace. Use when the user says "end session", "wrapping up for the day", "clean up before I stop", or invokes /end-session.
+disable-model-invocation: true
+---
+
+# End session
+
+Close out the day's work so the next session starts from an accurate picture instead of
+reconstructing one. In the user's words, the job is:
+
+> clean up the local workspace, update any private/ docs and/or github issues that need it from this session.
+
+Plus the two things that are easy to lose because they live outside the repo: **memory** (what was
+discovered) and **issue tracking** (what the session actually moved).
+
+**Announce at start:** "I'm using the end-session skill to close out this session."
+
+> Run the shell commands below through the **Bash tool** (Git Bash) — they are POSIX `sh`/`bash`,
+> not PowerShell. The `$(…)` substitutions and `git`/`gh` pipelines only work there.
+
+## What this is not
+
+- **Not `/ship`.** This skill does not evaluate SemVer impact, write a dated CHANGELOG section,
+  push, or open a PR. If a branch is finished, run `/ship` **first**, then this. If a branch is
+  mid-flight, leave it mid-flight — record where it stands and stop.
+- **Not `docs-updater`.** That agent owns the doc matrix for a *shipped change*. This skill covers
+  what a session learned that no diff records — a blocker's real cause, a decision, a dead end, a
+  correction to a planning assumption.
+- **Not a `git clean -xfd`.** Several ignored paths here are irreplaceable (below).
+
+## Steps
+
+### 1. Take stock of the session
+
+Before touching anything, write out — for yourself and then for the user — what this session
+actually did. Distinguish four buckets, because they route to four different places:
+
+| Bucket | Goes to |
+| --- | --- |
+| Durable facts about *how to work in this repo/environment* | Memory (step 2) |
+| Work started, finished, blocked, or newly discovered | GitHub issues (step 3) |
+| Planning-state changes, findings, maintainer-only detail | `private/` docs (step 4) |
+| Files, containers, worktrees, branches left behind | Workspace cleanup (step 5) |
+
+Ground it in evidence, not recollection:
+
+```bash
+git status --porcelain                              # uncommitted work
+git log --oneline main..HEAD                        # this branch's commits
+git branch --show-current
+gh pr list --author @me --state open --json number,title,headRefName
+```
+
+If the session produced nothing in a bucket, say so and skip that step — an empty step is a valid
+outcome, an invented one is not.
+
+### 2. Update memory
+
+Memory lives outside the repo, one fact per file, in this project's memory directory
+(`~/.claude/projects/<project-slug>/memory/`, where the slug is the repo path with separators
+replaced by `-`). `MEMORY.md` in that directory is the index loaded into every session — one line
+per memory, never memory content itself.
+
+Ask of each candidate: **would a fresh session in this repo get this wrong without the note?**
+
+Save it when the answer is yes and it is *not* already recorded by the repo. Good candidates from
+sessions here have been environment quirks (`jq` absent from Git Bash), tooling traps (the frontend
+gate needing `npm run build`), and process facts (`main` is protected by a ruleset, so the
+`/branches/main/protection` API 404s).
+
+Do **not** save what the repo already records: architecture, service responsibilities, test
+commands, and schema all live in `AGENTS.md`, `CONTEXT.md`, `docs/adr/`, and the `.claude/agents/`
+specialists — a memory duplicating those goes stale the moment the file changes. Session-local
+detail (what a specific PR did) belongs in `private/archive.md`, not memory.
+
+Then:
+
+- **Existing memory covers it?** Update that file rather than adding a near-duplicate.
+- **Session proved a memory wrong?** Correct or delete it — a stale memory is worse than none.
+- Every new or renamed file needs its `MEMORY.md` pointer line added or fixed.
+
+### 3. Update GitHub issues
+
+Issues are the tracker (`jwh3times/apexracers`), driven with `gh` — the full command vocabulary is
+in `docs/agents/issue-tracker.md`, and the label strings are in `docs/agents/triage-labels.md`
+(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Use those files
+rather than inventing commands or labels.
+
+Start from what is open, so nothing the session touched is missed:
+
+```bash
+gh issue list --state open --json number,title,labels \
+  --jq '[.[] | {number, title, labels: [.labels[].name]}]'
+```
+
+For each issue this session touched:
+
+- **Shipped** (merged, or a PR is open that closes it) — comment with the outcome and what changed
+  about the understanding of the problem, not just "done". Close it if merged; if the PR is only
+  open, leave the issue open and say which PR carries it.
+- **Advanced but unfinished** — comment with where it actually stands and what the next concrete
+  step is. Future-you reads this comment cold.
+- **Blocked** — comment with the blocker and, if it is a *new* blocker, whether it is the standing
+  iRacing-credentials one (see `private/ROADMAP.md`) or something new worth its own issue.
+- **Understanding changed** — if the session showed the issue body is now wrong or under-specified,
+  correct the body or comment the correction. An issue that describes the wrong problem costs more
+  than a missing one.
+- **Newly discovered work** — open an issue rather than leaving it in a doc or a code comment.
+  Label it per the triage vocabulary.
+
+Do not close an issue on the strength of an unmerged branch, and do not bulk-relabel issues this
+session never touched — that is `/triage`'s job.
+
+### 4. Update the `private/` docs
+
+`private/` is gitignored, which has one load-bearing consequence: **git history is never evidence
+about it.** `git log`, `git show --stat`, and `git diff` cannot see these files, so every commit
+looks like it "didn't touch the archive". Never read that silence as precedent for skipping them —
+open the file and check the content.
+
+| File | Update when |
+| --- | --- |
+| `private/ROADMAP.md` | Remaining/blocked/parked work changed. Remove what shipped (this file carries **no** completed record), re-rank the "Next work item", and refresh the `**Last updated:**` line and the "Status at a glance" counts. |
+| `private/archive.md` | Something shipped. **Prepend** a dated entry at the top, newest-first. Leave the build-era sections at the bottom alone. |
+| `private/PRD.md` | A **feature-level** change — capability added, planned feature cancelled, user story revised. Not implementation detail. |
+| `private/security-review-findings.md` / `private/security-followups.md` | A security finding was made, accepted, or resolved; or an operator-only action is now required. |
+| `private/azure-deployment-runbook.md` / `private/deployTODO.md` | Deployment resources, commands, or bootstrap steps changed. |
+| `private/architecture-findings.md` | A disposition from the 2026-08-08 review was actioned or overturned. This is a record, not a live backlog. |
+| `private/iracing-api-response-objects/` | A **new** payload shape was captured. Add it — never delete or overwrite one (step 5). |
+
+If `/ship` already ran `docs-updater` on this branch, verify rather than redo: check that ROADMAP
+lost the shipped item and archive gained the dated entry, and fill only the gaps.
+
+### 5. Clean up the local workspace
+
+Enumerate before deleting:
+
+```bash
+git status --porcelain --ignored=matching | grep -v 'node_modules\|/bin/\|/obj/'
+git worktree list
+git branch --merged main | grep -v '^\*\|main'
+docker compose ps
+```
+
+**Safe to remove** — regenerable build/test output:
+
+- Root coverage scratch dirs: `coverage*/`, `coverage-report/`, `TestResults/`
+- Frontend output: `web/coverage/`, `web/dist/`, `web/test-results/`, `web/playwright-report/`,
+  `web/blob-report/`
+- Stray temp scripts and probe files written during the session — including anything dropped at the
+  repo root that should have gone to the session scratchpad
+- Finished git worktrees under `.claude/worktrees/` (`git worktree remove <path>`, then
+  `git worktree prune`) and local branches already merged into `main`
+
+**Never remove without an explicit request** — none of these are regenerable here:
+
+- `private/` in any form, and especially `private/iracing-api-response-objects/` — these captured
+  payloads are the authoritative shape reference and **cannot be re-fetched**: the iRacing OAuth
+  credentials are the standing blocker
+- `.env`, `*.secrets.json`, `.claude/settings.local.json`, `docker-compose.override.yml`
+- `src/ApexRacers.Data/Seeds/Screenshots/`
+- Any branch that is unmerged, or a worktree with uncommitted changes
+
+So: **no bare `git clean -xfd`** — it would take `private/` and `.env` with it. Delete by explicit
+path, and confirm the list with the user first.
+
+Then check the two things a session commonly leaves inconsistent:
+
+```bash
+npm run sync:agents -- --check   # agent/skill config drift — CI fails the PR otherwise
+docker compose ps                # local stack still running?
+```
+
+If `--check` reports drift, run `npm run sync:agents` and commit **both** sides. Ask before
+stopping containers — a running Postgres may be deliberate.
+
+Finally, account for uncommitted work. Do **not** silently commit or discard it: report it and ask.
+If it is worth keeping but not finishing, offer to commit it on its branch or stash it with a named
+message.
+
+### 6. Report
+
+Close with a short, honest summary:
+
+- Memories added / updated / deleted, with the one-line reason for each
+- Issues commented, closed, relabelled, or opened — with numbers
+- `private/` docs updated, and which sections
+- What was deleted from the workspace, and what was deliberately left (and why)
+- **Anything left open**: uncommitted changes, unpushed branches, an open PR awaiting review, a
+  running container, a decision the user still owes
+
+State plainly what was *not* done. An accurate "these three things are still open" is the point of
+the skill; a tidy summary that hides them defeats it.
+
+## Do not
+
+- Merge PRs, push to `main`, or run `/ship`'s release steps.
+- Roll `## [Unreleased]` into a dated CHANGELOG section — that is `/ship`'s deliberate step.
+- Delete `private/`, `.env`, local settings, or the captured iRacing response objects.
+- Run `git clean -xfd` or any blanket ignored-file delete.
+- Commit or discard uncommitted work without asking.
+- Invent memories, issue comments, or archive entries to make a bucket look non-empty.
+- Cite "git history shows no change" as evidence about anything under `private/` — it can't.

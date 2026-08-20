@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Contributor workflow: an `/end-session` skill (`.agents/skills/end-session/`) that closes out a work session — it records what the session learned into memory, updates the GitHub issues it touched and the maintainer-only planning docs, and clears the regenerable coverage, test-output, and worktree leftovers out of the working tree. It stops well short of `/ship`: it never opens a PR, rolls `[Unreleased]` into a dated section, or pushes, and it refuses blanket ignored-file deletes so the gitignored environment files and the captured iRacing response objects — which cannot be re-fetched while the credentials blocker stands — survive the cleanup.
 
 ## [0.9.0] - 2026-08-20
 
