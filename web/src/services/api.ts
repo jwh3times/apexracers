@@ -833,7 +833,7 @@ export const api = {
     return request('/api/users/me/races', { signal });
   },
 
-  /** GET /api/subsessions/:id — full classified field + session context for one race */
+  /** GET /api/subsessions/:id — classified field + session context for one race */
   getSubsession(id: number, signal?: AbortSignal): Promise<SubsessionDetail> {
     return request(`/api/subsessions/${id}`, { signal });
   },

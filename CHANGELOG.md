@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.7.1] - 2026-08-20
+
 ### Fixed
 
 - **Race detail no longer presents a partial field as the whole classification.** A result names exactly one Driver, so a team entry — which races under a team's identity rather than one Customer ID — produces none, and neither does an AI entry. Both were silently dropped at ingest while still having held finishing positions, which left the classified field with unexplained gaps and lead-lap and interval context computed over fewer cars than actually raced. A Race now records how many entries it could not represent, of each kind, and the race-detail page says so beneath the results heading. A complete field carries no caveat, and a Race ingested before the counts existed reports them as unknown rather than claiming to be complete.
@@ -683,7 +687,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/jwh3times/apexracers/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jwh3times/apexracers/compare/v0.6.14...v0.7.0
 [0.6.9]: https://github.com/jwh3times/apexracers/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/jwh3times/apexracers/compare/v0.6.7...v0.6.8
