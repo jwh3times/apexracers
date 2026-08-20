@@ -411,14 +411,23 @@ picks a Subject Driver's Personal Best from their Race Best and Uploaded Best an
 comparison and keeping only the number. `CONTEXT.md`'s Lap Evidence section defines Race Lap/Uploaded
 Lap/Personal Best; the `dotnet-api` agent carries the call rule.
 
+The span a Race Week covers is a third such extraction: `ApexRacers.Core.RaceWeekWindow` owns the
+`Start`/`End`/`Contains(recordedAt)` test used to bound which Uploaded Laps may contribute to a
+Personal Best — a Race Best already belongs to one Race Week, so an all-time Uploaded Best has to be
+bounded the same way before the two are comparable. `For(...)` prefers iRacing's reported
+`Week.EndTime`, falls back to the next Week's start, then to a nominal seven days (both fallbacks
+marked `IsExact: false`); `ForSeason(...)` builds every Week's window at once, since a Week with no
+reported end needs the next Week's start date to derive one. `CONTEXT.md`'s Personal Best entry
+defines why the bound exists; the `dotnet-api` agent carries the call rule.
+
 - `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller. Both zero-based race week indexes stay zero-based end-to-end; see `CONTEXT.md` for the Race Week Index / Race Week Number distinction the frontend renders.
-- `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`); overlays world-record via `WorldRecordService`.
-- `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`).
+- `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`, with the Uploaded side bounded to the Race Week via `Core.RaceWeekWindow`); overlays world-record via `WorldRecordService`. Also reports the fastest Uploaded Lap the bound excluded (`UploadedBestOutsideWeekDto`) when it was faster than the Personal Best that got ranked.
+- `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`, Uploaded side bounded to the Race Week via `Core.RaceWeekWindow`).
 - `PersonalBestEvidence` — one request policy for whether Uploaded Laps may contribute to the Subject
   Driver's Personal Best and which session types qualify. Percentile detail, Week Detail's "Your pct,"
   recommendations, and analytics all use it and default to official Race Laps only.
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
-- `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`; per-week best lap + evidence via `Core.PersonalBest.Select`, kept per (car, week) so the fastest lap across counted weeks carries its own provenance).
+- `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`; per-week best lap + evidence via `Core.PersonalBest.Select`, kept per (car, week) so the fastest lap across counted weeks carries its own provenance). Each result row's Uploaded Laps are bounded to that row's own Race Week via `Core.RaceWeekWindow`, resolved per season since a season's Weeks can each need a different fallback boundary.
 - `DriverStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
   Aydsko SDK types such as `MemberSummary` and `MemberProfileInfo` keep iRacing's `member_*` endpoint
   language at that adapter boundary; ApexRacers-owned names use the terms in `CONTEXT.md`.
@@ -469,7 +478,7 @@ indexes, FK/`OnDelete` behavior).
 | Model                                                                | Purpose                                                                                                                                                                                                                                                   |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ApplicationUser`                                                    | extends `IdentityUser<Guid>` — adds `DisplayName`, `IRacingCustomerId` (nullable; the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), `ThemePreference`                                                              |
-| `Series` / `Season` / `Week`                                         | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`)                                                                                                                                     |
+| `Series` / `Season` / `Week`                                         | series → season → race week (`Week.Id` is a Guid; carries weather summary JSON as an owned `WeatherForecastSnapshot`; nullable `EndTime` is iRacing's exact `week_end_time`, used by `Core.RaceWeekWindow` — see below)                                  |
 | `Track` / `Car` / `CarClass` / `CarClassCar`                         | iRacing catalog + car-class membership. One `Track` is one drivable configuration, not a venue — several share a `Name` (see `docs/adr/0002-track-identity-follows-iracing-track-id.md`)                                                                  |
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop`                      | per-season cars/classes; per-week BoP (composite PK)                                                                                                                                                                                                      |
 | `Subsession` / `SubsessionResult`                                    | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy. `SplitIndex`/`SplitCount` are nullable and derived from per-Split Strength of Field, not from array order — null is an unknown position, never index 0 (see `docs/adr/0003-split-index-is-derived-from-strength-of-field.md`). `TeamEntryCount`/`AiEntryCount` record the entries that produced no Race Result, so a Field with gaps is distinguishable from a complete one |
@@ -634,7 +643,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   PostgreSQL transactions, or production relational constraints join `PostgreSqlCollection` and use
   `PostgreSqlFixture`: one shared pinned `postgres:18.0-alpine` container, a unique database per test,
   and `EnsureCreated` against the current EF model. That mandatory collection covers the production
-  `DateTimeOffset` queries and refresh-token/auth persistence invariants, so a running Docker engine is
+  `DateTimeOffset` queries — including Uploaded Lap Race Week scoping (`RecordedAt >= start && RecordedAt
+  < end`), which SQLite fails to translate at runtime rather than at compile time — and refresh-token/auth
+  persistence invariants, so a running Docker engine is
   required for the full `dotnet test` / coverage commands. **Order/project by entity columns before
   constructing a DTO** — ordering by a positional-record DTO property doesn't translate on Npgsql or
   SQLite.

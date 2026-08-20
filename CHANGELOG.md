@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.8.2] - 2026-08-20
+
 ### Fixed
 
 - **A personal best is now drawn from the race week it is ranked against.** A race best already belongs to one race week, but the uploaded lap it was compared with was the driver's fastest ever at that track — so a dry practice lap from a previous season, on a different build and a different BoP, could take the percentile from a wet race week's race best, and nothing on the page said it had. An uploaded lap now counts toward a race week only when it was driven inside it, which makes both sides of the comparison mean the same thing. This applies to the percentile breakdown, car recommendations, and per-car analytics.
@@ -719,7 +723,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/jwh3times/apexracers/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jwh3times/apexracers/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jwh3times/apexracers/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/jwh3times/apexracers/compare/v0.7.0...v0.7.1

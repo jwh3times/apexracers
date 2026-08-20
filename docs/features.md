@@ -12,7 +12,10 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   consistently use official race laps by default and let the driver opt in uploaded laps
   with an optional session-type filter; that choice follows them between related pages.
   Each Personal Best is shown with the evidence that produced it, so a lap set in an
-  official race can be told from one drawn from uploaded telemetry.
+  official race can be told from one drawn from uploaded telemetry. An uploaded lap only
+  counts toward that week's Personal Best if it was driven during that race week; a
+  faster uploaded lap from outside the week is called out separately rather than
+  silently dropped.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
   to set in each, with their percentile in that car shown alongside.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
