@@ -442,16 +442,16 @@ defines why the bound exists; the `dotnet-api` agent carries the call rule.
 - `RaceGuideService` — "race now" board (60 s).
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
-- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + PB overlay; no creds at read time.
-- `PersonalBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
-  order), used by `PersonalLapService` and the catalog services' overlays instead of each holding
+- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + Uploaded Best overlay; no creds at read time.
+- `UploadedBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
+  order), used by `UploadedLapService` and the catalog services' overlays instead of each holding
   its own copy. It sees Uploaded Laps only — a Personal Best also weighs the Race Best. See
   `dotnet-api` for the two invariants it enforces.
 - `ExternalDataCacheCleanupService` (+ pure `PurgeExpiredAsync`) — purges long-expired non-demo cache rows every 6 h.
 - `AuthService` — registration, login, JWT issuance, profile/password/email-change, and reset; delegates the refresh-token lifecycle to `RefreshTokenStore`. Needs `AddDefaultTokenProviders()`. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`) and injected into both the issuing side (`AuthService`) and the validating side (`TokenValidationParameters`) — see `dotnet-api` for the rule.
 - `RefreshTokenStore` — owns issue/rotate/revoke/revoke-all/retention cleanup over an injected `TimeProvider`. Its canonical active predicate is `RevokedAt == null && ExpiresAt > now`; issuance caps active tokens at 5 per user, and rotation revokes + inserts in one save. Raw tokens leave only as return values; persistence stores their SHA-256 hashes.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` (+ pure `AccountEmailTemplates`) — transactional email over the `OutboundEmail` DTO; binds ACS when configured, else logs subject only (links/tokens never logged). Links built from `APP_BASE_URL`.
-- `TelemetryUploadService`, `PersonalLapService` — parse a Telemetry Upload into `PersonalLap` rows
+- `TelemetryUploadService`, `UploadedLapService` — parse a Telemetry Upload into `UploadedLap` rows
   (one per timed lap); query the caller's Uploaded Bests. The upload is refused with a `400` when
   the file's recording Driver disagrees with the caller's Claimed Identity, **before** any row is
   written — see `dotnet-api` for why the ordering is load-bearing.
@@ -483,7 +483,7 @@ indexes, FK/`OnDelete` behavior).
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop`                      | per-season cars/classes; per-week BoP (composite PK)                                                                                                                                                                                                      |
 | `Subsession` / `SubsessionResult`                                    | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy. `SplitIndex`/`SplitCount` are nullable and derived from per-Split Strength of Field, not from array order — null is an unknown position, never index 0 (see `docs/adr/0003-split-index-is-derived-from-strength-of-field.md`). `TeamEntryCount`/`AiEntryCount` record the entries that produced no Race Result, so a Field with gaps is distinguishable from a complete one |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names                                                                                                                                                                                           |
-| `PersonalLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
+| `UploadedLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
 | `CarPercentileResult`                                                | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
 | `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
@@ -515,7 +515,7 @@ Three ways iRacing data reaches a read path. Pick deliberately:
 2. **On-demand cache** (`CachedIRacingClient` → `ExternalDataCache`): fetch live per request, memoize
    **mapped DTOs** as JSON with a per-call TTL. Backs progression, profile, race history, lap data,
    world records, leaderboards, standings, race guide, driver search.
-3. **Persisted user-owned data** (not from iRacing): `PersonalLap`, `Rival`, `CarPercentileResult`, Identity.
+3. **Persisted user-owned data** (not from iRacing): `UploadedLap`, `Rival`, `CarPercentileResult`, Identity.
 
 Choose **persist (#1)** if you need to query/filter/aggregate/join it in SQL, it's canonical/shared, or
 you need point-in-time history. Choose **cache (#2)** for read-mostly, staleness-tolerant, per-user/-query

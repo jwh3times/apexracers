@@ -85,7 +85,7 @@ React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`. N
 `PaceSourceProvider` owns the app-lifetime Personal Best evidence choice. Consumers call
 `usePaceSource()` and pass its memoized `evidenceOptions` to every Personal Best API read; selectors
 edit the same `value`/`setValue` pair instead of keeping page-local copies. Official Race Laps are the
-default. Blend mode with no selected sessions sends no `personalLapTypes` values, which deliberately
+default. Blend mode with no selected sessions sends no `uploadedLapTypes` values, which deliberately
 means all Uploaded Lap session types. The provider resets the choice when `userId` changes so one
 User's evidence preference cannot leak into another User's session. Keep that reset synchronous by
 keying the state-owning child on the current User/guest owner; an effect-based reset renders the new

@@ -20,13 +20,13 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   to set in each, with their percentile in that car shown alongside.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
-- **Telemetry upload:** parse `.ibt` files, store the laps they recorded, and surface the
-  best of them by car and track. A file recorded by a driver other than the one linked to
-  the uploading account is refused.
+- **Telemetry upload:** parse `.ibt` files, store the laps they recorded, and surface each
+  driver's Uploaded Best per car and track. A file recorded by a driver other than the one
+  linked to the uploading account is refused.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.
-- **Catalog exploration:** browse cars and tracks, including personal-best overlays
+- **Catalog exploration:** browse cars and tracks, including Uploaded Best overlays
   when the user has telemetry data.
 - **Admin controls:** manage user roles and feature flags through an Admin-only panel.
 

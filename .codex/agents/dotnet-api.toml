@@ -45,14 +45,14 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   the fastest lap across the counted weeks keeps its own evidence instead of inheriting whichever
   week was last in iteration order.
 - **A Telemetry Upload is validated before anything is written.** `TelemetryUploadService` refuses a file whose recording Driver (`DriverUserID`, absent → 0 → stored as null, never compared) disagrees with the caller's Claimed Identity, and it does so *ahead of* the car/track upsert — a refused upload must leave no trace, not even catalog rows. A caller with no Claimed Identity has nothing to check against and is accepted, with the file's Driver still recorded on the lap. Keep any new validation in that same pre-write block rather than adding it after the first `db.Add`.
-- Uploaded Best rows are never projected inline either: call `PersonalBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/PersonalBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
-  - **The caller's `scope` must not filter on `IsValidLap`.** `PersonalBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
+- Uploaded Best rows are never projected inline either: call `UploadedBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/UploadedBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
+  - **The caller's `scope` must not filter on `IsValidLap`.** `UploadedBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
   - **The `GroupBy` must not be pushed into SQL.** The group key is `{ CarId, TrackId }` — identifiers, never `Car.Name`/`Track.Name`/`Track.ConfigName` labels, since a Track's `Name` belongs to the venue and is shared by every layout there. Those labels ride along via `g.First()` instead: selecting navigation-property labels alongside the aggregates is what neither Npgsql nor SQLite translates, so the query materializes to a list first and groups in memory — deliberately, not an oversight. Getting this wrong throws at runtime rather than failing to compile; see the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section, which is the same underlying translation gap.
-  - `PersonalBestQuery` has no Race Week bound — it is the all-time Uploaded Best, used where that is
+  - `UploadedBestQuery` has no Race Week bound — it is the all-time Uploaded Best, used where that is
     the correct answer (My Laps, the catalog overlays). `PercentileCalculationService`,
     `CarRecommendationService`, and `UserAnalyticsService` deliberately do **not** call it: ranking a
     Personal Best needs the Uploaded side bounded to one Race Week (see the `RaceWeekWindow` rule
-    below), which `PersonalBestQuery` has no parameter for. Each of those three writes its own scoped
+    below), which `UploadedBestQuery` has no parameter for. Each of those three writes its own scoped
     query instead — still applying `IsValidLap` and still grouping/ordering by `{ CarId, TrackId }` in
     the same style, just with an added `RecordedAt` range filter. Don't read that as three call sites
     forgetting the shared helper; it's the same helper's invariants without its all-time scope.
@@ -60,7 +60,7 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   Call `AppDbContext.RaceWeekWindowAsync(seasonId, weekNumber, ct)` (single Week) or
   `RaceWeekWindowsAsync(seasonId, ct)` (whole season, keyed by Week number — `SeasonQueries`,
   `src/ApexRacers.Api/Services/SeasonQueries.cs`) to get a `Core.RaceWeekWindow`, then filter
-  `PersonalLap.RecordedAt` with `window.Contains(recordedAt)` (or the equivalent `>= Start && <
+  `UploadedLap.RecordedAt` with `window.Contains(recordedAt)` (or the equivalent `>= Start && <
   End` range pushed into SQL — see the SQLite-vs-Npgsql translation note in the Tests section below).
   Fetch the whole season's windows rather than one Week's when the caller is iterating rows that each
   belong to a different Week (`UserAnalyticsService`) — a Week with no reported `EndTime` is bounded by
@@ -72,9 +72,9 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   actually faster than the Personal Best that got ranked; a slower excluded lap changes nothing and
   reporting it would be noise. `CONTEXT.md`'s Personal Best entry is the product rationale.
 - Personal Best read paths take a `PersonalBestEvidence` value rather than separate booleans or lists.
-  Controllers construct it with `FromRequest(includePersonalLaps, personalLapTypes)`; internal callers
+  Controllers construct it with `FromRequest(includeUploadedLaps, uploadedLapTypes)`; internal callers
   with no user choice pass `OfficialRaceLapsOnly`. Use `ScopeUploadedLaps` to apply source and session-type
-  eligibility, then pass that scope to `PersonalBestQuery.RunAsync` so it remains the owner of validity
+  eligibility, then pass that scope to `UploadedBestQuery.RunAsync` so it remains the owner of validity
   filtering and Uploaded Best projection. An empty selected-type list means all types; do not duplicate
   either module's predicates in a service.
 - Resolving a series' current season or one numbered week of it is never a hand-written
