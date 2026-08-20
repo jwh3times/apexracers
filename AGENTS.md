@@ -44,8 +44,10 @@ installing or updating a skill stays a one-way drop-in with no manual copying af
 skill directory is mirrored, not just `SKILL.md` — references, `scripts/*.sh`, `agents/*.yaml`, and
 any other files a skill carries are all drift-controlled. Each generated `SKILL.md` gets a
 `# GENERATED — DO NOT EDIT` banner injected as a YAML comment on line 2 (line 1 stays `---`, so the
-frontmatter still parses); every other file in the tree is copied byte-for-byte with no banner and no
-text transformation.
+frontmatter still parses); every other file in the tree is copied with no banner: text files
+(`.md`, `.yaml`, `.sh`, …) have CRLF normalized to LF — the same treatment hook scripts get, so
+a tool that rewrites the generated tree with Windows line endings after checkout does not read as
+permanent drift — and anything not on that text list is copied byte-for-byte.
 
 **Never replace the generated `.claude/skills/` tree with a symlink back to `.agents/skills/`** (or
 any generated path with a symlink to its source) — two independent failure modes rule that out, both
@@ -199,6 +201,21 @@ dotnet run --project src/ApexRacers.Seeder -- --verify-teardown  # gate: exit 0 
 dotnet ef migrations add <Name> --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 dotnet ef database update      --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 ```
+
+**Test filters go to the Microsoft Testing Platform, not VSTest.** `global.json` selects the MTP
+runner, so `dotnet test` forwards every option it doesn't own straight through to the test
+executable. Two consequences bite in practice:
+
+- `--filter-class` takes a **fully qualified** type name — `ApexRacers.Tests.Models.FieldPercentileTests`,
+  not `FieldPercentileTests`. A bare name matches nothing and reports `Zero tests ran` (exit code 8).
+- **Don't add `--nologo`.** MTP has no such option, so it is forwarded, the runner rejects it and
+  prints its help, and the run ends `Zero tests ran` / `error: 1` / exit code 5 — which reads as a
+  broken filter rather than a bad flag. `--configuration`, `--no-build`, and `--verbosity` are
+  `dotnet test`'s own options and stay safe.
+
+`dotnet test` is only a thin wrapper here: the test executable itself takes the same arguments, and
+`src/ApexRacers.Tests/bin/Debug/net10.0/ApexRacers.Tests.exe --help` lists every filter option the
+runner actually supports (`--filter-method`, `--filter-namespace`, `--filter-trait`, `--filter-query`, …).
 
 Seeder's default/`--demo` modes need `private/iracing-api-response-objects/` populated first (gitignored —
 see README); `--ci` mode does **not** (it fabricates a fully synthetic catalog, so CI/E2E can seed without

@@ -258,14 +258,25 @@ function injectSkillBanner(content, relSrcPath) {
 }
 
 /**
+ * Extensions in the skill tree that hold text. Everything authored today is text, but a
+ * future binary asset (an image, say) must still copy byte-for-byte, so the list gates
+ * which files get line-ending normalization rather than assuming the whole tree is text.
+ */
+const TEXT_SKILL_EXTENSIONS = new Set(['.md', '.yaml', '.yml', '.sh', '.txt', '.json', '.toml']);
+
+/**
  * Mirrors the whole authored skill tree (.agents/skills/<name>/**) into the generated
  * one (.claude/skills/<name>/**) — not just SKILL.md, so references, scripts/*.sh, and
- * agents/*.yaml stay drift-controlled too. SKILL.md gets the generated banner injected
- * as text; every other file is read/written as a raw Buffer so it copies byte-for-byte
- * with no transformation (no CRLF normalization either — .gitattributes' `eol=lf`
- * already normalizes both the authored and generated trees identically on checkout,
- * so a generator-side transform would only add a second, potentially inconsistent,
- * source of normalization).
+ * agents/*.yaml stay drift-controlled too. SKILL.md gets the generated banner injected;
+ * every other text file is copied verbatim with CRLF normalized, exactly as hook scripts
+ * are. An earlier version compared those files as raw Buffers on the reasoning that
+ * .gitattributes' `eol=lf` already normalizes both trees identically on checkout. It does
+ * — but only at checkout: any tool that rewrites the generated tree afterwards can put
+ * CRLF back, and then every one of those files reports as drifted forever while the
+ * committed blobs are byte-identical (git normalizes on the way in, so `git status` stays
+ * clean and CI, which checks out fresh, stays green — the failure is invisible except to
+ * `--check` on a Windows working tree). Normalizing here removes that whole failure mode.
+ * Files not on the text list are still copied byte-for-byte as a raw Buffer.
  */
 function copySkillTree(srcDir, outDir) {
   if (!existsSync(srcDir)) return;
@@ -276,9 +287,13 @@ function copySkillTree(srcDir, outDir) {
       copySkillTree(src, join(outDir, entry));
     } else {
       const out = join(outDir, entry);
+      const dot = entry.lastIndexOf('.');
+      const ext = dot === -1 ? '' : entry.slice(dot).toLowerCase();
       if (entry === SKILL_BANNER_FILE) {
         const relSrcPath = relative(ROOT, src).split(sep).join(posix.sep);
         produced.set(out, injectSkillBanner(readFileSync(src, 'utf8'), relSrcPath));
+      } else if (TEXT_SKILL_EXTENSIONS.has(ext)) {
+        produced.set(out, readFileSync(src, 'utf8').replace(/\r\n/g, '\n'));
       } else {
         produced.set(out, readFileSync(src));
       }
