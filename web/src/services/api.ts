@@ -317,6 +317,10 @@ export interface SubsessionDetail {
   splitIndex: number | null;
   /** How many Splits the Race Session divided into; null exactly when splitIndex is. */
   splitCount: number | null;
+  /** Entries that raced under a team and so produced no result; null when never counted. */
+  teamEntryCount: number | null;
+  /** AI entries, which hold no racing identity; null when never counted. */
+  aiEntryCount: number | null;
   numCautions: number;
   numLeadChanges: number;
   cornersPerLap: number;
@@ -829,7 +833,7 @@ export const api = {
     return request('/api/users/me/races', { signal });
   },
 
-  /** GET /api/subsessions/:id — full classified field + session context for one race */
+  /** GET /api/subsessions/:id — classified field + session context for one race */
   getSubsession(id: number, signal?: AbortSignal): Promise<SubsessionDetail> {
     return request(`/api/subsessions/${id}`, { signal });
   },

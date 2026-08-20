@@ -457,9 +457,13 @@ public record DriverComparisonDto(
     SharedRaceSummaryDto Shared);
 
 /// <summary>
-/// Full classified field plus session context for one ingested subsession. <c>SplitIndex</c> is
-/// zero-based with 0 the strongest Split; it and <c>SplitCount</c> are null together when the
-/// Split's position is unknown, so 0 never stands in for "we don't know".
+/// The individually classified Drivers of one ingested subsession, plus session context. This is
+/// not always the whole field iRacing classified: a Race Result names exactly one Driver, so team
+/// entries and AI entries produce none and are absent from <c>Results</c> while still having held
+/// finishing positions. <c>TeamEntryCount</c> and <c>AiEntryCount</c> say how many are missing —
+/// both zero means the field is complete, and both null means it was never counted.
+/// <c>SplitIndex</c> is zero-based with 0 the strongest Split; it and <c>SplitCount</c> are null
+/// together when the Split's position is unknown, so 0 never stands in for "we don't know".
 /// </summary>
 public record SubsessionDetailDto(
     int SubsessionId,
@@ -470,6 +474,8 @@ public record SubsessionDetailDto(
     int StrengthOfField,
     int? SplitIndex,
     int? SplitCount,
+    int? TeamEntryCount,
+    int? AiEntryCount,
     int NumCautions,
     int NumLeadChanges,
     int CornersPerLap,

@@ -38,6 +38,8 @@ const DETAIL: SubsessionDetail = {
   strengthOfField: 2509,
   splitIndex: 0,
   splitCount: 3,
+  teamEntryCount: 0,
+  aiEntryCount: 0,
   numCautions: 1,
   numLeadChanges: 2,
   cornersPerLap: 12,
@@ -132,6 +134,32 @@ describe('RaceDetailPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('2,509')).toBeInTheDocument());
     expect(screen.queryByText('Split')).not.toBeInTheDocument();
+  });
+
+  it('says why results are missing when the field had team entries', async () => {
+    mockGetSubsession.mockResolvedValue({ ...DETAIL, teamEntryCount: 2, aiEntryCount: 0 });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/2 team entries are not listed/)).toBeInTheDocument()
+    );
+  });
+
+  it('adds no caveat to a complete field', async () => {
+    mockGetSubsession.mockResolvedValue(DETAIL);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Winner')).toBeInTheDocument());
+    expect(screen.queryByText(/not listed/)).not.toBeInTheDocument();
+  });
+
+  it('adds no caveat when the entries were never counted', async () => {
+    mockGetSubsession.mockResolvedValue({
+      ...DETAIL,
+      teamEntryCount: null,
+      aiEntryCount: null,
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Winner')).toBeInTheDocument());
+    expect(screen.queryByText(/not listed/)).not.toBeInTheDocument();
   });
 
   it('renders weather KPIs when weather is present', async () => {

@@ -16,7 +16,8 @@ public static class SubsessionMapper
         int subsessionId,
         WireSubsessionResult data,
         Guid? weekId,
-        SubsessionIndexer.SplitPosition? splitPosition) =>
+        SubsessionIndexer.SplitPosition? splitPosition,
+        SubsessionIndexer.EntryTally entryTally) =>
         new()
         {
             Id = subsessionId,
@@ -30,6 +31,8 @@ public static class SubsessionMapper
             EndTime = data.EndTime,
             SplitIndex = splitPosition?.Index,
             SplitCount = splitPosition?.Count,
+            TeamEntryCount = entryTally.TeamEntries,
+            AiEntryCount = entryTally.AiEntries,
             NumCautions = data.NumberOfCautions,
             NumCautionLaps = data.NumberOfCautionLaps,
             NumLeadChanges = data.NumberOfLeadChanges,

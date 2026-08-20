@@ -215,6 +215,9 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                     // The sole Split of its Race Session, so index 0 of a count of 1.
                     SplitIndex = 0,
                     SplitCount = 1,
+                    // Every synthetic entry names one Driver, so the field is complete.
+                    TeamEntryCount = 0,
+                    AiEntryCount = 0,
                     StartTime = new DateTimeOffset(
                         week.StartDate.ToDateTime(new TimeOnly(14, 0)), TimeSpan.Zero),
                 });

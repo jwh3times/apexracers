@@ -109,8 +109,16 @@ A Subsession run under iRacing's own series scheduling, counting toward a Driver
 _Avoid_: Ranked session, Sanctioned session, Public session
 
 **Race Result**:
-One Driver's classified finishing record in a Race. A Race Result names exactly one Driver, so a team entry — which races under no Customer ID — produces none.
+One Driver's classified finishing record in a Race. A Race Result names exactly one Driver, so a Team Entry — which races under no Customer ID — produces none.
 _Avoid_: Result, Finish, Classification, Standing
+
+**Team Entry**:
+An entry in a Race that raced under a team's identity rather than one Driver's Customer ID. It held a finishing position but names no single Driver, so it produces no Race Result and is absent from a stored Field. How many a Race had is recorded, because a Field missing Team Entries is not the classification iRacing published.
+_Avoid_: Team result, Team car, Multi-driver entry
+
+**AI Entry**:
+An entry driven by iRacing's AI. It holds no racing identity, so it is not a Driver and produces no Race Result, but like a Team Entry it occupied a finishing position and is counted for the same reason.
+_Avoid_: Bot, AI driver, Computer car
 
 **Strength of Field**:
 iRacing's measure of the average skill of the Drivers entered in a Subsession. It is what Splits are ordered by.

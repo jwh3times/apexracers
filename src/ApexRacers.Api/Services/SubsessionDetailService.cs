@@ -8,10 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Reads one ingested subsession's full classified field plus session context (SOF,
-/// cautions, lead changes, weather) from the local database — official race data, so
-/// the endpoint is public. The stored weather block is the serialized iRacing payload;
-/// it is deserialized and unit-normalized here.
+/// Reads one ingested subsession's classified field plus session context (SOF, cautions, lead
+/// changes, weather) from the local database — official race data, so the endpoint is public.
+/// The field is the Drivers that were individually classified: team and AI entries produce no
+/// Race Result, so their counts are carried alongside rather than letting the remainder pass as
+/// the whole classification. The stored weather block is the serialized iRacing payload; it is
+/// deserialized and unit-normalized here.
 /// </summary>
 public class SubsessionDetailService(AppDbContext db)
 {
@@ -55,6 +57,8 @@ public class SubsessionDetailService(AppDbContext db)
             sub.EventStrengthOfField,
             sub.SplitIndex,
             sub.SplitCount,
+            sub.TeamEntryCount,
+            sub.AiEntryCount,
             sub.NumCautions,
             sub.NumLeadChanges,
             sub.CornersPerLap,

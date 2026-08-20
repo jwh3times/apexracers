@@ -94,10 +94,63 @@ public static class SubsessionIndexer
     }
 
     /// <summary>
-    /// AI drivers and team entries (which have no customer ID) are not indexed.
+    /// What one entry of a race's result list becomes. Only a <see cref="Classified"/> entry
+    /// produces a Race Result, so the other two are exactly the entries a stored field is
+    /// missing — counting them is what lets an incomplete field be told from a complete one.
     /// </summary>
-    public static bool ShouldSkipResult(bool isAi, long? customerId) =>
-        isAi || customerId is null;
+    public enum EntryDisposition
+    {
+        /// <summary>Names one Driver by Customer ID, so it becomes a Race Result.</summary>
+        Classified,
+
+        /// <summary>
+        /// An AI driver. It holds no iRacing racing identity, so it is not a Driver and cannot
+        /// be named by a Race Result — but it did occupy a finishing position in the race.
+        /// </summary>
+        AiEntry,
+
+        /// <summary>
+        /// A team entry. It raced under no Customer ID, which is what the domain language calls
+        /// a team entry, so no single Driver can be named and no Race Result is produced. The
+        /// entry was a real competitor and held a finishing position all the same.
+        /// </summary>
+        TeamEntry,
+    }
+
+    /// <summary>How a race's entries divided between the three dispositions.</summary>
+    public readonly record struct EntryTally(int Classified, int AiEntries, int TeamEntries);
+
+    /// <summary>
+    /// Classifies one result entry. AI is checked first because an AI driver may still carry a
+    /// Customer ID; after that, an entry with no Customer ID is a team entry by definition.
+    /// </summary>
+    public static EntryDisposition ClassifyEntry(bool isAi, long? customerId) =>
+        isAi ? EntryDisposition.AiEntry
+        : customerId is null ? EntryDisposition.TeamEntry
+        : EntryDisposition.Classified;
+
+    /// <summary>
+    /// Counts a race's entries by disposition, so a Subsession can record how much of its field
+    /// it could not represent instead of presenting the remainder as the whole classification.
+    /// </summary>
+    public static EntryTally TallyEntries(IEnumerable<EntryDisposition> dispositions)
+    {
+        var classified = 0;
+        var ai = 0;
+        var team = 0;
+
+        foreach (var disposition in dispositions)
+        {
+            switch (disposition)
+            {
+                case EntryDisposition.Classified: classified++; break;
+                case EntryDisposition.AiEntry: ai++; break;
+                case EntryDisposition.TeamEntry: team++; break;
+            }
+        }
+
+        return new EntryTally(classified, ai, team);
+    }
 
     /// <summary>
     /// A driver's lap time in seconds, or <see cref="NoLapSentinel"/> when absent.

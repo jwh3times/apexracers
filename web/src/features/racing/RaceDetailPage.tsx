@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { splitLabel } from '../../utils/split';
+import { unrepresentedEntriesNote } from '../../utils/fieldCompleteness';
 import LapTraceChart from '../../components/LapTraceChart';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
@@ -38,6 +39,23 @@ function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
 function SplitKpi({ index, count }: { index: number | null; count: number | null }) {
   const label = splitLabel(index, count);
   return label === null ? null : <Kpi label="Split" value={label} />;
+}
+
+/**
+ * Why the listed results are fewer than the race's field, when they are. Renders nothing when the
+ * field is complete or was never counted, so a complete race carries no caveat.
+ */
+function UnrepresentedEntriesNote({
+  teamEntryCount,
+  aiEntryCount,
+}: {
+  teamEntryCount: number | null;
+  aiEntryCount: number | null;
+}) {
+  const note = unrepresentedEntriesNote(teamEntryCount, aiEntryCount);
+  return note === null ? null : (
+    <p className="text-small-fluid text-on-surface-variant mt-2">{note}</p>
+  );
 }
 
 function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCustId?: number }) {
@@ -212,6 +230,10 @@ export default function RaceDetailPage() {
               <h2 className="text-section-head text-on-surface">
                 Results ({resource.data.results.length})
               </h2>
+              <UnrepresentedEntriesNote
+                teamEntryCount={resource.data.teamEntryCount}
+                aiEntryCount={resource.data.aiEntryCount}
+              />
             </div>
             {resource.data.results.length > 0 ? (
               <ClassifiedTable

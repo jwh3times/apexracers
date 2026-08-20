@@ -142,16 +142,70 @@ public class SubsessionIndexerTests
             Assert.Equal(4, SubsessionIndexer.ResolveSplitPosition(splits, s.SubsessionId)!.Value.Count));
     }
 
-    // ── ShouldSkipResult ──────────────────────────────────────────────────────
+    // ── ClassifyEntry / TallyEntries ──────────────────────────────────────────
 
     [Theory]
-    [InlineData(true, 12345L, true)]   // AI driver
-    [InlineData(false, null, true)]    // team entry (no customer id)
-    [InlineData(true, null, true)]     // both
-    [InlineData(false, 12345L, false)] // real driver — index it
-    public void ShouldSkipResult_AppliesAiAndTeamRules(bool isAi, long? customerId, bool expected)
+    [InlineData(true, 12345L, SubsessionIndexer.EntryDisposition.AiEntry)]   // AI, even with a customer id
+    [InlineData(true, null, SubsessionIndexer.EntryDisposition.AiEntry)]      // AI takes precedence
+    [InlineData(false, null, SubsessionIndexer.EntryDisposition.TeamEntry)]   // no customer id = a team entry
+    [InlineData(false, 12345L, SubsessionIndexer.EntryDisposition.Classified)]
+    public void ClassifyEntry_SeparatesTheTwoReasonsAnEntryProducesNoRaceResult(
+        bool isAi, long? customerId, SubsessionIndexer.EntryDisposition expected)
     {
-        Assert.Equal(expected, SubsessionIndexer.ShouldSkipResult(isAi, customerId));
+        Assert.Equal(expected, SubsessionIndexer.ClassifyEntry(isAi, customerId));
+    }
+
+    [Fact]
+    public void TallyEntries_CountsEachDispositionSeparately()
+    {
+        var dispositions = new[]
+        {
+            SubsessionIndexer.EntryDisposition.Classified,
+            SubsessionIndexer.EntryDisposition.TeamEntry,
+            SubsessionIndexer.EntryDisposition.Classified,
+            SubsessionIndexer.EntryDisposition.AiEntry,
+            SubsessionIndexer.EntryDisposition.TeamEntry,
+        };
+
+        Assert.Equal(
+            new SubsessionIndexer.EntryTally(Classified: 2, AiEntries: 1, TeamEntries: 2),
+            SubsessionIndexer.TallyEntries(dispositions));
+    }
+
+    [Fact]
+    public void TallyEntries_CompleteField_CountsNothingUnrepresented()
+    {
+        var dispositions = new[] { SubsessionIndexer.EntryDisposition.Classified, SubsessionIndexer.EntryDisposition.Classified };
+
+        var tally = SubsessionIndexer.TallyEntries(dispositions);
+
+        Assert.Equal(2, tally.Classified);
+        Assert.Equal(0, tally.AiEntries);
+        Assert.Equal(0, tally.TeamEntries);
+    }
+
+    [Fact]
+    public void TallyEntries_EmptyField_IsAllZeros()
+    {
+        Assert.Equal(new SubsessionIndexer.EntryTally(0, 0, 0),
+            SubsessionIndexer.TallyEntries([]));
+    }
+
+    [Fact]
+    public void TallyEntries_TotalsBackToTheWholeField_SoNoEntryIsUnaccountedFor()
+    {
+        var entries = new (bool IsAi, long? CustomerId)[]
+        {
+            (false, 1L), (false, null), (true, 2L), (false, 3L), (true, null), (false, null),
+        };
+
+        var tally = SubsessionIndexer.TallyEntries(
+            entries.Select(e => SubsessionIndexer.ClassifyEntry(e.IsAi, e.CustomerId)));
+
+        Assert.Equal(entries.Length, tally.Classified + tally.AiEntries + tally.TeamEntries);
+        Assert.Equal(2, tally.Classified);
+        Assert.Equal(2, tally.AiEntries);
+        Assert.Equal(2, tally.TeamEntries);
     }
 
     // ── LapSecondsOrSentinel ──────────────────────────────────────────────────
