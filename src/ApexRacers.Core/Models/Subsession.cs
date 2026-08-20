@@ -25,6 +25,21 @@ public class Subsession
     /// </summary>
     public int? SplitCount { get; set; }
 
+    /// <summary>
+    /// How many entries iRacing classified in this race that could not be stored as a Race
+    /// Result, because they raced under a team's identity rather than one Driver's Customer ID.
+    /// They held finishing positions, so a non-zero count means the stored field has gaps.
+    /// Null when the count was never established — rows ingested before it was recorded.
+    /// </summary>
+    public int? TeamEntryCount { get; set; }
+
+    /// <summary>
+    /// How many AI entries this race had. They are not Drivers and hold no racing identity, so
+    /// they produce no Race Result either, but they did occupy finishing positions. Null when
+    /// the count was never established. See <see cref="TeamEntryCount"/>.
+    /// </summary>
+    public int? AiEntryCount { get; set; }
+
     // Race context (1.3) — populated by the ingestion worker.
     public int NumCautions { get; set; }
     public int NumCautionLaps { get; set; }

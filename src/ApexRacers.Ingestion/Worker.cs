@@ -265,15 +265,30 @@ public sealed class Worker(
                         subsessionId, splits.Length);
                 }
 
+                // Count what the field holds before mapping it, so a Subsession records the
+                // entries it cannot represent rather than presenting the rest as the whole.
+                var entryTally = SubsessionIndexer.TallyEntries(
+                    raceSession.Results.Select(r =>
+                        SubsessionIndexer.ClassifyEntry(r.AI, r.CustomerId)));
+
+                if (entryTally.TeamEntries > 0 || entryTally.AiEntries > 0)
+                {
+                    logger.LogInformation(
+                        "Subsession {SubsessionId} field is partial — {Classified} classified, {TeamEntries} team, {AiEntries} AI",
+                        subsessionId, entryTally.Classified, entryTally.TeamEntries, entryTally.AiEntries);
+                }
+
                 var subsession = SubsessionMapper.ToEntity(
-                    subsessionId, data, weekId, splitPosition);
+                    subsessionId, data, weekId, splitPosition, entryTally);
                 db.Subsessions.Add(subsession);
                 await db.SaveChangesAsync(ct);
 
                 foreach (var r in raceSession.Results)
                 {
-                    // Skip AI drivers and team events (null CustomerId)
-                    if (SubsessionIndexer.ShouldSkipResult(r.AI, r.CustomerId)) continue;
+                    // Only an entry naming one Driver becomes a Race Result; the rest are
+                    // already counted on the Subsession above.
+                    if (SubsessionIndexer.ClassifyEntry(r.AI, r.CustomerId)
+                        is not SubsessionIndexer.EntryDisposition.Classified) continue;
 
                     // Upsert car
                     if (await db.Cars.FindAsync([r.CarId], ct) is null)

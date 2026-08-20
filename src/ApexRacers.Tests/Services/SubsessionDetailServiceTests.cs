@@ -46,6 +46,8 @@ public class SubsessionDetailServiceTests
             EventLapsComplete = 18,
             SplitIndex = 1,
             SplitCount = 3,
+            TeamEntryCount = 4,
+            AiEntryCount = 1,
             WeatherJson = weatherJson,
         });
         db.SubsessionResults.AddRange(
@@ -82,6 +84,8 @@ public class SubsessionDetailServiceTests
         Assert.Equal(2509, dto.StrengthOfField);
         Assert.Equal(1, dto.SplitIndex);
         Assert.Equal(3, dto.SplitCount);
+        Assert.Equal(4, dto.TeamEntryCount);
+        Assert.Equal(1, dto.AiEntryCount);
         Assert.Equal(1, dto.NumCautions);
         Assert.Equal(2, dto.NumLeadChanges);
         Assert.Equal(12, dto.CornersPerLap);
@@ -113,6 +117,22 @@ public class SubsessionDetailServiceTests
 
         Assert.Null(dto.SplitIndex);
         Assert.Null(dto.SplitCount);
+    }
+
+    [Fact]
+    public async Task GetAsync_UncountedFieldEntries_StayNullRatherThanClaimingACompleteField()
+    {
+        await using var db = await SeededDbAsync(weatherJson: null);
+        var sub = await db.Subsessions.FindAsync([100], Ct);
+        sub!.TeamEntryCount = null;
+        sub.AiEntryCount = null;
+        await db.SaveChangesAsync(Ct);
+        var service = new SubsessionDetailService(db);
+
+        var dto = await service.GetAsync(100, Ct);
+
+        Assert.Null(dto.TeamEntryCount);
+        Assert.Null(dto.AiEntryCount);
     }
 
     [Fact]

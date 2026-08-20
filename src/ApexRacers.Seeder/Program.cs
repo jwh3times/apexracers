@@ -444,6 +444,9 @@ foreach (var schedule in schedules)
                 // The sole Split of its Race Session, so index 0 of a count of 1.
                 SplitIndex           = 0,
                 SplitCount           = 1,
+                // Every synthetic entry names one Driver, so the field is complete.
+                TeamEntryCount       = 0,
+                AiEntryCount         = 0,
                 StartTime            = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
             });
             await db.SaveChangesAsync();

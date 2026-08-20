@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- **Race detail no longer presents a partial field as the whole classification.** A result names exactly one Driver, so a team entry — which races under a team's identity rather than one Customer ID — produces none, and neither does an AI entry. Both were silently dropped at ingest while still having held finishing positions, which left the classified field with unexplained gaps and lead-lap and interval context computed over fewer cars than actually raced. A Race now records how many entries it could not represent, of each kind, and the race-detail page says so beneath the results heading. A complete field carries no caveat, and a Race ingested before the counts existed reports them as unknown rather than claiming to be complete.
+- The race-detail response no longer describes itself as the "full classified field." It returns the individually classified Drivers, and now carries the counts that say what is missing alongside them.
 
 ## [0.7.0] - 2026-08-19
 

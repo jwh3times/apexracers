@@ -317,6 +317,10 @@ export interface SubsessionDetail {
   splitIndex: number | null;
   /** How many Splits the Race Session divided into; null exactly when splitIndex is. */
   splitCount: number | null;
+  /** Entries that raced under a team and so produced no result; null when never counted. */
+  teamEntryCount: number | null;
+  /** AI entries, which hold no racing identity; null when never counted. */
+  aiEntryCount: number | null;
   numCautions: number;
   numLeadChanges: number;
   cornersPerLap: number;

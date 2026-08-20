@@ -50,7 +50,8 @@ public class SubsessionMapperTests
         };
 
         var entity = SubsessionMapper.ToEntity(
-            99001, source, weekId, new SubsessionIndexer.SplitPosition(2, 5));
+            99001, source, weekId, new SubsessionIndexer.SplitPosition(2, 5),
+            new SubsessionIndexer.EntryTally(Classified: 18, AiEntries: 1, TeamEntries: 4));
 
         Assert.Equal(99001, entity.Id);
         Assert.Equal(501, entity.SeasonId);
@@ -63,6 +64,8 @@ public class SubsessionMapperTests
         Assert.Equal(end, entity.EndTime);
         Assert.Equal(2, entity.SplitIndex);
         Assert.Equal(5, entity.SplitCount);
+        Assert.Equal(4, entity.TeamEntryCount);
+        Assert.Equal(1, entity.AiEntryCount);
         Assert.Equal(3, entity.NumCautions);
         Assert.Equal(8, entity.NumCautionLaps);
         Assert.Equal(11, entity.NumLeadChanges);
@@ -85,7 +88,8 @@ public class SubsessionMapperTests
             EventBestLapTime = TimeSpan.Zero,
         };
 
-        var entity = SubsessionMapper.ToEntity(1, source, weekId: null, splitPosition: null);
+        var entity = SubsessionMapper.ToEntity(
+            1, source, weekId: null, splitPosition: null, entryTally: default);
 
         Assert.Equal(-1, entity.EventAverageLapSeconds);
         Assert.Equal(-1, entity.EventBestLapSeconds);
@@ -93,6 +97,8 @@ public class SubsessionMapperTests
         Assert.Null(entity.TrackStateJson);
         Assert.Null(entity.SplitIndex);
         Assert.Null(entity.SplitCount);
+        Assert.Equal(0, entity.TeamEntryCount);
+        Assert.Equal(0, entity.AiEntryCount);
     }
 
     [Fact]
