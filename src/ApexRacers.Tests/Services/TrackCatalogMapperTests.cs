@@ -62,7 +62,7 @@ public class TrackCatalogMapperTests
     [Fact]
     public void ToDetail_MapsGeoPitImagesMapAndBests()
     {
-        var bests = new List<PersonalLapDto>
+        var bests = new List<UploadedBestDto>
         {
             new(132, "Merc GT3", 149, "Lime Rock Park", "Grand Prix", 48.9, 5, DateTimeOffset.UtcNow),
         };
@@ -80,6 +80,6 @@ public class TrackCatalogMapperTests
         Assert.Equal(
             "https://members-assets.iracing.com/public/track-maps/tracks_limerock/1-limerock-full/",
             detail.TrackMapUrl);
-        Assert.Equal("Lime Rock Park", Assert.Single(detail.YourBestLaps).TrackName);
+        Assert.Equal("Lime Rock Park", Assert.Single(detail.YourUploadedBests).TrackName);
     }
 }

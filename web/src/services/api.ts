@@ -83,7 +83,7 @@ export interface CarAnalytics {
   percentileHistory: WeeklyPercentile[];
 }
 
-export interface PersonalLap {
+export interface UploadedBest {
   carId: number;
   carName: string;
   trackId: number; // the track identity; trackName is the venue's and is shared by every layout
@@ -166,8 +166,8 @@ export type LapSessionType =
   'Unknown' | 'Practice' | 'Qualifying' | 'TimeTrial' | 'Race' | 'LoneQualify';
 
 export interface PersonalBestEvidenceOptions {
-  includePersonalLaps?: boolean;
-  personalLapTypes?: LapSessionType[];
+  includeUploadedLaps?: boolean;
+  uploadedLapTypes?: LapSessionType[];
 }
 
 export interface AdminUser {
@@ -641,7 +641,7 @@ export interface CarCatalogDetail extends CarCatalogItem {
   largeImageUrl: string | null;
   logoUrl: string | null;
   carClasses: CarClassRef[];
-  yourBestLaps: PersonalLap[];
+  yourUploadedBests: UploadedBest[];
 }
 
 export interface TrackCatalogItem {
@@ -664,7 +664,7 @@ export interface TrackCatalogDetail extends TrackCatalogItem {
   hasSvgMap: boolean;
   largeImageUrl: string | null;
   trackMapUrl: string | null;
-  yourBestLaps: PersonalLap[];
+  yourUploadedBests: UploadedBest[];
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────────
@@ -687,8 +687,8 @@ function appendPersonalBestEvidence(
   params: URLSearchParams,
   options?: PersonalBestEvidenceOptions
 ): URLSearchParams {
-  if (options?.includePersonalLaps) params.set('includePersonalLaps', 'true');
-  options?.personalLapTypes?.forEach(type => params.append('personalLapTypes', type));
+  if (options?.includeUploadedLaps) params.set('includeUploadedLaps', 'true');
+  options?.uploadedLapTypes?.forEach(type => params.append('uploadedLapTypes', type));
   return params;
 }
 
@@ -819,7 +819,7 @@ export const api = {
   },
 
   /** GET /api/telemetry/laps — personal best per track+car for the authenticated user */
-  getMyLaps(signal?: AbortSignal): Promise<PersonalLap[]> {
+  getMyUploadedBests(signal?: AbortSignal): Promise<UploadedBest[]> {
     return request('/api/telemetry/laps', { signal });
   },
 

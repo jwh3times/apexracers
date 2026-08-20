@@ -10,7 +10,7 @@ vi.mock('../../services/api', async importOriginal => {
   return mockApiModule(importOriginal);
 });
 
-const mockGetMyLaps = vi.mocked(api.getMyLaps);
+const mockGetMyLaps = vi.mocked(api.getMyUploadedBests);
 
 function renderPage(search = '') {
   return render(

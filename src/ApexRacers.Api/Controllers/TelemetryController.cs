@@ -12,7 +12,7 @@ namespace ApexRacers.Api.Controllers;
 [Authorize]
 public class TelemetryController(
     TelemetryUploadService uploadService,
-    PersonalLapService lapService) : ControllerBase
+    UploadedLapService lapService) : ControllerBase
 {
     // Reads the user ID from whichever claim the JWT handler has stored it under.
     // JsonWebTokenHandler (the .NET 8+ default) does not remap "sub" → ClaimTypes.NameIdentifier,
@@ -67,7 +67,7 @@ public class TelemetryController(
         if (userId is null)
             return Unauthorized();
 
-        var laps = await lapService.GetPersonalBestsAsync(userId.Value, ct);
+        var laps = await lapService.GetUploadedBestsAsync(userId.Value, ct);
         return Ok(laps);
     }
 }

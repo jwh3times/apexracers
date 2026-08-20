@@ -47,7 +47,7 @@ public class ScheduleService(AppDbContext db)
 
         var pbTrackIds = userId is null
             ? []
-            : (await db.PersonalLaps
+            : (await db.UploadedLaps
                 .Where(p => p.UserId == userId)
                 .Select(p => p.TrackId)
                 .Distinct()

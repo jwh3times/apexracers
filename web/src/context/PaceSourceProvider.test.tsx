@@ -15,7 +15,7 @@ function Consumer() {
   return (
     <>
       <span>{value.mode}</span>
-      <span>{evidenceOptions.personalLapTypes?.join(',') ?? 'all-types'}</span>
+      <span>{evidenceOptions.uploadedLapTypes?.join(',') ?? 'all-types'}</span>
       <button onClick={() => setValue({ mode: 'blend', sessions: ['Race'] })}>Blend race</button>
       <button onClick={() => setValue({ mode: 'blend', sessions: [] })}>Blend all</button>
     </>

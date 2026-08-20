@@ -32,8 +32,8 @@ public class WeekController(
     public async Task<IActionResult> GetMyPercentilesAsync(
         int seriesId,
         int weekNumber,
-        [FromQuery] bool includePersonalLaps = false,
-        [FromQuery] List<LapSessionType>? personalLapTypes = null,
+        [FromQuery] bool includeUploadedLaps = false,
+        [FromQuery] List<LapSessionType>? uploadedLapTypes = null,
         CancellationToken ct = default)
     {
         var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
@@ -42,7 +42,7 @@ public class WeekController(
 
         var subjectDriverCustId = await subjectDriverContext
             .GetRequiredSubjectDriverCustIdAsync(userId, ct);
-        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
+        var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
         return Ok(await recommendations.GetMyPercentilesAsync(
             seriesId, weekNumber, subjectDriverCustId, evidence, ct));
     }

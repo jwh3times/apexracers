@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { api, type PersonalLap, type TelemetryUploadResult } from '../../services/api';
+import { api, type UploadedBest, type TelemetryUploadResult } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 
 type FileStatus = {
@@ -18,7 +18,7 @@ function formatDate(iso: string): string {
   });
 }
 
-function trackLabel(lap: PersonalLap): string {
+function trackLabel(lap: UploadedBest): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
@@ -96,7 +96,7 @@ export default function TelemetryPage() {
   const [queue, setQueue] = useState<FileStatus[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [recentLaps, setRecentLaps] = useState<PersonalLap[]>([]);
+  const [recentLaps, setRecentLaps] = useState<UploadedBest[]>([]);
   const [lapsLoading, setLapsLoading] = useState(true);
 
   const isUploading = queue.some(f => f.status === 'pending' || f.status === 'uploading');
@@ -109,7 +109,7 @@ export default function TelemetryPage() {
   function refreshLaps() {
     setLapsLoading(true);
     api
-      .getMyLaps()
+      .getMyUploadedBests()
       .then(laps => setRecentLaps(laps.slice(0, 5)))
       .catch(() => {
         /* silently ignore — user may not be authenticated */
@@ -122,7 +122,7 @@ export default function TelemetryPage() {
   useEffect(() => {
     let cancelled = false;
     api
-      .getMyLaps()
+      .getMyUploadedBests()
       .then(laps => {
         if (!cancelled) setRecentLaps(laps.slice(0, 5));
       })

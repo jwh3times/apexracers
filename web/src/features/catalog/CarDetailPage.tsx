@@ -74,10 +74,12 @@ export default function CarDetailPage() {
             </div>
           )}
 
-          {resource.data.yourBestLaps.length > 0 && (
+          {resource.data.yourUploadedBests.length > 0 && (
             <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
               <div className="card-hp scan-texture border-b border-line-2">
-                <h3 className="text-section-head text-on-surface">Your best laps in this car</h3>
+                <h3 className="text-section-head text-on-surface">
+                  Your best uploaded laps in this car
+                </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -89,7 +91,7 @@ export default function CarDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {resource.data.yourBestLaps.map(l => (
+                    {resource.data.yourUploadedBests.map(l => (
                       <tr key={l.trackId} className="border-b border-line-2/60 last:border-0">
                         <td className="td-p text-body-fluid text-on-surface">
                           <Link

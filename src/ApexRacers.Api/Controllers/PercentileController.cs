@@ -18,12 +18,12 @@ public class PercentileController(PercentileCalculationService percentile) : Con
         int weekNumber,
         int carId,
         [FromQuery] long customerId,
-        [FromQuery] bool includePersonalLaps = false,
-        [FromQuery] List<LapSessionType>? personalLapTypes = null,
+        [FromQuery] bool includeUploadedLaps = false,
+        [FromQuery] List<LapSessionType>? uploadedLapTypes = null,
         CancellationToken ct = default)
     {
         Guid? callerUserId = Guid.TryParse(User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var g) ? g : null;
-        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
+        var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
         var result = await percentile.ComputeAndCacheAsync(
             seriesId, weekNumber, carId, customerId, evidence, callerUserId, ct);
         return result is null ? NotFound() : Ok(result);

@@ -124,7 +124,7 @@ public record TelemetryUploadResultDto(
 /// <c>TrackId</c> — <c>TrackName</c> is the venue's and is shared by every layout there, so it
 /// is a label, not an identity.
 /// </summary>
-public record PersonalLapDto(
+public record UploadedBestDto(
     int CarId,
     string CarName,
     int TrackId,
@@ -550,7 +550,7 @@ public record CarCatalogDetailDto(
     string? LargeImageUrl,
     string? LogoUrl,
     IReadOnlyList<CarClassRefDto> CarClasses,
-    IReadOnlyList<PersonalLapDto> YourBestLaps);
+    IReadOnlyList<UploadedBestDto> YourUploadedBests);
 
 /// <summary>One track configuration in the catalog browse grid.</summary>
 public record TrackCatalogItemDto(
@@ -582,7 +582,7 @@ public record TrackCatalogDetailDto(
     string? SmallImageUrl,
     string? LargeImageUrl,
     string? TrackMapUrl,
-    IReadOnlyList<PersonalLapDto> YourBestLaps);
+    IReadOnlyList<UploadedBestDto> YourUploadedBests);
 
 // ── Strategy & setup intelligence (3.3) ──────────────────────────────────────
 

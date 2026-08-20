@@ -15,15 +15,15 @@ public class UserAnalyticsController(UserAnalyticsService analytics) : Controlle
     [HttpGet]
     public async Task<IActionResult> GetAnalyticsAsync(
         [FromQuery] int? seriesId,
-        [FromQuery] bool includePersonalLaps = false,
-        [FromQuery] List<LapSessionType>? personalLapTypes = null,
+        [FromQuery] bool includeUploadedLaps = false,
+        [FromQuery] List<LapSessionType>? uploadedLapTypes = null,
         CancellationToken ct = default)
     {
         var userIdStr = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        var evidence = PersonalBestEvidence.FromRequest(includePersonalLaps, personalLapTypes);
+        var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
         return Ok(await analytics.GetAnalyticsAsync(userId, seriesId, evidence, ct));
     }
 }

@@ -56,9 +56,9 @@ public class UserAnalyticsServiceTests
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_PersonalLapBeatsRaceBest_OverridesPersonalBest()
+    public async Task GetAnalyticsAsync_UploadedLapBeatsRaceBest_OverridesPersonalBest()
     {
-        // A telemetry PersonalLap at the same car+track is faster than the race best, so the
+        // A telemetry UploadedLap at the same car+track is faster than the race best, so the
         // analytics personal-best is overlaid from it (UserAnalyticsService lines 95-99).
         await using var db = DbContextFactory.Create();
         var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
@@ -73,7 +73,7 @@ public class UserAnalyticsServiceTests
             Car = car, Week = week,
         });
         AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5); // race best
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
             IsValidLap = true, SessionType = LapSessionType.Race,
@@ -174,7 +174,7 @@ public class UserAnalyticsServiceTests
             Car = car, Week = week,
         });
         AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5);
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
             IsValidLap = true, SessionType = LapSessionType.Race,
@@ -202,7 +202,7 @@ public class UserAnalyticsServiceTests
             PercentileRank = 75.0, SampleSize = 60, ComputedAt = DateTimeOffset.UtcNow,
             Car = car, Week = week,
         });
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId,
             CarId = car.Id,

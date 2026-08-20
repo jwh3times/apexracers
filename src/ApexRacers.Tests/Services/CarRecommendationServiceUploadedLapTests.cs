@@ -84,7 +84,7 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
     private static void AddUploadedLap(
         AppDbContext db, Guid userId, int carId, double lapSeconds, DateTimeOffset recordedAt,
         LapSessionType sessionType = LapSessionType.Race) =>
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = carId, TrackId = 99,
             LapTimeSeconds = lapSeconds, IsValidLap = true, SessionType = sessionType,

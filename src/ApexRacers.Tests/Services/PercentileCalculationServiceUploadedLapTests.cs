@@ -86,7 +86,7 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
     private static void AddUploadedLap(
         AppDbContext db, Guid userId, Car car, Track track, double lapSeconds,
         DateTimeOffset recordedAt, LapSessionType sessionType = LapSessionType.Practice) =>
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = track.Id,
             LapTimeSeconds = lapSeconds, IsValidLap = true, SessionType = sessionType,

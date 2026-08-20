@@ -47,7 +47,7 @@ public class CarCatalogServiceTests
         db.CarClasses.Add(new CarClass { Id = 2523, Name = "GT3 Class", ShortName = "GT3" });
         db.CarClassCars.Add(new CarClassCar { CarClassId = 2523, CarId = 132 });
         db.Tracks.Add(new Track { Id = 18, Name = "Spa", ConfigName = "GP" });
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             Id = Guid.NewGuid(), UserId = userId, CarId = 132, TrackId = 18,
             LapTimeSeconds = 138.5, IsValidLap = true, RecordedAt = DateTimeOffset.UtcNow,
@@ -60,7 +60,7 @@ public class CarCatalogServiceTests
         Assert.Equal(132, detail.CarId);
         Assert.Equal("Merc GT3", detail.Name);
         Assert.Equal(2523, Assert.Single(detail.CarClasses).CarClassId);
-        var best = Assert.Single(detail.YourBestLaps);
+        var best = Assert.Single(detail.YourUploadedBests);
         Assert.Equal("Spa", best.TrackName);
         Assert.Equal(138.5, best.BestLapSeconds, precision: 3);
     }
@@ -75,7 +75,7 @@ public class CarCatalogServiceTests
 
         var detail = await service.GetAsync(132, null, Ct);
 
-        Assert.Empty(detail.YourBestLaps);
+        Assert.Empty(detail.YourUploadedBests);
     }
 
     [Fact]

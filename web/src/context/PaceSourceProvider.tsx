@@ -22,8 +22,8 @@ function PaceSourceState({ children }: { children: ReactNode }) {
   const evidenceOptions = useMemo<PersonalBestEvidenceOptions>(() => {
     const blended = value.mode === 'blend';
     return {
-      includePersonalLaps: blended,
-      personalLapTypes: blended && value.sessions.length > 0 ? value.sessions : undefined,
+      includeUploadedLaps: blended,
+      uploadedLapTypes: blended && value.sessions.length > 0 ? value.sessions : undefined,
     };
   }, [value]);
 

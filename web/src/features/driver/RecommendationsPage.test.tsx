@@ -231,7 +231,7 @@ describe('RecommendationsPage', () => {
     expect(screen.queryByText(/no active series found/i)).not.toBeInTheDocument();
   });
 
-  it('switching to blend mode re-fetches with includePersonalLaps true', async () => {
+  it('switching to blend mode re-fetches with includeUploadedLaps true', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetRecs.mockResolvedValue([]);
     renderPage('?seriesId=1');
@@ -244,7 +244,7 @@ describe('RecommendationsPage', () => {
       expect(mockGetRecs).toHaveBeenCalledWith(
         1,
         10,
-        expect.objectContaining({ includePersonalLaps: true }),
+        expect.objectContaining({ includeUploadedLaps: true }),
         expect.any(AbortSignal)
       )
     );

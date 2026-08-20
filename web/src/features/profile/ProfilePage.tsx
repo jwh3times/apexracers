@@ -5,7 +5,7 @@ import {
   type Achievements,
   type Award,
   type DriverProfile,
-  type PersonalLap,
+  type UploadedBest,
   type Series,
 } from '../../services/api';
 import ResourceView, { NotLinkedCard } from '../../components/ResourceView';
@@ -234,7 +234,7 @@ function TrophyCase({ resource }: { resource: Resource<Achievements> }) {
   );
 }
 
-function trackLabel(lap: PersonalLap): string {
+function trackLabel(lap: UploadedBest): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
@@ -298,7 +298,7 @@ export default function ProfilePage() {
   const { enabled: showIracing } = useIracingSurface();
 
   const linked = !!user?.iRacingCustomerId;
-  const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
+  const lapsResource = useResource(signal => api.getMyUploadedBests(signal), [], {
     onError: { fallback: [] },
   });
   const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
@@ -333,7 +333,7 @@ export default function ProfilePage() {
 
   // Best lap per car, sorted fastest first
   const carBests = Object.values(
-    laps.reduce<Record<number, PersonalLap>>((acc, lap) => {
+    laps.reduce<Record<number, UploadedBest>>((acc, lap) => {
       if (!acc[lap.carId] || lap.bestLapSeconds < acc[lap.carId].bestLapSeconds) {
         acc[lap.carId] = lap;
       }
@@ -395,7 +395,7 @@ export default function ProfilePage() {
           <div className="glass-panel p-4 rounded-xl flex-1 md:w-36 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-gold/5 to-transparent pointer-events-none" />
             <span className="font-label-caps text-label-caps text-on-surface-variant mb-1">
-              PERSONAL BEST
+              UPLOADED BEST
             </span>
             <span className="font-data-lg text-data-lg text-gold">
               {lapsLoading ? '—' : bestLap ? formatLapTime(bestLap.bestLapSeconds) : '—'}
@@ -452,7 +452,7 @@ export default function ProfilePage() {
               <span className="material-symbols-outlined" aria-hidden="true">
                 data_table
               </span>
-              Personal Best by Car
+              Uploaded Best by Car
             </h3>
             <Link
               to="/my-laps"
@@ -504,7 +504,7 @@ export default function ProfilePage() {
                       BEST TRACK
                     </th>
                     <th className="p-4 font-label-caps text-label-caps text-on-surface-variant text-right">
-                      PERSONAL BEST
+                      UPLOADED BEST
                     </th>
                     <th className="p-4 font-label-caps text-label-caps text-on-surface-variant text-right">
                       LAPS

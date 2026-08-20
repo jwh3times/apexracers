@@ -194,9 +194,9 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_PersonalLapPath_ExcludesCarWhenFlagOff()
+    public async Task GetRecommendationsAsync_UploadedLapPath_ExcludesCarWhenFlagOff()
     {
-        // Same setup as above but includePersonalLaps=false → car should not appear.
+        // Same setup as above but includeUploadedLaps=false → car should not appear.
         await using var db = DbContextFactory.Create();
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
 
@@ -205,7 +205,7 @@ public class CarRecommendationServiceTests
 
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = 1, TrackId = 99,
             LapTimeSeconds = 65.0, IsValidLap = true,
@@ -280,7 +280,7 @@ public class CarRecommendationServiceTests
 
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId,
             CarId = car2.Id,

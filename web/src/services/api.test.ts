@@ -185,12 +185,12 @@ describe('api', () => {
       mockFetchOk([]);
 
       await api.getMyWeekPercentiles(7, 12, {
-        includePersonalLaps: true,
-        personalLapTypes: ['Race', 'Practice'],
+        includeUploadedLaps: true,
+        uploadedLapTypes: ['Race', 'Practice'],
       });
 
       expect(fetch).toHaveBeenCalledWith(
-        '/api/series/7/weeks/12/my-percentiles?includePersonalLaps=true&personalLapTypes=Race&personalLapTypes=Practice',
+        '/api/series/7/weeks/12/my-percentiles?includeUploadedLaps=true&uploadedLapTypes=Race&uploadedLapTypes=Practice',
         expect.objectContaining({})
       );
     });
@@ -230,10 +230,10 @@ describe('api', () => {
     it('treats blend with no selected types as all Uploaded Lap types', async () => {
       mockFetchOk({});
 
-      await api.getPercentile(1, 5, 3, 99, { includePersonalLaps: true });
+      await api.getPercentile(1, 5, 3, 99, { includeUploadedLaps: true });
 
       expect(fetch).toHaveBeenCalledWith(
-        '/api/series/1/weeks/5/cars/3/percentile?customerId=99&includePersonalLaps=true',
+        '/api/series/1/weeks/5/cars/3/percentile?customerId=99&includeUploadedLaps=true',
         expect.objectContaining({})
       );
     });
@@ -255,12 +255,12 @@ describe('api', () => {
       mockFetchOk([]);
 
       await api.getRecommendations(1, 4, {
-        includePersonalLaps: true,
-        personalLapTypes: ['Qualifying'],
+        includeUploadedLaps: true,
+        uploadedLapTypes: ['Qualifying'],
       });
 
       expect(fetch).toHaveBeenCalledWith(
-        '/api/users/me/recommendations?seriesId=1&weekNumber=4&includePersonalLaps=true&personalLapTypes=Qualifying',
+        '/api/users/me/recommendations?seriesId=1&weekNumber=4&includeUploadedLaps=true&uploadedLapTypes=Qualifying',
         expect.objectContaining({})
       );
     });
@@ -471,12 +471,12 @@ describe('api', () => {
     });
   });
 
-  // ── getMyLaps ───────────────────────────────────────────────────────────────
+  // ── getMyUploadedBests ───────────────────────────────────────────────────────────────
 
-  describe('getMyLaps', () => {
+  describe('getMyUploadedBests', () => {
     it('calls GET /api/telemetry/laps', async () => {
       mockFetchOk([]);
-      await api.getMyLaps();
+      await api.getMyUploadedBests();
       expect(fetch).toHaveBeenCalledWith('/api/telemetry/laps', expect.objectContaining({}));
     });
   });
@@ -549,12 +549,12 @@ describe('api', () => {
       mockFetchOk([]);
 
       await api.getMyAnalytics(undefined, {
-        includePersonalLaps: true,
-        personalLapTypes: ['TimeTrial'],
+        includeUploadedLaps: true,
+        uploadedLapTypes: ['TimeTrial'],
       });
 
       expect(fetch).toHaveBeenCalledWith(
-        '/api/users/me/analytics?includePersonalLaps=true&personalLapTypes=TimeTrial',
+        '/api/users/me/analytics?includeUploadedLaps=true&uploadedLapTypes=TimeTrial',
         expect.objectContaining({})
       );
     });

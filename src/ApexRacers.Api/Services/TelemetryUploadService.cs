@@ -69,7 +69,7 @@ public class TelemetryUploadService(AppDbContext db)
         // (Keying on individual lap times instead would collapse legitimately-repeated
         // identical times within a single session.)
         var recordedAt = session.SessionDate;
-        var alreadyImported = await db.PersonalLaps.AnyAsync(p =>
+        var alreadyImported = await db.UploadedLaps.AnyAsync(p =>
             p.UserId == userId
             && p.CarId == session.IracingCarId
             && p.TrackId == session.IracingTrackId
@@ -79,7 +79,7 @@ public class TelemetryUploadService(AppDbContext db)
         {
             foreach (var lap in validLaps)
             {
-                db.PersonalLaps.Add(new PersonalLap
+                db.UploadedLaps.Add(new UploadedLap
                 {
                     UserId           = userId,
                     DriverCustId     = recordedBy,

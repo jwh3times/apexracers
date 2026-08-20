@@ -92,10 +92,10 @@ public class UserAnalyticsService(AppDbContext db)
 
             // Materialize the caller's own laps and pick the best per Race Week in memory. Each
             // row below belongs to a different Race Week, so there is no single bound to push into
-            // SQL — and this is one user's uploaded laps, the same volume PersonalBestQuery
+            // SQL — and this is one user's uploaded laps, the same volume UploadedBestQuery
             // already materializes for the same reason.
             var laps = await evidence
-                .ScopeUploadedLaps(db.PersonalLaps)
+                .ScopeUploadedLaps(db.UploadedLaps)
                 .Where(p => p.UserId == userId && p.IsValidLap
                          && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId))
                 .Select(p => new { p.CarId, p.TrackId, p.LapTimeSeconds, p.RecordedAt })

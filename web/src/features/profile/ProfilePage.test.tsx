@@ -29,7 +29,7 @@ vi.mock('../../services/api', async importOriginal => {
   return mockApiModule(importOriginal);
 });
 
-const mockGetMyLaps = vi.mocked(api.getMyLaps);
+const mockGetMyLaps = vi.mocked(api.getMyUploadedBests);
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetProfileStats = vi.mocked(api.getProfileStats);
 const mockGetAchievements = vi.mocked(api.getAchievements);
@@ -395,7 +395,7 @@ describe('ProfilePage', () => {
     mockGetProfileStats.mockResolvedValue(sampleProfile);
     renderPage();
     // Local content stays
-    await waitFor(() => expect(screen.getByText('Personal Best by Car')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Uploaded Best by Car')).toBeInTheDocument());
     expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
     // iRacing sections are gone
     expect(screen.queryByText('Licenses')).not.toBeInTheDocument();
