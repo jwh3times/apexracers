@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.8.1] - 2026-08-20
+
+### Added
+
+- The contributor and agent guides now record how a test filter actually reaches the runner. `global.json` selects the Microsoft Testing Platform, so `dotnet test` hands any option it does not own straight to the test executable — which means `--filter-class` needs a fully qualified type name, and `--nologo` is rejected by the runner and surfaces as `Zero tests ran` with exit code 5. That failure reads as a broken filter rather than as a bad flag, and it cost an investigation to tell the two apart; both rules now sit beside the commands they govern, along with the pointer to the runner's own `--help` for the full filter vocabulary.
+
+### Fixed
+
+- The agent-config sync check no longer reports permanent drift over line endings alone. It compared each skill's `SKILL.md` as normalized text but every other file in the generated tree byte-for-byte, so any tool that rewrote `.claude/skills/` with Windows line endings after checkout left those files failing `--check` indefinitely, with no content difference to point at. Committed content was never affected — git normalizes on the way in, so the repository and CI stayed correct and the failure was visible only to a Windows working copy. Text files are now normalized the way hook scripts already were, and anything that is not text still copies byte-for-byte, so a future binary asset is untouched.
+
 ## [0.8.0] - 2026-08-20
 
 ### Added
@@ -698,7 +708,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/jwh3times/apexracers/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jwh3times/apexracers/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/jwh3times/apexracers/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jwh3times/apexracers/compare/v0.6.14...v0.7.0
