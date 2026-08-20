@@ -47,7 +47,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         // Fetch the authenticated caller's profile for Uploaded Lap lookup and cache upsert.
         // Never use the caller-supplied customerId for this lookup — that would allow any user
-        // to read another user's private personal laps or write cache rows under their account.
+        // to read another user's private Uploaded Laps or write cache rows under their account.
         var user = callerUserId.HasValue
             ? await db.Users.FirstOrDefaultAsync(u => u.Id == callerUserId.Value, ct)
             : null;
@@ -64,7 +64,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         if (evidence.IncludesUploadedLaps && user?.IRacingCustomerId == customerId && window is { } weekWindow)
         {
             var scoped = evidence
-                .ScopeUploadedLaps(db.PersonalLaps)
+                .ScopeUploadedLaps(db.UploadedLaps)
                 .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId)
                 .Where(p => p.IsValidLap);
 

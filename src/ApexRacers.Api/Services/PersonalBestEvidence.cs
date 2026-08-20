@@ -18,16 +18,16 @@ public sealed class PersonalBestEvidence(
     public bool IncludesUploadedLaps { get; } = includesUploadedLaps;
 
     public static PersonalBestEvidence FromRequest(
-        bool includePersonalLaps,
-        IReadOnlyList<LapSessionType>? personalLapTypes)
+        bool includeUploadedLaps,
+        IReadOnlyList<LapSessionType>? uploadedLapTypes)
     {
-        if (!includePersonalLaps)
+        if (!includeUploadedLaps)
             return OfficialRaceLapsOnly;
 
-        return new PersonalBestEvidence(true, personalLapTypes);
+        return new PersonalBestEvidence(true, uploadedLapTypes);
     }
 
-    public IQueryable<PersonalLap> ScopeUploadedLaps(IQueryable<PersonalLap> laps)
+    public IQueryable<UploadedLap> ScopeUploadedLaps(IQueryable<UploadedLap> laps)
     {
         if (!IncludesUploadedLaps)
             return laps.Where(_ => false);

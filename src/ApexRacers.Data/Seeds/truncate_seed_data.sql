@@ -1,5 +1,5 @@
 -- Removes ALL data from the iracing schema so the database can be re-seeded
--- from scratch. Identity tables, PersonalLaps, and FeatureFlags are preserved.
+-- from scratch. Identity tables, UploadedLaps, and FeatureFlags are preserved.
 --
 -- WARNING: CarPercentileResults is also erased. This table is written by both
 -- the seeder and by live API calls (CarRecommendationService, PercentileCalculationService).
@@ -33,6 +33,6 @@ DELETE FROM iracing."Series";
 
 -- Cars, Tracks, CarClasses, and CarClassCars are intentionally kept:
 -- the seeder re-adds them idempotently, and Cars/Tracks are referenced
--- by PersonalLaps which must be preserved.
+-- by UploadedLaps which must be preserved.
 
 COMMIT;

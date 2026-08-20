@@ -26,17 +26,17 @@ public class TrackCatalogService(AppDbContext db)
         var track = await db.Tracks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == trackId, ct)
             ?? throw new KeyNotFoundException($"Track {trackId} was not found in the catalog.");
 
-        IReadOnlyList<PersonalLapDto> bests = userId is { } uid
+        IReadOnlyList<UploadedBestDto> bests = userId is { } uid
             ? await PersonalBestsForTrackAsync(uid, trackId, ct)
             : [];
 
         return TrackCatalogMapper.ToDetail(track, bests);
     }
 
-    private Task<List<PersonalLapDto>> PersonalBestsForTrackAsync(
+    private Task<List<UploadedBestDto>> PersonalBestsForTrackAsync(
         Guid userId, int trackId, CancellationToken ct) =>
-        PersonalBestQuery.RunAsync(
-            db.PersonalLaps.Where(l => l.UserId == userId && l.TrackId == trackId),
-            PersonalBestOrder.FastestFirst,
+        UploadedBestQuery.RunAsync(
+            db.UploadedLaps.Where(l => l.UserId == userId && l.TrackId == trackId),
+            UploadedBestOrder.FastestFirst,
             ct);
 }

@@ -25,5 +25,5 @@ public class Car
     public ICollection<SeasonCar> SeasonCars { get; set; } = [];
     public ICollection<CarClassCar> CarClassCars { get; set; } = [];
     public ICollection<CarPercentileResult> CarPercentileResults { get; set; } = [];
-    public ICollection<PersonalLap> PersonalLaps { get; set; } = [];
+    public ICollection<UploadedLap> UploadedLaps { get; set; } = [];
 }

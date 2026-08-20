@@ -79,7 +79,7 @@ public class CarRecommendationService(AppDbContext db)
         if (evidence.IncludesUploadedLaps && user is not null && window is { } weekWindow)
         {
             personalBestByCar = await evidence
-                .ScopeUploadedLaps(db.PersonalLaps)
+                .ScopeUploadedLaps(db.UploadedLaps)
                 .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId && p.IsValidLap)
                 .Where(p => p.RecordedAt >= weekWindow.Start && p.RecordedAt < weekWindow.End)
                 .GroupBy(p => p.CarId)
@@ -184,15 +184,15 @@ public class CarRecommendationService(AppDbContext db)
                     BestLapSeconds: driverBest.LapSeconds,
                     BestLapEvidence: driverBest.Evidence));
             }
-            else if (personalBestByCar.TryGetValue(carId, out var personalLap))
+            else if (personalBestByCar.TryGetValue(carId, out var uploadedLap))
             {
-                // Personal lap path — driver uploaded a lap for this car at this track but has
+                // Uploaded-lap path — driver uploaded a lap for this car at this track but has
                 // no SubsessionResult for it this week. Compute a fresh percentile against the
                 // current field, which they join on the strength of that uploaded lap.
                 var otherLaps = carField.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList();
                 var total = FieldPercentile.FieldSize(otherLaps);
-                var percentileRank = FieldPercentile.Rank(personalLap, otherLaps);
-                var topShare = FieldPercentile.TopSharePercent(personalLap, otherLaps);
+                var percentileRank = FieldPercentile.Rank(uploadedLap, otherLaps);
+                var topShare = FieldPercentile.TopSharePercent(uploadedLap, otherLaps);
 
                 var newAvg = RecordPercentileReading(
                     user, cachedPercentiles, existingCacheThisWeek,
@@ -210,14 +210,14 @@ public class CarRecommendationService(AppDbContext db)
                     TopSharePercent: topShare,
                     SampleSize: total,
                     ProjectedLapSeconds: plProjected.Value,
-                    BestLapSeconds: personalLap,
+                    BestLapSeconds: uploadedLap,
                     // No comparison to make: this branch is reached only because the driver has
                     // no Race Lap in this car this week.
                     BestLapEvidence: LapEvidence.UploadedLap));
             }
             else
             {
-                // Projected path — driver hasn't raced this car this week and has no personal lap.
+                // Projected path — driver hasn't raced this car this week and has no uploaded lap.
                 double historicalPercentile;
                 if (cachedPercentiles.TryGetValue(carId, out var priorTuple))
                 {
@@ -259,7 +259,7 @@ public class CarRecommendationService(AppDbContext db)
 
     /// <summary>
     /// The caller's own percentile per car for a week, for the Week Detail "Your pct" column.
-    /// Reuses <see cref="GetRecommendationsAsync"/> (incl. personal laps) and keeps only cars the
+    /// Reuses <see cref="GetRecommendationsAsync"/> (incl. Uploaded Laps) and keeps only cars the
     /// caller actually has a lap for this week (<c>BestLapSeconds</c> set) — projected-only cars,
     /// whose percentile is a historical estimate rather than a real reading, are excluded.
     /// </summary>

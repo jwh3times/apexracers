@@ -80,8 +80,8 @@ describe('NotificationsBell', () => {
 
     await waitFor(() =>
       expect(mockGetMyAnalytics).toHaveBeenCalledWith(undefined, {
-        includePersonalLaps: true,
-        personalLapTypes: undefined,
+        includeUploadedLaps: true,
+        uploadedLapTypes: undefined,
       })
     );
   });

@@ -15,7 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Car> Cars => Set<Car>();
     public DbSet<Subsession> Subsessions => Set<Subsession>();
     public DbSet<SubsessionResult> SubsessionResults => Set<SubsessionResult>();
-    public DbSet<PersonalLap> PersonalLaps => Set<PersonalLap>();
+    public DbSet<UploadedLap> UploadedLaps => Set<UploadedLap>();
     public DbSet<CarPercentileResult> CarPercentileResults => Set<CarPercentileResult>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<Track> Tracks => Set<Track>();

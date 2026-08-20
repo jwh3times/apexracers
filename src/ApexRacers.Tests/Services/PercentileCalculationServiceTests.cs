@@ -168,7 +168,7 @@ public class PercentileCalculationServiceTests
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Caller" });
         AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 80);
         AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 90);
-        db.PersonalLaps.Add(new PersonalLap
+        db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId,
             CarId = car.Id,

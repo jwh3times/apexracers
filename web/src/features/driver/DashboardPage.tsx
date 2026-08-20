@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { api, type DriverProfile, type PersonalLap } from '../../services/api';
+import { api, type DriverProfile, type UploadedBest } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { NotLinkedCard } from '../../components/ResourceView';
@@ -9,7 +9,7 @@ import { topShareLabel } from '../../utils/percentile';
 import { raceWeekLabel, raceWeekNumber } from '../../utils/raceWeek';
 import { usePaceSource } from '../../context/PaceSourceContext';
 
-function trackLabel(lap: PersonalLap): string {
+function trackLabel(lap: UploadedBest): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { enabled: showIracing } = useIracingSurface();
   const { evidenceOptions } = usePaceSource();
 
-  const lapsResource = useResource(signal => api.getMyLaps(signal), [], {
+  const lapsResource = useResource(signal => api.getMyUploadedBests(signal), [], {
     onError: { fallback: [] },
   });
   const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
@@ -278,10 +278,10 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Personal bests */}
+          {/* Uploaded bests */}
           <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
             <div className="scan-texture flex items-center justify-between card-hp border-b border-line-2">
-              <h3 className="text-section-head text-on-surface">Personal bests</h3>
+              <h3 className="text-section-head text-on-surface">Uploaded bests</h3>
               <Link
                 to="/my-laps"
                 className="text-small-fluid text-primary-container font-semibold hover:opacity-80 transition-opacity"

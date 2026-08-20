@@ -60,7 +60,7 @@ public class ScheduleServiceTests
                 WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2,
             });
         // User has a personal best at Thruxton (track 532 → week 1).
-        db.PersonalLaps.Add(new PersonalLap { Id = Guid.NewGuid(), UserId = UserId, TrackId = 532, CarId = 132 });
+        db.UploadedLaps.Add(new UploadedLap { Id = Guid.NewGuid(), UserId = UserId, TrackId = 532, CarId = 132 });
         await db.SaveChangesAsync(Ct);
         return db;
     }

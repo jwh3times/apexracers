@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.9.0] - 2026-08-20
+
+### Changed
+
+- **Uploaded telemetry no longer calls its best lap a "personal best."** A personal best is the fastest lap known for a driver from whichever evidence they allow to count, and it is what gets ranked against a field. The telemetry surfaces never saw a race lap at all — they only ever showed the fastest lap a driver had *uploaded* — so a driver with race data and no uploads read "—" under a heading claiming to be their personal best. My Laps, the profile page, the dashboard, and the car and track pages now say "uploaded best" and mean it.
+- The stored entity, its table, and the service, query, enum, and DTO names behind those surfaces use the uploaded-lap language too, so the code says what the rows are rather than what they might turn out to be.
+
+### Removed
+
+- **Two request parameters were renamed:** `includePersonalLaps` is now `includeUploadedLaps`, and `personalLapTypes` is now `uploadedLapTypes`, on the percentile, recommendation, week-detail, and analytics endpoints. The car and track detail responses rename `yourBestLaps` to `yourUploadedBests`. Any client that hardcoded the old names must update; the app's own frontend was updated in step.
+
 ## [0.8.2] - 2026-08-20
 
 ### Fixed
@@ -723,7 +734,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/jwh3times/apexracers/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jwh3times/apexracers/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jwh3times/apexracers/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jwh3times/apexracers/compare/v0.7.1...v0.8.0

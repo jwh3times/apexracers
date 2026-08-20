@@ -265,7 +265,7 @@ describe('WeekDetailPage', () => {
     expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(
       1,
       10,
-      { includePersonalLaps: false, personalLapTypes: undefined },
+      { includeUploadedLaps: false, uploadedLapTypes: undefined },
       expect.any(AbortSignal)
     );
     // percentileRank 92 → ceil(100-92) = TOP 8%
@@ -284,7 +284,7 @@ describe('WeekDetailPage', () => {
       expect(mockGetMyWeekPercentiles).toHaveBeenCalledWith(
         1,
         10,
-        { includePersonalLaps: true, personalLapTypes: undefined },
+        { includeUploadedLaps: true, uploadedLapTypes: undefined },
         expect.any(AbortSignal)
       )
     );

@@ -178,7 +178,7 @@ describe('AnalyticsPage', () => {
     await waitFor(() => {
       expect(mockGetMyAnalytics).toHaveBeenCalledWith(
         1,
-        { includePersonalLaps: false, personalLapTypes: undefined },
+        { includeUploadedLaps: false, uploadedLapTypes: undefined },
         expect.any(AbortSignal)
       );
     });
@@ -194,15 +194,15 @@ describe('AnalyticsPage', () => {
     await waitFor(() =>
       expect(mockGetMyAnalytics).toHaveBeenCalledWith(
         1,
-        { includePersonalLaps: true, personalLapTypes: undefined },
+        { includeUploadedLaps: true, uploadedLapTypes: undefined },
         expect.any(AbortSignal)
       )
     );
     fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
     await waitFor(() =>
       expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
-        includePersonalLaps: true,
-        personalLapTypes: undefined,
+        includeUploadedLaps: true,
+        uploadedLapTypes: undefined,
       })
     );
   });
@@ -281,8 +281,8 @@ describe('AnalyticsPage', () => {
     // MOCK_SERIES[0] has id 1 and currentWeekNumber 5
     await waitFor(() =>
       expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
-        includePersonalLaps: false,
-        personalLapTypes: undefined,
+        includeUploadedLaps: false,
+        uploadedLapTypes: undefined,
       })
     );
     await waitFor(() => {
@@ -329,7 +329,7 @@ describe('AnalyticsPage', () => {
     await waitFor(() =>
       expect(mockGetMyAnalytics).toHaveBeenCalledWith(
         2,
-        { includePersonalLaps: false, personalLapTypes: undefined },
+        { includeUploadedLaps: false, uploadedLapTypes: undefined },
         expect.any(AbortSignal)
       )
     );

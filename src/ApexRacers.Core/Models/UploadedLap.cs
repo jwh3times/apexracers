@@ -1,6 +1,15 @@
 namespace ApexRacers.Core.Models;
 
-public class PersonalLap
+/// <summary>
+/// One Uploaded Lap — a timed Lap ApexRacers knows only because a User submitted the telemetry
+/// that recorded it. Owned by that User and attributed to the Driver the file named.
+/// </summary>
+/// <remarks>
+/// Named for the evidence that produced it, not for what it might turn out to be. "Personal Lap"
+/// read as "a lap that is a personal best", which is not what these rows are: a Personal Best is
+/// chosen from a Race Best and an Uploaded Best together, and most of these rows are neither.
+/// </remarks>
+public class UploadedLap
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

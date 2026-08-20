@@ -75,7 +75,7 @@ public class CarCatalogMapperTests
     public void ToDetail_MapsImagesCarTypesAndPassesThroughClassesAndBests()
     {
         var classes = new List<CarClassRefDto> { new(2523, "GT3 Class") };
-        var bests = new List<PersonalLapDto>
+        var bests = new List<UploadedBestDto>
         {
             new(132, "Mercedes-AMG GT3 2020", 341, "Spa", "Grand Prix", 138.5, 3, DateTimeOffset.UtcNow),
         };
@@ -90,6 +90,6 @@ public class CarCatalogMapperTests
             detail.LogoUrl);
         Assert.Equal(["road", "sportscar"], detail.CarTypes);
         Assert.Equal(2523, Assert.Single(detail.CarClasses).CarClassId);
-        Assert.Equal(132, Assert.Single(detail.YourBestLaps).CarId);
+        Assert.Equal(132, Assert.Single(detail.YourUploadedBests).CarId);
     }
 }

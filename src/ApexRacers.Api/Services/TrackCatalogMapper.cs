@@ -23,7 +23,7 @@ public static class TrackCatalogMapper
 
     public static TrackCatalogDetailDto ToDetail(
         Track track,
-        IReadOnlyList<PersonalLapDto> yourBestLaps) =>
+        IReadOnlyList<UploadedBestDto> yourBestLaps) =>
         new(
             track.Id,
             track.Name,

@@ -58,7 +58,7 @@ public class TelemetryUploadServiceTests
 
         // The rejection happens before the car/track upsert, so a refused upload leaves no trace —
         // not even the catalog rows the happy path creates.
-        Assert.Empty(db.PersonalLaps);
+        Assert.Empty(db.UploadedLaps);
         Assert.Empty(db.Cars);
         Assert.Empty(db.Tracks);
     }
@@ -73,8 +73,8 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 12345);
         await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, db.PersonalLaps.Count());
-        Assert.All(db.PersonalLaps.ToList(), l => Assert.Equal(12345L, l.DriverCustId));
+        Assert.Equal(2, db.UploadedLaps.Count());
+        Assert.All(db.UploadedLaps.ToList(), l => Assert.Equal(12345L, l.DriverCustId));
     }
 
     [Fact]
@@ -88,8 +88,8 @@ public class TelemetryUploadServiceTests
         await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
         // Nothing to check against, so the upload stands — but the lap still says whose it is.
-        Assert.Equal(2, db.PersonalLaps.Count());
-        Assert.All(db.PersonalLaps.ToList(), l => Assert.Equal(999999L, l.DriverCustId));
+        Assert.Equal(2, db.UploadedLaps.Count());
+        Assert.All(db.UploadedLaps.ToList(), l => Assert.Equal(999999L, l.DriverCustId));
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 0);
         await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, db.PersonalLaps.Count());
-        Assert.All(db.PersonalLaps.ToList(), l => Assert.Null(l.DriverCustId));
+        Assert.Equal(2, db.UploadedLaps.Count());
+        Assert.All(db.UploadedLaps.ToList(), l => Assert.Null(l.DriverCustId));
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 2, customerId: 999999);
         await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, db.PersonalLaps.Count());
+        Assert.Equal(2, db.UploadedLaps.Count());
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public class TelemetryUploadServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_ValidLaps_SavesEachLapAsPersonalLap()
+    public async Task ProcessAsync_ValidLaps_SavesEachLapAsUploadedLap()
     {
         await using var db = DbContextFactory.Create();
         var userId = Guid.NewGuid();
@@ -192,7 +192,7 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
         await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
-        var laps = db.PersonalLaps.ToList();
+        var laps = db.UploadedLaps.ToList();
         Assert.Equal(3, laps.Count);
         Assert.All(laps, l =>
         {
@@ -213,12 +213,12 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 1, lapTime: 90.0f, validLaps: true, eventType: LapSessionType.Race);
         await svc.ProcessAsync(stream, userId, TestContext.Current.CancellationToken);
 
-        var lap = Assert.Single(db.PersonalLaps);
+        var lap = Assert.Single(db.UploadedLaps);
         Assert.Equal(LapSessionType.Race, lap.SessionType);
     }
 
     [Fact]
-    public async Task ProcessAsync_InvalidLaps_SavesNoPersonalLaps()
+    public async Task ProcessAsync_InvalidLaps_SavesNoUploadedLaps()
     {
         await using var db = DbContextFactory.Create();
         var svc = new TelemetryUploadService(db);
@@ -226,7 +226,7 @@ public class TelemetryUploadServiceTests
         using var stream = FakeIbtBuilder.Build(laps: 2, validLaps: false);
         await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        Assert.Empty(db.PersonalLaps);
+        Assert.Empty(db.UploadedLaps);
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class TelemetryUploadServiceTests
         using var second = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
         await svc.ProcessAsync(second, userId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(3, db.PersonalLaps.Count());
+        Assert.Equal(3, db.UploadedLaps.Count());
     }
 
     [Fact]
@@ -261,6 +261,6 @@ public class TelemetryUploadServiceTests
         using var b = FakeIbtBuilder.Build(laps: 2, lapTime: 90.0f, validLaps: true);
         await svc.ProcessAsync(b, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        Assert.Equal(4, db.PersonalLaps.Count());
+        Assert.Equal(4, db.UploadedLaps.Count());
     }
 }

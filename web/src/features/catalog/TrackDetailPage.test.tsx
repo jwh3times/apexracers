@@ -28,7 +28,7 @@ const DETAIL: TrackCatalogDetail = {
   smallImageUrl: 'https://img/s.jpg',
   largeImageUrl: 'https://img/l.jpg',
   trackMapUrl: 'https://map/spa/',
-  yourBestLaps: [
+  yourUploadedBests: [
     {
       carId: 132,
       carName: 'Mercedes-AMG GT3',

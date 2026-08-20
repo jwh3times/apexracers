@@ -216,7 +216,7 @@ else
 }
 
 builder.Services.AddScoped<TelemetryUploadService>();
-builder.Services.AddScoped<PersonalLapService>();
+builder.Services.AddScoped<UploadedLapService>();
 
 // ViteDev CORS is only needed when the Vite dev server (port 5173) calls the API
 // directly. In production the React build is served from wwwroot on the same origin.

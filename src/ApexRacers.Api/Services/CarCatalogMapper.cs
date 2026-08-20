@@ -27,7 +27,7 @@ public static class CarCatalogMapper
     public static CarCatalogDetailDto ToDetail(
         Car car,
         IReadOnlyList<CarClassRefDto> carClasses,
-        IReadOnlyList<PersonalLapDto> yourBestLaps) =>
+        IReadOnlyList<UploadedBestDto> yourBestLaps) =>
         new(
             car.Id,
             car.Name,

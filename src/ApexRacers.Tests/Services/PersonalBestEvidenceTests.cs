@@ -9,7 +9,7 @@ public class PersonalBestEvidenceTests
     [Fact]
     public void OfficialRaceLapsOnly_ExcludesUploadedLaps()
     {
-        var uploadedLap = new PersonalLap
+        var uploadedLap = new UploadedLap
         {
             IsValidLap = true,
             SessionType = LapSessionType.Race,
@@ -25,14 +25,14 @@ public class PersonalBestEvidenceTests
     [Fact]
     public void FromRequest_FilteredUploadedLaps_FilterTypesButLeaveValidityToProjection()
     {
-        var invalidRace = new PersonalLap { IsValidLap = false, SessionType = LapSessionType.Race };
-        var validRace = new PersonalLap { IsValidLap = true, SessionType = LapSessionType.Race };
-        var validPractice = new PersonalLap { IsValidLap = true, SessionType = LapSessionType.Practice };
-        var validUnknown = new PersonalLap { IsValidLap = true, SessionType = LapSessionType.Unknown };
+        var invalidRace = new UploadedLap { IsValidLap = false, SessionType = LapSessionType.Race };
+        var validRace = new UploadedLap { IsValidLap = true, SessionType = LapSessionType.Race };
+        var validPractice = new UploadedLap { IsValidLap = true, SessionType = LapSessionType.Practice };
+        var validUnknown = new UploadedLap { IsValidLap = true, SessionType = LapSessionType.Unknown };
 
         var evidence = PersonalBestEvidence.FromRequest(
-            includePersonalLaps: true,
-            personalLapTypes: [LapSessionType.Race]);
+            includeUploadedLaps: true,
+            uploadedLapTypes: [LapSessionType.Race]);
 
         var eligible = evidence.ScopeUploadedLaps(
             new[] { invalidRace, validRace, validPractice, validUnknown }.AsQueryable());
@@ -45,8 +45,8 @@ public class PersonalBestEvidenceTests
     [InlineData(true)]
     public void FromRequest_NoTypeFilter_AllowsEveryUploadedType(bool emptyList)
     {
-        var race = new PersonalLap { IsValidLap = false, SessionType = LapSessionType.Race };
-        var practice = new PersonalLap { IsValidLap = true, SessionType = LapSessionType.Practice };
+        var race = new UploadedLap { IsValidLap = false, SessionType = LapSessionType.Race };
+        var practice = new UploadedLap { IsValidLap = true, SessionType = LapSessionType.Practice };
         IReadOnlyList<LapSessionType>? types = emptyList ? [] : null;
 
         var evidence = PersonalBestEvidence.FromRequest(true, types);

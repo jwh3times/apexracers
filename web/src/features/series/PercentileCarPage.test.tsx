@@ -294,7 +294,7 @@ describe('PercentileCarPage', () => {
     await waitFor(() => expect(screen.getByRole('radiogroup')).toBeInTheDocument());
   });
 
-  it('switching to blend mode re-fetches with includePersonalLaps true', async () => {
+  it('switching to blend mode re-fetches with includeUploadedLaps true', async () => {
     mockIRacingCustomerId = 100001;
     mockGetPercentile.mockResolvedValue(MOCK_RESULT);
     renderPage();
@@ -308,7 +308,7 @@ describe('PercentileCarPage', () => {
         1,
         9001,
         100001,
-        expect.objectContaining({ includePersonalLaps: true })
+        expect.objectContaining({ includeUploadedLaps: true })
       )
     );
   });

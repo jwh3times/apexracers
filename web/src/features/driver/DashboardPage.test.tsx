@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DashboardPage from './DashboardPage';
 import { api, IRacingNotLinkedError } from '../../services/api';
-import type { Series, PersonalLap, DriverProfile, CarAnalytics } from '../../services/api';
+import type { Series, UploadedBest, DriverProfile, CarAnalytics } from '../../services/api';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
@@ -52,7 +52,7 @@ const baseSeries: Series = {
   driverCount: 0,
 };
 
-const baseLap: PersonalLap = {
+const baseLap: UploadedBest = {
   carId: 1,
   carName: 'Porsche 911',
   trackId: 341,
@@ -152,7 +152,7 @@ describe('DashboardPage', () => {
     mockDemoFlag = false;
     vi.clearAllMocks();
     vi.mocked(api.getSeries).mockResolvedValue([]);
-    vi.mocked(api.getMyLaps).mockResolvedValue([]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([]);
     vi.mocked(api.getProfileStats).mockResolvedValue(emptyProfile);
     vi.mocked(api.getMyAnalytics).mockResolvedValue([]);
   });
@@ -166,7 +166,7 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(api.getMyAnalytics).toHaveBeenCalledWith(
         undefined,
-        { includePersonalLaps: true, personalLapTypes: undefined },
+        { includeUploadedLaps: true, uploadedLapTypes: undefined },
         expect.any(AbortSignal)
       )
     );
@@ -179,7 +179,7 @@ describe('DashboardPage', () => {
 
   it('shows dash placeholders while loading', () => {
     vi.mocked(api.getSeries).mockReturnValue(new Promise(() => {}));
-    vi.mocked(api.getMyLaps).mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.getMyUploadedBests).mockReturnValue(new Promise(() => {}));
     vi.mocked(api.getProfileStats).mockReturnValue(new Promise(() => {}));
     vi.mocked(api.getMyAnalytics).mockReturnValue(new Promise(() => {}));
     renderPage();
@@ -235,7 +235,7 @@ describe('DashboardPage', () => {
   });
 
   it('shows total laps count once loaded', async () => {
-    vi.mocked(api.getMyLaps).mockResolvedValue([
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([
       { ...baseLap, lapCount: 15 },
       { ...baseLap, carId: 2, lapCount: 10 },
     ]);
@@ -277,39 +277,39 @@ describe('DashboardPage', () => {
   });
 
   it('renders the laps table with car and track data', async () => {
-    vi.mocked(api.getMyLaps).mockResolvedValue([baseLap]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([baseLap]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Porsche 911')).toBeInTheDocument());
     expect(screen.getByText('Spa — Full Circuit')).toBeInTheDocument();
   });
 
   it('formats lap time as minutes:seconds.milliseconds', async () => {
-    vi.mocked(api.getMyLaps).mockResolvedValue([{ ...baseLap, bestLapSeconds: 130.5 }]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([{ ...baseLap, bestLapSeconds: 130.5 }]);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('2:10.500').length).toBeGreaterThan(0));
   });
 
   it('shows trackName only when configName is empty', async () => {
-    vi.mocked(api.getMyLaps).mockResolvedValue([{ ...baseLap, configName: '' }]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([{ ...baseLap, configName: '' }]);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('Spa').length).toBeGreaterThan(0));
   });
 
   it('shows overall best lap section when laps are present', async () => {
-    vi.mocked(api.getMyLaps).mockResolvedValue([baseLap]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([baseLap]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Overall Best')).toBeInTheDocument());
   });
 
   it('picks the lap with the lowest bestLapSeconds as overall best', async () => {
-    const faster: PersonalLap = { ...baseLap, carName: 'Ferrari', bestLapSeconds: 120.0 };
-    const slower: PersonalLap = {
+    const faster: UploadedBest = { ...baseLap, carName: 'Ferrari', bestLapSeconds: 120.0 };
+    const slower: UploadedBest = {
       ...baseLap,
       carId: 2,
       carName: 'Porsche 911',
       bestLapSeconds: 130.5,
     };
-    vi.mocked(api.getMyLaps).mockResolvedValue([slower, faster]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([slower, faster]);
     renderPage();
     await waitFor(() => {
       const bestSection = screen.getByText('Overall Best').closest('div')!.parentElement!;
@@ -324,7 +324,7 @@ describe('DashboardPage', () => {
 
   it('gracefully handles api errors without crashing', async () => {
     vi.mocked(api.getSeries).mockRejectedValue(new Error('network'));
-    vi.mocked(api.getMyLaps).mockRejectedValue(new Error('network'));
+    vi.mocked(api.getMyUploadedBests).mockRejectedValue(new Error('network'));
     renderPage();
     await waitFor(() =>
       expect(screen.getByText('No active series available.')).toBeInTheDocument()
@@ -333,12 +333,12 @@ describe('DashboardPage', () => {
 
   it('hides iRacing widgets and skips their fetches when iracing-live is off', async () => {
     mockLiveFlag = false;
-    vi.mocked(api.getMyLaps).mockResolvedValue([baseLap]);
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([baseLap]);
     renderPage();
     // Local content stays
     await waitFor(() => expect(screen.getByText('Laps recorded')).toBeInTheDocument());
     expect(screen.getByText('Cars tracked')).toBeInTheDocument();
-    expect(screen.getByText('Personal bests')).toBeInTheDocument();
+    expect(screen.getByText('Uploaded bests')).toBeInTheDocument();
     // iRacing widgets are gone
     expect(screen.queryByText('This week')).not.toBeInTheDocument();
     expect(screen.queryByText('Best percentile')).not.toBeInTheDocument();

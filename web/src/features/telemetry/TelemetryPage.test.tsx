@@ -11,7 +11,7 @@ vi.mock('../../services/api', async importOriginal => {
 });
 
 const mockUpload = vi.mocked(api.uploadTelemetry);
-const mockGetMyLaps = vi.mocked(api.getMyLaps);
+const mockGetMyLaps = vi.mocked(api.getMyUploadedBests);
 
 async function renderPage() {
   await act(async () => {

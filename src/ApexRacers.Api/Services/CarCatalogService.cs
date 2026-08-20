@@ -30,17 +30,17 @@ public class CarCatalogService(AppDbContext db)
             .Join(db.CarClasses, x => x.CarClassId, cc => cc.Id, (_, cc) => new CarClassRefDto(cc.Id, cc.Name))
             .ToListAsync(ct);
 
-        IReadOnlyList<PersonalLapDto> bests = userId is { } uid
+        IReadOnlyList<UploadedBestDto> bests = userId is { } uid
             ? await PersonalBestsForCarAsync(uid, carId, ct)
             : [];
 
         return CarCatalogMapper.ToDetail(car, carClasses, bests);
     }
 
-    private Task<List<PersonalLapDto>> PersonalBestsForCarAsync(
+    private Task<List<UploadedBestDto>> PersonalBestsForCarAsync(
         Guid userId, int carId, CancellationToken ct) =>
-        PersonalBestQuery.RunAsync(
-            db.PersonalLaps.Where(l => l.UserId == userId && l.CarId == carId),
-            PersonalBestOrder.FastestFirst,
+        UploadedBestQuery.RunAsync(
+            db.UploadedLaps.Where(l => l.UserId == userId && l.CarId == carId),
+            UploadedBestOrder.FastestFirst,
             ct);
 }

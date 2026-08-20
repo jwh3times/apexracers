@@ -27,7 +27,7 @@ const DETAIL: CarCatalogDetail = {
   largeImageUrl: 'https://img/l.jpg',
   logoUrl: 'https://img/logo.png',
   carClasses: [{ carClassId: 2523, name: 'GT3 Class' }],
-  yourBestLaps: [
+  yourUploadedBests: [
     {
       carId: 132,
       carName: 'Mercedes-AMG GT3',

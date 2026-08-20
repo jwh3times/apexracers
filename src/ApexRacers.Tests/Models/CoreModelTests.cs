@@ -152,16 +152,16 @@ public class CoreModelTests
     }
 
     [Fact]
-    public void PersonalLap_SessionType_DefaultIsUnknown()
+    public void UploadedLap_SessionType_DefaultIsUnknown()
     {
-        var lap = new PersonalLap();
+        var lap = new UploadedLap();
         Assert.Equal(LapSessionType.Unknown, lap.SessionType);
     }
 
     [Fact]
-    public void PersonalLap_SessionType_CanBeSetToRace()
+    public void UploadedLap_SessionType_CanBeSetToRace()
     {
-        var lap = new PersonalLap { SessionType = LapSessionType.Race };
+        var lap = new UploadedLap { SessionType = LapSessionType.Race };
         Assert.Equal(LapSessionType.Race, lap.SessionType);
     }
 }

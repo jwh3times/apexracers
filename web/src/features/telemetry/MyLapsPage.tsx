@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { api, type PersonalLap } from '../../services/api';
+import { api, type UploadedBest } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
@@ -13,7 +13,7 @@ function formatDate(iso: string): string {
   });
 }
 
-function trackLabel(lap: PersonalLap): string {
+function trackLabel(lap: UploadedBest): string {
   return lap.configName ? `${lap.trackName} — ${lap.configName}` : lap.trackName;
 }
 
@@ -66,7 +66,7 @@ function StatCard({
 }
 
 export default function MyLapsPage() {
-  const resource = useResource(signal => api.getMyLaps(signal), [], {
+  const resource = useResource(signal => api.getMyUploadedBests(signal), [], {
     fallbackMessage: 'Failed to load laps.',
   });
   const laps = resource.status === 'ok' ? resource.data : [];
@@ -141,7 +141,7 @@ export default function MyLapsPage() {
               label="Best Recorded Time"
               value={bestLap ? formatLapTime(bestLap.bestLapSeconds) : '—'}
               icon="workspace_premium"
-              sub={bestLap ? 'Personal best' : undefined}
+              sub={bestLap ? 'Best uploaded lap' : undefined}
               subIcon={bestLap ? 'star' : undefined}
               gold
             />

@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ApexRacers.Data.EntityConfigurations;
 
-public class PersonalLapConfiguration : IEntityTypeConfiguration<PersonalLap>
+public class UploadedLapConfiguration : IEntityTypeConfiguration<UploadedLap>
 {
-    public void Configure(EntityTypeBuilder<PersonalLap> builder)
+    public void Configure(EntityTypeBuilder<UploadedLap> builder)
     {
         builder.HasKey(p => p.Id);
 
@@ -18,12 +18,12 @@ public class PersonalLapConfiguration : IEntityTypeConfiguration<PersonalLap>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(p => p.Car)
-            .WithMany(c => c.PersonalLaps)
+            .WithMany(c => c.UploadedLaps)
             .HasForeignKey(p => p.CarId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(p => p.Track)
-            .WithMany(t => t.PersonalLaps)
+            .WithMany(t => t.UploadedLaps)
             .HasForeignKey(p => p.TrackId)
             .OnDelete(DeleteBehavior.Restrict);
     }

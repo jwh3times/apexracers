@@ -28,5 +28,5 @@ public class Track
     public string? TrackMapUrl { get; set; }      // already an absolute URL from iRacing
 
     public ICollection<Week> Weeks { get; set; } = [];
-    public ICollection<PersonalLap> PersonalLaps { get; set; } = [];
+    public ICollection<UploadedLap> UploadedLaps { get; set; } = [];
 }

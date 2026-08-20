@@ -35,7 +35,7 @@ Two schemas in one database:
 | `SubsessionResults`    | composite   | One Race Result per Driver (SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …). The composite key assumes a Customer ID, so team entries are not representable                                     |
 | `SeasonCarBops`        | composite   | Per-week BoP for one car (SeasonId, WeekNumber, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
 | `CarPercentileResults` | composite   | Cache — one row per (UserId, CarId, SeriesId, WeekId); upserted on each compute                                                                              |
-| `PersonalLaps`         | Guid PK     | One Uploaded Lap — every timed lap of a Telemetry Upload, never a per-car-and-track best; includes `SessionType`, `TrackTempCelsius`, `TrackWetness`, and nullable `DriverCustId` (the Driver the file named; null = not established, including every row written before the column existed) |
+| `UploadedLaps`         | Guid PK     | One Uploaded Lap — every timed lap of a Telemetry Upload, never a per-car-and-track best; includes `SessionType`, `TrackTempCelsius`, `TrackWetness`, and nullable `DriverCustId` (the Driver the file named; null = not established, including every row written before the column existed) |
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
 | `ExternalDataCaches`   | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on `CacheKey` (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
 | `Rivals`               | Guid PK     | A driver a user follows; unique index on (UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
@@ -62,7 +62,7 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Week.Id is a Guid
 
-`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `PersonalLap` (Guid), `RefreshToken` (Guid), and `Rival` (Guid). Do not switch these PKs without a migration plan.
+`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `UploadedLap` (Guid), `RefreshToken` (Guid), and `Rival` (Guid). Do not switch these PKs without a migration plan.
 
 ## Critical indexes
 
@@ -114,10 +114,10 @@ Key access patterns to be aware of:
 - **Analytics** (`UserAnalyticsService`): loads `CarPercentileResults` joined with `Car` and `Week` for a user's history across series.
 - **CarPercentileResult upsert**: check-then-insert-or-update pattern; not a true SQL UPSERT but safe for single-instance API.
 - **Refresh token rotation**: single `SaveChangesAsync` revokes the old `RefreshToken` row (sets `RevokedAt`) and inserts the new one atomically.
-- **Uploaded Best projection** (`PersonalBestQuery`): groups `PersonalLap` rows by `{ CarId, TrackId }` — identifiers, not the `Car.Name`/`Track.Name`/`Track.ConfigName` labels (a Track's `Name` belongs to the venue and is shared by every layout there, so a label-keyed group merges layouts the moment iRacing's labelling stops disambiguating them). Those labels still ride along via `g.First()`, and selecting them from navigation properties alongside the `Min`/`Count`/`Max` aggregates is a shape neither Npgsql nor SQLite translates. It runs `.ToListAsync()` first and groups in memory rather than pushing the `GroupBy` into SQL; the same untranslatable-shape family as the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section (positional-record DTO properties don't translate as `ORDER BY`/`SELECT` targets either). Follow this pattern for any new query that selects a navigation-property-derived label alongside aggregates.
+- **Uploaded Best projection** (`UploadedBestQuery`): groups `UploadedLap` rows by `{ CarId, TrackId }` — identifiers, not the `Car.Name`/`Track.Name`/`Track.ConfigName` labels (a Track's `Name` belongs to the venue and is shared by every layout there, so a label-keyed group merges layouts the moment iRacing's labelling stops disambiguating them). Those labels still ride along via `g.First()`, and selecting them from navigation properties alongside the `Min`/`Count`/`Max` aggregates is a shape neither Npgsql nor SQLite translates. It runs `.ToListAsync()` first and groups in memory rather than pushing the `GroupBy` into SQL; the same untranslatable-shape family as the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section (positional-record DTO properties don't translate as `ORDER BY`/`SELECT` targets either). Follow this pattern for any new query that selects a navigation-property-derived label alongside aggregates.
 - **Race Week window scoping** (`PercentileCalculationService`, `CarRecommendationService`,
   `UserAnalyticsService`): an Uploaded Lap counts toward a Personal Best only when
-  `PersonalLap.RecordedAt` falls inside the Race Week's `Core.RaceWeekWindow` — `RecordedAt >= Start &&
+  `UploadedLap.RecordedAt` falls inside the Race Week's `Core.RaceWeekWindow` — `RecordedAt >= Start &&
   RecordedAt < End`, pushed into SQL as an ordinary `Where`. This range **does not translate on
   SQLite**, only on Npgsql, so tests exercising it live in `PostgreSqlCollection` classes rather than
   the fast SQLite ones — a concrete instance of the `DateTimeOffset` translation gap AGENTS.md's
