@@ -11,7 +11,19 @@ public class Subsession
     public int EventStrengthOfField { get; set; }
     public DateTimeOffset StartTime { get; set; }
     public DateTimeOffset? EndTime { get; set; }
-    public int SplitNum { get; set; }              // 0 = highest SOF split
+    /// <summary>
+    /// Zero-based Split Index within this Subsession's Race Session, ordered by Strength of Field
+    /// descending — 0 is the strongest Split. Null when the Split Index is unknown, which is not the
+    /// same as being the strongest Split: iRacing supplied no splits, or supplied a list this
+    /// Subsession was absent from.
+    /// </summary>
+    public int? SplitIndex { get; set; }
+
+    /// <summary>
+    /// How many Splits the Race Session divided into. Null whenever <see cref="SplitIndex"/> is —
+    /// the two are established together from one payload — so "Split 1 of 3" is never half-known.
+    /// </summary>
+    public int? SplitCount { get; set; }
 
     // Race context (1.3) — populated by the ingestion worker.
     public int NumCautions { get; set; }

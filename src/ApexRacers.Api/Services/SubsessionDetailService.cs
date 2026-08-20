@@ -53,6 +53,8 @@ public class SubsessionDetailService(AppDbContext db)
             sub.Track.Name,
             string.IsNullOrEmpty(sub.Track.ConfigName) ? null : sub.Track.ConfigName,
             sub.EventStrengthOfField,
+            sub.SplitIndex,
+            sub.SplitCount,
             sub.NumCautions,
             sub.NumLeadChanges,
             sub.CornersPerLap,

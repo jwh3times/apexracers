@@ -36,6 +36,8 @@ const DETAIL: SubsessionDetail = {
   trackName: 'Thruxton',
   trackConfigName: 'Club',
   strengthOfField: 2509,
+  splitIndex: 0,
+  splitCount: 3,
   numCautions: 1,
   numLeadChanges: 2,
   cornersPerLap: 12,
@@ -116,6 +118,20 @@ describe('RaceDetailPage', () => {
     expect(screen.getByText('2,509')).toBeInTheDocument(); // SOF
     // Fastest lap (1:06.295) shows in both the KPI and the winner's best-lap cell.
     expect(screen.getAllByText('1:06.295').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders the Split KPI as a one-based position within its Race Session', async () => {
+    mockGetSubsession.mockResolvedValue(DETAIL);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Split')).toBeInTheDocument());
+    expect(screen.getByText('1 of 3')).toBeInTheDocument(); // Split Index 0 of 3
+  });
+
+  it('omits the Split KPI when the Split Index is unknown, rather than calling it the first', async () => {
+    mockGetSubsession.mockResolvedValue({ ...DETAIL, splitIndex: null, splitCount: null });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2,509')).toBeInTheDocument());
+    expect(screen.queryByText('Split')).not.toBeInTheDocument();
   });
 
   it('renders weather KPIs when weather is present', async () => {

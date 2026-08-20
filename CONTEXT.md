@@ -77,8 +77,12 @@ One division of a Race Session, grouping Drivers of comparable Strength of Field
 _Avoid_: Session, Heat, Tier, Bracket
 
 **Split Index**:
-The zero-based position of a Split within its Race Session, ordered by Strength of Field descending; Split Index 0 is the strongest Split. There is no one-based counterpart, because Splits are not shown to Drivers.
-_Avoid_: Split Number, Split Num
+The zero-based position of a Split within its Race Session, ordered by Strength of Field descending; Split Index 0 is the strongest Split. It is derived from the Strength of Field each Split reports rather than from the order iRacing lists them in. A Split Index can be **unknown** — iRacing named no Splits, or named a set this Subsession was absent from — and unknown is a distinct value from index 0, never a stand-in for the strongest Split.
+_Avoid_: Split Num
+
+**Split Number**:
+The one-based counterpart of a Split Index, used only where a Split's position is shown to a reader: the strongest Split of three reads as "Split 1 of 3". Storage, the API, and every request parameter carry the Index; the Number exists at the display boundary alone, exactly as Race Week Index and Race Week Number do.
+_Avoid_: Split Num
 
 **Subsession**:
 The running of one Split and the results it produced, addressed by its iRacing subsession identity. Exactly one Subsession per Split — a Subsession never contains Splits.

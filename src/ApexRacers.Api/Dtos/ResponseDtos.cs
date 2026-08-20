@@ -456,7 +456,11 @@ public record DriverComparisonDto(
     ComparisonSideDto Rival,
     SharedRaceSummaryDto Shared);
 
-/// <summary>Full classified field plus session context for one ingested subsession.</summary>
+/// <summary>
+/// Full classified field plus session context for one ingested subsession. <c>SplitIndex</c> is
+/// zero-based with 0 the strongest Split; it and <c>SplitCount</c> are null together when the
+/// Split's position is unknown, so 0 never stands in for "we don't know".
+/// </summary>
 public record SubsessionDetailDto(
     int SubsessionId,
     DateTimeOffset StartTime,
@@ -464,6 +468,8 @@ public record SubsessionDetailDto(
     string TrackName,
     string? TrackConfigName,
     int StrengthOfField,
+    int? SplitIndex,
+    int? SplitCount,
     int NumCautions,
     int NumLeadChanges,
     int CornersPerLap,

@@ -44,6 +44,8 @@ public class SubsessionDetailServiceTests
             EventBestLapSeconds = 66.295,
             EventAverageLapSeconds = 66.89,
             EventLapsComplete = 18,
+            SplitIndex = 1,
+            SplitCount = 3,
             WeatherJson = weatherJson,
         });
         db.SubsessionResults.AddRange(
@@ -78,6 +80,8 @@ public class SubsessionDetailServiceTests
         Assert.Equal("Thruxton", dto.TrackName);
         Assert.Equal("Club", dto.TrackConfigName);
         Assert.Equal(2509, dto.StrengthOfField);
+        Assert.Equal(1, dto.SplitIndex);
+        Assert.Equal(3, dto.SplitCount);
         Assert.Equal(1, dto.NumCautions);
         Assert.Equal(2, dto.NumLeadChanges);
         Assert.Equal(12, dto.CornersPerLap);
@@ -93,6 +97,22 @@ public class SubsessionDetailServiceTests
 
         Assert.Equal(3, dto.Results[1].FinishPosition);
         Assert.Equal(1854 - 1907, dto.Results[1].IRatingDelta); // -53
+    }
+
+    [Fact]
+    public async Task GetAsync_UnknownSplitPosition_StaysNullInsteadOfReadingAsTheStrongestSplit()
+    {
+        await using var db = await SeededDbAsync(weatherJson: null);
+        var sub = await db.Subsessions.FindAsync([100], Ct);
+        sub!.SplitIndex = null;
+        sub.SplitCount = null;
+        await db.SaveChangesAsync(Ct);
+        var service = new SubsessionDetailService(db);
+
+        var dto = await service.GetAsync(100, Ct);
+
+        Assert.Null(dto.SplitIndex);
+        Assert.Null(dto.SplitCount);
     }
 
     [Fact]

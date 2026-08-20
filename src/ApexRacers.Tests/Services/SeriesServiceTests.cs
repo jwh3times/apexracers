@@ -104,11 +104,11 @@ public class SeriesServiceTests
         var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 99, Track = track, Season = season };
         var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 99, Track = track, Season = season };
         // Official subsession in current week (week2) — 2 cars, 2 drivers
-        var sub2 = new Subsession { Id = 2, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = true, EventStrengthOfField = 200, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitNum = 0, Season = season, Track = track, Week = week2 };
+        var sub2 = new Subsession { Id = 2, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = true, EventStrengthOfField = 200, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week2 };
         // Non-official subsession in current week — should not count
-        var sub3 = new Subsession { Id = 3, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = false, EventStrengthOfField = 50, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitNum = 1, Season = season, Track = track, Week = week2 };
+        var sub3 = new Subsession { Id = 3, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = false, EventStrengthOfField = 50, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 1, SplitCount = 2, Season = season, Track = track, Week = week2 };
         // Official subsession in previous week — should not count
-        var sub1 = new Subsession { Id = 1, SeasonId = 1, WeekNumber = 1, TrackId = 99, OfficialSession = true, EventStrengthOfField = 100, StartTime = DateTimeOffset.UtcNow.AddDays(-14), SplitNum = 0, Season = season, Track = track, Week = week1 };
+        var sub1 = new Subsession { Id = 1, SeasonId = 1, WeekNumber = 1, TrackId = 99, OfficialSession = true, EventStrengthOfField = 100, StartTime = DateTimeOffset.UtcNow.AddDays(-14), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week1 };
 
         db.Series.Add(series);
         db.Seasons.Add(season);

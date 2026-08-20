@@ -7,6 +7,7 @@ import {
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
+import { splitLabel } from '../../utils/split';
 import LapTraceChart from '../../components/LapTraceChart';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
@@ -28,6 +29,15 @@ function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
       <p className="text-kpi-value text-on-surface">{value}</p>
     </div>
   );
+}
+
+/**
+ * Which Split of its Race Session this race was, shown one-based ("1 of 3"). Renders nothing when
+ * the position is unknown — an unknown Split Index must not read as the strongest Split.
+ */
+function SplitKpi({ index, count }: { index: number | null; count: number | null }) {
+  const label = splitLabel(index, count);
+  return label === null ? null : <Kpi label="Split" value={label} />;
 }
 
 function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCustId?: number }) {
@@ -170,6 +180,7 @@ export default function RaceDetailPage() {
 
           <div className="grid grid-kpi gap-fluid mb-6">
             <Kpi label="Strength of Field" value={resource.data.strengthOfField.toLocaleString()} />
+            <SplitKpi index={resource.data.splitIndex} count={resource.data.splitCount} />
             <Kpi label="Cautions" value={resource.data.numCautions} />
             <Kpi label="Lead Changes" value={resource.data.numLeadChanges} />
             <Kpi label="Fastest Lap" value={lap(resource.data.eventBestLapSeconds)} />

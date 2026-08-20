@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- A Subsession's Split Index no longer conflates "the strongest Split" with "we don't know." It is now nullable, and is derived by ranking a Race Session's Splits on the Strength of Field each one reports rather than trusting the order iRacing lists them in, so an out-of-order payload can no longer label a weak Split the strongest. A Subsession missing from its own split list is stored as an unknown position and logged, instead of being recorded as the top Split.
+
+### Added
+
+- Race detail now shows which Split of its Race Session a race was — "Split 1 of 3" — alongside Strength of Field. The KPI is omitted entirely when the position is unknown.
 
 ## [0.6.9] - 2026-08-17
 
