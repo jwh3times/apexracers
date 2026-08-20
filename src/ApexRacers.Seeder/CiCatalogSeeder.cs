@@ -212,7 +212,9 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                     TrackId = week.TrackId,
                     OfficialSession = true,
                     EventStrengthOfField = 1500,
-                    SplitNum = 0,
+                    // The sole Split of its Race Session, so index 0 of a count of 1.
+                    SplitIndex = 0,
+                    SplitCount = 1,
                     StartTime = new DateTimeOffset(
                         week.StartDate.ToDateTime(new TimeOnly(14, 0)), TimeSpan.Zero),
                 });

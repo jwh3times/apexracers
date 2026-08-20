@@ -61,32 +61,85 @@ public class SubsessionIndexerTests
         Assert.Equal("GT3 Sprint", SubsessionIndexer.ResolveSeriesName("GT3 Sprint", 42));
     }
 
-    // ── ResolveSplitNumber ────────────────────────────────────────────────────
+    // ── ResolveSplitPosition ──────────────────────────────────────────────────
+
+    private static SubsessionIndexer.SplitEntry Split(int subsessionId, int sof) =>
+        new(subsessionId, sof);
 
     [Fact]
-    public void ResolveSplitNumber_NullSplits_ReturnsZero()
+    public void ResolveSplitPosition_NullSplits_IsUnknown()
     {
-        Assert.Equal(0, SubsessionIndexer.ResolveSplitNumber(null, 100));
+        Assert.Null(SubsessionIndexer.ResolveSplitPosition(null, 100));
     }
 
     [Fact]
-    public void ResolveSplitNumber_EmptySplits_ReturnsZero()
+    public void ResolveSplitPosition_EmptySplits_IsUnknown()
     {
-        Assert.Equal(0, SubsessionIndexer.ResolveSplitNumber(Array.Empty<int>(), 100));
+        Assert.Null(SubsessionIndexer.ResolveSplitPosition([], 100));
     }
 
     [Fact]
-    public void ResolveSplitNumber_FoundAtIndex_ReturnsIndex()
+    public void ResolveSplitPosition_SubsessionAbsentFromItsOwnSplits_IsUnknown()
     {
-        var splits = new[] { 10, 20, 30 };
-        Assert.Equal(2, SubsessionIndexer.ResolveSplitNumber(splits, 30));
+        var splits = new[] { Split(10, 2500), Split(20, 1200) };
+
+        Assert.Null(SubsessionIndexer.ResolveSplitPosition(splits, 99));
     }
 
     [Fact]
-    public void ResolveSplitNumber_NotFound_ReturnsZero()
+    public void ResolveSplitPosition_StrongestSplit_IsIndexZero()
     {
-        var splits = new[] { 10, 20, 30 };
-        Assert.Equal(0, SubsessionIndexer.ResolveSplitNumber(splits, 99));
+        var splits = new[] { Split(10, 2509), Split(20, 1266) };
+
+        Assert.Equal(new SubsessionIndexer.SplitPosition(0, 2),
+            SubsessionIndexer.ResolveSplitPosition(splits, 10));
+    }
+
+    [Fact]
+    public void ResolveSplitPosition_SoleSplit_IsIndexZeroOfOne()
+    {
+        var splits = new[] { Split(10, 1800) };
+
+        Assert.Equal(new SubsessionIndexer.SplitPosition(0, 1),
+            SubsessionIndexer.ResolveSplitPosition(splits, 10));
+    }
+
+    [Fact]
+    public void ResolveSplitPosition_RanksBySofNotByArrayOrder()
+    {
+        // Deliberately ascending by SOF: trusting the array order would call 10 the strongest.
+        var splits = new[] { Split(10, 900), Split(20, 1800), Split(30, 3200) };
+
+        Assert.Equal(0, SubsessionIndexer.ResolveSplitPosition(splits, 30)!.Value.Index);
+        Assert.Equal(1, SubsessionIndexer.ResolveSplitPosition(splits, 20)!.Value.Index);
+        Assert.Equal(2, SubsessionIndexer.ResolveSplitPosition(splits, 10)!.Value.Index);
+    }
+
+    [Fact]
+    public void ResolveSplitPosition_EqualSof_BreaksTieBySubsessionIdAscending()
+    {
+        var splits = new[] { Split(30, 1500), Split(10, 1500), Split(20, 1500) };
+
+        Assert.Equal(0, SubsessionIndexer.ResolveSplitPosition(splits, 10)!.Value.Index);
+        Assert.Equal(1, SubsessionIndexer.ResolveSplitPosition(splits, 20)!.Value.Index);
+        Assert.Equal(2, SubsessionIndexer.ResolveSplitPosition(splits, 30)!.Value.Index);
+    }
+
+    [Fact]
+    public void ResolveSplitPosition_EveryIndexIsDistinct_SoNoSplitShadowsAnother()
+    {
+        var splits = new[]
+        {
+            Split(40, 1500), Split(10, 2400), Split(30, 1500), Split(20, 800),
+        };
+
+        var indexes = splits
+            .Select(s => SubsessionIndexer.ResolveSplitPosition(splits, s.SubsessionId)!.Value.Index)
+            .ToList();
+
+        Assert.Equal([0, 1, 2, 3], indexes.Order());
+        Assert.All(splits, s =>
+            Assert.Equal(4, SubsessionIndexer.ResolveSplitPosition(splits, s.SubsessionId)!.Value.Count));
     }
 
     // ── ShouldSkipResult ──────────────────────────────────────────────────────

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.7.0] - 2026-08-19
+
+### Added
+
+- Race detail now shows which Split of its Race Session a race was — "Split 1 of 3" — beside Strength of Field, so a result can be read against the Split it was set in rather than against the Race Session as a whole. The tile is omitted entirely when the Split's position is unknown, rather than guessing at one.
+- `CONTEXT.md` defines **Split Number** as the one-based counterpart of the zero-based **Split Index**, used only where a Split's position is shown to a reader. Storage, the API, and request parameters carry the Index; the Number exists at the display boundary alone, exactly as Race Week Index and Race Week Number are separated.
+
+### Fixed
+
+- **A Subsession's Split Index no longer conflates "the strongest Split" with "we don't know."** The stored value was `0` in three unrelated situations: the Subsession really was the strongest Split, iRacing supplied no Splits at all, or it supplied a list the Subsession was absent from. Index 0 is the one value carrying a strong claim — the top Split, the strongest field a Driver could have been sorted into — so overloading it made every reading of it unfalsifiable. The position is now nullable, and unknown is a distinct value that no longer reads as the strongest Split.
+- **The Split Index is derived from Strength of Field rather than from the order iRacing lists Splits in.** Each entry of a Race Session's split list reports its own Strength of Field, so the position is now computed by ranking on that value, with equal Strength of Field broken by ascending subsession identifier. Nothing in iRacing's contract promised the list arrives sorted, and an out-of-order payload would previously have labelled a weak Split the strongest. A Subsession absent from its own split list is recorded with an unknown position and logged as a payload that disagrees with itself. Recorded as `docs/adr/0003-split-index-is-derived-from-strength-of-field.md`.
+
+### Removed
+
+- The `SplitNum` column is dropped rather than renamed, because no stored value could be carried across honestly — every `0` in it was ambiguous between three meanings. Subsessions ingested before this release read as an unknown Split position until they are ingested again; no read path consumed the column, so nothing downstream changes.
+
 ## [0.6.9] - 2026-08-17
 
 ### Changed
@@ -664,7 +680,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.6.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jwh3times/apexracers/compare/v0.6.14...v0.7.0
 [0.6.9]: https://github.com/jwh3times/apexracers/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/jwh3times/apexracers/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/jwh3times/apexracers/compare/v0.6.6...v0.6.7

@@ -313,6 +313,10 @@ export interface SubsessionDetail {
   trackName: string;
   trackConfigName: string | null;
   strengthOfField: number;
+  /** Zero-based Split Index; null when unknown — never 0 standing in for unknown. */
+  splitIndex: number | null;
+  /** How many Splits the Race Session divided into; null exactly when splitIndex is. */
+  splitCount: number | null;
   numCautions: number;
   numLeadChanges: number;
   cornersPerLap: number;

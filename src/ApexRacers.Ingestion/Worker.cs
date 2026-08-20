@@ -251,12 +251,22 @@ public sealed class Worker(
                     await db.SaveChangesAsync(ct);
                 }
 
-                // Determine split number from session_splits order
-                var splitNum = SubsessionIndexer.ResolveSplitNumber(
-                    data.SessionSplits?.Select(s => s.SubSessionId).ToList(), subsessionId);
+                // Rank this subsession among its Race Session's splits by SOF, not by array order.
+                var splitPosition = SubsessionIndexer.ResolveSplitPosition(
+                    data.SessionSplits?
+                        .Select(s => new SubsessionIndexer.SplitEntry(s.SubSessionId, s.EventStrengthOfField))
+                        .ToList(),
+                    subsessionId);
+
+                if (splitPosition is null && data.SessionSplits is { Length: > 0 } splits)
+                {
+                    logger.LogWarning(
+                        "Subsession {SubsessionId} is absent from its own session_splits ({SplitCount} entries) — storing an unknown Split Index",
+                        subsessionId, splits.Length);
+                }
 
                 var subsession = SubsessionMapper.ToEntity(
-                    subsessionId, data, weekId, splitNum);
+                    subsessionId, data, weekId, splitPosition);
                 db.Subsessions.Add(subsession);
                 await db.SaveChangesAsync(ct);
 

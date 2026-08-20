@@ -49,7 +49,8 @@ public class SubsessionMapperTests
             },
         };
 
-        var entity = SubsessionMapper.ToEntity(99001, source, weekId, splitNum: 2);
+        var entity = SubsessionMapper.ToEntity(
+            99001, source, weekId, new SubsessionIndexer.SplitPosition(2, 5));
 
         Assert.Equal(99001, entity.Id);
         Assert.Equal(501, entity.SeasonId);
@@ -60,7 +61,8 @@ public class SubsessionMapperTests
         Assert.Equal(2875, entity.EventStrengthOfField);
         Assert.Equal(start, entity.StartTime);
         Assert.Equal(end, entity.EndTime);
-        Assert.Equal(2, entity.SplitNum);
+        Assert.Equal(2, entity.SplitIndex);
+        Assert.Equal(5, entity.SplitCount);
         Assert.Equal(3, entity.NumCautions);
         Assert.Equal(8, entity.NumCautionLaps);
         Assert.Equal(11, entity.NumLeadChanges);
@@ -83,12 +85,14 @@ public class SubsessionMapperTests
             EventBestLapTime = TimeSpan.Zero,
         };
 
-        var entity = SubsessionMapper.ToEntity(1, source, weekId: null, splitNum: 0);
+        var entity = SubsessionMapper.ToEntity(1, source, weekId: null, splitPosition: null);
 
         Assert.Equal(-1, entity.EventAverageLapSeconds);
         Assert.Equal(-1, entity.EventBestLapSeconds);
         Assert.Null(entity.WeatherJson);
         Assert.Null(entity.TrackStateJson);
+        Assert.Null(entity.SplitIndex);
+        Assert.Null(entity.SplitCount);
     }
 
     [Fact]
