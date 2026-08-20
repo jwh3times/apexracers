@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.8.0] - 2026-08-20
+
 ### Added
 
 - **A personal best now says which evidence produced it.** A driver's best lap is chosen from two kinds of evidence that are never interchangeable — a race lap set in an official race, or a lap from telemetry they uploaded themselves — and until now the choice was made and then thrown away, leaving a bare number. That mattered because the field a driver is ranked against is composed entirely of race laps: a percentile could rest on a dry practice lap uploaded in a previous season and read exactly like one set wheel-to-wheel in this week's race. The percentile breakdown, recommendations, and per-car analytics now name the evidence beside the lap, so the two can be told apart.
@@ -694,7 +698,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/jwh3times/apexracers/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/jwh3times/apexracers/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jwh3times/apexracers/compare/v0.6.14...v0.7.0
 [0.6.9]: https://github.com/jwh3times/apexracers/compare/v0.6.8...v0.6.9

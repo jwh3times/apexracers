@@ -33,6 +33,17 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   - **`SampleSize` on any DTO is `FieldPercentile.FieldSize(otherLaps)`, not the row count you queried.** The queried field contains the driver only when they actually raced, so reporting it makes the same number mean two different things.
   - **A Top Share cannot be derived from a percentile rank** — the rank splits ties and counts the driver in its denominator, so it does not invert. Compute it with `TopSharePercent` server-side and carry it on the DTO; that is why `CarPercentileResult` stores it rather than recomputing on read.
   - Distinct from `CarRecommendationService`'s `RunningAveragePercentile`, which averages successive percentile *readings* into an Expected Percentile. That value has no Field Position, so the recommendation DTO carries `TopSharePercent: null` for it.
+- The race-vs-uploaded choice behind a Personal Best is never re-compared inline either: call
+  `ApexRacers.Core.PersonalBest.Select(raceBest, uploadedBest)` (nullable overload) or
+  `Select(raceBest, uploadedBest)` (non-nullable overload, for a caller that has already proved the
+  Race Best exists) and carry the returned `PersonalBest.Evidence` onto the DTO alongside
+  `LapSeconds` — don't keep only the winning `double`. **A Race Best wins an exact tie**: it was set
+  against the Field being ranked, so it is the better-evidenced of two equally fast laps; this is
+  the same strict `<` test `PercentileCalculationService`, `CarRecommendationService`, and
+  `UserAnalyticsService` each ran by hand before they shared this seam. `UserAnalyticsService`
+  additionally keys its per-week `PersonalBest` by `(CarId, WeekId)` before reducing across weeks, so
+  the fastest lap across the counted weeks keeps its own evidence instead of inheriting whichever
+  week was last in iteration order.
 - **A Telemetry Upload is validated before anything is written.** `TelemetryUploadService` refuses a file whose recording Driver (`DriverUserID`, absent → 0 → stored as null, never compared) disagrees with the caller's Claimed Identity, and it does so *ahead of* the car/track upsert — a refused upload must leave no trace, not even catalog rows. A caller with no Claimed Identity has nothing to check against and is accepted, with the file's Driver still recorded on the lap. Keep any new validation in that same pre-write block rather than adding it after the first `db.Add`.
 - Uploaded Best rows are never projected inline either: call `PersonalBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/PersonalBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
   - **The caller's `scope` must not filter on `IsValidLap`.** `PersonalBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
