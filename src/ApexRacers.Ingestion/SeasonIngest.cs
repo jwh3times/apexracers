@@ -156,7 +156,25 @@ public sealed class SeasonIngest(AppDbContext db)
     {
         week.TrackId = source.Track.TrackId;
         week.StartDate = source.StartDate;
+        week.EndTime = EndTimeOrNull(source);
         week.WeatherSummaryJson = weatherJson;
+    }
+
+    /// <summary>
+    /// iRacing's exact <c>week_end_time</c>, or null when the payload did not supply a usable one.
+    /// </summary>
+    /// <remarks>
+    /// The SDK types this as a non-nullable <see cref="DateTimeOffset"/>, so a payload that omits
+    /// the field deserializes to <c>default</c> (<c>0001-01-01</c>) rather than throwing — a
+    /// successful parse carrying a value that is not a date. Persisting that would make every such
+    /// Week look like it closed two millennia before it opened. Anything not after the Week's start
+    /// is therefore stored as "not established," which is what null means on the column, and
+    /// <c>RaceWeekWindow</c> derives a boundary instead.
+    /// </remarks>
+    public static DateTimeOffset? EndTimeOrNull(SeasonScheduleItem source)
+    {
+        var start = new DateTimeOffset(source.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        return source.WeekEndTime > start ? source.WeekEndTime : null;
     }
 
     private static void PopulateBop(SeasonCarBop bop, CarRestrictions source)

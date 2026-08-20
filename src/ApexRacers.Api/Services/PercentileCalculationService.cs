@@ -52,19 +52,43 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             ? await db.Users.FirstOrDefaultAsync(u => u.Id == callerUserId.Value, ct)
             : null;
 
+        // Uploaded Laps count only when driven inside this Race Week. A Race Best already belongs
+        // to one Race Week, so bounding the uploaded side is what makes the two comparable: an
+        // all-time Uploaded Best would otherwise bring a lap from another season — a different
+        // build, a different BoP, possibly dry weather against a wet week — into this week's Field.
+        var window = await db.RaceWeekWindowAsync(seasonId.Value, weekNumber, ct);
+
         double? uploadedBest = null;
-        if (evidence.IncludesUploadedLaps && user?.IRacingCustomerId == customerId)
+        UploadedBestOutsideWeekDto? excluded = null;
+
+        if (evidence.IncludesUploadedLaps && user?.IRacingCustomerId == customerId && window is { } weekWindow)
         {
-            var uploadedBests = await PersonalBestQuery.RunAsync(
-                evidence
-                    .ScopeUploadedLaps(db.PersonalLaps)
-                    .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId),
-                PersonalBestOrder.FastestFirst,
-                ct);
-            uploadedBest = uploadedBests.FirstOrDefault()?.BestLapSeconds;
+            var scoped = evidence
+                .ScopeUploadedLaps(db.PersonalLaps)
+                .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId)
+                .Where(p => p.IsValidLap);
+
+            uploadedBest = await scoped
+                .Where(p => p.RecordedAt >= weekWindow.Start && p.RecordedAt < weekWindow.End)
+                .Select(p => (double?)p.LapTimeSeconds)
+                .MinAsync(ct);
+
+            // The fastest Uploaded Lap this Race Week excluded, paired with the date it was
+            // actually driven. Ordering and taking one keeps the lap and its own date together —
+            // a grouped MIN(lap) beside MAX(recorded) would attribute the wrong date to it.
+            excluded = await scoped
+                .Where(p => p.RecordedAt < weekWindow.Start || p.RecordedAt >= weekWindow.End)
+                .OrderBy(p => p.LapTimeSeconds)
+                .Select(p => new UploadedBestOutsideWeekDto(p.LapTimeSeconds, p.RecordedAt))
+                .FirstOrDefaultAsync(ct);
         }
 
         if (PersonalBest.Select(driverRaceBest, uploadedBest) is not { } driverBest) return null;
+
+        // Only worth reporting when it would have changed the answer. A slower excluded lap
+        // changes nothing, and saying so on every visit would be noise rather than disclosure.
+        if (excluded is not null && excluded.LapSeconds >= driverBest.LapSeconds)
+            excluded = null;
 
         // Rank against other drivers' race laps only: the driver's own slower race result would
         // otherwise count as one more driver beaten whenever an Uploaded Lap supersedes it.
@@ -134,7 +158,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             percentileRank, fieldPosition, topSharePercent, total, computedAt,
             week.SeriesName, week.TrackName, week.TrackConfigName,
             driverBest.LapSeconds, driverBest.Evidence, fieldBest, fieldMedian,
-            distribution, wrLap, wrGap);
+            distribution, wrLap, wrGap, excluded);
     }
 
     private static IReadOnlyList<DistributionBin> BuildDistribution(List<double> sortedLaps, double userBest)

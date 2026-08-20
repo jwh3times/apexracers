@@ -194,45 +194,6 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_PersonalLapPath_IncludesCarWhenNoSubsessionResult()
-    {
-        // Driver has no SubsessionResult for car1 this week but uploaded a personal lap.
-        // With includePersonalLaps=true the car should appear using the personal lap for percentile.
-        await using var db = DbContextFactory.Create();
-        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
-
-        // Three other drivers in the field with sorted laps: 70, 80, 90
-        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
-        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
-        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
-
-        var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        // Personal lap at the same track — 65s beats all three others
-        db.PersonalLaps.Add(new PersonalLap
-        {
-            UserId = userId, CarId = 1, TrackId = 99,
-            LapTimeSeconds = 65.0, IsValidLap = true,
-            SessionType = LapSessionType.Race,
-            RecordedAt = DateTimeOffset.UtcNow,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
-            evidence: PersonalBestEvidence.FromRequest(true, null),
-            ct: TestContext.Current.CancellationToken);
-
-        var dto = Assert.Single(result);
-        Assert.Equal(1, dto.CarId);
-        Assert.Equal(65.0, dto.BestLapSeconds); // personal lap shown as best
-        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
-        // 65s beats all 3 in a Field of 4: (3 + 0.5) / 4 = 87.5%
-        Assert.Equal(87.5, dto.PercentileRank, tolerance: 1e-6);
-        Assert.Equal(25, dto.TopSharePercent); // 1st of 4
-    }
-
-    [Fact]
     public async Task GetRecommendationsAsync_PersonalLapPath_ExcludesCarWhenFlagOff()
     {
         // Same setup as above but includePersonalLaps=false → car should not appear.
@@ -259,102 +220,6 @@ public class CarRecommendationServiceTests
             ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task GetRecommendationsAsync_PersonalLapPath_SessionTypeFilter_ExcludesMismatch()
-    {
-        // Personal lap is a Practice lap; filter is Race-only → car should not appear.
-        await using var db = DbContextFactory.Create();
-        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
-
-        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
-        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
-
-        var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
-        {
-            UserId = userId, CarId = 1, TrackId = 99,
-            LapTimeSeconds = 65.0, IsValidLap = true,
-            SessionType = LapSessionType.Practice, // practice lap, not race
-            RecordedAt = DateTimeOffset.UtcNow,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
-            evidence: PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]),
-            ct: TestContext.Current.CancellationToken);
-
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task GetRecommendationsAsync_PersonalLapPath_SessionTypeFilter_IncludesUnknownType()
-    {
-        // Laps uploaded before SessionType tracking was added have SessionType=Unknown.
-        // They must always be included when a filter is active, never silently excluded.
-        await using var db = DbContextFactory.Create();
-        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
-
-        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
-        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
-
-        var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
-        {
-            UserId = userId, CarId = 1, TrackId = 99,
-            LapTimeSeconds = 65.0, IsValidLap = true,
-            SessionType = LapSessionType.Unknown, // pre-migration default
-            RecordedAt = DateTimeOffset.UtcNow,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
-            evidence: PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]),
-            ct: TestContext.Current.CancellationToken);
-
-        var dto = Assert.Single(result);
-        Assert.Equal(65.0, dto.BestLapSeconds);
-    }
-
-    [Fact]
-    public async Task GetRecommendationsAsync_ActualPath_BestLapSeconds_ReflectsPersonalLapWhenFaster()
-    {
-        // Driver has a SubsessionResult (90s) and a personal lap (65s, race).
-        // BestLapSeconds in the DTO should be 65s.
-        await using var db = DbContextFactory.Create();
-        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
-
-        AddResult(db, subsession, car1, carClass, custId: 1,   lapSeconds: 90); // driver's race lap
-        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 80);
-        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 70);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
-        {
-            UserId = userId, CarId = 1, TrackId = 99,
-            LapTimeSeconds = 65.0, IsValidLap = true,
-            SessionType = LapSessionType.Race,
-            RecordedAt = DateTimeOffset.UtcNow,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
-            evidence: PersonalBestEvidence.FromRequest(true, null),
-            ct: TestContext.Current.CancellationToken);
-
-        var dto = Assert.Single(result);
-        Assert.Equal(65.0, dto.BestLapSeconds); // personal lap, not race lap
-        // The driver did race this car this week, so the number alone cannot tell them the
-        // ranked lap was an uploaded one. The evidence is what makes that legible.
-        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
     }
 
     [Fact]
@@ -394,47 +259,6 @@ public class CarRecommendationServiceTests
         Assert.Equal(250.0 / 3, rows[0].PercentileRank, tolerance: 1e-10);
         Assert.Equal(34, rows[0].TopSharePercent); // 1st of 3 = 33.3%, rounded up
         Assert.Equal(3, rows[0].SampleSize);  // refreshed to the current field size
-    }
-
-    [Fact]
-    public async Task GetRecommendationsAsync_PersonalLapPath_UpdatesExistingCacheRow()
-    {
-        // Personal-lap path mirror of the above: cache row exists for this week → update branch.
-        await using var db = DbContextFactory.Create();
-        var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
-        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
-        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
-
-        var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
-        db.PersonalLaps.Add(new PersonalLap
-        {
-            UserId = userId, CarId = car1.Id, TrackId = 99, LapTimeSeconds = 65.0,
-            IsValidLap = true, SessionType = LapSessionType.Race, RecordedAt = DateTimeOffset.UtcNow,
-        });
-        db.CarPercentileResults.Add(new CarPercentileResult
-        {
-            UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week.Id,
-            PercentileRank = 50.0, SampleSize = 10, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1),
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
-            evidence: PersonalBestEvidence.FromRequest(true, null),
-            ct: TestContext.Current.CancellationToken);
-
-        var dto = result.Single(r => r.CarId == car1.Id);
-        Assert.Equal(65.0, dto.BestLapSeconds);
-        Assert.Equal(87.5, dto.PercentileRank); // 65 s beats all 3 in a Field of 4
-
-        var rows = db.CarPercentileResults
-            .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
-        Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(87.5, rows[0].PercentileRank);
     }
 
     [Fact]

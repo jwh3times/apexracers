@@ -48,6 +48,29 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - Uploaded Best rows are never projected inline either: call `PersonalBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/PersonalBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
   - **The caller's `scope` must not filter on `IsValidLap`.** `PersonalBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
   - **The `GroupBy` must not be pushed into SQL.** The group key is `{ CarId, TrackId }` — identifiers, never `Car.Name`/`Track.Name`/`Track.ConfigName` labels, since a Track's `Name` belongs to the venue and is shared by every layout there. Those labels ride along via `g.First()` instead: selecting navigation-property labels alongside the aggregates is what neither Npgsql nor SQLite translates, so the query materializes to a list first and groups in memory — deliberately, not an oversight. Getting this wrong throws at runtime rather than failing to compile; see the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section, which is the same underlying translation gap.
+  - `PersonalBestQuery` has no Race Week bound — it is the all-time Uploaded Best, used where that is
+    the correct answer (My Laps, the catalog overlays). `PercentileCalculationService`,
+    `CarRecommendationService`, and `UserAnalyticsService` deliberately do **not** call it: ranking a
+    Personal Best needs the Uploaded side bounded to one Race Week (see the `RaceWeekWindow` rule
+    below), which `PersonalBestQuery` has no parameter for. Each of those three writes its own scoped
+    query instead — still applying `IsValidLap` and still grouping/ordering by `{ CarId, TrackId }` in
+    the same style, just with an added `RecordedAt` range filter. Don't read that as three call sites
+    forgetting the shared helper; it's the same helper's invariants without its all-time scope.
+- **A Personal Best's Uploaded side is bounded to the Race Week being ranked, never fetched all-time.**
+  Call `AppDbContext.RaceWeekWindowAsync(seasonId, weekNumber, ct)` (single Week) or
+  `RaceWeekWindowsAsync(seasonId, ct)` (whole season, keyed by Week number — `SeasonQueries`,
+  `src/ApexRacers.Api/Services/SeasonQueries.cs`) to get a `Core.RaceWeekWindow`, then filter
+  `PersonalLap.RecordedAt` with `window.Contains(recordedAt)` (or the equivalent `>= Start && <
+  End` range pushed into SQL — see the SQLite-vs-Npgsql translation note in the Tests section below).
+  Fetch the whole season's windows rather than one Week's when the caller is iterating rows that each
+  belong to a different Week (`UserAnalyticsService`) — a Week with no reported `EndTime` is bounded by
+  the *next* Week's start, which isn't derivable from that Week's own row alone. When a faster Uploaded
+  Lap exists outside the window, surface it rather than silently dropping it: project it separately
+  (`OrderBy(LapTimeSeconds).FirstOrDefault()` over the *excluded* range, kept apart from the `MIN`
+  over the *included* range so the lap and its own `RecordedAt` travel together — a grouped `MIN(lap)`
+  beside `MAX(RecordedAt)` would attribute the wrong date to it), and only surface it when it's
+  actually faster than the Personal Best that got ranked; a slower excluded lap changes nothing and
+  reporting it would be noise. `CONTEXT.md`'s Personal Best entry is the product rationale.
 - Personal Best read paths take a `PersonalBestEvidence` value rather than separate booleans or lists.
   Controllers construct it with `FromRequest(includePersonalLaps, personalLapTypes)`; internal callers
   with no user choice pass `OfficialRaceLapsOnly`. Use `ScopeUploadedLaps` to apply source and session-type
@@ -142,6 +165,18 @@ The ingestion `Worker` is a coverage-excluded I/O shell. Put SDK field mapping i
 season/schedule upsert rules in `SeasonIngest`. Mapper tests assert every persisted field, fallback,
 and pinned JSON name; `SeasonIngest` tests use SQLite to prove insert/update parity and the save ordering
 needed before dependent rows are added. Keep the worker at fetch, coordination, and logging.
+
+**Guard against a non-nullable SDK field standing in for an omitted one.** The Aydsko SDK types some
+wire fields as non-nullable even though iRacing's payload can omit them — `SeasonScheduleItem.WeekEndTime`
+(`DateTimeOffset`, not `DateTimeOffset?`) is the concrete case: an omitted `week_end_time` deserializes
+to `default` (`0001-01-01`), a *successful* parse carrying a value that isn't a date, rather than
+throwing or leaving something checkable as absent. Persisting that verbatim would make the row lie
+forever, not just on the one bad fetch — this is the same silent-zeros trap the persisted-JSON rules in
+AGENTS.md warn about, just triggered by the SDK's nullability choice instead of a raw JSON gap. The
+fix is a small pure guard at the mapping seam — `SeasonIngest.EndTimeOrNull` rejects anything not after
+the row's own start date — rather than trusting the SDK's type to mean "always present." Test the guard
+with all three cases: a genuine value, the `default` zero-value, and a value that parses but fails the
+sanity check (before the start date).
 
 A single `AppDbContext` serializes everything through one change tracker, so it cannot express two
 callers racing the same row. For that case only, `DbContextFactory.CreateShared()` returns a

@@ -71,17 +71,20 @@ public class CarRecommendationService(AppDbContext db)
                 .ToDictionaryAsync(r => r.CarId, ct)
             : new Dictionary<int, CarPercentileResult>();
 
-        // Uploaded Bests per car at this Track (when the evidence choice allows them).
+        // Uploaded Bests per car at this Track, bounded to this Race Week (when the evidence
+        // choice allows them). The bound is what makes them comparable with a Race Best, which
+        // already belongs to one Race Week — see RaceWeekWindow.
+        var window = await db.RaceWeekWindowAsync(seasonId.Value, weekNumber, ct);
         var personalBestByCar = new Dictionary<int, double>();
-        if (evidence.IncludesUploadedLaps && user is not null)
+        if (evidence.IncludesUploadedLaps && user is not null && window is { } weekWindow)
         {
-            var uploadedBests = await PersonalBestQuery.RunAsync(
-                evidence
-                    .ScopeUploadedLaps(db.PersonalLaps)
-                    .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId),
-                PersonalBestOrder.FastestFirst,
-                ct);
-            personalBestByCar = uploadedBests.ToDictionary(x => x.CarId, x => x.BestLapSeconds);
+            personalBestByCar = await evidence
+                .ScopeUploadedLaps(db.PersonalLaps)
+                .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId && p.IsValidLap)
+                .Where(p => p.RecordedAt >= weekWindow.Start && p.RecordedAt < weekWindow.End)
+                .GroupBy(p => p.CarId)
+                .Select(g => new { CarId = g.Key, BestLap = g.Min(p => p.LapTimeSeconds) })
+                .ToDictionaryAsync(x => x.CarId, x => x.BestLap, ct);
         }
 
         // Batch-compute historical percentile for projected cars that lack a cached value.
