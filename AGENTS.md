@@ -388,14 +388,20 @@ position, top share, field size, and field median, and every one of them takes t
 laps and reconstructs the Field internally. `CONTEXT.md`'s Competitiveness section defines what each
 one means; the `dotnet-api` agent carries the call rules.
 
+The race-vs-uploaded evidence choice is a second such extraction: `ApexRacers.Core.PersonalBest.Select`
+picks a Subject Driver's Personal Best from their Race Best and Uploaded Best and carries the
+`LapEvidence` (`RaceLap` / `UploadedLap`) that produced it, rather than each service running its own
+comparison and keeping only the number. `CONTEXT.md`'s Lap Evidence section defines Race Lap/Uploaded
+Lap/Personal Best; the `dotnet-api` agent carries the call rule.
+
 - `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentWeekNumber` (start date first, week number to break a tie), with the pre-season fallback left to the caller. Both zero-based race week indexes stay zero-based end-to-end; see `CONTEXT.md` for the Race Week Index / Race Week Number distinction the frontend renders.
-- `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`); overlays world-record via `WorldRecordService`.
-- `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`).
+- `PercentileCalculationService` — compute + cache percentile (rank + median via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`); overlays world-record via `WorldRecordService`.
+- `CarRecommendationService` — ranked recommendations from personal percentile data (rank via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`).
 - `PersonalBestEvidence` — one request policy for whether Uploaded Laps may contribute to the Subject
   Driver's Personal Best and which session types qualify. Percentile detail, Week Detail's "Your pct,"
   recommendations, and analytics all use it and default to official Race Laps only.
 - `StrategyService` (+ pure `StrategyAnalysis`) — week briefing from BoP + weather + track/pit; personal overlay.
-- `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`).
+- `UserAnalyticsService` — per-car percentile history/stats (median via `Core.FieldPercentile`; per-week best lap + evidence via `Core.PersonalBest.Select`, kept per (car, week) so the fastest lap across counted weeks carries its own provenance).
 - `DriverStatsService` — progression / driver profile / comparison-side via `CachedIRacingClient` (6 h).
   Aydsko SDK types such as `MemberSummary` and `MemberProfileInfo` keep iRacing's `member_*` endpoint
   language at that adapter boundary; ApexRacers-owned names use the terms in `CONTEXT.md`.
@@ -577,7 +583,8 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   `PaceSourceContext` (the app-lifetime official-only vs. Uploaded-Lap evidence choice; resets when
   the signed-in User changes).
 - **Utilities** (`web/src/utils/`): import the shared `formatLapTime`, `toTopPercent` /
-  `topPercentLabel`, `deriveAlerts`, `breadcrumbs`, `raceWeekNumber` / `raceWeekLabel`, `splitLabel`, `unrepresentedEntriesNote` — **don't**
+  `topPercentLabel`, `deriveAlerts`, `breadcrumbs`, `raceWeekNumber` / `raceWeekLabel`, `splitLabel`, `unrepresentedEntriesNote`,
+  `lapEvidenceLabel` / `lapEvidenceDescription` / `isUploadedEvidence` — **don't**
   re-inline these in pages. `raceWeekNumber(index)` / `raceWeekLabel(index)` convert the zero-based
   Race Week Index the API/router carry into the one-based Race Week Number drivers read (`CONTEXT.md`
   is the canonical definition of both terms); convert only at the display boundary and keep passing

@@ -44,7 +44,6 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         if (fieldByDriver.Count == 0) return null;
 
         var driverRaceBest = fieldByDriver.FirstOrDefault(d => d.CustId == customerId)?.BestLap;
-        double? driverBest = driverRaceBest;
 
         // Fetch the authenticated caller's profile for Uploaded Lap lookup and cache upsert.
         // Never use the caller-supplied customerId for this lookup — that would allow any user
@@ -53,6 +52,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             ? await db.Users.FirstOrDefaultAsync(u => u.Id == callerUserId.Value, ct)
             : null;
 
+        double? uploadedBest = null;
         if (evidence.IncludesUploadedLaps && user?.IRacingCustomerId == customerId)
         {
             var uploadedBests = await PersonalBestQuery.RunAsync(
@@ -61,13 +61,10 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
                     .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId),
                 PersonalBestOrder.FastestFirst,
                 ct);
-            var personalBest = uploadedBests.FirstOrDefault()?.BestLapSeconds;
-
-            if (personalBest is not null && (driverBest is null || personalBest < driverBest))
-                driverBest = personalBest;
+            uploadedBest = uploadedBests.FirstOrDefault()?.BestLapSeconds;
         }
 
-        if (driverBest is null) return null;
+        if (PersonalBest.Select(driverRaceBest, uploadedBest) is not { } driverBest) return null;
 
         // Rank against other drivers' race laps only: the driver's own slower race result would
         // otherwise count as one more driver beaten whenever an Uploaded Lap supersedes it.
@@ -81,9 +78,9 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         // below is computed over that same population, so the rank, the position, the median and
         // the distribution can never disagree about who was counted.
         var total = FieldPercentile.FieldSize(otherDriversLaps);
-        var percentileRank = FieldPercentile.Rank(driverBest.Value, otherDriversLaps);
-        var fieldPosition = FieldPercentile.Position(driverBest.Value, otherDriversLaps);
-        var topSharePercent = FieldPercentile.TopSharePercent(driverBest.Value, otherDriversLaps);
+        var percentileRank = FieldPercentile.Rank(driverBest.LapSeconds, otherDriversLaps);
+        var fieldPosition = FieldPercentile.Position(driverBest.LapSeconds, otherDriversLaps);
+        var topSharePercent = FieldPercentile.TopSharePercent(driverBest.LapSeconds, otherDriversLaps);
 
         var computedAt = DateTimeOffset.UtcNow;
 
@@ -121,22 +118,22 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         // Field stats and distribution — over the same Field the rank was computed against, so a
         // driver whose uploaded lap leads the Field sees a zero gap to the field best rather than
         // a negative one against a race best they beat.
-        var sortedLaps = otherDriversLaps.Append(driverBest.Value).OrderBy(x => x).ToList();
+        var sortedLaps = otherDriversLaps.Append(driverBest.LapSeconds).OrderBy(x => x).ToList();
         var fieldBest = sortedLaps[0];
         var fieldMedian = FieldPercentile.MedianOfSorted(sortedLaps);
-        var distribution = BuildDistribution(sortedLaps, driverBest.Value);
+        var distribution = BuildDistribution(sortedLaps, driverBest.LapSeconds);
 
         // World-record overlay (best-effort; null when iRacing isn't configured).
         double? wrLap = worldRecords is null
             ? null
             : await worldRecords.GetWorldRecordLapSecondsAsync(carId, week.TrackId, ct);
-        double? wrGap = wrLap is null ? null : Math.Round(driverBest.Value - wrLap.Value, 4);
+        double? wrGap = wrLap is null ? null : Math.Round(driverBest.LapSeconds - wrLap.Value, 4);
 
         return new PercentileResultDto(
             seriesId, weekNumber, carId, customerId,
             percentileRank, fieldPosition, topSharePercent, total, computedAt,
             week.SeriesName, week.TrackName, week.TrackConfigName,
-            driverBest.Value, fieldBest, fieldMedian,
+            driverBest.LapSeconds, driverBest.Evidence, fieldBest, fieldMedian,
             distribution, wrLap, wrGap);
     }
 

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [0.8.0] - 2026-08-20
+
+### Added
+
+- **A personal best now says which evidence produced it.** A driver's best lap is chosen from two kinds of evidence that are never interchangeable — a race lap set in an official race, or a lap from telemetry they uploaded themselves — and until now the choice was made and then thrown away, leaving a bare number. That mattered because the field a driver is ranked against is composed entirely of race laps: a percentile could rest on a dry practice lap uploaded in a previous season and read exactly like one set wheel-to-wheel in this week's race. The percentile breakdown, recommendations, and per-car analytics now name the evidence beside the lap, so the two can be told apart.
+- Percentile, recommendation, and analytics responses carry the evidence alongside the lap it describes. On recommendations and analytics it is absent exactly when the lap is — a car the driver holds no lap for has nothing to attribute.
+
+### Changed
+
+- The race-versus-uploaded comparison is made in one place instead of three. Each service previously ran its own "is the uploaded lap faster" test and kept only the winning number, which is why no response could report where the lap came from. The choice and the record of which evidence won are now a single decision, and a tie goes to the race lap — it was set against the field being ranked, so it is the better-evidenced of two equally fast laps. This preserves the behaviour all three call sites already happened to share, now as a stated rule rather than a coincidence of three separate comparisons.
+
 ## [0.7.1] - 2026-08-20
 
 ### Fixed
@@ -687,7 +698,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/jwh3times/apexracers/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/jwh3times/apexracers/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jwh3times/apexracers/compare/v0.6.14...v0.7.0
 [0.6.9]: https://github.com/jwh3times/apexracers/compare/v0.6.8...v0.6.9

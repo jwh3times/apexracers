@@ -150,15 +150,17 @@ public class CarRecommendationService(AppDbContext db)
 
             if (actualLapsThisWeek.TryGetValue(carId, out var raceBestLap))
             {
-                // Actual path — driver raced this car this week.
-                double driverBest = raceBestLap;
-                if (personalBestByCar.TryGetValue(carId, out var pb) && pb < driverBest)
-                    driverBest = pb;
+                // Actual path — driver raced this car this week. An Uploaded Lap may still be the
+                // faster of the two, so the choice and the record of which evidence won are made
+                // together rather than the winner being compared and then forgotten.
+                var driverBest = PersonalBest.Select(
+                    raceBestLap,
+                    personalBestByCar.TryGetValue(carId, out var pb) ? pb : null);
 
                 var otherLaps = carField.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList();
                 var total = FieldPercentile.FieldSize(otherLaps);
-                var percentileRank = FieldPercentile.Rank(driverBest, otherLaps);
-                var topShare = FieldPercentile.TopSharePercent(driverBest, otherLaps);
+                var percentileRank = FieldPercentile.Rank(driverBest.LapSeconds, otherLaps);
+                var topShare = FieldPercentile.TopSharePercent(driverBest.LapSeconds, otherLaps);
 
                 // Fold this week's reading into the running average and upsert the cache row.
                 var newAvg = RecordPercentileReading(
@@ -175,8 +177,9 @@ public class CarRecommendationService(AppDbContext db)
                     PercentileRank: percentileRank,
                     TopSharePercent: topShare,
                     SampleSize: total,
-                    ProjectedLapSeconds: projectedFromActual ?? driverBest,
-                    BestLapSeconds: driverBest));
+                    ProjectedLapSeconds: projectedFromActual ?? driverBest.LapSeconds,
+                    BestLapSeconds: driverBest.LapSeconds,
+                    BestLapEvidence: driverBest.Evidence));
             }
             else if (personalBestByCar.TryGetValue(carId, out var personalLap))
             {
@@ -204,7 +207,10 @@ public class CarRecommendationService(AppDbContext db)
                     TopSharePercent: topShare,
                     SampleSize: total,
                     ProjectedLapSeconds: plProjected.Value,
-                    BestLapSeconds: personalLap));
+                    BestLapSeconds: personalLap,
+                    // No comparison to make: this branch is reached only because the driver has
+                    // no Race Lap in this car this week.
+                    BestLapEvidence: LapEvidence.UploadedLap));
             }
             else
             {
@@ -233,7 +239,9 @@ public class CarRecommendationService(AppDbContext db)
                     TopSharePercent: null,
                     SampleSize: carField.Count,
                     ProjectedLapSeconds: projectedLap.Value,
-                    BestLapSeconds: null));
+                    BestLapSeconds: null,
+                    // No lap, so no evidence produced one.
+                    BestLapEvidence: null));
             }
         }
 

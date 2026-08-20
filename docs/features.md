@@ -11,6 +11,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   series, week, and car, with cached results for repeat visits. Personal Best surfaces
   consistently use official race laps by default and let the driver opt in uploaded laps
   with an optional session-type filter; that choice follows them between related pages.
+  Each Personal Best is shown with the evidence that produced it, so a lap set in an
+  official race can be told from one drawn from uploaded telemetry.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
   to set in each, with their percentile in that car shown alongside.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for

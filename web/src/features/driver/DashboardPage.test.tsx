@@ -140,6 +140,7 @@ const carAnalytics: CarAnalytics = {
   bestPercentileRank: 96,
   bestTopSharePercent: 4,
   personalBestLapSeconds: 130.5,
+  personalBestLapEvidence: 'RaceLap' as const,
   medianLapSeconds: 131,
   totalWeeks: 4,
   percentileHistory: [],

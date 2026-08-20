@@ -52,6 +52,7 @@ const MOCK_RECS = [
     topSharePercent: 12,
     sampleSize: 200,
     bestLapSeconds: 78.5,
+    bestLapEvidence: 'RaceLap' as const,
     projectedLapSeconds: 78.2,
   },
   {
@@ -62,6 +63,7 @@ const MOCK_RECS = [
     topSharePercent: 28,
     sampleSize: 180,
     bestLapSeconds: null,
+    bestLapEvidence: null,
     projectedLapSeconds: 79.1,
   },
 ];
@@ -126,6 +128,37 @@ describe('RecommendationsPage', () => {
       expect(screen.getByText('1:18.200')).toBeInTheDocument();
       expect(screen.getByText('87.5%')).toBeInTheDocument();
     });
+  });
+
+  it('names the evidence behind each best lap', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue(MOCK_RECS);
+    renderPage('?seriesId=1');
+    await waitFor(() => {
+      // The Ferrari's best is a race lap; it appears both on the top-match card and in the table.
+      expect(screen.getAllByText('Race lap').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('says so when a recommendation rests on an uploaded lap', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue([
+      { ...MOCK_RECS[0], bestLapEvidence: 'UploadedLap' as const },
+      MOCK_RECS[1],
+    ]);
+    renderPage('?seriesId=1');
+    await waitFor(() => expect(screen.getAllByText('Uploaded lap').length).toBeGreaterThan(0));
+    expect(screen.queryByText('Race lap')).not.toBeInTheDocument();
+  });
+
+  it('shows no evidence label for a car the driver holds no lap for', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    // Porsche has bestLapSeconds: null and bestLapEvidence: null — no lap, so no evidence.
+    mockGetRecs.mockResolvedValue([MOCK_RECS[1]]);
+    renderPage('?seriesId=1');
+    await waitFor(() => expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument());
+    expect(screen.queryByText('Race lap')).not.toBeInTheDocument();
+    expect(screen.queryByText('Uploaded lap')).not.toBeInTheDocument();
   });
 
   it('shows dash in Best Lap column for cars without an actual lap this week', async () => {

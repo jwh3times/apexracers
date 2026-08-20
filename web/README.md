@@ -118,7 +118,9 @@ src/
                           refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
   utils/              ← formatLapTime, toTopPercent/topPercentLabel, deriveAlerts, breadcrumbs,
                           raceWeekNumber/raceWeekLabel (0-based Race Week Index → 1-based Race Week
-                          Number), splitLabel (Split Index/Count → display label, null when unknown)
+                          Number), splitLabel (Split Index/Count → display label, null when unknown),
+                          lapEvidenceLabel/lapEvidenceDescription/isUploadedEvidence (which evidence
+                          produced a personal best)
                           + colocated *.test.ts siblings
   test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory for tests)
   App.tsx             ← route definitions, AppShell layout

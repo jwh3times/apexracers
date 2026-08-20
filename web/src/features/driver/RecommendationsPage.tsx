@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api, type CarRecommendation } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
+import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
 import { raceWeekLabel } from '../../utils/raceWeek';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
@@ -46,6 +47,14 @@ function HeroCard({
             <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
               {rec.bestLapSeconds != null ? formatLapTime(rec.bestLapSeconds) : '—'}
             </span>
+            {rec.bestLapEvidence != null && (
+              <p
+                className="text-small-fluid text-on-surface-variant mt-1"
+                title={lapEvidenceDescription(rec.bestLapEvidence)}
+              >
+                {lapEvidenceLabel(rec.bestLapEvidence)}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-th text-on-surface-variant mb-1">Projected Lap</p>
@@ -127,6 +136,14 @@ function RecommendationTable({
             </td>
             <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
               {r.bestLapSeconds != null ? formatLapTime(r.bestLapSeconds) : '—'}
+              {r.bestLapEvidence != null && (
+                <span
+                  className="block font-sans text-small-fluid text-on-surface-variant"
+                  title={lapEvidenceDescription(r.bestLapEvidence)}
+                >
+                  {lapEvidenceLabel(r.bestLapEvidence)}
+                </span>
+              )}
             </td>
             <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
               {formatLapTime(r.projectedLapSeconds)}

@@ -6,6 +6,7 @@ import PercentileBadge from '../../components/PercentileBadge';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import { formatLapTime } from '../../utils/lapTime';
+import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
 type FetchState = {
@@ -266,7 +267,12 @@ export default function PercentileCarPage() {
                   {/* 2×2 stat grid */}
                   <div className="w-full grid grid-cols-2 gap-px bg-line-2 border border-line-2 card-r overflow-hidden">
                     {[
-                      { label: 'Your best', value: formatLapTime(result.yourBestLapSeconds) },
+                      {
+                        label: 'Your best',
+                        value: formatLapTime(result.yourBestLapSeconds),
+                        note: lapEvidenceLabel(result.yourBestLapEvidence),
+                        noteTitle: lapEvidenceDescription(result.yourBestLapEvidence),
+                      },
                       { label: 'Field best', value: formatLapTime(result.fieldBestLapSeconds) },
                       {
                         label: 'Field median',
@@ -294,6 +300,14 @@ export default function PercentileCarPage() {
                         <span className="text-mono-fluid text-on-surface font-semibold">
                           {stat.value}
                         </span>
+                        {'note' in stat && stat.note && (
+                          <span
+                            className="text-small-fluid text-on-surface-variant"
+                            title={'noteTitle' in stat ? stat.noteTitle : undefined}
+                          >
+                            {stat.note}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>

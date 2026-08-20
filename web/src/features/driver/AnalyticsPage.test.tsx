@@ -64,6 +64,7 @@ const MOCK_ANALYTICS = [
     bestPercentileRank: 92.0,
     bestTopSharePercent: 8,
     personalBestLapSeconds: 137.2,
+    personalBestLapEvidence: 'RaceLap' as const,
     medianLapSeconds: 139.5,
     totalWeeks: 48,
     percentileHistory: [
@@ -97,6 +98,7 @@ const MOCK_ANALYTICS = [
     bestPercentileRank: 70.0,
     bestTopSharePercent: 30,
     personalBestLapSeconds: 138.9,
+    personalBestLapEvidence: 'RaceLap' as const,
     medianLapSeconds: 139.5,
     totalWeeks: 20,
     percentileHistory: [
@@ -235,6 +237,22 @@ describe('AnalyticsPage', () => {
       // BMW M4 history: 60 → 70, IMPROVING badge shows
       expect(screen.getByText('IMPROVING')).toBeInTheDocument();
     });
+  });
+
+  it('names the evidence behind the best lap', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue(MOCK_ANALYTICS);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('Race lap').length).toBeGreaterThan(0));
+  });
+
+  it('says so when the best lap across the counted weeks was an uploaded one', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([
+      { ...MOCK_ANALYTICS[0], personalBestLapEvidence: 'UploadedLap' as const },
+    ]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Uploaded lap')).toBeInTheDocument());
   });
 
   it('shows empty state message when no analytics data exists for the series', async () => {
