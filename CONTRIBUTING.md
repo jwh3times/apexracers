@@ -140,6 +140,14 @@ reportgenerator -reports:TestResults/coverage.cobertura.xml -targetdir:coverage-
   through the .NET 10 SDK. Use a current Visual Studio 2022/2026 Test Explorer,
   or VS Code with the current C# Dev Kit, for IDE discovery and debugging;
   older VSTest-only environments are not supported.
+- Because that runner is MTP and not VSTest, `dotnet test` forwards any option it
+  does not own straight to the test executable. Two consequences: `--filter-class`
+  needs the **fully qualified** type name (`ApexRacers.Tests.Models.FieldPercentileTests`,
+  not `FieldPercentileTests`), and adding `--nologo` makes the runner reject the
+  option and report `Zero tests ran` / exit code 5 — which reads as a broken filter
+  rather than a bad flag. Run
+  `src/ApexRacers.Tests/bin/Debug/net10.0/ApexRacers.Tests.exe --help` for every
+  filter option the runner supports.
 - Keep Docker running for the full test and coverage commands. The suite's mandatory
   PostgreSQL integration collection starts a pinned container and creates an isolated
   database for each test; it is not skipped when Docker is unavailable.
