@@ -29,6 +29,7 @@ public class UserAnalyticsService(AppDbContext db)
                 SeriesId = r.Week.Season.SeriesId,
                 SeriesName = r.Week.Season.Series.Name,
                 r.WeekId,
+                SeasonId = r.Week.SeasonId,
                 WeekNumber = r.Week.WeekNumber,
                 TrackName = r.Week.Track.Name,
                 ConfigName = r.Week.Track.ConfigName,
@@ -89,22 +90,44 @@ public class UserAnalyticsService(AppDbContext db)
             var trackIds = rawResults.Select(r => r.TrackId).Distinct().ToList();
             var carIds = rawResults.Select(r => r.CarId).Distinct().ToList();
 
-            var personalLapBests = await PersonalBestQuery.RunAsync(
-                evidence
-                    .ScopeUploadedLaps(db.PersonalLaps)
-                    .Where(p => p.UserId == userId
-                             && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId)),
-                PersonalBestOrder.FastestFirst,
-                ct);
+            // Materialize the caller's own laps and pick the best per Race Week in memory. Each
+            // row below belongs to a different Race Week, so there is no single bound to push into
+            // SQL — and this is one user's uploaded laps, the same volume PersonalBestQuery
+            // already materializes for the same reason.
+            var laps = await evidence
+                .ScopeUploadedLaps(db.PersonalLaps)
+                .Where(p => p.UserId == userId && p.IsValidLap
+                         && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId))
+                .Select(p => new { p.CarId, p.TrackId, p.LapTimeSeconds, p.RecordedAt })
+                .ToListAsync(ct);
 
-            var personalLapByCarTrack = personalLapBests.ToDictionary(p => (p.CarId, p.TrackId));
+            var lapsByCarTrack = laps
+                .GroupBy(p => (p.CarId, p.TrackId))
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // An Uploaded Lap counts toward a Race Week only when it was driven inside it, so the
+            // two sides of the comparison cover the same span. Windows are per season because a
+            // week with no reported end is bounded by the next week's start.
+            var windowsBySeason = new Dictionary<int, Dictionary<int, RaceWeekWindow>>();
+            foreach (var seasonId in rawResults.Select(r => r.SeasonId).Distinct())
+                windowsBySeason[seasonId] = await db.RaceWeekWindowsAsync(seasonId, ct);
 
             foreach (var result in rawResults)
             {
-                if (!personalLapByCarTrack.TryGetValue((result.CarId, result.TrackId), out var plap)) continue;
+                if (!lapsByCarTrack.TryGetValue((result.CarId, result.TrackId), out var carTrackLaps)) continue;
+                if (!windowsBySeason.TryGetValue(result.SeasonId, out var windows)) continue;
+                if (!windows.TryGetValue(result.WeekNumber, out var window)) continue;
+
+                var inWeek = carTrackLaps
+                    .Where(p => window.Contains(p.RecordedAt))
+                    .Select(p => (double?)p.LapTimeSeconds)
+                    .Min();
+
+                if (inWeek is null) continue;
+
                 var key = (result.CarId, result.WeekId);
                 var raceBest = driverBests.TryGetValue(key, out var seeded) ? seeded.LapSeconds : (double?)null;
-                if (PersonalBest.Select(raceBest, plap.BestLapSeconds) is { } best)
+                if (PersonalBest.Select(raceBest, inWeek) is { } best)
                     driverBests[key] = best;
             }
         }

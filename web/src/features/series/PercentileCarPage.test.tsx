@@ -43,6 +43,7 @@ const MOCK_RESULT: PercentileResult = {
   trackConfigName: 'Full',
   yourBestLapSeconds: 132.5,
   yourBestLapEvidence: 'RaceLap',
+  uploadedBestOutsideWeek: null,
   fieldBestLapSeconds: 130.0,
   fieldMedianLapSeconds: 136.0,
   distribution: Array.from({ length: 20 }, (_, i) => makeBin(i, i === 10)),
@@ -202,6 +203,31 @@ describe('PercentileCarPage', () => {
 
     await waitFor(() => expect(screen.getByText('Uploaded lap')).toBeInTheDocument());
     expect(screen.queryByText('Race lap')).not.toBeInTheDocument();
+  });
+
+  it('says when a faster uploaded lap was left out by the race week bound', async () => {
+    mockGetPercentile.mockResolvedValue({
+      ...MOCK_RESULT,
+      uploadedBestOutsideWeek: { lapSeconds: 92.418, recordedAt: '2026-03-12T18:00:00Z' },
+    });
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(/set outside this race week/i)).toBeInTheDocument()
+    );
+    // The lap and the day it was driven both have to be there, or the note cannot be acted on.
+    expect(screen.getByText('1:32.418')).toBeInTheDocument();
+    expect(screen.getByText(/Mar 12, 2026/)).toBeInTheDocument();
+  });
+
+  it('says nothing about exclusions when the bound left nothing out', async () => {
+    mockGetPercentile.mockResolvedValue(MOCK_RESULT); // uploadedBestOutsideWeek: null
+    mockIRacingCustomerId = 100001;
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Field best')).toBeInTheDocument());
+    expect(screen.queryByText(/set outside this race week/i)).not.toBeInTheDocument();
   });
 
   it('shows distribution chart label', async () => {

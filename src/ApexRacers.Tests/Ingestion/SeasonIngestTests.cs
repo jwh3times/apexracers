@@ -189,6 +189,38 @@ public class SeasonIngestTests
         Assert.Empty(await db.SeasonCars.ToListAsync(ct));
     }
 
+    // ── week_end_time ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void EndTimeOrNull_ReportedEnd_IsKept()
+    {
+        var item = ScheduleItem();
+        item.WeekEndTime = new DateTimeOffset(2026, 8, 17, 21, 0, 0, TimeSpan.Zero);
+
+        Assert.Equal(item.WeekEndTime, SeasonIngest.EndTimeOrNull(item));
+    }
+
+    [Fact]
+    public void EndTimeOrNull_OmittedField_IsNotEstablishedRatherThanYearOne()
+    {
+        // The SDK types week_end_time as non-nullable, so a payload without it deserializes to
+        // default(DateTimeOffset) — a successful parse carrying 0001-01-01. Persisting that would
+        // record every such Race Week as having closed two millennia before it opened.
+        var item = ScheduleItem();
+        item.WeekEndTime = default;
+
+        Assert.Null(SeasonIngest.EndTimeOrNull(item));
+    }
+
+    [Fact]
+    public void EndTimeOrNull_EndBeforeTheStart_IsRejected()
+    {
+        var item = ScheduleItem();                       // starts 2026-08-11
+        item.WeekEndTime = new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero);
+
+        Assert.Null(SeasonIngest.EndTimeOrNull(item));
+    }
+
     private static SeasonScheduleItem ScheduleItem() =>
         new()
         {

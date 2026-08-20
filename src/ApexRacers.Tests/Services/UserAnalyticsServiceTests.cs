@@ -76,7 +76,10 @@ public class UserAnalyticsServiceTests
         db.PersonalLaps.Add(new PersonalLap
         {
             UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
-            IsValidLap = true, SessionType = LapSessionType.Race, RecordedAt = DateTimeOffset.UtcNow,
+            IsValidLap = true, SessionType = LapSessionType.Race,
+            // Inside this Race Week, which begins seven days ago — an Uploaded Lap counts toward a
+            // Race Week only when it was driven during it.
+            RecordedAt = InsideWeekOne,
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -153,6 +156,40 @@ public class UserAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task GetAnalyticsAsync_UploadedLapOutsideTheRaceWeek_DoesNotOverrideTheRaceBest()
+    {
+        // Same setup as the override case, but the uploaded lap was driven before this Race Week
+        // opened. A Race Best belongs to one Race Week, so a lap from outside it cannot stand in
+        // as that week's Personal Best however fast it was.
+        await using var db = DbContextFactory.Create();
+        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var carClass = AddCarClass(db, id: 1);
+        var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
+        var userId = Guid.NewGuid();
+        db.Users.Add(MakeUser(userId, iracingId: 42));
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
+            PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
+            Car = car, Week = week,
+        });
+        AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5);
+        db.PersonalLaps.Add(new PersonalLap
+        {
+            UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
+            IsValidLap = true, SessionType = LapSessionType.Race,
+            RecordedAt = DateTimeOffset.UtcNow.AddDays(-30),
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var withUploaded = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
+
+        Assert.Equal(62.5, withUploaded[0].PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, withUploaded[0].PersonalBestLapEvidence);
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_NoIRacingId_UsesOnlyAllowedUploadedEvidence()
     {
         await using var db = DbContextFactory.Create();
@@ -173,7 +210,7 @@ public class UserAnalyticsServiceTests
             LapTimeSeconds = 61.25,
             IsValidLap = true,
             SessionType = LapSessionType.Practice,
-            RecordedAt = DateTimeOffset.UtcNow,
+            RecordedAt = InsideWeekOne,
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -261,6 +298,13 @@ public class UserAnalyticsServiceTests
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A moment inside Race Week 1, which <see cref="MakeWeek"/> starts seven days ago. Uploaded
+    /// Laps are scoped to the Race Week they were driven in, so a fixture lap dated "now" would
+    /// fall just past the week's end rather than inside it.
+    /// </summary>
+    private static DateTimeOffset InsideWeekOne => DateTimeOffset.UtcNow.AddDays(-3);
 
     private static (Series series, Season season, Week week, Car car) SeedBaseGraph(
         AppDbContext db, int seriesId, int weekNumber)

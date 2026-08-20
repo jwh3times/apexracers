@@ -106,6 +106,36 @@ public static class SeasonQueries
             ?? throw new KeyNotFoundException($"No current season for series {seriesId}.");
     }
 
+    /// <summary>
+    /// The time span each Race Week of a season covers, keyed by Week number.
+    ///
+    /// <para>The whole season is loaded rather than the one Week a caller asked about, because a
+    /// Week that reported no end time is bounded by the <em>next</em> Week's start — which cannot
+    /// be known from that Week's own row. It is at most a few dozen rows.</para>
+    /// </summary>
+    public static async Task<Dictionary<int, RaceWeekWindow>> RaceWeekWindowsAsync(
+        this AppDbContext db, int seasonId, CancellationToken ct)
+    {
+        var weeks = await db.Weeks
+            .Where(w => w.SeasonId == seasonId)
+            .Select(w => new { w.WeekNumber, w.StartDate, w.EndTime })
+            .ToListAsync(ct);
+
+        return RaceWeekWindow
+            .ForSeason(weeks.Select(w => (w.WeekNumber, w.StartDate, w.EndTime)))
+            .ToDictionary(x => x.WeekNumber, x => x.Window);
+    }
+
+    /// <summary>
+    /// The time span one Race Week covers, or <c>null</c> when the season has no such Week.
+    /// </summary>
+    public static async Task<RaceWeekWindow?> RaceWeekWindowAsync(
+        this AppDbContext db, int seasonId, int weekNumber, CancellationToken ct)
+    {
+        var windows = await db.RaceWeekWindowsAsync(seasonId, ct);
+        return windows.TryGetValue(weekNumber, out var window) ? window : null;
+    }
+
     /// <summary>The series' display name, or empty when the series is unknown.</summary>
     public static async Task<string> SeriesNameAsync(
         this AppDbContext db, int seriesId, CancellationToken ct) =>

@@ -42,6 +42,11 @@ function formatDate(iso: string): string {
   });
 }
 
+/** Day only — the excluded lap's date is context, not a timestamp to reconcile. */
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
 function formatGap(yourBest: number, fieldBest: number): string {
   const diff = yourBest - fieldBest;
   return diff <= 0 ? 'You hold P1' : `+${diff.toFixed(3)}s`;
@@ -346,6 +351,28 @@ export default function PercentileCarPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* What the race week's bound left out */}
+                  {result.uploadedBestOutsideWeek && (
+                    <div className="flex items-start gap-2 border-t border-line-2 pt-4">
+                      <span
+                        className="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5 shrink-0"
+                        aria-hidden="true"
+                      >
+                        info
+                      </span>
+                      <p className="text-small-fluid text-on-surface-variant">
+                        Your fastest uploaded lap here —{' '}
+                        <span className="font-mono text-on-surface">
+                          {formatLapTime(result.uploadedBestOutsideWeek.lapSeconds)}
+                        </span>{' '}
+                        on {formatDay(result.uploadedBestOutsideWeek.recordedAt)} — was set outside
+                        this race week, so it isn't counted here. The field is this week's race
+                        laps, and a lap from another week was driven on a different track state,
+                        weather and setup.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Cache note */}
                   <p className="text-small-fluid text-on-surface-variant border-t border-line-2 pt-4">

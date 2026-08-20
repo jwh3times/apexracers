@@ -32,6 +32,14 @@ public record WeekDetailDto(
 public record DistributionBin(double MinSeconds, double MaxSeconds, int Count, bool ContainsUser);
 
 /// <summary>
+/// The fastest Uploaded Lap a Driver holds for this Car and Track that the Race Week's bound
+/// excluded, with the date it was driven. Present only when it is faster than the Personal Best
+/// that was ranked — a slower excluded lap would have changed nothing, so reporting it would be
+/// noise rather than disclosure.
+/// </summary>
+public record UploadedBestOutsideWeekDto(double LapSeconds, DateTimeOffset RecordedAt);
+
+/// <summary>
 /// A Subject Driver's standing in one Race Week's Field for one Car. <c>YourBestLapEvidence</c>
 /// names which evidence produced <c>YourBestLapSeconds</c>; the Field itself is composed entirely
 /// of Race Laps, so an Uploaded Lap is ranked against laps of a kind it is not.
@@ -55,7 +63,8 @@ public record PercentileResultDto(
     double FieldMedianLapSeconds,
     IReadOnlyList<DistributionBin> Distribution,
     double? WorldRecordLapSeconds = null,
-    double? WorldRecordGapSeconds = null);
+    double? WorldRecordGapSeconds = null,
+    UploadedBestOutsideWeekDto? UploadedBestOutsideWeek = null);
 
 /// <summary>
 /// One ranked Car recommendation for a Race Week. <c>BestLapEvidence</c> names which evidence

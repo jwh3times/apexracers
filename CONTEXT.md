@@ -201,7 +201,9 @@ The fastest Uploaded Lap a User holds for one Car at one Track, across all their
 _Avoid_: Personal Best, Telemetry best, Your best lap
 
 **Personal Best**:
-The fastest Lap known for a Subject Driver in one Car at one Track, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a Field.
+The fastest Lap known for a Subject Driver in one Car during one Race Week, drawn from whichever evidence the User has allowed to count. It is the lap ranked against a Field.
+
+Both evidence sides are scoped to that Race Week, and deliberately so. A Race Best already belongs to one; an Uploaded Lap counts toward a Race Week only when it was **driven inside it**, judged against iRacing's reported close time for that Week. Ranking an all-time Uploaded Best against a single Race Week's Field would compare laps from different time periods — a dry practice lap from a previous season, on a different build and BoP, could take the percentile from a wet Race Week's Race Best. The **Uploaded Best** stays all-time where it is shown for its own sake, on My Laps and the catalog pages; it is only the Personal Best — the lap that gets ranked — that the Race Week bounds. Where the bound leaves out a faster Uploaded Lap, the surface showing the percentile says so rather than silently dropping it.
 _Avoid_: Best Lap, Driver Best, PB, Reference lap
 
 ## Competitiveness

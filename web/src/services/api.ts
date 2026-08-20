@@ -56,6 +56,16 @@ export interface WeeklyPercentile {
  */
 export type LapEvidence = 'RaceLap' | 'UploadedLap';
 
+/**
+ * The fastest uploaded lap for this car and track that the race week's bound left out, and the
+ * date it was driven. Present only when it is faster than the personal best that was ranked — a
+ * slower excluded lap would have changed nothing, so reporting it would be noise.
+ */
+export interface UploadedBestOutsideWeek {
+  lapSeconds: number;
+  recordedAt: string; // ISO 8601
+}
+
 export interface CarAnalytics {
   carId: number;
   carName: string;
@@ -136,6 +146,7 @@ export interface PercentileResult {
   distribution: DistributionBin[];
   worldRecordLapSeconds: number | null;
   worldRecordGapSeconds: number | null;
+  uploadedBestOutsideWeek: UploadedBestOutsideWeek | null;
 }
 
 export interface CarRecommendation {

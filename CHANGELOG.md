@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- **A personal best is now drawn from the race week it is ranked against.** A race best already belongs to one race week, but the uploaded lap it was compared with was the driver's fastest ever at that track — so a dry practice lap from a previous season, on a different build and a different BoP, could take the percentile from a wet race week's race best, and nothing on the page said it had. An uploaded lap now counts toward a race week only when it was driven inside it, which makes both sides of the comparison mean the same thing. This applies to the percentile breakdown, car recommendations, and per-car analytics.
+- The race week's closing time comes from iRacing rather than being assumed. A week closes at 21:00 UTC on its seventh day, not at midnight, so treating it as seven days would have admitted laps for three hours after the week had actually ended.
+
+### Added
+
+- The percentile breakdown says when the race week's bound left out a faster uploaded lap, naming the lap and the day it was driven, instead of quietly dropping it. It stays silent when nothing was left out, or when the excluded lap was slower and would have changed nothing.
+
+### Changed
+
+- Uploaded best laps shown for their own sake — on My Laps and on the car and track pages — are unchanged and remain all-time. Only the personal best that gets ranked against a field is bounded to a race week.
 
 ## [0.8.1] - 2026-08-20
 
