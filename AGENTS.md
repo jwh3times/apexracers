@@ -394,7 +394,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `AchievementsController`              | awards trophy case                                                                                                                                                                        |
 | `RaceHistoryController`               | recent official races                                                                                                                                                                     |
 | `SubsessionController`                | classified field for one subsession, with unrepresented-entry counts (**public**); per-lap pace trace (Authorize)                                                                         |
-| `ScheduleController`                  | active-season schedule + weather + BoP + PB overlay (**public**)                                                                                                                          |
+| `ScheduleController`                  | active-season schedule + weather + BoP + caller's Uploaded Lap presence by Track (**public**)                                                                                             |
 | `LeaderboardController`               | global top-200 by iRating for a category                                                                                                                                                  |
 | `StandingsController`                 | championship / TT / qualifying standings per car class (**public**)                                                                                                                       |
 | `RaceGuideController`                 | official sessions starting in the next ~3 h (**public**)                                                                                                                                  |
@@ -441,7 +441,7 @@ defines why the bound exists; the `dotnet-api` agent carries the call rule.
 - `RaceHistoryService` — recent official races (10 min); resolves car names and track configuration from the local catalog, keyed on the track identifier the payload carries (never the track name — see `docs/adr/0002-track-identity-follows-iracing-track-id.md`).
 - `SubsessionDetailService` — one ingested subsession from the DB; normalizes stored weather units.
 - `LapDataService` (+ pure `LapAnalysis`) — per-lap pace + pace stats (24 h).
-- `ScheduleService` — active-season schedule (weeks + track + weather/BoP) + PB overlay.
+- `ScheduleService` — active-season schedule (Race Weeks + Track + weather/BoP) + caller's Uploaded Lap presence by Track.
 - `WorldRecordService` — fastest car+track lap (24 h); null when iRacing unconfigured.
 - `LeaderboardService` (+ pure `LeaderboardCsvParser`) — category global top-200 (24 h).
 - `StandingsService` (+ pure `QualifyResultsParser`, `IChunkDownloader`) — driver/TT/qualifying standings (24 h). Qualifying is special-cased: the SDK omits the qual lap time, so it downloads + parses the chunk files itself.

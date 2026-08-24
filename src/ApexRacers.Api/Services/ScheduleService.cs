@@ -10,7 +10,7 @@ namespace ApexRacers.Api.Services;
 /// <summary>
 /// The active-season schedule for a series: per-week track, date, weather forecast,
 /// and per-car Balance of Performance (all bulk-ingested by the worker), plus a
-/// personal overlay marking weeks where the caller has a personal best at that track.
+/// track-familiarity overlay marking Race Weeks where the caller has an Uploaded Lap at that Track.
 /// Public endpoint; the overlay is populated only when an authenticated user id is passed.
 /// </summary>
 public class ScheduleService(AppDbContext db)
@@ -45,11 +45,11 @@ public class ScheduleService(AppDbContext db)
             .Where(c => carIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
 
-        var pbTrackIds = userId is null
+        var uploadedLapTrackIds = userId is null
             ? []
             : (await db.UploadedLaps
-                .Where(p => p.UserId == userId)
-                .Select(p => p.TrackId)
+                .Where(lap => lap.UserId == userId)
+                .Select(lap => lap.TrackId)
                 .Distinct()
                 .ToListAsync(ct)).ToHashSet();
 
@@ -69,7 +69,7 @@ public class ScheduleService(AppDbContext db)
                     b.MaxDryTireSets))
                 .OrderBy(c => c.CarName)
                 .ToList(),
-            pbTrackIds.Contains(w.TrackId)))
+            uploadedLapTrackIds.Contains(w.TrackId)))
             .ToList();
 
         return new SeasonScheduleDto(seriesId, seriesName, weekDtos);
