@@ -38,7 +38,7 @@ const SCHEDULE: SeasonSchedule = {
           maxDryTireSets: 0,
         },
       ],
-      hasPersonalBest: true,
+      hasUploadedLapAtTrack: true,
     },
     {
       weekNumber: 2,
@@ -47,7 +47,7 @@ const SCHEDULE: SeasonSchedule = {
       startDate: '2999-01-01', // future → "Next Week"
       weather: null,
       bop: [],
-      hasPersonalBest: false,
+      hasUploadedLapAtTrack: false,
     },
   ],
 };
@@ -102,10 +102,32 @@ describe('SchedulePage', () => {
     expect(screen.getByText('-1.5%')).toBeInTheDocument();
   });
 
-  it('flags weeks with a personal best and tags this/next week', async () => {
+  it('labels uploaded track history without claiming it is a personal best', async () => {
+    mockGetSchedule.mockResolvedValue({
+      seriesId: 444,
+      seriesName: 'GT3 Cup',
+      weeks: [
+        {
+          weekNumber: 1,
+          trackName: 'Thruxton',
+          configName: '',
+          startDate: '2999-01-01',
+          weather: null,
+          bop: [],
+          hasUploadedLapAtTrack: true,
+        },
+      ],
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: 'Thruxton' });
+    expect(screen.getByText('Uploaded lap here')).toBeInTheDocument();
+    expect(screen.queryByText('Your PB here')).not.toBeInTheDocument();
+  });
+
+  it('tags this/next week', async () => {
     mockGetSchedule.mockResolvedValue(SCHEDULE);
     renderPage();
-    await waitFor(() => expect(screen.getByText(/your pb here/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('This Week')).toBeInTheDocument());
     expect(screen.getByText('This Week')).toBeInTheDocument();
     expect(screen.getByText('Next Week')).toBeInTheDocument();
   });

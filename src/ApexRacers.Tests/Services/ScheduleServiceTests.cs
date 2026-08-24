@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
@@ -29,6 +30,26 @@ public class ScheduleServiceTests
         SkiesLow = 1,
     });
 
+    [Fact]
+    public void ScheduleWeekDto_SerializesUploadedLapAtTrackWithoutClaimingPersonalBest()
+    {
+        var dto = new ScheduleWeekDto(
+            1,
+            "Thruxton",
+            "Club",
+            new DateOnly(2026, 5, 29),
+            Weather: null,
+            Bop: [],
+            true);
+
+        var json = JsonSerializer.SerializeToElement(dto, JsonSerializerOptions.Web);
+        var propertyNames = json.EnumerateObject().Select(property => property.Name).ToList();
+
+        Assert.Contains("hasUploadedLapAtTrack", propertyNames);
+        Assert.DoesNotContain("hasPersonalBest", propertyNames);
+        Assert.True(json.GetProperty("hasUploadedLapAtTrack").GetBoolean());
+    }
+
     private static async Task<AppDbContext> SeededAsync(bool active = true)
     {
         var db = DbContextFactory.Create();
@@ -48,6 +69,7 @@ public class ScheduleServiceTests
         });
         db.Cars.Add(new Car { Id = 132, Name = "BMW M4 GT3", NameAbbreviated = "BMW" });
         db.Cars.Add(new Car { Id = 119, Name = "Porsche 718 GT4", NameAbbreviated = "POR" });
+        db.Cars.Add(new Car { Id = 777, Name = "Unrelated Car", NameAbbreviated = "OTHER" });
         db.SeasonCarBops.AddRange(
             new SeasonCarBop
             {
@@ -59,8 +81,16 @@ public class ScheduleServiceTests
                 SeasonId = SeasonId, WeekNumber = 1, CarId = 119,
                 WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2,
             });
-        // User has a personal best at Thruxton (track 532 → week 1).
-        db.UploadedLaps.Add(new UploadedLap { Id = Guid.NewGuid(), UserId = UserId, TrackId = 532, CarId = 132 });
+        // Track familiarity is deliberately independent of the scheduled cars and Race Week dates.
+        db.UploadedLaps.Add(new UploadedLap
+        {
+            Id = Guid.NewGuid(),
+            UserId = UserId,
+            TrackId = 532,
+            CarId = 777,
+            IsValidLap = true,
+            RecordedAt = new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.Zero),
+        });
         await db.SaveChangesAsync(Ct);
         return db;
     }
@@ -89,23 +119,23 @@ public class ScheduleServiceTests
         Assert.Equal(10, w1.Bop[0].WeightPenaltyKg);
         Assert.Equal(-1.5, w1.Bop[0].PowerAdjustPct);
 
-        Assert.True(w1.HasPersonalBest); // user has a PB at Thruxton
+        Assert.True(w1.HasUploadedLapAtTrack);
 
         var w2 = dto.Weeks[1];
         Assert.Null(w2.Weather);
         Assert.Empty(w2.Bop);
-        Assert.False(w2.HasPersonalBest);
+        Assert.False(w2.HasUploadedLapAtTrack);
     }
 
     [Fact]
-    public async Task GetScheduleAsync_AnonymousCaller_NoPersonalBestOverlay()
+    public async Task GetScheduleAsync_AnonymousCaller_NoUploadedLapAtTrackOverlay()
     {
         await using var db = await SeededAsync();
         var service = new ScheduleService(db);
 
         var dto = await service.GetScheduleAsync(SeriesId, userId: null, Ct);
 
-        Assert.All(dto.Weeks, w => Assert.False(w.HasPersonalBest));
+        Assert.All(dto.Weeks, w => Assert.False(w.HasUploadedLapAtTrack));
     }
 
     [Fact]

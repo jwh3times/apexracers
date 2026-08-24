@@ -94,9 +94,9 @@ function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | nu
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {week.hasPersonalBest && (
+          {week.hasUploadedLapAtTrack && (
             <span className="text-eyebrow px-2 py-1 rounded-[7px] border border-primary-container/40 text-primary-container">
-              Your PB here
+              Uploaded lap here
             </span>
           )}
           {tag && (

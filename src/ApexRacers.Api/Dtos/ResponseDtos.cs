@@ -307,7 +307,7 @@ public record CarBopDto(
     double MaxPctFuelFill,
     int MaxDryTireSets);
 
-/// <summary>One week of a season schedule with forecast, BoP, and the caller's PB overlay.</summary>
+/// <summary>One Race Week, including whether the caller has an Uploaded Lap at its Track.</summary>
 public record ScheduleWeekDto(
     int WeekNumber,
     string TrackName,
@@ -315,7 +315,7 @@ public record ScheduleWeekDto(
     DateOnly StartDate,
     WeatherSummaryDto? Weather,
     IReadOnlyList<CarBopDto> Bop,
-    bool HasPersonalBest);
+    bool HasUploadedLapAtTrack);
 
 /// <summary>A series' active-season schedule (weeks ordered by week number).</summary>
 public record SeasonScheduleDto(int SeriesId, string SeriesName, IReadOnlyList<ScheduleWeekDto> Weeks);

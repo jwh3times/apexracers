@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [1.0.0] - 2026-08-24
+
 ### Added
 
 - Contributor workflow: an `/end-session` skill (`.agents/skills/end-session/`) that closes out a work session — it records what the session learned into memory, updates the GitHub issues it touched and the maintainer-only planning docs, and clears the regenerable coverage, test-output, and worktree leftovers out of the working tree. It stops well short of `/ship`: it never opens a PR, rolls `[Unreleased]` into a dated section, or pushes, and it refuses blanket ignored-file deletes so the gitignored environment files and the captured iRacing response objects — which cannot be re-fetched while the credentials blocker stands — survive the cleanup.
+
+### Fixed
+
+- Race Weeks no longer label any Uploaded Lap at the Track as "Your PB here." The track-familiarity badge now says "Uploaded lap here," and the API field is renamed from `hasPersonalBest` to `hasUploadedLapAtTrack` instead of claiming that lap is the caller's Personal Best for a Car and Race Week.
 
 ## [0.9.0] - 2026-08-20
 
@@ -736,7 +744,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/jwh3times/apexracers/compare/v0.9.3...v1.0.0
 [0.9.0]: https://github.com/jwh3times/apexracers/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jwh3times/apexracers/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jwh3times/apexracers/compare/v0.8.0...v0.8.1
