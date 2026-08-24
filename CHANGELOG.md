@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Contributor workflow: an `/end-session` skill (`.agents/skills/end-session/`) that closes out a work session — it records what the session learned into memory, updates the GitHub issues it touched and the maintainer-only planning docs, and clears the regenerable coverage, test-output, and worktree leftovers out of the working tree. It stops well short of `/ship`: it never opens a PR, rolls `[Unreleased]` into a dated section, or pushes, and it refuses blanket ignored-file deletes so the gitignored environment files and the captured iRacing response objects — which cannot be re-fetched while the credentials blocker stands — survive the cleanup.
 
+### Fixed
+
+- Race Weeks no longer label any Uploaded Lap at the Track as "Your PB here." The track-familiarity badge now says "Uploaded lap here," and the API field is renamed from `hasPersonalBest` to `hasUploadedLapAtTrack` instead of claiming that lap is the caller's Personal Best for a Car and Race Week.
+
 ## [0.9.0] - 2026-08-20
 
 ### Changed

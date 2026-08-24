@@ -396,7 +396,7 @@ export interface ScheduleWeek {
   startDate: string; // ISO date (yyyy-MM-dd)
   weather: WeatherSummary | null;
   bop: CarBop[];
-  hasPersonalBest: boolean;
+  hasUploadedLapAtTrack: boolean;
 }
 
 export interface SeasonSchedule {
@@ -871,7 +871,7 @@ export const api = {
     return request(`/api/subsessions/${subsessionId}/laps${qs}`, { signal });
   },
 
-  /** GET /api/series/:seriesId/schedule — active-season calendar with weather, BoP, PB overlay */
+  /** GET /api/series/:seriesId/schedule — active-season schedule with weather, BoP, and caller Uploaded Lap presence by Track */
   getSchedule(seriesId: number, signal?: AbortSignal): Promise<SeasonSchedule> {
     return request(`/api/series/${seriesId}/schedule`, { signal });
   },
