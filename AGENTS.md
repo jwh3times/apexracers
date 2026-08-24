@@ -33,16 +33,15 @@ section, or pushes. Run `/ship` first if a branch is finished, then `/end-sessio
 
 ## Agent config parity (Claude Code ↔ Codex)
 
-Both tools run the same agents, skills, and session hooks from **one** set of sources per row below.
-Agents and hooks are authored for Claude Code, with Codex generated from them; **skills run the
-opposite direction** — authored under `.agents/skills/`, with the Claude Code tree generated from
-that:
+Both tools run the same agents and skills from **one** set of sources per row below. Agents are
+authored for Claude Code, with Codex generated from them; **skills run the opposite direction** —
+authored under `.agents/skills/`, with the Claude Code tree generated from that. Session hooks remain
+tool-specific and are not mirrored:
 
 | Source (edit this)         | Generated (never edit)      |
 | -------------------------- | --------------------------- |
 | `.claude/agents/<name>.md` | `.codex/agents/<name>.toml` |
 | `.agents/skills/<name>/**` | `.claude/skills/<name>/**`  |
-| `.claude/hooks/<file>`     | `.codex/hooks/<file>`       |
 
 Skills are authored under `.agents/skills/` — not `.claude/skills/` — because that is where
 third-party skill installers write; keeping the install target as the authored source means
@@ -51,9 +50,9 @@ skill directory is mirrored, not just `SKILL.md` — references, `scripts/*.sh`,
 any other files a skill carries are all drift-controlled. Each generated `SKILL.md` gets a
 `# GENERATED — DO NOT EDIT` banner injected as a YAML comment on line 2 (line 1 stays `---`, so the
 frontmatter still parses); every other file in the tree is copied with no banner: text files
-(`.md`, `.yaml`, `.sh`, …) have CRLF normalized to LF — the same treatment hook scripts get, so
-a tool that rewrites the generated tree with Windows line endings after checkout does not read as
-permanent drift — and anything not on that text list is copied byte-for-byte.
+(`.md`, `.yaml`, `.sh`, …) have CRLF normalized to LF, so a tool that rewrites the generated tree
+with Windows line endings after checkout does not read as permanent drift — and anything not on that
+text list is copied byte-for-byte.
 
 **Never replace the generated `.claude/skills/` tree with a symlink back to `.agents/skills/`** (or
 any generated path with a symlink to its source) — two independent failure modes rule that out, both
@@ -91,14 +90,10 @@ requirement today. If a formatter is ever pointed at those trees, run it before
 again on the next format pass. In that case also point the formatter's ignore file at the generated
 tree (`.claude/skills/`), not the authored one.
 
-`.codex/hooks.json` and `.codex/config.toml` are **hand-maintained**, not generated. `config.toml` is
-the Codex counterpart to `.claude/settings.json` permissions — Codex has no per-command allowlist, so
-it sets `sandbox_mode = "workspace-write"` + `approval_policy = "on-request"` with
-`network_access = true` (the .NET/npm dev loop needs the network). Lifecycle hooks are defined in
-`.codex/hooks.json` and need no feature flag. The shared session hook
-(`.claude/hooks/session-start.sh` → `.codex/hooks/session-start.sh`) is capability-gated (runs only
-where `apt-get` exists and .NET 10 is absent), so the one verbatim-mirrored script is correct for both
-Claude Code's web sandbox and Codex cloud.
+`.claude/settings.json` and `.claude/hooks/session-start.sh` are Claude Code-specific. The repository
+does not check in a project-scoped Codex config or lifecycle hooks: Codex sessions use the
+configuration supplied by their user or environment, and the sync script does not create
+`.codex/config.toml`, `.codex/hooks.json`, or `.codex/hooks/*`.
 
 ---
 
@@ -278,10 +273,10 @@ npm run sync:agents -- --check                # same, check mode
 ```
 
 Needs only Node (no install step — the script has no dependencies; the root `package.json` exists only
-to expose these two scripts). Run it after editing anything under `.claude/agents/`, `.agents/skills/`,
-or `.claude/hooks/`, and commit every side that changed. See
+to expose these two scripts). Run it after editing anything under `.claude/agents/` or
+`.agents/skills/`, and commit every side that changed. See
 [Agent config parity](#agent-config-parity-claude-code--codex) for what maps to what — note skills run
-the opposite direction from agents/hooks.
+the opposite direction from agents.
 
 ### Cloud Deployment
 

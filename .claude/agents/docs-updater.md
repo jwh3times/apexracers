@@ -121,9 +121,10 @@ another doc; point at `CONTEXT.md` instead.
 
 - No other doc needs updating beyond ensuring the agent file itself is accurate.
 - Run `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`) and commit the regenerated
-  output: a `.claude/agents/*.md` or `.claude/hooks/*` change regenerates `.codex/agents/<name>.toml`
-  or `.codex/hooks/*`; an `.agents/skills/*/**` change regenerates `.claude/skills/*/**` (the opposite
-  direction) — otherwise the **Agent Config Sync** CI check fails the PR on drift.
+  output: a `.claude/agents/*.md` change regenerates `.codex/agents/<name>.toml`; an
+  `.agents/skills/*/**` change regenerates `.claude/skills/*/**` (the opposite direction) — otherwise
+  the **Agent Config Sync** CI check fails the PR on drift. `.claude/hooks/*` is tool-specific and is
+  not mirrored into `.codex/`.
 
 ## How to detect drift
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// Generates the Claude-Code/Codex agent configuration trees from their authored sources.
+// Generates the Claude-Code/Codex agent and skill configuration trees from their authored sources.
 //
 //   .claude/agents/<name>.md        ->  .codex/agents/<name>.toml
 //   .agents/skills/<name>/**        ->  .claude/skills/<name>/**   (whole tree, not just SKILL.md)
-//   .claude/hooks/<file>            ->  .codex/hooks/<file>
 //
 // Skills are authored under .agents/skills/ — not .claude/skills/ — because that is where
 // third-party skill installers write, so installing or updating a skill stays a one-way
@@ -12,7 +11,7 @@
 // so frontmatter still parses); every other file in a skill directory (references, scripts/*.sh,
 // agents/*.yaml, ...) is copied byte-for-byte with no banner and no text transformation.
 //
-// Agents and hooks stay tool-neutral prose copied VERBATIM — this script never rewrites wording.
+// Agent prose stays tool-neutral and is copied VERBATIM — this script never rewrites wording.
 //
 //   node scripts/sync-agent-configs.mjs           # write the generated trees
 //   node scripts/sync-agent-configs.mjs --check   # exit 1 if either tree has drifted (CI)
@@ -43,8 +42,6 @@ const AGENT_SRC = join(ROOT, '.claude', 'agents');
 const AGENT_OUT = join(ROOT, '.codex', 'agents');
 const SKILL_SRC = join(ROOT, '.agents', 'skills');
 const SKILL_OUT = join(ROOT, '.claude', 'skills');
-const HOOK_SRC = join(ROOT, '.claude', 'hooks');
-const HOOK_OUT = join(ROOT, '.codex', 'hooks');
 
 const BANNER = '# GENERATED FILE — DO NOT EDIT.\n# Source: .claude/agents/%s.md\n# Regenerate: node scripts/sync-agent-configs.mjs\n';
 
@@ -220,24 +217,6 @@ function buildAgents() {
   }
 }
 
-// ---------------------------------------------------------------- hooks
-
-/** Hook scripts are copied verbatim as text (CRLF normalized so Windows edits don't drift). */
-function copyTree(srcDir, outDir) {
-  if (!existsSync(srcDir)) return;
-
-  for (const entry of readdirSync(srcDir).sort()) {
-    const src = join(srcDir, entry);
-    if (statSync(src).isDirectory()) {
-      copyTree(src, join(outDir, entry));
-    } else {
-      const out = join(outDir, entry);
-      produced.set(out, readFileSync(src, 'utf8').replace(/\r\n/g, '\n'));
-      srcOf.set(out, src);
-    }
-  }
-}
-
 // ---------------------------------------------------------------- skills
 
 const SKILL_BANNER_FILE = 'SKILL.md';
@@ -382,10 +361,9 @@ function contentEquals(a, b) {
 function main() {
   buildAgents();
   copySkillTree(SKILL_SRC, SKILL_OUT);
-  copyTree(HOOK_SRC, HOOK_OUT);
   lintNeutrality();
 
-  const managed = [AGENT_OUT, SKILL_OUT, HOOK_OUT];
+  const managed = [AGENT_OUT, SKILL_OUT];
   const onDisk = managed.flatMap((d) => existingFiles(d));
   const stale = onDisk.filter((p) => !produced.has(p));
 

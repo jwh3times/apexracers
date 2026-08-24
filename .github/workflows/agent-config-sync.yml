@@ -1,11 +1,10 @@
 name: Agent Config Sync
 
-# Prevents drift between the authored agent/skill/hook sources and their generated
+# Prevents drift between the authored agent/skill sources and their generated
 # counterparts.
 #
-# `.claude/agents/*.md` and `.claude/hooks/*` are authored for Claude Code; the
-# generator (`scripts/sync-agent-configs.mjs`) renders `.codex/agents/*.toml` and
-# `.codex/hooks/*` from them for Codex.
+# `.claude/agents/*.md` is authored for Claude Code; the generator
+# (`scripts/sync-agent-configs.mjs`) renders `.codex/agents/*.toml` from it for Codex.
 #
 # Skills run the OPPOSITE direction: `.agents/skills/<name>/**` is authored — that is
 # where third-party skill installers write, so installing/updating a skill stays a

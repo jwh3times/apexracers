@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [1.0.2] - 2026-08-24
+
+### Removed
+
+- Removed the repository-scoped Codex sandbox configuration and lifecycle hooks, so Codex sessions now use each developer's own configuration without the project overriding permissions or running a session bootstrap hook. Agent and skill generation remains shared across Claude Code and Codex, while hooks remain specific to Claude Code.
+
 ## [1.0.0] - 2026-08-24
 
 ### Added
@@ -744,7 +750,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/jwh3times/apexracers/compare/v1.0.1...v1.0.2
 [1.0.0]: https://github.com/jwh3times/apexracers/compare/v0.9.3...v1.0.0
 [0.9.0]: https://github.com/jwh3times/apexracers/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jwh3times/apexracers/compare/v0.8.1...v0.8.2
