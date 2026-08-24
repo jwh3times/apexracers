@@ -38,14 +38,16 @@ domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
 `docs/agents/` file itself when the underlying convention (tracker, label
 strings, doc layout) changes, not `AGENTS.md`.
 
-Agents and hooks are authored for Claude Code, with the Codex equivalents
-(`.codex/agents/*.toml`, `.codex/hooks/*`) **generated** from them. Skills run the
-opposite direction: `.agents/skills/<name>/**` is authored (that's where third-party
-skill installers write), and the whole tree is **generated** into
-`.claude/skills/<name>/**` for Claude Code. Either way, `node scripts/sync-agent-configs.mjs`
-(or `npm run sync:agents`) is the one generator, and generated files must not be
-hand-edited — an `Agent Config Sync` CI check fails a PR whose generated tree has
-drifted. Edit the authored side (`.claude/agents/`, `.agents/skills/`, or
-`.claude/hooks/`), re-run the script, and commit every side that changed. Never
-replace a generated directory with a symlink back to its source — see the **Agent
-config parity** section in `AGENTS.md` for why, and for the full mapping.
+Agents are authored for Claude Code, with `.codex/agents/*.toml` **generated** from
+them. Skills run the opposite direction: `.agents/skills/<name>/**` is authored
+(that's where third-party skill installers write), and the whole tree is
+**generated** into `.claude/skills/<name>/**` for Claude Code. Session hooks remain
+tool-specific: the Claude Code hook is not mirrored into `.codex/`, and the repo
+does not check in project-scoped Codex config or lifecycle-hook files. For the
+generated trees, `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`)
+is the one generator, and generated files must not be hand-edited — an **Agent
+Config Sync** CI check fails a PR whose generated tree has drifted. Edit the
+authored side (`.claude/agents/` or `.agents/skills/`), re-run the script, and
+commit every side that changed. Never replace a generated directory with a
+symlink back to its source — see the **Agent config parity** section in `AGENTS.md`
+for why, and for the full mapping.
