@@ -37,6 +37,7 @@ const MOCK_RESULT: PercentileResult = {
   fieldPosition: 134,
   topSharePercent: 27,
   sampleSize: 500,
+  isPercentilePresentable: true,
   computedAt: '2026-05-11T12:00:00Z',
   seriesName: 'VRS GT3 Sprint',
   trackName: 'Spa-Francorchamps',
@@ -118,6 +119,20 @@ describe('PercentileCarPage', () => {
 
     await waitFor(() => expect(screen.getByText(/you're faster than/i)).toBeInTheDocument());
     expect(screen.queryByLabelText(/iRacing Customer ID/i)).not.toBeInTheDocument();
+  });
+
+  it('reports the field size instead of a percentile badge below the minimum', async () => {
+    mockIRacingCustomerId = 100001;
+    mockGetPercentile.mockResolvedValue({
+      ...MOCK_RESULT,
+      sampleSize: 1,
+      isPercentilePresentable: false,
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Not enough times yet')).toBeInTheDocument());
+    expect(screen.getByText('Only 1 driver has set a time this week.')).toBeInTheDocument();
+    expect(screen.queryByText(/you're faster than/i)).not.toBeInTheDocument();
   });
 
   it('shows not-found message on 404 during auto-fetch', async () => {

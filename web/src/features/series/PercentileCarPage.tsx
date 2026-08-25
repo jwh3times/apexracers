@@ -6,6 +6,7 @@ import PercentileBadge from '../../components/PercentileBadge';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import { formatLapTime } from '../../utils/lapTime';
+import { fieldSizeMessage } from '../../utils/fieldSize';
 import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
@@ -254,20 +255,30 @@ export default function PercentileCarPage() {
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Left: badge + headline + stat grid */}
                 <div className="scan-texture flex flex-col items-center justify-center gap-[22px] p-8 border-b md:border-b-0 md:border-r border-line-2">
-                  <PercentileBadge topSharePercent={result.topSharePercent} size="lg" />
-
-                  <div className="text-center">
-                    <p className="text-section-head text-on-surface">
-                      You're faster than{' '}
-                      <span className="text-primary-container">
-                        {result.percentileRank.toFixed(1)}%
-                      </span>{' '}
-                      of the field
-                    </p>
-                    <p className="text-body-fluid text-on-surface-variant mt-1">
-                      P{rank} of {result.sampleSize.toLocaleString()} drivers
-                    </p>
-                  </div>
+                  {result.isPercentilePresentable ? (
+                    <>
+                      <PercentileBadge topSharePercent={result.topSharePercent} size="lg" />
+                      <div className="text-center">
+                        <p className="text-section-head text-on-surface">
+                          You're faster than{' '}
+                          <span className="text-primary-container">
+                            {result.percentileRank.toFixed(1)}%
+                          </span>{' '}
+                          of the field
+                        </p>
+                        <p className="text-body-fluid text-on-surface-variant mt-1">
+                          P{rank} of {result.sampleSize.toLocaleString()} drivers
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-section-head text-on-surface">Not enough times yet</p>
+                      <p className="text-body-fluid text-on-surface-variant mt-1">
+                        {fieldSizeMessage(result.sampleSize)}
+                      </p>
+                    </div>
+                  )}
 
                   {/* 2×2 stat grid */}
                   <div className="w-full grid grid-cols-2 gap-px bg-line-2 border border-line-2 card-r overflow-hidden">
@@ -336,8 +347,15 @@ export default function PercentileCarPage() {
                   <div className="flex flex-col gap-4">
                     {(
                       [
-                        { label: 'Percentile rank', value: `${result.percentileRank.toFixed(1)}%` },
-                        { label: 'Drivers ahead', value: driversAhead.toLocaleString() },
+                        ...(result.isPercentilePresentable
+                          ? [
+                              {
+                                label: 'Percentile rank',
+                                value: `${result.percentileRank.toFixed(1)}%`,
+                              },
+                              { label: 'Drivers ahead', value: driversAhead.toLocaleString() },
+                            ]
+                          : []),
                         { label: 'Drivers in field', value: result.sampleSize.toLocaleString() },
                       ] as const
                     ).map(stat => (

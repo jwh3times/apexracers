@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [1.0.3] - 2026-08-25
+
+### Changed
+
+- Frontend linting now uses Oxlint 1.79's recommended correctness rules across the TypeScript,
+  React, accessibility, import, promise, Unicorn, Vitest, and Oxc rule sets, while retaining the
+  project's stricter type-aware checks and narrowly scoped semantic exceptions.
+
+### Fixed
+
+- Percentile badges are no longer presented for Fields smaller than five Drivers. Percentile,
+  recommendation, strategy, analytics, week-detail, and dashboard surfaces instead report the
+  known Field Size or omit the undersized reading.
+- Data-table action columns and car cells now expose accessible labels to assistive technology.
+
 ## [1.0.2] - 2026-08-24
 
 ### Removed
@@ -750,7 +765,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/jwh3times/apexracers/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/jwh3times/apexracers/compare/v1.0.1...v1.0.2
 [1.0.0]: https://github.com/jwh3times/apexracers/compare/v0.9.3...v1.0.0
 [0.9.0]: https://github.com/jwh3times/apexracers/compare/v0.8.2...v0.9.0

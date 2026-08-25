@@ -79,7 +79,10 @@ function UsersTab() {
                 DISPLAY NAME
               </th>
               <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">ROLE</th>
-              <th className="p-4 font-label-caps text-label-caps text-on-surface-variant"></th>
+              <th
+                className="p-4 font-label-caps text-label-caps text-on-surface-variant"
+                aria-label="Actions"
+              />
             </tr>
           </thead>
           <tbody>
@@ -333,7 +336,10 @@ function FlagsTab() {
                   <th className="p-4 font-label-caps text-label-caps text-on-surface-variant">
                     ENABLED
                   </th>
-                  <th className="p-4 font-label-caps text-label-caps text-on-surface-variant"></th>
+                  <th
+                    className="p-4 font-label-caps text-label-caps text-on-surface-variant"
+                    aria-label="Actions"
+                  />
                 </tr>
               </thead>
               <tbody>

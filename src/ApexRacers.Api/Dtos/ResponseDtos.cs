@@ -53,6 +53,7 @@ public record PercentileResultDto(
     int FieldPosition,
     int TopSharePercent,
     int SampleSize,
+    bool IsPercentilePresentable,
     DateTimeOffset ComputedAt,
     string SeriesName,
     string? TrackName,
@@ -78,6 +79,7 @@ public record CarRecommendationDto(
     double PercentileRank,
     int? TopSharePercent,
     int SampleSize,
+    bool IsPercentilePresentable,
     double ProjectedLapSeconds,
     double? BestLapSeconds,
     LapEvidence? BestLapEvidence);
@@ -615,6 +617,8 @@ public record CarStrategyDto(
     bool RainEnabled,
     double? PercentileRank,
     int? TopSharePercent,
+    int? FieldSize,
+    bool IsPercentilePresentable,
     double? ProjectedLapSeconds,
     int? OptimalRank);
 

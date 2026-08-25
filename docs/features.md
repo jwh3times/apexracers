@@ -15,9 +15,13 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   official race can be told from one drawn from uploaded telemetry. An uploaded lap only
   counts toward that week's Personal Best if it was driven during that race week; a
   faster uploaded lap from outside the week is called out separately rather than
-  silently dropped.
+  silently dropped. Percentile and placement headlines appear only once five drivers
+  have set a time; smaller fields report their driver count without presenting a
+  coarse position as a meaningful competitiveness result.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
-  to set in each, with their percentile in that car shown alongside.
+  to set in each, with their percentile in that car shown alongside when the field is
+  large enough to support it. Undersized readings do not influence expected-percentile
+  history or driver analytics.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
 - **Telemetry upload:** parse `.ibt` files, store the laps they recorded, and surface each

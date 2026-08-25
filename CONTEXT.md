@@ -216,6 +216,11 @@ _Avoid_: Sample, Population, Grid, Entry list
 
 **Field Size**:
 How many Drivers a Field holds, counting the Subject Driver.
+
+A Field must hold at least five Drivers before ApexRacers presents its Percentile Rank, Field
+Position, or Top Share as a headline competitiveness metric. Below that threshold the arithmetic
+remains defined, but the surface reports only how many Drivers have set a time; the available
+positions are too coarse to carry the same weight as an informative Field.
 _Avoid_: Sample size, Total drivers, Laps analysed
 
 **Percentile Rank**:

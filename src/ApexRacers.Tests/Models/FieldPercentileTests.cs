@@ -136,6 +136,16 @@ public class FieldPercentileTests
         Assert.Equal(1, FieldPercentile.FieldSize(new List<double>()));
     }
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(4, false)]
+    [InlineData(5, true)]
+    [InlineData(500, true)]
+    public void IsPresentable_UsesTheSharedMinimumFieldSize(int fieldSize, bool expected)
+    {
+        Assert.Equal(expected, FieldPercentile.IsPresentable(fieldSize));
+    }
+
     // ── MedianOfSorted ────────────────────────────────────────────────────────
 
     [Fact]

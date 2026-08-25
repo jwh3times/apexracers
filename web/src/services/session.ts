@@ -109,8 +109,8 @@ export function createSession({ store, refreshTransport, now = Date.now }: Sessi
 
   function notify(): void {
     const s = snapshot();
-    // Copy first: a listener may unsubscribe itself while being notified.
-    for (const listener of [...listeners]) listener(s);
+    // Set iteration remains stable when the current listener unsubscribes itself.
+    for (const listener of listeners) listener(s);
   }
 
   async function write(tokens: SessionTokens): Promise<void> {

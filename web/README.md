@@ -30,7 +30,7 @@ The dev server runs on `http://localhost:5173`. The proxy target is set by `API_
 ```bash
 npm run build    # tsc + Vite production build → dist/
 npm run preview  # Serve the production build locally
-npm run lint     # Oxlint with TypeScript 7-powered type-aware rules
+npm run lint     # Oxlint recommended correctness rules + TypeScript 7 type-aware rules
 ```
 
 ## Testing
@@ -48,6 +48,11 @@ npx prettier --write .      # Auto-fix formatting
 Coverage is enforced at **85%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
 
 The CI `test` job runs `npx prettier --check .` before the Vitest coverage step. Any unformatted file blocks both deploy jobs.
+
+Oxlint enables the recommended correctness category across its ESLint, TypeScript, React,
+JSX-accessibility, import, promise, unicorn, Vitest, and Oxc plugins, then layers the project's
+type-aware and policy rules on top. Keep exceptions scoped to the narrowest files that require them;
+test mocks are expected to supply type parameters, with that rule currently enforced as a warning.
 
 ### End-to-end (Playwright)
 
@@ -119,6 +124,7 @@ src/
   utils/              ← formatLapTime, toTopPercent/topPercentLabel, deriveAlerts, breadcrumbs,
                           raceWeekNumber/raceWeekLabel (0-based Race Week Index → 1-based Race Week
                           Number), splitLabel (Split Index/Count → display label, null when unknown),
+                          fieldSizeMessage (undersized-Field presentation copy),
                           lapEvidenceLabel/lapEvidenceDescription/isUploadedEvidence (which evidence
                           produced a personal best)
                           + colocated *.test.ts siblings
@@ -129,7 +135,10 @@ src/
 
 `PercentileBadge` accepts the API's higher-is-better percentile rank and owns the conversion to the
 displayed lower-is-better `TOP X%` value through `toTopPercent`. Pass the raw rank to the badge; use
-`topPercentLabel` when only the formatted label is needed.
+`topPercentLabel` when only the formatted label is needed. Callers must honor the API's
+`isPercentilePresentable` value before rendering percentile, position, or top-share headlines; use
+`fieldSizeMessage` for the undersized-Field explanation. The threshold itself belongs to
+`ApexRacers.Core.FieldPercentile`, not the frontend.
 
 ## API client
 

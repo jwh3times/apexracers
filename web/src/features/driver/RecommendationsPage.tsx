@@ -8,6 +8,7 @@ import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import { fieldSizeMessage } from '../../utils/fieldSize';
 
 // A percentile is a share, not a placement — rendering 92.3 as "92.3th" read as an ordinal the
 // driver never held. The placement is carried separately as topSharePercent.
@@ -65,11 +66,11 @@ function HeroCard({
           <div>
             <p className="text-th text-on-surface-variant mb-1">Your Percentile</p>
             <span className="font-mono text-[22px] font-bold text-primary-container leading-none">
-              {percentile(rec.percentileRank)}
+              {rec.isPercentilePresentable ? percentile(rec.percentileRank) : '—'}
             </span>
           </div>
           <div>
-            <p className="text-th text-on-surface-variant mb-1">Sample Size</p>
+            <p className="text-th text-on-surface-variant mb-1">Drivers in field</p>
             <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
               {rec.sampleSize.toLocaleString()}
             </span>
@@ -77,12 +78,18 @@ function HeroCard({
         </div>
 
         {/* Progress bar */}
-        <div className="h-[3px] bg-surface-container-highest rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary-container rounded-full"
-            style={{ width: `${rec.percentileRank}%` }}
-          />
-        </div>
+        {rec.isPercentilePresentable ? (
+          <div className="h-[3px] bg-surface-container-highest rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary-container rounded-full"
+              style={{ width: `${rec.percentileRank}%` }}
+            />
+          </div>
+        ) : (
+          <p className="text-small-fluid text-on-surface-variant">
+            {fieldSizeMessage(rec.sampleSize)}
+          </p>
+        )}
 
         {/* CTA */}
         <Link
@@ -119,7 +126,7 @@ function RecommendationTable({
           <th className="th-p text-th text-on-surface-variant text-right">Projected Lap</th>
           <th className="th-p text-th text-on-surface-variant text-right w-28">Percentile</th>
           <th className="th-p text-th text-on-surface-variant text-right w-24">Entries</th>
-          <th className="th-p w-20" />
+          <th className="th-p w-20" aria-label="Actions" />
         </tr>
       </thead>
       <tbody>
@@ -149,10 +156,12 @@ function RecommendationTable({
               {formatLapTime(r.projectedLapSeconds)}
             </td>
             <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
-              {percentile(r.percentileRank)}
+              {r.isPercentilePresentable ? percentile(r.percentileRank) : '—'}
             </td>
             <td className="td-p text-small-fluid text-on-surface-variant text-right tabular-nums">
-              {r.sampleSize.toLocaleString()}
+              <span title={!r.isPercentilePresentable ? fieldSizeMessage(r.sampleSize) : undefined}>
+                {r.sampleSize.toLocaleString()}
+              </span>
             </td>
             <td className="td-p text-right">
               <Link

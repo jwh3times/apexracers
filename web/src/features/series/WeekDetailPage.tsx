@@ -310,7 +310,7 @@ export default function WeekDetailPage() {
                       Your pct
                     </th>
                   )}
-                  <th className="th-p border-b border-line-2 w-8" />
+                  <th className="th-p border-b border-line-2 w-8" aria-label="Actions" />
                 </tr>
               </thead>
               <tbody>
@@ -328,7 +328,10 @@ export default function WeekDetailPage() {
                       }
                     >
                       {/* Car name + colored dot */}
-                      <td className="td-p border-b border-line-2 text-body-fluid">
+                      <td
+                        className="td-p border-b border-line-2 text-body-fluid"
+                        aria-label={`Car: ${car.carName}`}
+                      >
                         <div className="flex items-center gap-[9px]">
                           <span
                             className="w-2 h-2 rounded-full shrink-0"

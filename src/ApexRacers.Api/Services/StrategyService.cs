@@ -109,6 +109,8 @@ public class StrategyService(
                     car?.RainEnabled ?? false,
                     rec?.PercentileRank,
                     rec?.TopSharePercent,
+                    rec?.SampleSize,
+                    rec?.IsPercentilePresentable ?? false,
                     rec?.ProjectedLapSeconds,
                     rec?.Rank);
             })

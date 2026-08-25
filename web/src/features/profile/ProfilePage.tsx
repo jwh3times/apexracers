@@ -517,7 +517,7 @@ export default function ProfilePage() {
                       key={lap.carId}
                       className="border-b border-surface-container-high hover:bg-surface-container-highest transition-colors last:border-b-0"
                     >
-                      <td className="p-4">
+                      <td className="p-4" aria-label={`Car: ${lap.carName}`}>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-6 bg-surface-container-high rounded flex items-center justify-center shrink-0">
                             <span

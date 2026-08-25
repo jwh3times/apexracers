@@ -21,6 +21,7 @@ public class UserAnalyticsService(AppDbContext db)
 
         var rawResults = await db.CarPercentileResults
             .Where(r => r.UserId == userId)
+            .Where(r => r.SampleSize >= FieldPercentile.MinimumPresentableFieldSize)
             .Where(r => !seriesId.HasValue || r.Week.Season.SeriesId == seriesId.Value)
             .Select(r => new
             {

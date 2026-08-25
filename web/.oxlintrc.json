@@ -1,8 +1,18 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [],
+  "plugins": [
+    "eslint",
+    "typescript",
+    "react",
+    "jsx-a11y",
+    "import",
+    "promise",
+    "unicorn",
+    "vitest",
+    "oxc"
+  ],
   "categories": {
-    "correctness": "off"
+    "correctness": "error"
   },
   "options": {
     "typeAware": true
@@ -131,7 +141,6 @@
         "typescript/unbound-method": "error",
         "react/rules-of-hooks": "error",
         "react/exhaustive-deps": "warn",
-        "react/react-compiler": "error",
         "react/only-export-components": [
           "error",
           {
@@ -149,11 +158,15 @@
       }
     },
     {
-      "files": ["src/hooks/useResource.ts"],
+      "files": [
+        "src/components/CalculationSource.tsx",
+        "src/components/DemoBanner.tsx",
+        "src/components/LapTraceChart.tsx"
+      ],
       "rules": {
-        "react/react-compiler": "off"
+        "jsx-a11y/prefer-tag-over-role": "off"
       },
-      "plugins": ["react"]
+      "plugins": ["jsx-a11y"]
     },
     {
       "files": [
@@ -192,6 +205,16 @@
         "typescript/unbound-method": "off"
       },
       "plugins": ["typescript"]
+    },
+    {
+      "files": ["src/**/*.test.{ts,tsx}", "src/test/**/*.ts"],
+      "rules": {
+        "vitest/require-mock-type-parameters": "warn"
+      },
+      "plugins": ["vitest"],
+      "env": {
+        "vitest": true
+      }
     },
     {
       "files": [

@@ -89,6 +89,7 @@ public class PercentileCalculationServiceTests
         Assert.Equal(1, result.SampleSize);
         Assert.Equal(1, result.FieldPosition);
         Assert.Equal(100, result.TopSharePercent);
+        Assert.False(result.IsPercentilePresentable);
     }
 
     [Fact]
@@ -111,6 +112,7 @@ public class PercentileCalculationServiceTests
         Assert.Equal(5, result.SampleSize);
         Assert.Equal(2, result.FieldPosition);
         Assert.Equal(40, result.TopSharePercent);
+        Assert.True(result.IsPercentilePresentable);
     }
 
     [Fact]
