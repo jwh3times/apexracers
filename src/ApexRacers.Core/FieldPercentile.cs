@@ -20,6 +20,16 @@ namespace ApexRacers.Core;
 public static class FieldPercentile
 {
     /// <summary>
+    /// The smallest Field whose competitiveness metrics are informative enough to present as a
+    /// headline. Smaller Fields still describe how many Drivers set a time, but their coarse
+    /// positions are not presented as Percentile Ranks or Top Shares.
+    /// </summary>
+    public const int MinimumPresentableFieldSize = 5;
+
+    public static bool IsPresentable(int fieldSize) =>
+        fieldSize >= MinimumPresentableFieldSize;
+
+    /// <summary>
     /// The Subject Driver's percentile rank within the Field — the share of the Field they are at
     /// least as fast as, with Drivers on an identical lap splitting the tie. Higher is better.
     /// </summary>

@@ -4,6 +4,7 @@ import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topShareLabel } from '../../utils/percentile';
+import { fieldSizeMessage } from '../../utils/fieldSize';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
@@ -82,12 +83,17 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {/* Only a car the driver has a lap in this week holds a placement in the field. A
                 projected car carries a running average of past readings and no placement. */}
-            {car.topSharePercent != null && (
+            {car.topSharePercent != null && car.isPercentilePresentable && (
               <span className="text-small-fluid text-on-surface-variant">
                 <span className="text-primary-container font-mono">
                   {topShareLabel(car.topSharePercent)}
                 </span>{' '}
                 your pace
+              </span>
+            )}
+            {!car.isPercentilePresentable && car.fieldSize != null && (
+              <span className="text-small-fluid text-on-surface-variant">
+                {fieldSizeMessage(car.fieldSize)}
               </span>
             )}
             {car.projectedLapSeconds != null && (

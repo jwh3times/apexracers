@@ -134,6 +134,7 @@ export interface PercentileResult {
   fieldPosition: number;
   topSharePercent: number;
   sampleSize: number;
+  isPercentilePresentable: boolean;
   computedAt: string; // ISO 8601
   seriesName: string;
   trackName: string | null;
@@ -156,6 +157,7 @@ export interface CarRecommendation {
   percentileRank: number;
   topSharePercent: number | null;
   sampleSize: number;
+  isPercentilePresentable: boolean;
   projectedLapSeconds: number;
   bestLapSeconds: number | null;
   /** Which evidence produced bestLapSeconds; null exactly when that lap is. */
@@ -429,6 +431,8 @@ export interface CarStrategy {
   rainEnabled: boolean;
   percentileRank: number | null;
   topSharePercent: number | null;
+  fieldSize: number | null;
+  isPercentilePresentable: boolean;
   projectedLapSeconds: number | null;
   optimalRank: number | null;
 }

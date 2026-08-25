@@ -131,6 +131,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
         AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
         AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 100);
 
         // Previous week — driver 1 ran 60 s and beat all 3 others (100%)
         var series2 = new Series { Id = 2, Name = "Other Series" };
@@ -147,6 +148,7 @@ public class CarRecommendationServiceTests
         AddResult(db, prevSubsession, car1, carClass, custId: 101, lapSeconds: 65);
         AddResult(db, prevSubsession, car1, carClass, custId: 102, lapSeconds: 70);
         AddResult(db, prevSubsession, car1, carClass, custId: 103, lapSeconds: 75);
+        AddResult(db, prevSubsession, car1, carClass, custId: 104, lapSeconds: 80);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
@@ -155,10 +157,10 @@ public class CarRecommendationServiceTests
         Assert.Null(dto.BestLapSeconds);
         // No lap, so no evidence produced one — the two are absent together.
         Assert.Null(dto.BestLapEvidence);
-        // Field of 4 in the previous week: (3 slower + 0.5 tied) / 4 = 87.5.
-        Assert.Equal(87.5, dto.PercentileRank);
-        // 87.5th percentile in [70, 80, 90]: pos = 2 x 0.125 = 0.25 → 70 + 0.25 x 10 = 72.5 s
-        Assert.Equal(72.5, dto.ProjectedLapSeconds, tolerance: 1e-6);
+        // Field of 5 in the previous week: (4 slower + 0.5 tied) / 5 = 90.
+        Assert.Equal(90, dto.PercentileRank);
+        // 90th percentile in [70, 80, 90, 100]: pos = 3 x 0.1 = 0.3 → 73 s.
+        Assert.Equal(73, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
 
     [Fact]
@@ -234,6 +236,8 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 60); // caller — fastest
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
         AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 100);
 
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
@@ -250,15 +254,15 @@ public class CarRecommendationServiceTests
             ct: TestContext.Current.CancellationToken);
 
         var dto = result.Single(r => r.CarId == car1.Id);
-        // Field of 3: (2 slower + 0.5 tied) / 3.
-        Assert.Equal(250.0 / 3, dto.PercentileRank, tolerance: 1e-10);
+        // Field of 5: (4 slower + 0.5 tied) / 5.
+        Assert.Equal(90, dto.PercentileRank, tolerance: 1e-10);
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
         Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(250.0 / 3, rows[0].PercentileRank, tolerance: 1e-10);
-        Assert.Equal(34, rows[0].TopSharePercent); // 1st of 3 = 33.3%, rounded up
-        Assert.Equal(3, rows[0].SampleSize);  // refreshed to the current field size
+        Assert.Equal(90, rows[0].PercentileRank, tolerance: 1e-10);
+        Assert.Equal(20, rows[0].TopSharePercent); // 1st of 5
+        Assert.Equal(5, rows[0].SampleSize);  // refreshed to the current field size
     }
 
     [Fact]
@@ -272,6 +276,8 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 60);
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
         AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 500, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 600, lapSeconds: 100);
         // car2: only other drivers raced it (distinct cust_ids — the composite key is
         // (SubsessionId, CustId)); the caller has a cached percentile from another week, so it
         // surfaces as a projected-only recommendation (BestLapSeconds null) → excluded.
@@ -304,9 +310,9 @@ public class CarRecommendationServiceTests
 
         var entry = Assert.Single(result); // only car1 (raced); car2 is projected-only → excluded
         Assert.Equal(car1.Id, entry.CarId);
-        // Field of 3: (2 slower + 0.5 tied) / 3.
-        Assert.Equal(250.0 / 3, entry.PercentileRank, tolerance: 1e-10);
-        Assert.Equal(34, entry.TopSharePercent); // 1st of 3 = 33.3%, rounded up
+        // Field of 5: (4 slower + 0.5 tied) / 5.
+        Assert.Equal(90, entry.PercentileRank, tolerance: 1e-10);
+        Assert.Equal(20, entry.TopSharePercent); // 1st of 5
     }
 
     // ── RunningAveragePercentile (pure helper) ───────────────────────────────

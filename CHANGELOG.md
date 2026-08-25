@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Percentile badges are no longer presented for Fields smaller than five Drivers. Percentile,
+  recommendation, strategy, analytics, week-detail, and dashboard surfaces instead report the
+  known Field Size or omit the undersized reading.
 
 ## [1.0.2] - 2026-08-24
 

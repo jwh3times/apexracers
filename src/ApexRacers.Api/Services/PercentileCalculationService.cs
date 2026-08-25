@@ -155,7 +155,8 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         return new PercentileResultDto(
             seriesId, weekNumber, carId, customerId,
-            percentileRank, fieldPosition, topSharePercent, total, computedAt,
+            percentileRank, fieldPosition, topSharePercent, total,
+            FieldPercentile.IsPresentable(total), computedAt,
             week.SeriesName, week.TrackName, week.TrackConfigName,
             driverBest.LapSeconds, driverBest.Evidence, fieldBest, fieldMedian,
             distribution, wrLap, wrGap, excluded);

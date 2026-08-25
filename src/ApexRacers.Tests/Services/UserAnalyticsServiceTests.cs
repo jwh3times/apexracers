@@ -18,6 +18,34 @@ public class UserAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task GetAnalyticsAsync_UndersizedFieldReading_IsExcluded()
+    {
+        await using var db = DbContextFactory.Create();
+        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var userId = Guid.NewGuid();
+        db.Users.Add(MakeUser(userId, iracingId: 42));
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId,
+            CarId = car.Id,
+            SeriesId = 1,
+            WeekId = week.Id,
+            PercentileRank = 50,
+            SampleSize = 1,
+            ComputedAt = DateTimeOffset.UtcNow,
+            Car = car,
+            Week = week,
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
+            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly,
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_SingleCarResult_ReturnsCorrectDto()
     {
         await using var db = DbContextFactory.Create();
@@ -275,8 +303,8 @@ public class UserAnalyticsServiceTests
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 90.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week2 });
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 90.0, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week1 },
+            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week2 });
 
         // week1 field laps: [60, 70, 80] → median = 70
         AddResult(db, subsession1, car, carClass, custId: 1, lapSeconds: 70);
