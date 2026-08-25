@@ -126,7 +126,7 @@ function RecommendationTable({
           <th className="th-p text-th text-on-surface-variant text-right">Projected Lap</th>
           <th className="th-p text-th text-on-surface-variant text-right w-28">Percentile</th>
           <th className="th-p text-th text-on-surface-variant text-right w-24">Entries</th>
-          <th className="th-p w-20" />
+          <th className="th-p w-20" aria-label="Actions" />
         </tr>
       </thead>
       <tbody>

@@ -208,7 +208,7 @@ export default function MyLapsPage() {
                       key={`${lap.carId}-${lap.trackId}`}
                       className="hover:bg-surface-container-highest transition-colors group cursor-pointer"
                     >
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4" aria-label={`Car: ${lap.carName}`}>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-surface-container-highest rounded flex items-center justify-center shrink-0">
                             <span

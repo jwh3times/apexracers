@@ -41,7 +41,7 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
             <th className="th-p text-th text-on-surface-variant text-right">SR &Delta;</th>
             <th className="th-p text-th text-on-surface-variant text-right">SOF</th>
             <th className="th-p text-th text-on-surface-variant text-right">Pts</th>
-            <th className="th-p w-10" />
+            <th className="th-p w-10" aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
