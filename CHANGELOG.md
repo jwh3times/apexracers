@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [1.0.4] - 2026-08-25
+
+### Added
+
+- Maintainers can restore the optional private companion repository through a 1Password-backed
+  bootstrap helper and inspect public/private branch, dirty, upstream, and divergence state with one
+  cross-platform status command; public contributors and CI remain independent of the companion.
+
 ## [1.0.3] - 2026-08-25
 
 ### Changed
@@ -765,7 +773,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/jwh3times/apexracers/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/jwh3times/apexracers/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/jwh3times/apexracers/compare/v1.0.1...v1.0.2
 [1.0.0]: https://github.com/jwh3times/apexracers/compare/v0.9.3...v1.0.0
