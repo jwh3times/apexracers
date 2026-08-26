@@ -46,6 +46,7 @@ actually did. Distinguish four buckets, because they route to four different pla
 Ground it in evidence, not recollection:
 
 ```bash
+node scripts/repository-status.mjs                  # public + optional private worktree state
 git status --porcelain                              # uncommitted work
 git log --oneline main..HEAD                        # this branch's commits
 git branch --show-current
@@ -114,10 +115,10 @@ session never touched — that is `/triage`'s job.
 
 ### 4. Update the `private/` docs
 
-`private/` is gitignored, which has one load-bearing consequence: **git history is never evidence
-about it.** `git log`, `git show --stat`, and `git diff` cannot see these files, so every commit
-looks like it "didn't touch the archive". Never read that silence as precedent for skipping them —
-open the file and check the content.
+`private/` is ignored by the public repository because it is an optional standalone companion.
+When `private/.git` exists, inspect its content and Git state from that root; outer `git log`,
+`git show`, and `git diff` remain blind to it. When the companion is absent, report that private-doc
+reconciliation could not run and do not create an ignored orphan directory.
 
 | File | Update when |
 | --- | --- |
@@ -131,6 +132,10 @@ open the file and check the content.
 
 If `/ship` already ran `docs-updater` on this branch, verify rather than redo: check that ROADMAP
 lost the shipped item and archive gained the dated entry, and fill only the gaps.
+
+Private changes belong to a separate commit in the companion repository. This skill does not
+silently commit or push either repository: report the private diff and ask before committing it. An
+open public PR is not shipped; leave roadmap/archive shipped-state unchanged until merge.
 
 ### 5. Clean up the local workspace
 
@@ -155,11 +160,8 @@ docker compose ps
 
 **Never remove without an explicit request** — none of these are regenerable here:
 
-- `private/` in any form, and especially `private/iracing-api-response-objects/` — these captured
-  payloads are the authoritative shape reference and **cannot be re-fetched**: the iRacing OAuth
-  credentials are the standing blocker
+- the `private/` companion worktree in any form, especially its captured response objects
 - `.env`, `*.secrets.json`, `.claude/settings.local.json`, `docker-compose.override.yml`
-- `src/ApexRacers.Data/Seeds/Screenshots/`
 - Any branch that is unmerged, or a worktree with uncommitted changes
 
 So: **no bare `git clean -xfd`** — it would take `private/` and `.env` with it. Delete by explicit
@@ -179,13 +181,17 @@ Finally, account for uncommitted work. Do **not** silently commit or discard it:
 If it is worth keeping but not finishing, offer to commit it on its branch or stash it with a named
 message.
 
+Run `node scripts/repository-status.mjs --check` last. A missing companion is success; an installed
+public or private worktree that is dirty, has no upstream, or is ahead/behind is not portable. Name
+the exact repository state instead of calling the session synchronized.
+
 ### 6. Report
 
 Close with a short, honest summary:
 
 - Memories added / updated / deleted, with the one-line reason for each
 - Issues commented, closed, relabelled, or opened — with numbers
-- `private/` docs updated, and which sections
+- `private/` docs updated, their separate commit/push state, or that the companion was absent
 - What was deleted from the workspace, and what was deliberately left (and why)
 - **Anything left open**: uncommitted changes, unpushed branches, an open PR awaiting review, a
   running container, a decision the user still owes
@@ -201,4 +207,4 @@ the skill; a tidy summary that hides them defeats it.
 - Run `git clean -xfd` or any blanket ignored-file delete.
 - Commit or discard uncommitted work without asking.
 - Invent memories, issue comments, or archive entries to make a bucket look non-empty.
-- Cite "git history shows no change" as evidence about anything under `private/` — it can't.
+- Cite outer-repository Git history as evidence about the nested private repository.

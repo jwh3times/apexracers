@@ -14,6 +14,7 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 | `src/ApexRacers.Tests/`     | xUnit unit and PostgreSQL integration tests                                |
 | `web/`                      | Vite + React + TypeScript frontend                                         |
 | `docs/`                     | Public product, roadmap, and documentation-index pages                     |
+| `private/` (optional)       | Standalone maintainer companion with sanitized samples and private docs    |
 | `infra/`                    | Placeholder for Azure Bicep infrastructure definitions (not yet populated) |
 | `.github/workflows/`        | GitHub Actions CI/CD pipelines                                             |
 
@@ -78,11 +79,16 @@ The dev server starts on `http://localhost:5173`. All `/api` requests are proxie
 
 ### 6. Seed the database (optional)
 
-The seeder loads iRacing catalog data (tracks, cars, car classes, series, seasons, weeks) from JSON files in `private/iracing-api-response-objects/`, then generates synthetic lap time data for all series so the UI is usable without live iRacing data. The directory is gitignored due to file size — you must populate it manually before running the seeder.
+The default and demo seeder modes load the iRacing catalog (tracks, cars, car classes, series,
+seasons, and weeks) from sanitized response objects in the optional private companion, then generate
+synthetic lap times for all series. Maintainers with access can install that companion at `private/`
+from the repository root:
 
-Use [apex-iracing](https://github.com/tomtoday/apex-iracing) to fetch the required iRacing API response objects and save them into `private/iracing-api-response-objects/`.
+```bash
+npm run bootstrap:private
+```
 
-Once the directory is populated:
+Once `private/iracing-api-response-objects/` is available:
 
 ```bash
 dotnet run --project src/ApexRacers.Seeder            # catalog + synthetic laps (needs the JSON above)

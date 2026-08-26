@@ -63,5 +63,5 @@ TestResults/
 # Seed Screenshots
 src/ApexRacers.Data/Seeds/Screenshots/
 
-# Private Files
+# Optional standalone maintainer companion repository (cloned here; never part of this history)
 private/

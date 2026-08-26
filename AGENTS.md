@@ -128,7 +128,10 @@ configuration supplied by their user or environment, and the sync script does no
 ## Project docs
 
 Public docs live in the repo root and `docs/`. Maintainer-only planning, raw API samples, deployment
-runbooks, security findings, and implementation archives live in `private/`, which is gitignored.
+runbooks, security findings, and implementation archives live in the optional standalone companion
+repository checked out at `private/`. The public repository ignores that entire nested worktree and
+must build, test, and run CI when it is absent. When installed, run its Git commands from `private/`;
+outer-repository Git history cannot see its changes.
 
 | Doc                                     | What it is                                                                                             |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -272,11 +275,27 @@ npm run sync:agents                           # same as the plain command above
 npm run sync:agents -- --check                # same, check mode
 ```
 
-Needs only Node (no install step — the script has no dependencies; the root `package.json` exists only
-to expose these two scripts). Run it after editing anything under `.claude/agents/` or
+Needs only Node (no install step — the script has no dependencies; the root `package.json` also
+exposes repository-coordination helpers). Run it after editing anything under `.claude/agents/` or
 `.agents/skills/`, and commit every side that changed. See
 [Agent config parity](#agent-config-parity-claude-code--codex) for what maps to what — note skills run
 the opposite direction from agents.
+
+### Public/private repository coordination
+
+```bash
+npm run repo:status          # report branch, dirty state, upstream, and divergence for both repos
+npm run repo:status:check    # exit nonzero if an installed worktree is dirty or unsynchronized
+npm run bootstrap:private    # clone the optional companion into private/ using its 1Password URL
+```
+
+`bootstrap:private` reads the clone URL from the `ApexRacers Repository Access` 1Password item unless
+`--url <credential-free-url>` is supplied. It uses the current CLI identity when that identity can
+read `ApexRacers`; coding-agent sessions may supply a private 1Password service-account reference
+through `--service-account-reference` or `APEXRACERS_OP_SERVICE_ACCOUNT_REFERENCE`. The token is held
+only in memory for the child command. The helper refuses to overwrite a non-empty `private/`
+directory. Absence of `private/.git` is a valid public-contributor state. Before calling work
+portable, inspect both repositories; commit and push each history from its own root.
 
 ### Cloud Deployment
 
