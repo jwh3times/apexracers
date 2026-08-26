@@ -45,6 +45,9 @@ same check locally before pushing.
   there are *other* uncommitted changes, stop and ask the user whether to commit
   them — do not commit unrelated work silently.
 - **`gh` authenticated.** `gh auth status` must succeed.
+- **Installed private companion synchronized.** Run
+  `node scripts/repository-status.mjs --check-private`. Absence is a valid contributor state; when
+  `private/.git` exists, stop if it is dirty, lacks an upstream, or is ahead/behind its remote.
 
 ### 2. Evaluate the release impact
 
@@ -111,12 +114,16 @@ full audit:
 git diff $(git merge-base main HEAD)..HEAD --stat
 ```
 
-Tell it exactly what changed and let it update the docs it owns (AGENTS.md,
-README.md, web/README.md, docs/, the `private/` planning docs, and the
-agent specialists — its full matrix is in
+Tell it exactly what changed and let it update the public docs it owns (AGENTS.md,
+README.md, web/README.md, docs/, and the agent specialists — its full matrix is in
 `.claude/agents/docs-updater.md`). It also owns
 CHANGELOG.md, but **you** write the changelog section in step 5 — tell it to
 **leave CHANGELOG.md alone** so you don't fight over the file.
+
+The PR is not shipped yet. Tell `docs-updater` to leave private roadmap, archive, and product-status
+claims unchanged; `/end-session` reconciles the separate companion after the public PR merges. It
+may update a private document only for a current maintainer fact that does not claim the PR shipped,
+and any such change belongs to the private repository's own commit and push.
 
 ### 5. Write the CHANGELOG entry
 
@@ -193,6 +200,9 @@ mismatch, redo step 5 with the version it names (the prediction drifted).
 
 ### 7. Commit the release metadata, docs, and changelog
 
+Run `node scripts/repository-status.mjs --check-private` again first. Commit from the public root;
+the ignored nested companion is never part of this commit.
+
 ```bash
 git add -A
 git commit -m "chore(release): prepare v<version>"
@@ -222,7 +232,9 @@ this merge will mint, and anything the fast checks surfaced. State plainly that
 the full test suites + coverage run in CI, not locally — do not imply the branch
 is verified beyond the fast checks. If the target version could drift (another
 branch is also in flight), say so and note the **Changelog Version** check will
-confirm it on the PR and the section is re-numberable on a re-ship.
+confirm it on the PR and the section is re-numberable on a re-ship. Report whether the optional
+private companion was absent or clean and synchronized; never imply an unmerged PR was archived as
+shipped there.
 
 ## Do not
 

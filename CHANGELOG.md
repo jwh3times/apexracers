@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Maintainers can restore the optional private companion repository through a 1Password-backed
+  bootstrap helper and inspect public/private branch, dirty, upstream, and divergence state with one
+  cross-platform status command; public contributors and CI remain independent of the companion.
 
 ## [1.0.3] - 2026-08-25
 

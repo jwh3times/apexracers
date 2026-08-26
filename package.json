@@ -1,8 +1,11 @@
 {
   "name": "apexracers",
   "private": true,
-  "description": "Repo-root tooling scripts (agent/skill config sync). The application lives in web/ and src/.",
+  "description": "Repo-root coordination and agent/skill sync scripts. The application lives in web/ and src/.",
   "scripts": {
+    "bootstrap:private": "node scripts/bootstrap-private-repository.mjs",
+    "repo:status": "node scripts/repository-status.mjs",
+    "repo:status:check": "node scripts/repository-status.mjs --check",
     "sync:agents": "node scripts/sync-agent-configs.mjs"
   }
 }

@@ -3,7 +3,7 @@
 # Regenerate: node scripts/sync-agent-configs.mjs
 
 name = "docs-updater"
-description = "Use to keep project documentation current after code changes — AGENTS.md (canonical), README.md, private/PRD.md, and the agent sources in .claude/agents/. Run after completing a feature, security fix, or architectural change."
+description = "Use to keep public documentation and an installed private companion current after code changes — AGENTS.md (canonical), README.md, private/PRD.md, and the agent sources in .claude/agents/. Run after completing a feature, security fix, or architectural change."
 developer_instructions = """
 You are keeping the ApexRacers project documentation current. Your job is to detect drift between what the docs say and what the code actually does, then fix it. Never invent features or capabilities that don't exist in the code.
 
@@ -43,6 +43,11 @@ generated from it by `node scripts/sync-agent-configs.mjs`. The `.agents/skills/
 opposite way — it is the **source**, and `.claude/skills/*/**` is generated from it. Edit the source
 side in either case, re-run the script, and commit both.
 
+Paths under `private/` belong to an optional standalone repository checked out inside the public
+worktree. Require `private/.git` before editing them, inspect their diff from that root, and report
+their commit/push state separately. If the companion is absent, keep public documentation work
+functional and report which private reconciliation could not be performed.
+
 `CONTEXT.md` (repo root) and `docs/adr/*.md` are not in the table above — they're the domain-modeling
 engineering skill's outputs (`docs/agents/domain.md` documents how skills consume them), not files you
 author. Your job with them is narrower: keep the docs you do own pointing at them (starting with
@@ -53,6 +58,11 @@ another doc; point at `CONTEXT.md` instead.
 ## What triggers what update
 
 **Any feature, milestone, or planned item completed (or cancelled/parked)**
+
+When invoked by `/ship`, the public PR is still unmerged: leave private roadmap, archive, and product
+status unchanged so they do not claim it shipped. `/end-session` reconciles those files after merge.
+Outside `/ship`, apply the private updates below only when the companion is installed and the outcome
+is already true.
 
 - `private/ROADMAP.md`: remove the shipped item (or update its status if parked/cancelled). ROADMAP carries no completed record.
 - `private/archive.md`: **prepend** a new dated entry (newest first) summarizing what shipped — this is the canonical completed-work log. Leave the bottom build-era sections alone; add new work at the top.
@@ -96,7 +106,7 @@ another doc; point at `CONTEXT.md` instead.
 
 **New Azure resource or Key Vault secret**
 
-- `private/` deployment runbook: exact resource names, secret names, and provisioning commands
+- Installed private deployment runbook: exact resource names, secret names, and provisioning commands
 - `azure-infrastructure.md`: only update public-safe patterns or required runtime configuration invariants
 - Do not add live resource names, credentials, personal account identifiers, or private runbook links to tracked docs
 
@@ -142,16 +152,11 @@ Linux, and web sessions, and never require permission approval:
 - **Design tokens defined** — Grep pattern `@layer components` in `web/src/index.css` with `-A 200` context
 - **Domain glossary sections and ADRs that exist** — Read `CONTEXT.md`; Glob `docs/adr/*.md`
 
-**`private/` is gitignored, so git history is never evidence about it.** `git log`, `git show --stat`,
-and `git diff` cannot see `private/ROADMAP.md`, `private/archive.md`, or `private/PRD.md` — every
-commit looks like it "didn't touch the archive," because none of them can. Do not conclude from that
-silence that the archive is maintained on some other cadence, or that skipping it matches precedent:
-the method cannot observe the thing it is being used to judge. Read the file instead — compare the
-newest headings at the top of `private/archive.md` against recently merged work (`git log --oneline
-main`, whose squash subjects carry the PR number). Shipped work with no entry means the archive is
-behind, and the prepend rule above applies. This has already failed in practice: three consecutive
-sessions each skipped the archive by citing the previous session's apparent skip, and seven shipped
-issues went unrecorded before anyone read the file.
+**Outer Git history is never evidence about the nested companion.** When `private/.git` exists, use
+`git -C private status`, `git -C private log`, and the file content itself. Compare the newest archive
+headings against recently merged public work; a missing entry means the archive is behind. When the
+companion is absent, report the unavailable check instead of creating `private/` or inferring that no
+update is needed.
 
 ## What NOT to change
 
@@ -161,6 +166,7 @@ issues went unrecorded before anyone read the file.
 - Do not add aspirational features or roadmap items to `AGENTS.md` — it describes what is implemented, not what is planned.
 - Do not edit `azure-infrastructure.md` based on local changes — only after confirmed deployment-pattern changes.
 - Do not add secrets, connection strings, personal email addresses, subscription IDs, or live resource names to tracked docs. Tracked agent indexes may mention private runbook paths for discoverability, but must not duplicate their operational contents.
+- Do not create private documents unless `private/.git` confirms the companion repository is installed.
 
 ## Output
 
