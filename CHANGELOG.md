@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Local container setup now explicitly supports either Docker Desktop or Docker Engine with the
+  Compose plugin; the native Engine path is validated on Fedora/Linux and uses the same
+  `docker compose` workflow.
 
 ## [1.0.4] - 2026-08-25
 
