@@ -22,8 +22,10 @@ Lap time percentile tracking and car recommendations for iRacing weekly series. 
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 26+](https://nodejs.org/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with the engine running for the
-  full backend test suite)
+- Docker with Compose: either [Docker Desktop](https://www.docker.com/products/docker-desktop/) or
+  [Docker Engine](https://docs.docker.com/engine/install/) plus the
+  [Compose plugin](https://docs.docker.com/compose/install/linux/) (the native Engine setup is
+  validated on Fedora/Linux). Keep the engine running for the full backend test suite.
 - iRacing OAuth credentials are optional and only needed for the ingestion worker.
 
 ## Local development setup

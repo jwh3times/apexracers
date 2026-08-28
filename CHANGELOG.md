@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [1.0.8] - 2026-08-28
+
+### Changed
+
+- Local container setup documents Docker Engine with the Compose plugin as a first-class alternative
+  to Docker Desktop. The native Engine path is validated on Fedora/Linux and drives the identical
+  `docker compose` workflow, so a Linux contributor no longer has to follow a prerequisite naming a
+  product that is unavailable on their platform.
+
 ## [1.0.4] - 2026-08-25
 
 ### Added
@@ -773,7 +782,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/jwh3times/apexracers/compare/v1.0.7...v1.0.8
 [1.0.4]: https://github.com/jwh3times/apexracers/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/jwh3times/apexracers/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/jwh3times/apexracers/compare/v1.0.1...v1.0.2
