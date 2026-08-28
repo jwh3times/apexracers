@@ -1,7 +1,8 @@
 # ApexRacers Roadmap
 
 This is the public, high-level roadmap. Maintainer-only task plans, private runbooks,
-and historical implementation notes live in the gitignored `private/` directory.
+and historical implementation notes live in an optional private companion repository
+checked out at `private/`, which this repository ignores and never requires.
 
 ## Current Status
 

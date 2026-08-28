@@ -6,12 +6,12 @@ model: sonnet
 ---
 
 You are managing ApexRacers cloud infrastructure. Know the deployment topology and
-runtime-configuration model. Use `private/azure-deployment-runbook.md` when available
+runtime-configuration model. Use `private/ops/azure-deployment-runbook.md` when available
 for exact resource names, command targets, and maintainer-only deployment details.
 
 ## Resource topology
 
-Use environment variables or `private/azure-deployment-runbook.md` for exact resource
+Use environment variables or `private/ops/azure-deployment-runbook.md` for exact resource
 names. Public/tracked docs should describe the topology and command shape, not
 maintainer-specific Azure resource identifiers.
 
@@ -118,4 +118,4 @@ az monitor app-insights component quotastatus show \
 ```
 
 Exact resource names and one-off provisioning commands belong in
-`private/azure-deployment-runbook.md`, not tracked agent docs.
+`private/ops/azure-deployment-runbook.md`, not tracked agent docs.

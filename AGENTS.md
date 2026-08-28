@@ -133,17 +133,17 @@ repository checked out at `private/`. The public repository ignores that entire 
 must build, test, and run CI when it is absent. When installed, run its Git commands from `private/`;
 outer-repository Git history cannot see its changes.
 
-| Doc                                     | What it is                                                                                             |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `docs/README.md`                        | Public documentation map and ownership rules.                                                          |
-| `docs/features.md`                      | Public product capabilities and workflows.                                                             |
-| `docs/roadmap.md`                       | Public high-level status and roadmap.                                                                  |
-| `CHANGELOG.md` (repo root)              | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
-| `private/ROADMAP.md`                    | Maintainer-only detailed remaining work, blockers, and active milestones.                              |
-| `private/archive.md`                    | Maintainer-only detailed completed-work log.                                                           |
-| `private/PRD.md`                        | Maintainer-only full product spec.                                                                     |
-| `private/azure-deployment-runbook.md`   | Maintainer-only Azure resource names, command targets, and deployment details.                         |
-| `private/iracing-api-response-objects/` | Local captured iRacing API JSON field shapes — read before mapping any endpoint when available.        |
+| Doc                                       | What it is                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `docs/README.md`                          | Public documentation map and ownership rules.                                                          |
+| `docs/features.md`                        | Public product capabilities and workflows.                                                             |
+| `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
+| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
+| `private/ROADMAP.md`                      | Maintainer-only detailed remaining work, blockers, and active milestones.                              |
+| `private/archive.md`                      | Maintainer-only detailed completed-work log.                                                           |
+| `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
+| `private/ops/azure-deployment-runbook.md` | Maintainer-only Azure resource names, command targets, and deployment details.                         |
+| `private/iracing-api-response-objects/`   | Local captured iRacing API JSON field shapes — read before mapping any endpoint when available.        |
 
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
 workflow changes; update private planning docs when maintainer-only roadmap/archive detail changes; and
