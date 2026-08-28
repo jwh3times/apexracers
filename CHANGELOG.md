@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [1.0.9] - 2026-08-28
+
+### Changed
+
+- The public roadmap describes the maintainer-only material as an optional private companion
+  repository checked out at `private/` rather than a gitignored directory, matching how that material
+  is actually stored and recovered. Agent and skill guidance now points at the companion's current
+  document layout.
+
 ## [1.0.8] - 2026-08-28
 
 ### Changed
@@ -782,7 +791,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/jwh3times/apexracers/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/jwh3times/apexracers/compare/v1.0.7...v1.0.8
 [1.0.4]: https://github.com/jwh3times/apexracers/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/jwh3times/apexracers/compare/v1.0.2...v1.0.3

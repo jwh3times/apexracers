@@ -126,9 +126,9 @@ reconciliation could not run and do not create an ignored orphan directory.
 | `private/ROADMAP.md` | Remaining/blocked/parked work changed. Remove what shipped (this file carries **no** completed record), re-rank the "Next work item", and refresh the `**Last updated:**` line and the "Status at a glance" counts. |
 | `private/archive.md` | Something shipped. **Prepend** a dated entry at the top, newest-first. Leave the build-era sections at the bottom alone. |
 | `private/PRD.md` | A **feature-level** change — capability added, planned feature cancelled, user story revised. Not implementation detail. |
-| `private/security-review-findings.md` / `private/security-followups.md` | A security finding was made, accepted, or resolved; or an operator-only action is now required. |
-| `private/azure-deployment-runbook.md` / `private/deployTODO.md` | Deployment resources, commands, or bootstrap steps changed. |
-| `private/architecture-findings.md` | A disposition from the 2026-08-08 review was actioned or overturned. This is a record, not a live backlog. |
+| `private/reviews/security-review-findings.md` | A security finding was made, accepted, or resolved. |
+| `private/ops/azure-deployment-runbook.md` / `private/ops/iracing-rollout.md` | Deployment resources or commands changed, or a rollout gate advanced. |
+| `private/reviews/architecture-findings.md` | A disposition from the 2026-08-08 review was actioned or overturned. This is a record, not a live backlog. |
 | `private/iracing-api-response-objects/` | A **new** payload shape was captured. Add it — never delete or overwrite one (step 5). |
 
 If `/ship` already ran `docs-updater` on this branch, verify rather than redo: check that ROADMAP
