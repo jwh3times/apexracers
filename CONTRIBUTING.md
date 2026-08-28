@@ -48,8 +48,10 @@ with review turnaround.
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 26+](https://nodejs.org/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with the engine running for the
-  full backend test suite)
+- Docker with Compose: either [Docker Desktop](https://www.docker.com/products/docker-desktop/) or
+  [Docker Engine](https://docs.docker.com/engine/install/) plus the
+  [Compose plugin](https://docs.docker.com/compose/install/linux/) (the native Engine setup is
+  validated on Fedora/Linux). Keep the engine running for the full backend test suite.
 - The EF Core CLI: `dotnet tool install --global dotnet-ef` (version must match
   EF Core — currently **10.0.9**)
 - iRacing OAuth credentials are only needed for the ingestion worker — see the

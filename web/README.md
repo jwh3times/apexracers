@@ -19,7 +19,7 @@ npm install
 
 npm run dev          # Proxy → http://localhost:5000  (local dotnet API)
 npm run dev:all      # Starts dotnet API + Vite together via concurrently
-npm run dev:docker   # Proxy → http://localhost:8080  (Docker Desktop API)
+npm run dev:docker   # Proxy → http://localhost:8080  (API in Docker)
 npm run dev:cloud    # Proxy → https://apexracers-api.azurewebsites.net
 ```
 
