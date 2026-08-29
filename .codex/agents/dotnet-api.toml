@@ -107,12 +107,10 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 `record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
 
-ApexRacers-owned response DTOs expose a Driver's identity as `CustomerId` and `DriverName` (serialized
-as `customerId` / `driverName`). Keep upstream `cust_id`, SDK `CustId`, and upstream `display_name` /
-`DisplayName` spellings at parser and mapping adapters. `ApplicationUser.DisplayName` is intentionally
-different: it is the local User's account label, not a Driver name. If a renamed response DTO is one
-of the mapped types stored in `ExternalDataCache`, migrate its existing cache-key families explicitly;
-never rewrite unrelated cached SDK payloads by matching property names globally.
+The project guide owns the Driver identity names on ApexRacers response DTOs. The .NET-specific
+boundary rule is to translate upstream JSON/SDK spellings in parser and mapping adapters. If a renamed
+response DTO is one of the mapped types stored in `ExternalDataCache`, migrate its existing cache-key
+families explicitly; never rewrite unrelated cached SDK payloads by matching property names globally.
 
 ## AppDbContext and schemas
 

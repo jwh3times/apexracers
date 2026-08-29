@@ -25,6 +25,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - All DTOs must be `record` types. Flag mutable class DTOs.
 - Response shapes live in `ResponseDtos.cs`; request shapes in `RequestDtos.cs`. Flag DTOs defined elsewhere.
 - When a response DTO is added or changed, the matching TypeScript interface in `web/src/services/api.ts` must also change. Flag backend DTO changes that have no corresponding frontend update.
+- Flag an ApexRacers-owned Driver response that violates the project guide's identity-field naming
+  rule, including one that exposes an upstream abbreviation or uses the User's account label for a
+  Driver name. Upstream names remain correct only at parser and mapping adapters.
 
 **Identity language**
 
@@ -56,7 +59,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 **Uploaded Best projection**
 
 - Flag any hand-rolled per-car-and-track Uploaded Best grouping (`UploadedLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `UploadedBestQuery.RunAsync`.
-- Flag a caller's `scope` argument to `UploadedBestQuery.RunAsync` that already filters on `IsValidLap` — harmless (the module re-applies its own filter), but a sign the caller doesn't know the module owns that invariant.
+- Flag any validity/timed predicate applied to an `UploadedLap` scope. Every persisted Uploaded Lap is
+  already a Timed Lap because the upload service rejects untimed parser rows before insertion; the
+  removed `IsValidLap` flag and a replacement constant predicate both misrepresent that invariant.
 
 **Track identity**
 
