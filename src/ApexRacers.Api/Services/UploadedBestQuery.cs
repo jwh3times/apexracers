@@ -33,8 +33,8 @@ public static class UploadedBestQuery
     /// </summary>
     /// <param name="scope">
     /// The laps to consider, filtered to a single user plus whatever else narrows the view (a car,
-    /// a track, nothing). <b>Do not filter on <c>IsValidLap</c></b> — this module applies it, so
-    /// no caller can forget to and quietly report an invalid lap as an Uploaded Best.
+    /// a track, nothing). Every persisted Uploaded Lap is already a Timed Lap: the upload service
+    /// rejects untimed parser rows before insertion, so this query needs no validity predicate.
     /// </param>
     /// <param name="order">How to sort the result. See <see cref="UploadedBestOrder"/>.</param>
     public static async Task<List<UploadedBestDto>> RunAsync(
@@ -49,7 +49,6 @@ public static class UploadedBestQuery
         // rather than names does not change that. The row count here is one user's uploaded laps,
         // so this is cheap.
         var rows = await scope
-            .Where(l => l.IsValidLap)
             .Select(l => new
             {
                 l.CarId,

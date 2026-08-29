@@ -86,7 +86,6 @@ public class TelemetryUploadService(AppDbContext db)
                     CarId            = session.IracingCarId,
                     TrackId          = session.IracingTrackId,
                     LapTimeSeconds   = lap.LapTimeSeconds,
-                    IsValidLap       = true,
                     SessionType      = session.SessionType,
                     AirTempCelsius   = session.AirTempCelsius,
                     TrackTempCelsius = session.TrackTempCelsius,

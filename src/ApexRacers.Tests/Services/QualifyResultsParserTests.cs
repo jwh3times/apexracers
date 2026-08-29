@@ -38,7 +38,7 @@ public class QualifyResultsParserTests
         Assert.Equal(2, rows.Count);
         var first = rows[0];
         Assert.Equal(1, first.Rank);
-        Assert.Equal(860419, first.CustId);
+        Assert.Equal(860419, first.CustomerId);
         Assert.Equal("Portu Silva", first.DriverName);
         Assert.Equal(2, first.Division);
         Assert.Equal(7480, first.IRating);

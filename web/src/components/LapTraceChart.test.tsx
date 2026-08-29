@@ -7,7 +7,7 @@ const lap = (n: number, s: number, incident = false): Lap => ({
   lapNumber: n,
   lapTimeSeconds: s,
   incident,
-  valid: s > 0,
+  timed: s > 0,
 });
 
 describe('LapTraceChart', () => {

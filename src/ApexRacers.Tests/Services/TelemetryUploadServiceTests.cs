@@ -183,7 +183,7 @@ public class TelemetryUploadServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_ValidLaps_SavesEachLapAsUploadedLap()
+    public async Task ProcessAsync_TimedLaps_SavesEachLapAsUploadedLap()
     {
         await using var db = DbContextFactory.Create();
         var userId = Guid.NewGuid();
@@ -197,7 +197,6 @@ public class TelemetryUploadServiceTests
         Assert.All(laps, l =>
         {
             Assert.Equal(userId, l.UserId);
-            Assert.True(l.IsValidLap);
             Assert.Equal(95.0, l.LapTimeSeconds, tolerance: 0.005);
             Assert.Equal(LapSessionType.Unknown, l.SessionType);
         });

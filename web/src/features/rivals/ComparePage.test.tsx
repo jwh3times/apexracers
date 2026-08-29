@@ -23,14 +23,16 @@ vi.mock('../../context/FeatureFlagContext', () => ({
 }));
 
 const RIVALS: Rival[] = [
-  { custId: 200, displayName: 'Max Power', createdAt: '2026-01-01T00:00:00Z' },
+  { customerId: 200, driverName: 'Max Power', createdAt: '2026-01-01T00:00:00Z' },
 ];
-const SUGGESTIONS: RivalSuggestion[] = [{ custId: 300, displayName: 'Ana Speed', sharedRaces: 4 }];
-const SEARCH: DriverSearchResult[] = [{ custId: 400, displayName: 'Lee Apex' }];
+const SUGGESTIONS: RivalSuggestion[] = [
+  { customerId: 300, driverName: 'Ana Speed', sharedRaces: 4 },
+];
+const SEARCH: DriverSearchResult[] = [{ customerId: 400, driverName: 'Lee Apex' }];
 
-const side = (custId: number, name: string, ir: number) => ({
-  custId,
-  displayName: name,
+const side = (customerId: number, name: string, ir: number) => ({
+  customerId,
+  driverName: name,
   country: 'United States',
   countryCode: 'USA',
   memberSince: '2021-11-05',
@@ -128,8 +130,8 @@ describe('ComparePage', () => {
     mockGetSuggestions.mockResolvedValue(SUGGESTIONS);
     mockSearch.mockResolvedValue(SEARCH);
     mockAdd.mockResolvedValue({
-      custId: 400,
-      displayName: 'Lee Apex',
+      customerId: 400,
+      driverName: 'Lee Apex',
       createdAt: '2026-03-01T00:00:00Z',
     });
     mockRemove.mockResolvedValue(undefined);
@@ -160,8 +162,8 @@ describe('ComparePage', () => {
 
   it('adds a suggested rival', async () => {
     mockAdd.mockResolvedValue({
-      custId: 300,
-      displayName: 'Ana Speed',
+      customerId: 300,
+      driverName: 'Ana Speed',
       createdAt: '2026-03-01T00:00:00Z',
     });
     renderPage();
@@ -304,7 +306,7 @@ describe('ComparePage', () => {
   });
 
   it('marks an already-followed driver as Following in search results', async () => {
-    mockSearch.mockResolvedValue([{ custId: 200, displayName: 'Max Power' }]); // already a rival
+    mockSearch.mockResolvedValue([{ customerId: 200, driverName: 'Max Power' }]); // already a rival
     renderPage();
     await screen.findByText('Max Power');
     fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'max' } });

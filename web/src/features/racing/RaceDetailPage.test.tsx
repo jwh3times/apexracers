@@ -21,7 +21,7 @@ const mockGetDriverLaps = vi.mocked(api.getDriverLaps);
 
 const EMPTY_LAPS: DriverLaps = {
   subsessionId: 100,
-  custId: 0,
+  customerId: 0,
   meanSeconds: 0,
   stdDevSeconds: 0,
   fastestLapSeconds: 0,
@@ -49,7 +49,7 @@ const DETAIL: SubsessionDetail = {
   weather: { tempCelsius: 19, relHumidity: 45, windKph: 18, skies: 1, precipChance: 0 },
   results: [
     {
-      custId: 111,
+      customerId: 111,
       driverName: 'Winner',
       finishPosition: 1,
       startPosition: 1,
@@ -63,7 +63,7 @@ const DETAIL: SubsessionDetail = {
       srDelta: 0.15,
     },
     {
-      custId: 222,
+      customerId: 222,
       driverName: 'Me Driver',
       finishPosition: 3,
       startPosition: 5,
@@ -217,14 +217,14 @@ describe('RaceDetailPage', () => {
     mockGetSubsession.mockResolvedValue(DETAIL);
     mockGetDriverLaps.mockResolvedValue({
       subsessionId: 100,
-      custId: 111,
+      customerId: 111,
       meanSeconds: 66.5,
       stdDevSeconds: 0.3,
       fastestLapSeconds: 66.295,
       degSlopeSecondsPerLap: 0.05,
       laps: [
-        { lapNumber: 1, lapTimeSeconds: 66.3, incident: false, valid: true },
-        { lapNumber: 2, lapTimeSeconds: 66.7, incident: false, valid: true },
+        { lapNumber: 1, lapTimeSeconds: 66.3, incident: false, timed: true },
+        { lapNumber: 2, lapTimeSeconds: 66.7, incident: false, timed: true },
       ],
     });
     renderPage();

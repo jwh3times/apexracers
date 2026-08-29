@@ -23,6 +23,6 @@ public class DemoLeaderboardDataTests
     [Fact]
     public void Build_RatedCategory_IncludesDemoDriver()
     {
-        Assert.Contains(DemoLeaderboardData.Build(5), r => r.CustId == DemoData.DriverCustId);
+        Assert.Contains(DemoLeaderboardData.Build(5), r => r.CustomerId == DemoData.DriverCustId);
     }
 }

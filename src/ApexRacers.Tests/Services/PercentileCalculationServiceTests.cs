@@ -176,7 +176,6 @@ public class PercentileCalculationServiceTests
             CarId = car.Id,
             TrackId = week.TrackId,
             LapTimeSeconds = 60,
-            IsValidLap = true,
             RecordedAt = DateTimeOffset.UtcNow,
             Car = car,
             Track = week.Track,

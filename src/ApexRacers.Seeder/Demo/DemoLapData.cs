@@ -17,8 +17,8 @@ public static class DemoLapData
         {
             if (n == incidentLap)
             {
-                // Timed but flagged: red marker on the trace, excluded from green/fastest.
-                laps.Add(new LapDto(n, Math.Round(bestLap * 1.15, 3), Incident: true, Valid: false));
+                // Timed but incident-marked: red marker on the trace, excluded from clean pace.
+                laps.Add(new LapDto(n, Math.Round(bestLap * 1.15, 3), Incident: true, Timed: true));
                 continue;
             }
 
@@ -29,7 +29,7 @@ public static class DemoLapData
                 2 => Math.Round(bestLap, 3),
                 _ => Math.Round(bestLap + (n - 2) * 0.015 + (Math.Abs(subsessionId) + n) % 4 * 0.01, 3),
             };
-            laps.Add(new LapDto(n, seconds, Incident: false, Valid: true));
+            laps.Add(new LapDto(n, seconds, Incident: false, Timed: true));
         }
 
         return laps;

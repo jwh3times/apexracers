@@ -162,16 +162,16 @@ function WeekSelector({
   );
 }
 
-function callerDivision(payload: Payload, custId: number | null): number | null {
-  if (custId == null) return null;
+function callerDivision(payload: Payload, customerId: number | null): number | null {
+  if (customerId == null) return null;
   const row =
     payload.view === 'qualifying'
-      ? payload.data.results.find(r => r.custId === custId)
-      : payload.data.standings.find(s => s.custId === custId);
+      ? payload.data.results.find(r => r.customerId === customerId)
+      : payload.data.standings.find(s => s.customerId === customerId);
   return row ? row.division : null;
 }
 
-function renderBody(payload: Payload, custId: number | null) {
+function renderBody(payload: Payload, customerId: number | null) {
   const isEmpty =
     payload.view === 'qualifying'
       ? payload.data.results.length === 0
@@ -190,10 +190,12 @@ function renderBody(payload: Payload, custId: number | null) {
     <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
       <div className="overflow-x-auto">
         {payload.view === 'championship' && (
-          <ChampionshipTable data={payload.data} custId={custId} />
+          <ChampionshipTable data={payload.data} customerId={customerId} />
         )}
-        {payload.view === 'tt' && <TimeTrialTable data={payload.data} custId={custId} />}
-        {payload.view === 'qualifying' && <QualifyingTable data={payload.data} custId={custId} />}
+        {payload.view === 'tt' && <TimeTrialTable data={payload.data} customerId={customerId} />}
+        {payload.view === 'qualifying' && (
+          <QualifyingTable data={payload.data} customerId={customerId} />
+        )}
       </div>
     </div>
   );
@@ -220,7 +222,13 @@ function DriverCell({ name, isMe }: { name: string; isMe: boolean }) {
   );
 }
 
-function ChampionshipTable({ data, custId }: { data: SeasonStandings; custId: number | null }) {
+function ChampionshipTable({
+  data,
+  customerId,
+}: {
+  data: SeasonStandings;
+  customerId: number | null;
+}) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -238,9 +246,9 @@ function ChampionshipTable({ data, custId }: { data: SeasonStandings; custId: nu
       </thead>
       <tbody>
         {data.standings.map(s => {
-          const isMe = custId != null && s.custId === custId;
+          const isMe = customerId != null && s.customerId === customerId;
           return (
-            <tr key={s.custId} className={rowClass(isMe)}>
+            <tr key={s.customerId} className={rowClass(isMe)}>
               <td className={tdNum}>{s.rank}</td>
               <DriverCell name={s.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">
@@ -260,7 +268,13 @@ function ChampionshipTable({ data, custId }: { data: SeasonStandings; custId: nu
   );
 }
 
-function TimeTrialTable({ data, custId }: { data: SeasonTtStandings; custId: number | null }) {
+function TimeTrialTable({
+  data,
+  customerId,
+}: {
+  data: SeasonTtStandings;
+  customerId: number | null;
+}) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -277,9 +291,9 @@ function TimeTrialTable({ data, custId }: { data: SeasonTtStandings; custId: num
       </thead>
       <tbody>
         {data.standings.map(s => {
-          const isMe = custId != null && s.custId === custId;
+          const isMe = customerId != null && s.customerId === customerId;
           return (
-            <tr key={s.custId} className={rowClass(isMe)}>
+            <tr key={s.customerId} className={rowClass(isMe)}>
               <td className={tdNum}>{s.rank}</td>
               <DriverCell name={s.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">
@@ -298,7 +312,13 @@ function TimeTrialTable({ data, custId }: { data: SeasonTtStandings; custId: num
   );
 }
 
-function QualifyingTable({ data, custId }: { data: SeasonQualifyResults; custId: number | null }) {
+function QualifyingTable({
+  data,
+  customerId,
+}: {
+  data: SeasonQualifyResults;
+  customerId: number | null;
+}) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -312,9 +332,9 @@ function QualifyingTable({ data, custId }: { data: SeasonQualifyResults; custId:
       </thead>
       <tbody>
         {data.results.map(r => {
-          const isMe = custId != null && r.custId === custId;
+          const isMe = customerId != null && r.customerId === customerId;
           return (
-            <tr key={r.custId} className={rowClass(isMe)}>
+            <tr key={r.customerId} className={rowClass(isMe)}>
               <td className={tdNum}>{r.rank}</td>
               <DriverCell name={r.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">

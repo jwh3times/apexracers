@@ -46,15 +46,15 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   week was last in iteration order.
 - **A Telemetry Upload is validated before anything is written.** `TelemetryUploadService` refuses a file whose recording Driver (`DriverUserID`, absent → 0 → stored as null, never compared) disagrees with the caller's Claimed Identity, and it does so *ahead of* the car/track upsert — a refused upload must leave no trace, not even catalog rows. A caller with no Claimed Identity has nothing to check against and is accepted, with the file's Driver still recorded on the lap. Keep any new validation in that same pre-write block rather than adding it after the first `db.Add`.
 - Uploaded Best rows are never projected inline either: call `UploadedBestQuery.RunAsync(scope, order, ct)` (`src/ApexRacers.Api/Services/UploadedBestQuery.cs`). It ranges over Uploaded Laps only, so what it returns is an Uploaded Best, not a Personal Best — a Personal Best also weighs the Subject Driver's Race Best. Two invariants it owns, both easy to reintroduce by hand if a caller writes its own version:
-  - **The caller's `scope` must not filter on `IsValidLap`.** `UploadedBestQuery` applies that filter itself, so no caller can forget it and quietly report an invalidated lap as a best.
+  - **Every persisted Uploaded Lap is already a Timed Lap.** `TelemetryUploadService` rejects untimed parser rows before insertion, so neither the caller's `scope` nor `UploadedBestQuery` needs a validity or timed predicate.
   - **The `GroupBy` must not be pushed into SQL.** The group key is `{ CarId, TrackId }` — identifiers, never `Car.Name`/`Track.Name`/`Track.ConfigName` labels, since a Track's `Name` belongs to the venue and is shared by every layout there. Those labels ride along via `g.First()` instead: selecting navigation-property labels alongside the aggregates is what neither Npgsql nor SQLite translates, so the query materializes to a list first and groups in memory — deliberately, not an oversight. Getting this wrong throws at runtime rather than failing to compile; see the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section, which is the same underlying translation gap.
   - `UploadedBestQuery` has no Race Week bound — it is the all-time Uploaded Best, used where that is
     the correct answer (My Laps, the catalog overlays). `PercentileCalculationService`,
     `CarRecommendationService`, and `UserAnalyticsService` deliberately do **not** call it: ranking a
     Personal Best needs the Uploaded side bounded to one Race Week (see the `RaceWeekWindow` rule
     below), which `UploadedBestQuery` has no parameter for. Each of those three writes its own scoped
-    query instead — still applying `IsValidLap` and still grouping/ordering by `{ CarId, TrackId }` in
-    the same style, just with an added `RecordedAt` range filter. Don't read that as three call sites
+    query instead — relying on the same persisted-Timed-Lap invariant and still grouping/ordering by
+    `{ CarId, TrackId }` in the same style, just with an added `RecordedAt` range filter. Don't read that as three call sites
     forgetting the shared helper; it's the same helper's invariants without its all-time scope.
 - **A Personal Best's Uploaded side is bounded to the Race Week being ranked, never fetched all-time.**
   Call `AppDbContext.RaceWeekWindowAsync(seasonId, weekNumber, ct)` (single Week) or
@@ -74,8 +74,8 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - Personal Best read paths take a `PersonalBestEvidence` value rather than separate booleans or lists.
   Controllers construct it with `FromRequest(includeUploadedLaps, uploadedLapTypes)`; internal callers
   with no user choice pass `OfficialRaceLapsOnly`. Use `ScopeUploadedLaps` to apply source and session-type
-  eligibility, then pass that scope to `UploadedBestQuery.RunAsync` so it remains the owner of validity
-  filtering and Uploaded Best projection. An empty selected-type list means all types; do not duplicate
+  eligibility, then pass that scope to `UploadedBestQuery.RunAsync` so it remains the owner of Uploaded
+  Best projection. An empty selected-type list means all types; do not duplicate
   either module's predicates in a service.
 - Resolving a series' current season or one numbered week of it is never a hand-written
   `Where(... && s.Active).OrderByDescending(Year).ThenByDescending(Quarter)` — that ordering picks
@@ -106,6 +106,13 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 ## DTOs
 
 `record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
+
+ApexRacers-owned response DTOs expose a Driver's identity as `CustomerId` and `DriverName` (serialized
+as `customerId` / `driverName`). Keep upstream `cust_id`, SDK `CustId`, and upstream `display_name` /
+`DisplayName` spellings at parser and mapping adapters. `ApplicationUser.DisplayName` is intentionally
+different: it is the local User's account label, not a Driver name. If a renamed response DTO is one
+of the mapped types stored in `ExternalDataCache`, migrate its existing cache-key families explicitly;
+never rewrite unrelated cached SDK payloads by matching property names globally.
 
 ## AppDbContext and schemas
 

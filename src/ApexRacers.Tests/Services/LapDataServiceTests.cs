@@ -53,16 +53,16 @@ public class LapDataServiceTests
         var dto = await service.GetDriverLapsAsync(SubsessionId, CustId, Ct);
 
         Assert.Equal(SubsessionId, dto.SubsessionId);
-        Assert.Equal(CustId, dto.CustId);
+        Assert.Equal(CustId, dto.CustomerId);
 
         // Ordered by lap number.
         Assert.Equal(new[] { 1, 2, 3, 4 }, dto.Laps.Select(l => l.LapNumber));
 
         var untimed = dto.Laps.Single(l => l.LapNumber == 2);
         Assert.Equal(-1, untimed.LapTimeSeconds);
-        Assert.False(untimed.Valid);
+        Assert.False(untimed.Timed);
 
-        Assert.True(dto.Laps.Single(l => l.LapNumber == 1).Valid);
+        Assert.True(dto.Laps.Single(l => l.LapNumber == 1).Timed);
 
         // Stats over the three timed laps (60, 61, 60.5).
         Assert.Equal(60.5, dto.MeanSeconds, precision: 3);

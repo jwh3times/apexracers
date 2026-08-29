@@ -65,8 +65,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         {
             var scoped = evidence
                 .ScopeUploadedLaps(db.UploadedLaps)
-                .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId)
-                .Where(p => p.IsValidLap);
+                .Where(p => p.UserId == user.Id && p.CarId == carId && p.TrackId == week.TrackId);
 
             uploadedBest = await scoped
                 .Where(p => p.RecordedAt >= weekWindow.Start && p.RecordedAt < weekWindow.End)

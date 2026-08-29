@@ -12,7 +12,7 @@ public class DemoStandingsDataTests
         var rows = DemoStandingsData.BuildStandings(6115, 100);
         Assert.Equal(1, rows[0].Rank);
         for (var i = 1; i < rows.Count; i++) Assert.Equal(i + 1, rows[i].Rank);
-        var me = Assert.Single(rows, r => r.CustId == DemoData.DriverCustId);
+        var me = Assert.Single(rows, r => r.CustomerId == DemoData.DriverCustId);
         Assert.True(me.Division >= 1);
     }
 
@@ -23,7 +23,7 @@ public class DemoStandingsDataTests
         Assert.All(rows, r => Assert.Equal(2, r.Week));
         for (var i = 1; i < rows.Count; i++)
             Assert.True(rows[i - 1].BestQualLapSeconds <= rows[i].BestQualLapSeconds);
-        Assert.Contains(rows, r => r.CustId == DemoData.DriverCustId);
+        Assert.Contains(rows, r => r.CustomerId == DemoData.DriverCustId);
     }
 
     [Fact]

@@ -55,7 +55,7 @@ public class DemoCacheSeederCompletionTests
             .SingleAsync(c => c.CacheKey == IRacingCacheKeys.LapData(-10, DemoData.DriverCustId).Key, Ct);
         var dto = JsonSerializer.Deserialize<ApexRacers.Api.Dtos.DriverLapsDto>(row.Payload)!;
         Assert.Equal(-10, dto.SubsessionId);
-        Assert.Equal(DemoData.DriverCustId, dto.CustId);
+        Assert.Equal(DemoData.DriverCustId, dto.CustomerId);
         Assert.Equal(90.0, dto.FastestLapSeconds, precision: 3);   // demo driver's BestLapSeconds
         Assert.Equal(30, dto.Laps.Count);
         Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
@@ -72,7 +72,7 @@ public class DemoCacheSeederCompletionTests
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:demo", Ct));
         var row = await db.ExternalDataCaches.SingleAsync(c => c.CacheKey == "driversearch:rival", Ct);
         var hits = JsonSerializer.Deserialize<List<ApexRacers.Api.Dtos.DriverSearchResultDto>>(row.Payload)!;
-        Assert.Contains(hits, h => h.CustId == DemoData.RivalCustId);
+        Assert.Contains(hits, h => h.CustomerId == DemoData.RivalCustId);
         Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);
     }
 }

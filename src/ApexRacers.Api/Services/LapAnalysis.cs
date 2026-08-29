@@ -3,7 +3,7 @@ using ApexRacers.Api.Dtos;
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Pure pace statistics over a driver's laps. Summary metrics use the "green" laps
+/// Pure pace statistics over a driver's laps. Summary metrics use the Clean Laps
 /// (timed and incident-free) so a single off-track lap doesn't distort the picture;
 /// the fastest lap considers any timed lap. Extracted as a pure helper so the math is
 /// unit-tested directly (mirrors <c>SubsessionIndexer</c>).
@@ -13,18 +13,18 @@ public static class LapAnalysis
     public static (double Mean, double StdDev, double Fastest, double Deg) Compute(
         IReadOnlyList<LapDto> laps)
     {
-        var valid = laps.Where(l => l.Valid).ToList();
-        var fastest = valid.Count > 0 ? valid.Min(l => l.LapTimeSeconds) : 0d;
+        var timed = laps.Where(l => l.Timed).ToList();
+        var fastest = timed.Count > 0 ? timed.Min(l => l.LapTimeSeconds) : 0d;
 
-        var green = valid.Where(l => !l.Incident).ToList();
-        if (green.Count == 0)
+        var clean = timed.Where(l => !l.Incident).ToList();
+        if (clean.Count == 0)
             return (0d, 0d, Math.Round(fastest, 3), 0d);
 
-        var times = green.Select(l => l.LapTimeSeconds).ToList();
+        var times = clean.Select(l => l.LapTimeSeconds).ToList();
         var mean = times.Average();
         var variance = times.Sum(t => (t - mean) * (t - mean)) / times.Count;
         var std = Math.Sqrt(variance);
-        var deg = green.Count >= 2 ? Slope(green) : 0d;
+        var deg = clean.Count >= 2 ? Slope(clean) : 0d;
 
         return (Math.Round(mean, 3), Math.Round(std, 3), Math.Round(fastest, 3), Math.Round(deg, 4));
     }

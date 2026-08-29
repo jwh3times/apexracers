@@ -590,7 +590,7 @@ describe('api', () => {
 
   describe('getProfileStats', () => {
     it('calls GET /api/users/me/profile-stats and returns parsed data', async () => {
-      const data = { customerId: 691062, displayName: 'Jerry', licenses: [], career: [] };
+      const data = { customerId: 691062, driverName: 'Jerry', licenses: [], career: [] };
       mockFetchOk(data);
       const result = await api.getProfileStats();
       expect(fetch).toHaveBeenCalledWith(
@@ -672,7 +672,7 @@ describe('api', () => {
 
   describe('getDriverLaps', () => {
     it('calls GET with a customerId query param when provided', async () => {
-      mockFetchOk({ subsessionId: 100, custId: 111, laps: [] });
+      mockFetchOk({ subsessionId: 100, customerId: 111, laps: [] });
       await api.getDriverLaps(100, 111);
       expect(fetch).toHaveBeenCalledWith(
         '/api/subsessions/100/laps?customerId=111',
@@ -681,7 +681,7 @@ describe('api', () => {
     });
 
     it('omits the query param when customerId is not provided', async () => {
-      mockFetchOk({ subsessionId: 100, custId: 0, laps: [] });
+      mockFetchOk({ subsessionId: 100, customerId: 0, laps: [] });
       await api.getDriverLaps(100);
       expect(fetch).toHaveBeenCalledWith('/api/subsessions/100/laps', expect.objectContaining({}));
     });
@@ -840,7 +840,11 @@ describe('api', () => {
     });
 
     it('addRival POSTs the cust id and display name', async () => {
-      mockFetchOk({ custId: 200, displayName: 'Max Power', createdAt: '2026-01-01T00:00:00Z' });
+      mockFetchOk({
+        customerId: 200,
+        driverName: 'Max Power',
+        createdAt: '2026-01-01T00:00:00Z',
+      });
       const result = await api.addRival(200, 'Max Power');
       expect(fetch).toHaveBeenCalledWith(
         '/api/users/me/rivals',
@@ -849,7 +853,7 @@ describe('api', () => {
           body: JSON.stringify({ custId: 200, displayName: 'Max Power' }),
         })
       );
-      expect(result.custId).toBe(200);
+      expect(result.customerId).toBe(200);
     });
 
     it('removeRival DELETEs the cust id and resolves on 204', async () => {

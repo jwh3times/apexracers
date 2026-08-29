@@ -266,7 +266,7 @@ public class DriverStatsServiceTests
         var result = await service.GetDriverProfileAsync(CustId, Ct);
 
         Assert.Equal(CustId, result.CustomerId);
-        Assert.Equal("Jerry Holland", result.DisplayName);
+        Assert.Equal("Jerry Holland", result.DriverName);
         Assert.Equal("United States", result.Country);
         Assert.Equal("USA", result.CountryCode);
         Assert.Equal("2021-11-05", result.MemberSince);
@@ -318,7 +318,7 @@ public class DriverStatsServiceTests
         await service.GetDriverProfileAsync(CustId, Ct);
         var second = await service.GetDriverProfileAsync(CustId, Ct);
 
-        Assert.Equal("Jerry Holland", second.DisplayName); // deserialized from cache
+        Assert.Equal("Jerry Holland", second.DriverName); // deserialized from cache
         await client.Received(1).GetMemberProfileAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
         await client.Received(1).GetCareerStatisticsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
         await client.Received(1).GetMemberSummaryAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
@@ -359,8 +359,8 @@ public class DriverStatsServiceTests
 
         var side = await service.GetComparisonSideAsync(CustId, Ct);
 
-        Assert.Equal(CustId, side.CustId);
-        Assert.Equal("Jerry Holland", side.DisplayName);
+        Assert.Equal(CustId, side.CustomerId);
+        Assert.Equal("Jerry Holland", side.DriverName);
         Assert.Equal("United States", side.Country);
         Assert.Equal("USA", side.CountryCode);
         Assert.Equal("2021-11-05", side.MemberSince);

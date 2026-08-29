@@ -84,10 +84,10 @@ public class RivalComparisonServiceTests
 
         var result = await service.CompareAsync(Me, Rival, Ct);
 
-        Assert.Equal("You", result.You.DisplayName);
-        Assert.Equal("Rival", result.Rival.DisplayName);
-        Assert.Equal(Me, result.You.CustId);
-        Assert.Equal(Rival, result.Rival.CustId);
+        Assert.Equal("You", result.You.DriverName);
+        Assert.Equal("Rival", result.Rival.DriverName);
+        Assert.Equal(Me, result.You.CustomerId);
+        Assert.Equal(Rival, result.Rival.CustomerId);
 
         Assert.Equal(2, result.Shared.TotalShared); // sub 3 not shared
         Assert.Equal(1, result.Shared.YouAhead);
@@ -148,7 +148,7 @@ public class RivalComparisonServiceTests
         Assert.Equal(0, result.Shared.TotalShared);
         Assert.Empty(result.Shared.Races);
         Assert.Empty(result.Shared.TrackPace);
-        Assert.Equal("You", result.You.DisplayName);
-        Assert.Equal("Rival", result.Rival.DisplayName);
+        Assert.Equal("You", result.You.DriverName);
+        Assert.Equal("Rival", result.Rival.DriverName);
     }
 }

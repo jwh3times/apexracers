@@ -50,7 +50,7 @@ public class CarCatalogServiceTests
         db.UploadedLaps.Add(new UploadedLap
         {
             Id = Guid.NewGuid(), UserId = userId, CarId = 132, TrackId = 18,
-            LapTimeSeconds = 138.5, IsValidLap = true, RecordedAt = DateTimeOffset.UtcNow,
+            LapTimeSeconds = 138.5, RecordedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync(Ct);
         var service = new CarCatalogService(db);

@@ -65,7 +65,7 @@ const baseLap: UploadedBest = {
 
 const emptyProfile: DriverProfile = {
   customerId: 1,
-  displayName: 'Jerry',
+  driverName: 'Jerry',
   country: null,
   countryCode: null,
   memberSince: null,

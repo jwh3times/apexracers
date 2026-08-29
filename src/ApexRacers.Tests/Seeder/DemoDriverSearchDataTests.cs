@@ -22,6 +22,6 @@ public class DemoDriverSearchDataTests
     public void RivalTerms_ReturnTheRival()
     {
         foreach (var term in new[] { "rival", "racer", "riv" })
-            Assert.Contains(DemoDriverSearchData.Terms[term], r => r.CustId == DemoData.RivalCustId);
+            Assert.Contains(DemoDriverSearchData.Terms[term], r => r.CustomerId == DemoData.RivalCustId);
     }
 }

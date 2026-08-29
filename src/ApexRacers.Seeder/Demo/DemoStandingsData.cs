@@ -20,7 +20,7 @@ public static class DemoStandingsData
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonStandingDto(
                 Rank: i + 1,
-                CustId: CustAt(seasonId, classId, i),
+                CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,
                 Starts: 24, Wins: Math.Max(0, 10 - i), Top5: Math.Max(0, 18 - i), Poles: Math.Max(0, 6 - i / 2),
@@ -33,7 +33,7 @@ public static class DemoStandingsData
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonTtStandingDto(
                 Rank: i + 1,
-                CustId: CustAt(seasonId, classId, i),
+                CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,
                 TtRating: 2400 - i * 35,
@@ -47,7 +47,7 @@ public static class DemoStandingsData
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonQualifyResultDto(
                 Rank: i + 1,
-                CustId: CustAt(seasonId, classId, i),
+                CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,
                 IRating: 3000 - i * 45,

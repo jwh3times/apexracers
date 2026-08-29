@@ -25,12 +25,12 @@ export default function LapTraceChart({ laps, meanSeconds, stdDevSeconds, h = 16
     return () => ro.disconnect();
   }, []);
 
-  const valid = laps.filter(l => l.valid);
-  if (valid.length < 2) return null;
+  const timed = laps.filter(l => l.timed);
+  if (timed.length < 2) return null;
 
   const accent = 'var(--color-primary-container)';
-  const times = valid.map(l => l.lapTimeSeconds);
-  const lapNums = valid.map(l => l.lapNumber);
+  const times = timed.map(l => l.lapTimeSeconds);
+  const lapNums = timed.map(l => l.lapNumber);
   const minLap = Math.min(...lapNums);
   const lapRange = Math.max(1, Math.max(...lapNums) - minLap);
 
@@ -44,9 +44,9 @@ export default function LapTraceChart({ laps, meanSeconds, stdDevSeconds, h = 16
   const X = (lapNumber: number) => pad + ((lapNumber - minLap) / lapRange) * (w - pad * 2);
   const Y = (t: number) => pad + ((t - minY) / yRange) * (h - pad * 2);
 
-  const points = w > 0 ? valid.map(l => [X(l.lapNumber), Y(l.lapTimeSeconds)] as const) : [];
+  const points = w > 0 ? timed.map(l => [X(l.lapNumber), Y(l.lapTimeSeconds)] as const) : [];
   const line = points.map(p => `${p[0]},${p[1]}`).join(' ');
-  const incidents = w > 0 ? valid.filter(l => l.incident) : [];
+  const incidents = w > 0 ? timed.filter(l => l.incident) : [];
 
   return (
     <svg
