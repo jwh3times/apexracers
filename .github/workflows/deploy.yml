@@ -11,18 +11,24 @@ env:
   REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # this can be removed June 16, 2026
 
-# ── Required GitHub Secrets ───────────────────────────────────────────────────
-# AZURE_CREDENTIALS       — JSON output of: az ad sp create-for-rbac --sdk-auth
-# REGISTRY_LOGIN_SERVER   — e.g. apexracers.azurecr.io
-# REGISTRY_USERNAME       — ACR admin username (or service principal appId)
-# REGISTRY_PASSWORD       — ACR admin password (or service principal password)
-# API_APP_NAME            — Azure App Service name for the API
-# INGESTION_APP_NAME      — Azure Container App name for the ingestion worker
-# RESOURCE_GROUP          — Azure resource group containing both resources
+# ── Required GitHub configuration ─────────────────────────────────────────────
+# Variables (not secrets — these are identifiers, and OIDC carries no password):
+#   AZURE_CLIENT_ID         — appId of the apexracers-github-actions registration
+#   AZURE_TENANT_ID         — directory (tenant) ID
+#   AZURE_SUBSCRIPTION_ID   — target subscription ID
+# Secrets:
+#   REGISTRY_LOGIN_SERVER   — e.g. apexracersacr.azurecr.io
+#   API_APP_NAME            — Azure App Service name for the API
+#   INGESTION_APP_NAME      — Azure Container App name for the ingestion worker
+#   RESOURCE_GROUP          — Azure resource group containing both resources
+#
+# Azure auth is OIDC: the federated credential on the app registration trusts the
+# subject repo:jwh3times/apexracers:ref:refs/heads/main. No AZURE_CREDENTIALS, and
+# no registry password — the deploy identity pushes via `az acr login`.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# GITHUB_TOKEN needs only read access to repo contents — Azure auth and ACR
-# pushes use dedicated secrets, not the workflow token.
+# Read-only by default. The two deploy jobs additionally request id-token: write,
+# which is what lets them mint the OIDC token Entra exchanges for an access token.
 permissions:
   contents: read
 
@@ -132,6 +138,9 @@ jobs:
     name: Deploy API
     needs: [format, test]
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     # Serialize deploys: two closely-spaced merges to main queue instead of racing
     # (a stale image could otherwise win the App Service update).
@@ -144,14 +153,14 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Log in to Container Registry
-        uses: azure/docker-login@v2
-        with:
-          login-server: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+        run: az acr login --name "${REGISTRY%%.*}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
 
       - name: Build and push API image
         run: |
@@ -170,6 +179,9 @@ jobs:
     name: Deploy Ingestion Worker
     needs: [format, test]
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     # Serialize deploys (same rationale as deploy-api).
     concurrency:
@@ -181,14 +193,14 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Log in to Container Registry
-        uses: azure/docker-login@v2
-        with:
-          login-server: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+        run: az acr login --name "${REGISTRY%%.*}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
 
       - name: Build and push ingestion image
         run: |
