@@ -260,7 +260,7 @@ export interface FavoriteTrack {
 
 export interface DriverProfile {
   customerId: number;
-  displayName: string;
+  driverName: string;
   country: string | null;
   countryCode: string | null;
   memberSince: string | null;
@@ -317,7 +317,7 @@ export interface Weather {
 }
 
 export interface SubsessionResultRow {
-  custId: number;
+  customerId: number;
   driverName: string;
   finishPosition: number;
   startPosition: number;
@@ -360,12 +360,12 @@ export interface Lap {
   lapNumber: number;
   lapTimeSeconds: number; // -1 when the lap has no time
   incident: boolean;
-  valid: boolean;
+  timed: boolean;
 }
 
 export interface DriverLaps {
   subsessionId: number;
-  custId: number;
+  customerId: number;
   meanSeconds: number;
   stdDevSeconds: number;
   fastestLapSeconds: number;
@@ -457,8 +457,8 @@ export interface WeekStrategy {
 export interface GlobalLeaderboardEntry {
   categoryId: number;
   rank: number;
-  custId: number;
-  driver: string;
+  customerId: number;
+  driverName: string;
   location: string;
   starts: number;
   wins: number;
@@ -483,7 +483,7 @@ export interface CarClassOption {
 
 export interface SeasonStanding {
   rank: number;
-  custId: number;
+  customerId: number;
   driverName: string;
   division: number;
   starts: number;
@@ -506,7 +506,7 @@ export interface SeasonStandings {
 
 export interface SeasonTtStanding {
   rank: number;
-  custId: number;
+  customerId: number;
   driverName: string;
   division: number;
   ttRating: number | null;
@@ -530,7 +530,7 @@ export interface SeasonTtStandings {
 
 export interface SeasonQualifyResult {
   rank: number;
-  custId: number;
+  customerId: number;
   driverName: string;
   division: number;
   iRating: number | null;
@@ -552,19 +552,19 @@ export interface SeasonQualifyResults {
 // ── Rival comparison (3.1) ──────────────────────────────────────────────────
 
 export interface Rival {
-  custId: number;
-  displayName: string;
+  customerId: number;
+  driverName: string;
   createdAt: string; // ISO 8601
 }
 
 export interface DriverSearchResult {
-  custId: number;
-  displayName: string;
+  customerId: number;
+  driverName: string;
 }
 
 export interface RivalSuggestion {
-  custId: number;
-  displayName: string;
+  customerId: number;
+  driverName: string;
   sharedRaces: number;
 }
 
@@ -575,8 +575,8 @@ export interface CategoryHistory {
 }
 
 export interface ComparisonSide {
-  custId: number;
-  displayName: string;
+  customerId: number;
+  driverName: string;
   country: string | null;
   countryCode: string | null;
   memberSince: string | null;

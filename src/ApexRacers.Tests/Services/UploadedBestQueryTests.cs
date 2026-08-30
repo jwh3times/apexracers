@@ -7,9 +7,8 @@ using Xunit;
 namespace ApexRacers.Tests.Services;
 
 /// <summary>
-/// Covers the projection that was previously written three times. The invariants below belonged to
-/// all three copies but were asserted by none of them — no test in the suite seeded an invalid lap
-/// before this file existed, so "only valid laps count" was three lines of code and zero checks.
+/// Covers the projection that was previously written three times. Every row in its scope is already
+/// a Timed Lap because the upload service rejects untimed parser rows before persistence.
 /// </summary>
 public class UploadedBestQueryTests
 {
@@ -38,42 +37,15 @@ public class UploadedBestQueryTests
     }
 
     private static UploadedLap Lap(
-        int carId, int trackId, double seconds, bool valid = true, int dayOffset = 0, Guid? userId = null) =>
+        int carId, int trackId, double seconds, int dayOffset = 0, Guid? userId = null) =>
         new()
         {
             UserId = userId ?? UserId,
             CarId = carId,
             TrackId = trackId,
             LapTimeSeconds = seconds,
-            IsValidLap = valid,
             RecordedAt = Base.AddDays(dayOffset),
         };
-
-    [Fact]
-    public async Task ExcludesInvalidLaps_SoNoCallerCanForgetTo()
-    {
-        await using var db = await SeedAsync(
-            Lap(1, 10, 100.0, valid: false), // faster, but invalid
-            Lap(1, 10, 105.0));
-
-        var result = await UploadedBestQuery.RunAsync(
-            db.UploadedLaps.Where(l => l.UserId == UserId), UploadedBestOrder.FastestFirst, Ct);
-
-        var row = Assert.Single(result);
-        Assert.Equal(105.0, row.BestLapSeconds);
-        Assert.Equal(1, row.LapCount); // the invalid lap is not counted either
-    }
-
-    [Fact]
-    public async Task DropsACarTrackEntirelyWhenEveryLapIsInvalid()
-    {
-        await using var db = await SeedAsync(Lap(1, 10, 100.0, valid: false));
-
-        var result = await UploadedBestQuery.RunAsync(
-            db.UploadedLaps.Where(l => l.UserId == UserId), UploadedBestOrder.FastestFirst, Ct);
-
-        Assert.Empty(result);
-    }
 
     [Fact]
     public async Task GroupsPerCarAndTrackConfiguration()

@@ -19,7 +19,7 @@ public class UploadedLapServiceTests
         return (user, car, track);
     }
 
-    private static UploadedLap MakeLap(ApplicationUser user, Car car, Track track, double lapTime, bool isValid = true, int daysAgo = 0) =>
+    private static UploadedLap MakeLap(ApplicationUser user, Car car, Track track, double lapTime, int daysAgo = 0) =>
         new()
         {
             UserId = user.Id,
@@ -27,7 +27,6 @@ public class UploadedLapServiceTests
             TrackId = track.Id,
             Track = track,
             LapTimeSeconds = lapTime,
-            IsValidLap = isValid,
             RecordedAt = DateTimeOffset.UtcNow.AddDays(-daysAgo),
             Car = car,
         };
@@ -37,19 +36,6 @@ public class UploadedLapServiceTests
     {
         await using var db = DbContextFactory.Create();
         var (user, _, _) = SeedUserCarAndTrack(db);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UploadedLapService(db).GetUploadedBestsAsync(user.Id, TestContext.Current.CancellationToken);
-
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task GetUploadedBestsAsync_OnlyInvalidLaps_ReturnsEmpty()
-    {
-        await using var db = DbContextFactory.Create();
-        var (user, car, track) = SeedUserCarAndTrack(db);
-        db.UploadedLaps.Add(MakeLap(user, car, track, lapTime: 70, isValid: false));
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await new UploadedLapService(db).GetUploadedBestsAsync(user.Id, TestContext.Current.CancellationToken);
@@ -76,24 +62,6 @@ public class UploadedLapServiceTests
     }
 
     [Fact]
-    public async Task GetUploadedBestsAsync_ValidAndInvalidMixed_CountsOnlyValidLaps()
-    {
-        await using var db = DbContextFactory.Create();
-        var (user, car, track) = SeedUserCarAndTrack(db);
-        db.UploadedLaps.AddRange(
-            MakeLap(user, car, track, lapTime: 70, isValid: true),
-            MakeLap(user, car, track, lapTime: 60, isValid: false), // invalid — should not count
-            MakeLap(user, car, track, lapTime: 80, isValid: true));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UploadedLapService(db).GetUploadedBestsAsync(user.Id, TestContext.Current.CancellationToken);
-
-        var dto = Assert.Single(result);
-        Assert.Equal(2, dto.LapCount);
-        Assert.Equal(70, dto.BestLapSeconds); // 60 was invalid
-    }
-
-    [Fact]
     public async Task GetUploadedBestsAsync_TwoDifferentCarTrackCombos_OrderedByMostRecentFirst()
     {
         await using var db = DbContextFactory.Create();
@@ -107,7 +75,7 @@ public class UploadedLapServiceTests
             new UploadedLap
             {
                 UserId = user.Id, CarId = 2, TrackId = 2, Track = track2,
-                LapTimeSeconds = 55, IsValidLap = true,
+                LapTimeSeconds = 55,
                 RecordedAt = DateTimeOffset.UtcNow.AddDays(-1),
                 Car = car2,
             });

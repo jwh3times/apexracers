@@ -82,7 +82,7 @@ public class CarRecommendationService(AppDbContext db)
         {
             personalBestByCar = await evidence
                 .ScopeUploadedLaps(db.UploadedLaps)
-                .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId && p.IsValidLap)
+                .Where(p => p.UserId == user.Id && p.TrackId == week.TrackId)
                 .Where(p => p.RecordedAt >= weekWindow.Start && p.RecordedAt < weekWindow.End)
                 .GroupBy(p => p.CarId)
                 .Select(g => new { CarId = g.Key, BestLap = g.Min(p => p.LapTimeSeconds) })

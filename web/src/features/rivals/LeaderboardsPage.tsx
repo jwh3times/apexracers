@@ -69,10 +69,10 @@ export default function LeaderboardsPage() {
               <tbody>
                 {resource.data.map(r => {
                   const isMe =
-                    user?.iRacingCustomerId != null && r.custId === user.iRacingCustomerId;
+                    user?.iRacingCustomerId != null && r.customerId === user.iRacingCustomerId;
                   return (
                     <tr
-                      key={r.custId}
+                      key={r.customerId}
                       className={`border-b border-line-2 last:border-b-0 ${
                         isMe ? 'bg-primary-container/10' : 'hover:bg-surface-container'
                       } transition-colors`}
@@ -82,7 +82,7 @@ export default function LeaderboardsPage() {
                       </td>
                       <td className="td-p text-body-fluid text-on-surface max-w-0">
                         <span className="block truncate">
-                          {r.driver}
+                          {r.driverName}
                           {isMe && <span className="text-primary-container"> (you)</span>}
                         </span>
                       </td>

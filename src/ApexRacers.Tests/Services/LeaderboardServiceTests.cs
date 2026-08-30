@@ -36,7 +36,7 @@ public class LeaderboardServiceTests
         var second = await service.GetLeaderboardAsync(2, Ct);
 
         Assert.Equal(2, first.Count);
-        Assert.Equal("Aaron Vazquezz", first[0].Driver);
+        Assert.Equal("Aaron Vazquezz", first[0].DriverName);
         Assert.Equal(1, first[0].Rank);
         Assert.Equal(11424, first[0].IRating);
         Assert.Equal(first.Count, second.Count);

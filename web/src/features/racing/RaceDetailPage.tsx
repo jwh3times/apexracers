@@ -78,10 +78,10 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
         </thead>
         <tbody>
           {rows.map(r => {
-            const isMe = meCustId != null && r.custId === meCustId;
+            const isMe = meCustId != null && r.customerId === meCustId;
             return (
               <tr
-                key={r.custId}
+                key={r.customerId}
                 className={`border-b border-line-2 last:border-b-0 ${
                   isMe ? 'bg-primary-container/10' : 'hover:bg-surface-container'
                 } transition-colors`}
@@ -91,7 +91,7 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
                 </td>
                 <td className="td-p text-body-fluid text-on-surface max-w-0">
                   <span className="block truncate">
-                    {r.driverName || `#${r.custId}`}
+                    {r.driverName || `#${r.customerId}`}
                     {isMe && <span className="text-primary-container"> (you)</span>}
                   </span>
                 </td>
@@ -130,15 +130,15 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
   );
 }
 
-function PaceCard({ subsessionId, custId }: { subsessionId: number; custId: number }) {
+function PaceCard({ subsessionId, customerId }: { subsessionId: number; customerId: number }) {
   const resource = useResource<DriverLaps | null>(
-    signal => api.getDriverLaps(subsessionId, custId, signal),
-    [subsessionId, custId],
+    signal => api.getDriverLaps(subsessionId, customerId, signal),
+    [subsessionId, customerId],
     { onNotLinked: { fallback: null }, onError: { fallback: null } }
   );
   const data = resource.status === 'ok' ? resource.data : null;
 
-  if (!data || data.laps.filter(l => l.valid).length < 2) return null;
+  if (!data || data.laps.filter(l => l.timed).length < 2) return null;
 
   const deg = data.degSlopeSecondsPerLap;
   return (
@@ -221,8 +221,11 @@ export default function RaceDetailPage() {
           </div>
 
           {user?.iRacingCustomerId != null &&
-            resource.data.results.some(r => r.custId === user.iRacingCustomerId) && (
-              <PaceCard subsessionId={resource.data.subsessionId} custId={user.iRacingCustomerId} />
+            resource.data.results.some(r => r.customerId === user.iRacingCustomerId) && (
+              <PaceCard
+                subsessionId={resource.data.subsessionId}
+                customerId={user.iRacingCustomerId}
+              />
             )}
 
           <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">

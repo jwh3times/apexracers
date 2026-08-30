@@ -33,7 +33,7 @@ public static class QualifyResultsParser
                 var lapTicks = GetInt(row, "best_qual_lap_time");
                 results.Add(new SeasonQualifyResultDto(
                     Rank: GetInt(row, "rank"),
-                    CustId: GetLong(row, "cust_id"),
+                    CustomerId: GetLong(row, "cust_id"),
                     DriverName: GetString(row, "display_name"),
                     Division: GetInt(row, "division"),
                     IRating: GetNullableInt(GetLicense(row), "irating"),

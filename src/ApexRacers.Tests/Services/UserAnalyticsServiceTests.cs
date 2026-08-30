@@ -104,7 +104,7 @@ public class UserAnalyticsServiceTests
         db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
-            IsValidLap = true, SessionType = LapSessionType.Race,
+            SessionType = LapSessionType.Race,
             // Inside this Race Week, which begins seven days ago — an Uploaded Lap counts toward a
             // Race Week only when it was driven during it.
             RecordedAt = InsideWeekOne,
@@ -205,7 +205,7 @@ public class UserAnalyticsServiceTests
         db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
-            IsValidLap = true, SessionType = LapSessionType.Race,
+            SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow.AddDays(-30),
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -236,7 +236,6 @@ public class UserAnalyticsServiceTests
             CarId = car.Id,
             TrackId = week.TrackId,
             LapTimeSeconds = 61.25,
-            IsValidLap = true,
             SessionType = LapSessionType.Practice,
             RecordedAt = InsideWeekOne,
         });

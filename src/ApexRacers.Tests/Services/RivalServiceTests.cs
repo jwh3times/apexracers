@@ -43,8 +43,8 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
         var dto = await service.AddAsync(userId, 12345, "Max Power", Ct);
 
-        Assert.Equal(12345, dto.CustId);
-        Assert.Equal("Max Power", dto.DisplayName);
+        Assert.Equal(12345, dto.CustomerId);
+        Assert.Equal("Max Power", dto.DriverName);
         Assert.Single(db.Rivals.Where(r => r.UserId == userId));
     }
 
@@ -60,7 +60,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
         Assert.Single(db.Rivals.Where(r => r.UserId == userId));
         Assert.Equal(first.CreatedAt, second.CreatedAt);
-        Assert.Equal("Max Power", second.DisplayName); // original kept
+        Assert.Equal("Max Power", second.DriverName); // original kept
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
         var dto = await service.AddAsync(Guid.NewGuid(), 555, "   ", Ct);
 
-        Assert.Equal("Driver 555", dto.DisplayName);
+        Assert.Equal("Driver 555", dto.DriverName);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
         var result = await service.ListAsync(me, Ct);
 
-        Assert.Equal(["Newer", "Older"], result.Select(r => r.DisplayName).ToArray());
+        Assert.Equal(["Newer", "Older"], result.Select(r => r.DriverName).ToArray());
     }
 
     private static ApplicationUser User(Guid id, string displayName) => new()
@@ -178,8 +178,8 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
         var result = await service.SearchDriversAsync("holland", Ct);
 
         Assert.Equal(2, result.Count);
-        Assert.Equal(691062, result[0].CustId);
-        Assert.Equal("Jerry Holland", result[0].DisplayName);
+        Assert.Equal(691062, result[0].CustomerId);
+        Assert.Equal("Jerry Holland", result[0].DriverName);
     }
 
     [Fact]
@@ -233,12 +233,12 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
         var result = await service.SuggestionsAsync(userId, me, Ct);
 
         Assert.Equal(2, result.Count);
-        Assert.Equal(200, result[0].CustId);   // most shared races first
+        Assert.Equal(200, result[0].CustomerId);   // most shared races first
         Assert.Equal(2, result[0].SharedRaces);
-        Assert.Equal("Rival A", result[0].DisplayName);
-        Assert.Equal(300, result[1].CustId);
+        Assert.Equal("Rival A", result[0].DriverName);
+        Assert.Equal(300, result[1].CustomerId);
         Assert.Equal(1, result[1].SharedRaces);
-        Assert.DoesNotContain(result, s => s.CustId == me || s.CustId == 400);
+        Assert.DoesNotContain(result, s => s.CustomerId == me || s.CustomerId == 400);
     }
 
     [Fact]

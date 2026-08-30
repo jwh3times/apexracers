@@ -37,7 +37,7 @@ public class DemoCacheRoundTripTests
         Assert.NotEmpty(progression.Categories);
 
         var profile = await service.GetDriverProfileAsync(DemoData.DriverCustId, Ct);
-        Assert.Equal("Demo Driver", profile.DisplayName);
+        Assert.Equal("Demo Driver", profile.DriverName);
 
         // The rival side of /compare reads the same profile/career families.
         var rival = await service.GetComparisonSideAsync(DemoData.RivalCustId, Ct);

@@ -36,7 +36,7 @@ const mockGetAchievements = vi.mocked(api.getAchievements);
 
 const minimalProfile: DriverProfile = {
   customerId: 100042,
-  displayName: 'Test Driver',
+  driverName: 'Test Driver',
   country: null,
   countryCode: null,
   memberSince: null,
@@ -49,7 +49,7 @@ const minimalProfile: DriverProfile = {
 
 const sampleProfile: DriverProfile = {
   customerId: 100042,
-  displayName: 'Test Driver',
+  driverName: 'Test Driver',
   country: 'United States',
   countryCode: 'USA',
   memberSince: '2021-11-05',

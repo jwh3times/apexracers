@@ -25,8 +25,8 @@ public class LeaderboardCsvParserTests
 
         Assert.Equal(2, rows[0].CategoryId);
         Assert.Equal(1, rows[0].Rank);
-        Assert.Equal(598355, rows[0].CustId);
-        Assert.Equal("Aaron Vazquezz", rows[0].Driver);
+        Assert.Equal(598355, rows[0].CustomerId);
+        Assert.Equal("Aaron Vazquezz", rows[0].DriverName);
         Assert.Equal("ES", rows[0].Location);
         Assert.Equal(1919, rows[0].Starts);
         Assert.Equal(694, rows[0].Wins);
@@ -35,7 +35,7 @@ public class LeaderboardCsvParserTests
         Assert.Equal(295527, rows[0].ChampPoints);
 
         Assert.Equal(2, rows[1].Rank);
-        Assert.Equal("Sven Haase", rows[1].Driver);
+        Assert.Equal("Sven Haase", rows[1].DriverName);
     }
 
     [Fact]
@@ -50,8 +50,8 @@ public class LeaderboardCsvParserTests
         var rows = LeaderboardCsvParser.Parse(csv, categoryId: 5, topN: 2);
 
         Assert.Equal(2, rows.Count);
-        Assert.Equal("A", rows[0].Driver);
-        Assert.Equal("B", rows[1].Driver);
+        Assert.Equal("A", rows[0].DriverName);
+        Assert.Equal("B", rows[1].DriverName);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class LeaderboardCsvParserTests
         var rows = LeaderboardCsvParser.Parse(csv, categoryId: 1, topN: 50);
 
         var only = Assert.Single(rows);
-        Assert.Equal("Valid Driver", only.Driver);
+        Assert.Equal("Valid Driver", only.DriverName);
         Assert.Equal(1, only.Rank); // rank only advances for valid rows
     }
 
@@ -77,6 +77,6 @@ public class LeaderboardCsvParserTests
 
         var csv = $"{Header}\r\n{Row("Win", 7, "AU", 1, 1, 6000, 1, 1)}\r\n";
         var rows = LeaderboardCsvParser.Parse(csv, 2, 50);
-        Assert.Equal("Win", Assert.Single(rows).Driver);
+        Assert.Equal("Win", Assert.Single(rows).DriverName);
     }
 }

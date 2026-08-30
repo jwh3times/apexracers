@@ -1,5 +1,6 @@
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using System.Text.Json;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -8,6 +9,19 @@ public class LapAnalysisTests
 {
     private static LapDto Lap(int n, double seconds, bool incident = false) =>
         new(n, seconds, incident, seconds > 0);
+
+    [Fact]
+    public void LapDto_SerializesTimedLapDomainLanguage()
+    {
+        var dto = Lap(1, 60.0);
+
+        var json = JsonSerializer.SerializeToElement(dto, JsonSerializerOptions.Web);
+        var propertyNames = json.EnumerateObject().Select(property => property.Name).ToList();
+
+        Assert.Contains("timed", propertyNames);
+        Assert.DoesNotContain("valid", propertyNames);
+        Assert.True(json.GetProperty("timed").GetBoolean());
+    }
 
     [Fact]
     public void Compute_CleanLaps_MeanFastestAndPositiveDeg()
@@ -54,7 +68,7 @@ public class LapAnalysisTests
     }
 
     [Fact]
-    public void Compute_NoValidLaps_AllZero()
+    public void Compute_NoTimedLaps_AllZero()
     {
         var (mean, std, fastest, deg) = LapAnalysis.Compute([Lap(1, -1), Lap(2, 0)]);
 

@@ -13,10 +13,11 @@ public class DemoLapDataTests
         Assert.Equal(30, laps.Count);
         Assert.Equal(Enumerable.Range(1, 30), laps.Select(l => l.LapNumber));
         Assert.Equal(1, laps.Count(l => l.Incident));                       // exactly one incident lap
-        Assert.False(laps.Single(l => l.Incident).Valid);                   // incident lap not green
-        var greenMin = laps.Where(l => l.Valid).Min(l => l.LapTimeSeconds);
-        Assert.Equal(90.0, greenMin, precision: 3);                         // fastest valid == best
-        Assert.All(laps.Where(l => l.Valid), l => Assert.True(l.LapTimeSeconds >= 90.0));
+        Assert.True(laps.Single(l => l.Incident).Timed);                     // timed and incident are orthogonal
+        Assert.All(laps, l => Assert.True(l.Timed));
+        var cleanMin = laps.Where(l => !l.Incident).Min(l => l.LapTimeSeconds);
+        Assert.Equal(90.0, cleanMin, precision: 3);                          // fastest clean == best
+        Assert.All(laps, l => Assert.True(l.LapTimeSeconds >= 90.0));
     }
 
     [Fact]

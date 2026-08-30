@@ -210,7 +210,7 @@ public class CarRecommendationServiceTests
         db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = 1, TrackId = 99,
-            LapTimeSeconds = 65.0, IsValidLap = true,
+            LapTimeSeconds = 65.0,
             SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow,
         });
@@ -292,7 +292,6 @@ public class CarRecommendationServiceTests
             CarId = car2.Id,
             TrackId = 99,
             LapTimeSeconds = 65,
-            IsValidLap = true,
             SessionType = LapSessionType.Race,
             RecordedAt = DateTimeOffset.UtcNow,
         });

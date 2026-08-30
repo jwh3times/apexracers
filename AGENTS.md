@@ -344,6 +344,11 @@ Controllers do no logic beyond binding inputs and returning `Ok(result)`. Servic
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
 command/query handlers, no `IRepository<T>` (use `AppDbContext` directly).
 
+ApexRacers-owned response fields identify a Driver with `CustomerId` and `DriverName` (serialized as
+`customerId` / `driverName`). `ApplicationUser.DisplayName` is the local User's account label and is
+not interchangeable with a Driver name. Upstream `cust_id` / `display_name` spellings and SDK member
+names remain at parser and mapping adapters; do not expose them through ApexRacers response DTOs.
+
 **Development API docs:** `Microsoft.AspNetCore.OpenApi` generates the `v1` document at
 `/openapi/v1.json`, with title `ApexRacers API` and version `v1`; `Scalar.AspNetCore` serves its
 interactive reference at `/scalar/v1`. Both endpoints are mapped only inside

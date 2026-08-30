@@ -97,7 +97,7 @@ public class UserAnalyticsService(AppDbContext db)
             // already materializes for the same reason.
             var laps = await evidence
                 .ScopeUploadedLaps(db.UploadedLaps)
-                .Where(p => p.UserId == userId && p.IsValidLap
+                .Where(p => p.UserId == userId
                          && carIds.Contains(p.CarId) && trackIds.Contains(p.TrackId))
                 .Select(p => new { p.CarId, p.TrackId, p.LapTimeSeconds, p.RecordedAt })
                 .ToListAsync(ct);

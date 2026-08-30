@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [2.0.0] - 2026-08-29
+
+### Changed
+
+- ApexRacers-owned Driver responses now use `customerId` and `driverName` consistently across profile,
+  race detail, lap trace, standings, leaderboard, rival-search, and comparison contracts. The User's
+  account `displayName` remains distinct, and a targeted migration rewrites only the affected mapped
+  cache families—including deriving the corrected `timed` lap flag from lap time—without changing
+  cached upstream iRacing payloads.
+
+### Fixed
+
+- Lap evidence now uses the domain distinction it actually knows: race-detail traces expose whether a
+  lap was timed instead of calling it valid, while Uploaded Laps no longer store or repeatedly filter
+  an always-true `IsValidLap` flag. Incident-marked timed laps can therefore contribute a fastest lap
+  without being included in clean-pace summaries, and untimed trace rows remain excluded.
+
 ## [1.0.9] - 2026-08-28
 
 ### Changed
@@ -791,7 +808,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/jwh3times/apexracers/compare/v1.0.10...v2.0.0
 [1.0.9]: https://github.com/jwh3times/apexracers/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/jwh3times/apexracers/compare/v1.0.7...v1.0.8
 [1.0.4]: https://github.com/jwh3times/apexracers/compare/v1.0.3...v1.0.4

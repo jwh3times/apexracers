@@ -88,7 +88,6 @@ public class ScheduleServiceTests
             UserId = UserId,
             TrackId = 532,
             CarId = 777,
-            IsValidLap = true,
             RecordedAt = new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.Zero),
         });
         await db.SaveChangesAsync(Ct);

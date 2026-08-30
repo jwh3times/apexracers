@@ -89,7 +89,7 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         db.UploadedLaps.Add(new UploadedLap
         {
             UserId = userId, CarId = car.Id, TrackId = track.Id,
-            LapTimeSeconds = lapSeconds, IsValidLap = true, SessionType = sessionType,
+            LapTimeSeconds = lapSeconds, SessionType = sessionType,
             RecordedAt = recordedAt, Car = car, Track = track,
         });
 

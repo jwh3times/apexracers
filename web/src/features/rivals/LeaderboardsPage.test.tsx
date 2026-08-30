@@ -17,15 +17,15 @@ const mockGetLeaderboard = vi.mocked(api.getLeaderboard);
 
 function entry(
   rank: number,
-  custId: number,
-  driver: string,
+  customerId: number,
+  driverName: string,
   iRating: number
 ): GlobalLeaderboardEntry {
   return {
     categoryId: 5,
     rank,
-    custId,
-    driver,
+    customerId,
+    driverName,
     location: 'US',
     starts: 100,
     wins: 10,

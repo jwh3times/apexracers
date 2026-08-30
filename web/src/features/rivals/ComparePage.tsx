@@ -56,7 +56,7 @@ function SideIdentity({ side, accent }: { side: ComparisonSide; accent: string }
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: accent }} />
-        <span className="text-section-head text-on-surface">{side.displayName}</span>
+        <span className="text-section-head text-on-surface">{side.driverName}</span>
       </div>
       <p className="text-small-fluid text-on-surface-variant">
         {[side.country, side.memberSince ? `Member since ${side.memberSince}` : null]
@@ -168,7 +168,7 @@ function IRatingOverlay({ data }: { data: DriverComparison }) {
               className="inline-block w-2.5 h-2.5 rounded-full"
               style={{ background: RIVAL_COLOR }}
             />
-            {data.rival.displayName}
+            {data.rival.driverName}
           </span>
         </div>
       </div>
@@ -345,14 +345,14 @@ export default function ComparePage() {
   }, [term]);
 
   const followedIds = useMemo(
-    () => new Set(rivalsResource.status === 'ok' ? rivalsResource.data.map(r => r.custId) : []),
+    () => new Set(rivalsResource.status === 'ok' ? rivalsResource.data.map(r => r.customerId) : []),
     [rivalsResource]
   );
 
-  const add = async (custId: number, displayName: string) => {
-    await api.addRival(custId, displayName);
+  const add = async (customerId: number, driverName: string) => {
+    await api.addRival(customerId, driverName);
     setRivalVersion(version => version + 1);
-    setResults(rs => rs.filter(r => r.custId !== custId));
+    setResults(rs => rs.filter(r => r.customerId !== customerId));
   };
 
   const remove = async (custId: number) => {
@@ -421,16 +421,16 @@ export default function ComparePage() {
             {results.length > 0 && (
               <ul className="mt-3 flex flex-col gap-2">
                 {results.map(r => (
-                  <li key={r.custId} className="flex items-center justify-between gap-2">
-                    <span className="text-body-fluid text-on-surface">{r.displayName}</span>
-                    {followedIds.has(r.custId) ? (
+                  <li key={r.customerId} className="flex items-center justify-between gap-2">
+                    <span className="text-body-fluid text-on-surface">{r.driverName}</span>
+                    {followedIds.has(r.customerId) ? (
                       <span className="text-small-fluid text-on-surface-variant">Following</span>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => void add(r.custId, r.displayName)}
+                        onClick={() => void add(r.customerId, r.driverName)}
                         className="btn-fluid-sm rounded-[7px] border border-primary-container text-primary-container"
-                        aria-label={`Add ${r.displayName}`}
+                        aria-label={`Add ${r.driverName}`}
                       >
                         Add
                       </button>
@@ -445,18 +445,18 @@ export default function ComparePage() {
             <Card title="Drivers you've raced">
               <ul className="flex flex-col gap-2">
                 {suggestions.map(s => (
-                  <li key={s.custId} className="flex items-center justify-between gap-2">
+                  <li key={s.customerId} className="flex items-center justify-between gap-2">
                     <span className="flex flex-col">
-                      <span className="text-body-fluid text-on-surface">{s.displayName}</span>
+                      <span className="text-body-fluid text-on-surface">{s.driverName}</span>
                       <span className="text-small-fluid text-on-surface-variant">
                         {s.sharedRaces} shared
                       </span>
                     </span>
                     <button
                       type="button"
-                      onClick={() => void add(s.custId, s.displayName)}
+                      onClick={() => void add(s.customerId, s.driverName)}
                       className="btn-fluid-sm rounded-[7px] border border-primary-container text-primary-container"
-                      aria-label={`Add ${s.displayName}`}
+                      aria-label={`Add ${s.driverName}`}
                     >
                       Add
                     </button>
@@ -479,26 +479,26 @@ export default function ComparePage() {
               <ul className="flex flex-col gap-2">
                 {rivals.map(r => (
                   <li
-                    key={r.custId}
+                    key={r.customerId}
                     className={`flex items-center justify-between gap-2 p-2 rounded-[7px] border ${
-                      selected === r.custId ? 'border-primary-container' : 'border-line-2'
+                      selected === r.customerId ? 'border-primary-container' : 'border-line-2'
                     }`}
                   >
-                    <span className="text-body-fluid text-on-surface">{r.displayName}</span>
+                    <span className="text-body-fluid text-on-surface">{r.driverName}</span>
                     <span className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => compare(r.custId)}
+                        onClick={() => compare(r.customerId)}
                         className="btn-fluid-sm rounded-[7px] border border-primary-container text-primary-container"
-                        aria-label={`Compare against ${r.displayName}`}
+                        aria-label={`Compare against ${r.driverName}`}
                       >
                         Compare
                       </button>
                       <button
                         type="button"
-                        onClick={() => void remove(r.custId)}
+                        onClick={() => void remove(r.customerId)}
                         className="btn-fluid-sm rounded-[7px] border border-line-2 text-on-surface-variant"
-                        aria-label={`Remove ${r.displayName}`}
+                        aria-label={`Remove ${r.driverName}`}
                       >
                         Remove
                       </button>

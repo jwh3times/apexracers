@@ -223,7 +223,7 @@ public record FavoriteTrackDto(int TrackId, string TrackName, string? ConfigName
 /// <summary>Enriched driver profile: identity, license badges, career stats, recap favorites.</summary>
 public record DriverProfileDto(
     long CustomerId,
-    string DisplayName,
+    string DriverName,
     string? Country,
     string? CountryCode,
     string? MemberSince,
@@ -261,7 +261,7 @@ public record WeatherDto(double TempCelsius, int RelHumidity, double WindKph, in
 
 /// <summary>One classified driver in a subsession result. SrDelta is in SR points (sub-level / 100).</summary>
 public record SubsessionResultRowDto(
-    long CustId,
+    long CustomerId,
     string DriverName,
     int FinishPosition,
     int StartPosition,
@@ -274,8 +274,8 @@ public record SubsessionResultRowDto(
     int IRatingDelta,
     double SrDelta);
 
-/// <summary>One lap in a driver's per-lap trace. LapTimeSeconds is -1 when the lap has no time.</summary>
-public record LapDto(int LapNumber, double LapTimeSeconds, bool Incident, bool Valid);
+/// <summary>One lap in a driver's per-lap trace. LapTimeSeconds is -1 when the lap is not timed.</summary>
+public record LapDto(int LapNumber, double LapTimeSeconds, bool Incident, bool Timed);
 
 /// <summary>
 /// A driver's per-lap pace for one subsession plus server-computed summary stats over
@@ -284,7 +284,7 @@ public record LapDto(int LapNumber, double LapTimeSeconds, bool Incident, bool V
 /// </summary>
 public record DriverLapsDto(
     int SubsessionId,
-    long CustId,
+    long CustomerId,
     double MeanSeconds,
     double StdDevSeconds,
     double FastestLapSeconds,
@@ -328,7 +328,7 @@ public record CarClassOptionDto(int CarClassId, string CarClassName);
 /// <summary>One driver row in a season's championship standings.</summary>
 public record SeasonStandingDto(
     int Rank,
-    long CustId,
+    long CustomerId,
     string DriverName,
     int Division,
     int Starts,
@@ -351,7 +351,7 @@ public record SeasonStandingsDto(
 /// <summary>One driver row in a season's Time Trial standings.</summary>
 public record SeasonTtStandingDto(
     int Rank,
-    long CustId,
+    long CustomerId,
     string DriverName,
     int Division,
     int? TtRating,
@@ -375,7 +375,7 @@ public record SeasonTtStandingsDto(
 /// <summary>One driver row in a race week's season qualifying results (best qualifying lap).</summary>
 public record SeasonQualifyResultDto(
     int Rank,
-    long CustId,
+    long CustomerId,
     string DriverName,
     int Division,
     int? IRating,
@@ -410,8 +410,8 @@ public record RaceGuideEntryDto(
 public record GlobalLeaderboardEntryDto(
     int CategoryId,
     int Rank,
-    long CustId,
-    string Driver,
+    long CustomerId,
+    string DriverName,
     string Location,
     int Starts,
     int Wins,
@@ -422,13 +422,13 @@ public record GlobalLeaderboardEntryDto(
 // ── Rival comparison (3.1) ────────────────────────────────────────────────────
 
 /// <summary>A driver the caller follows for head-to-head comparison.</summary>
-public record RivalDto(long CustId, string DisplayName, DateTimeOffset CreatedAt);
+public record RivalDto(long CustomerId, string DriverName, DateTimeOffset CreatedAt);
 
 /// <summary>A driver-name search hit (for adding a rival).</summary>
-public record DriverSearchResultDto(long CustId, string DisplayName);
+public record DriverSearchResultDto(long CustomerId, string DriverName);
 
 /// <summary>A suggested rival, drawn from drivers the caller has actually raced.</summary>
-public record RivalSuggestionDto(long CustId, string DisplayName, int SharedRaces);
+public record RivalSuggestionDto(long CustomerId, string DriverName, int SharedRaces);
 
 /// <summary>iRating history for one license category (for the comparison overlay chart).</summary>
 public record CategoryHistoryDto(
@@ -438,8 +438,8 @@ public record CategoryHistoryDto(
 
 /// <summary>One driver's side of a head-to-head comparison.</summary>
 public record ComparisonSideDto(
-    long CustId,
-    string DisplayName,
+    long CustomerId,
+    string DriverName,
     string? Country,
     string? CountryCode,
     string? MemberSince,

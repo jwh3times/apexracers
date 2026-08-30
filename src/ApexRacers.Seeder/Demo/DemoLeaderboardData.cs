@@ -30,8 +30,8 @@ public static class DemoLeaderboardData
             .Select((e, i) => new GlobalLeaderboardEntryDto(
                 CategoryId: categoryId,
                 Rank: i + 1,
-                CustId: e.CustId,
-                Driver: e.CustId == DemoData.DriverCustId ? "Demo Driver" : $"Driver {e.CustId}",
+                CustomerId: e.CustId,
+                DriverName: e.CustId == DemoData.DriverCustId ? "Demo Driver" : $"Driver {e.CustId}",
                 Location: Locations[(int)(e.CustId % Locations.Length)],
                 Starts: 500 - i * 4,
                 Wins: 80 - i,
