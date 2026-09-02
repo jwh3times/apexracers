@@ -13,6 +13,7 @@ public class SubsessionConfiguration : IEntityTypeConfiguration<Subsession>
 
         builder.HasIndex(s => new { s.SeasonId, s.WeekNumber });
         builder.HasIndex(s => s.WeekId);
+        builder.HasIndex(s => s.RaceSessionId);
 
         builder.HasOne(s => s.Season)
             .WithMany()

@@ -3,6 +3,11 @@ namespace ApexRacers.Core.Models;
 public class Subsession
 {
     public int Id { get; set; }                    // subsession_id
+    /// <summary>
+    /// iRacing's Race Session identity. Every Split produced for one scheduled timeslot shares
+    /// this value. Null only for Subsessions ingested before this field was persisted.
+    /// </summary>
+    public int? RaceSessionId { get; set; }         // session_id
     public int SeasonId { get; set; }
     public int WeekNumber { get; set; }            // race_week_num (0-based)
     public Guid? WeekId { get; set; }              // FK → Week (nullable)
