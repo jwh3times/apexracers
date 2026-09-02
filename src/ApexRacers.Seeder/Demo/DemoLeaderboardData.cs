@@ -29,7 +29,7 @@ public static class DemoLeaderboardData
             .OrderByDescending(e => e.IRating)
             .Select((e, i) => new GlobalLeaderboardEntryDto(
                 CategoryId: categoryId,
-                Rank: i + 1,
+                Standing: i + 1,
                 CustomerId: e.CustId,
                 DriverName: e.CustId == DemoData.DriverCustId ? "Demo Driver" : $"Driver {e.CustId}",
                 Location: Locations[(int)(e.CustId % Locations.Length)],

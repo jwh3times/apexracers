@@ -19,9 +19,10 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   have set a time; smaller fields report their driver count without presenting a
   coarse position as a meaningful competitiveness result.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
-  to set in each. A car the driver entered that Race Week shows its Field Size and, when
-  the field is large enough, the driver's Percentile Rank; a projected-only car instead labels the
-  historical Expected Percentile used for its projection and claims no place in that Field.
+  to set in each, with that ordering shown as its Recommendation Rank. A car the driver entered that
+  Race Week shows its Field Size and, when the field is large enough, the driver's Percentile Rank;
+  a projected-only car instead labels the historical Expected Percentile used for its projection
+  and claims no place in that Field.
   Undersized readings do not influence expected-percentile history or driver analytics.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
@@ -31,6 +32,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.
+- **iRacing standings:** report championship, Time Trial, qualifying, and category-leaderboard
+  Standings without conflating those awarded positions with ApexRacers' Recommendation Rank.
 - **Catalog exploration:** browse cars and tracks, including Uploaded Best overlays
   when the user has telemetry data.
 - **Admin controls:** manage user roles and feature flags through an Admin-only panel.

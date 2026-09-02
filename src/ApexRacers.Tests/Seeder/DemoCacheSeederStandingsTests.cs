@@ -1,3 +1,4 @@
+using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
@@ -23,10 +24,10 @@ public class DemoCacheSeederStandingsTests
 
         await new DemoCacheSeeder(db).SeedStandingsAsync(Ct);
 
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "standings:6115:100", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "tt-standings:6115:100", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "qual:6115:100:0", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "qual:6115:100:1", Ct));
-        Assert.False(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey.StartsWith("standings:7000:"), Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.Standings(6115, 100).Key, Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.TimeTrialStandings(6115, 100).Key, Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.QualifyResults(6115, 100, 0).Key, Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.QualifyResults(6115, 100, 1).Key, Ct));
+        Assert.False(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.Standings(7000, 100).Key, Ct));
     }
 }

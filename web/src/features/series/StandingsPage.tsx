@@ -249,7 +249,7 @@ function ChampionshipTable({
           const isMe = customerId != null && s.customerId === customerId;
           return (
             <tr key={s.customerId} className={rowClass(isMe)}>
-              <td className={tdNum}>{s.rank}</td>
+              <td className={tdNum}>{s.standing}</td>
               <DriverCell name={s.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">
                 {s.points.toLocaleString()}
@@ -294,7 +294,7 @@ function TimeTrialTable({
           const isMe = customerId != null && s.customerId === customerId;
           return (
             <tr key={s.customerId} className={rowClass(isMe)}>
-              <td className={tdNum}>{s.rank}</td>
+              <td className={tdNum}>{s.standing}</td>
               <DriverCell name={s.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">
                 {s.points.toLocaleString()}
@@ -335,7 +335,7 @@ function QualifyingTable({
           const isMe = customerId != null && r.customerId === customerId;
           return (
             <tr key={r.customerId} className={rowClass(isMe)}>
-              <td className={tdNum}>{r.rank}</td>
+              <td className={tdNum}>{r.standing}</td>
               <DriverCell name={r.driverName} isMe={isMe} />
               <td className="td-p text-mono-fluid text-primary-container font-semibold text-right">
                 {r.bestQualLapSeconds > 0 ? formatLapTime(r.bestQualLapSeconds) : '—'}

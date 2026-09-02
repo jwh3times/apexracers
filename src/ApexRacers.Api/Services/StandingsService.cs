@@ -100,7 +100,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
 
                 var docs = await chunks.DownloadAsync(info.BaseDownloadUrl, info.ChunkFileNames, ct);
                 return QualifyResultsParser.Parse(docs)
-                    .OrderBy(r => r.Rank)
+                    .OrderBy(r => r.Standing)
                     .Take(TopN)
                     .ToList();
             },

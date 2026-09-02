@@ -151,7 +151,7 @@ export interface PercentileResult {
 }
 
 export interface CarRecommendation {
-  rank: number;
+  recommendationRank: number;
   carId: number;
   carName: string;
   percentileRank: number | null;
@@ -436,7 +436,7 @@ export interface CarStrategy {
   fieldSize: number | null;
   isPercentilePresentable: boolean;
   projectedLapSeconds: number | null;
-  optimalRank: number | null;
+  recommendationRank: number | null;
 }
 
 export interface WeekStrategy {
@@ -458,7 +458,7 @@ export interface WeekStrategy {
 
 export interface GlobalLeaderboardEntry {
   categoryId: number;
-  rank: number;
+  standing: number;
   customerId: number;
   driverName: string;
   location: string;
@@ -484,7 +484,7 @@ export interface CarClassOption {
 }
 
 export interface SeasonStanding {
-  rank: number;
+  standing: number;
   customerId: number;
   driverName: string;
   division: number;
@@ -507,7 +507,7 @@ export interface SeasonStandings {
 }
 
 export interface SeasonTtStanding {
-  rank: number;
+  standing: number;
   customerId: number;
   driverName: string;
   division: number;
@@ -531,7 +531,7 @@ export interface SeasonTtStandings {
 }
 
 export interface SeasonQualifyResult {
-  rank: number;
+  standing: number;
   customerId: number;
   driverName: string;
   division: number;

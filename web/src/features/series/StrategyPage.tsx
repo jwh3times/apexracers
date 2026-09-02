@@ -52,9 +52,9 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
     <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden">
       <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
-          {car.optimalRank != null && (
+          {car.recommendationRank != null && (
             <span className="text-eyebrow px-2 py-1 rounded-[7px] bg-primary-container/15 text-primary-container">
-              #{car.optimalRank} for you
+              Recommendation Rank #{car.recommendationRank}
             </span>
           )}
           <h3 className="text-section-head text-on-surface">{car.carName}</h3>
@@ -158,7 +158,7 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
           <Link to="/settings" className="text-primary-container hover:underline">
             Link your iRacing account
           </Link>{' '}
-          to rank this car for your pace.
+          to calculate its Recommendation Rank for your pace.
         </div>
       )}
     </div>

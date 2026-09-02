@@ -113,10 +113,10 @@ public class StrategyService(
                     rec?.FieldSize,
                     rec?.IsPercentilePresentable ?? false,
                     rec?.ProjectedLapSeconds,
-                    rec?.Rank);
+                    rec?.RecommendationRank);
             })
             // Optimal first when personalized; otherwise alphabetical for a stable order.
-            .OrderBy(c => c.OptimalRank ?? int.MaxValue)
+            .OrderBy(c => c.RecommendationRank ?? int.MaxValue)
             .ThenBy(c => c.CarName, StringComparer.Ordinal)
             .ToList();
 

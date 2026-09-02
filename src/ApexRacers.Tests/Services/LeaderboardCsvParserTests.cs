@@ -24,7 +24,7 @@ public class LeaderboardCsvParserTests
         Assert.Equal(2, rows.Count);
 
         Assert.Equal(2, rows[0].CategoryId);
-        Assert.Equal(1, rows[0].Rank);
+        Assert.Equal(1, rows[0].Standing);
         Assert.Equal(598355, rows[0].CustomerId);
         Assert.Equal("Aaron Vazquezz", rows[0].DriverName);
         Assert.Equal("ES", rows[0].Location);
@@ -34,7 +34,7 @@ public class LeaderboardCsvParserTests
         Assert.Equal(2187, rows[0].TtRating);
         Assert.Equal(295527, rows[0].ChampPoints);
 
-        Assert.Equal(2, rows[1].Rank);
+        Assert.Equal(2, rows[1].Standing);
         Assert.Equal("Sven Haase", rows[1].DriverName);
     }
 
@@ -66,7 +66,7 @@ public class LeaderboardCsvParserTests
 
         var only = Assert.Single(rows);
         Assert.Equal("Valid Driver", only.DriverName);
-        Assert.Equal(1, only.Rank); // rank only advances for valid rows
+        Assert.Equal(1, only.Standing); // standing only advances for valid rows
     }
 
     [Fact]

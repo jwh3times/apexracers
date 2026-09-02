@@ -348,6 +348,10 @@ ApexRacers-owned response fields identify a Driver with `CustomerId` and `Driver
 `customerId` / `driverName`). `ApplicationUser.DisplayName` is the local User's account label and is
 not interchangeable with a Driver name. Upstream `cust_id` / `display_name` spellings and SDK member
 names remain at parser and mapping adapters; do not expose them through ApexRacers response DTOs.
+Likewise, use `RecommendationRank` only for ApexRacers' per-Car recommendation ordering and
+`Standing` for positions iRacing awards in championship, Time Trial, qualifying, and category
+leaderboard results. Unqualified `Rank` is not an ApexRacers response-field name; `CONTEXT.md` owns
+the distinction among Recommendation Rank, Standing, and Percentile Rank.
 
 **Development API docs:** `Microsoft.AspNetCore.OpenApi` generates the `v1` document at
 `/openapi/v1.json`, with title `ApexRacers API` and version `v1`; `Scalar.AspNetCore` serves its

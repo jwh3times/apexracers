@@ -33,7 +33,7 @@ function makeCar(overrides: Partial<CarStrategy> = {}): CarStrategy {
     fieldSize: null,
     isPercentilePresentable: false,
     projectedLapSeconds: null,
-    optimalRank: null,
+    recommendationRank: null,
     ...overrides,
   };
 }
@@ -84,7 +84,7 @@ function makeData(overrides: Partial<WeekStrategy> = {}): WeekStrategy {
         fieldSize: 100,
         isPercentilePresentable: true,
         projectedLapSeconds: 65.123,
-        optimalRank: 1,
+        recommendationRank: 1,
       }),
       makeCar({
         carId: 119,
@@ -160,10 +160,10 @@ describe('StrategyPage', () => {
     expect(screen.getByText('Rain OK')).toBeInTheDocument();
   });
 
-  it('shows the personal overlay (optimal rank, percentile, projected lap) when personalized', async () => {
+  it('shows the personal overlay (recommendation rank, percentile, projected lap) when personalized', async () => {
     mockGet.mockResolvedValue(makeData());
     renderPage();
-    await waitFor(() => expect(screen.getByText('#1 for you')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Recommendation Rank #1')).toBeInTheDocument());
     expect(screen.getByText('TOP 8%')).toBeInTheDocument(); // topSharePercent 8 → TOP 8%
   });
 
@@ -174,7 +174,7 @@ describe('StrategyPage', () => {
           makeCar({
             expectedPercentile: 72,
             projectedLapSeconds: 70,
-            optimalRank: 1,
+            recommendationRank: 1,
           }),
         ],
       })
@@ -196,7 +196,7 @@ describe('StrategyPage', () => {
             fieldSize: 1,
             isPercentilePresentable: false,
             projectedLapSeconds: 70,
-            optimalRank: 1,
+            recommendationRank: 1,
           }),
         ],
       })

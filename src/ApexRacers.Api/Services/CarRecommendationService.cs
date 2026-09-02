@@ -182,7 +182,7 @@ public class CarRecommendationService(AppDbContext db)
                 var projectedFromActual = ProjectedLapTime(actualSortedLaps, newAvg ?? percentileRank);
 
                 results.Add(new CarRecommendationDto(
-                    Rank: 0,
+                    RecommendationRank: 0,
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: percentileRank,
@@ -218,7 +218,7 @@ public class CarRecommendationService(AppDbContext db)
                 if (plProjected is null) continue;
 
                 results.Add(new CarRecommendationDto(
-                    Rank: 0,
+                    RecommendationRank: 0,
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: percentileRank,
@@ -250,7 +250,7 @@ public class CarRecommendationService(AppDbContext db)
                 if (projectedLap is null) continue;
 
                 results.Add(new CarRecommendationDto(
-                    Rank: 0,
+                    RecommendationRank: 0,
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: null,
@@ -272,7 +272,7 @@ public class CarRecommendationService(AppDbContext db)
 
         return results
             .OrderBy(r => r.ProjectedLapSeconds)
-            .Select((r, i) => r with { Rank = i + 1 })
+            .Select((r, i) => r with { RecommendationRank = i + 1 })
             .ToList();
     }
 

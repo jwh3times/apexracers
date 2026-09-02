@@ -36,7 +36,7 @@ const STANDINGS: SeasonStandings = {
   carClasses: CAR_CLASSES,
   standings: [
     {
-      rank: 1,
+      standing: 1,
       customerId: 111,
       driverName: 'Leader',
       division: 1,
@@ -49,7 +49,7 @@ const STANDINGS: SeasonStandings = {
       incidents: 18,
     },
     {
-      rank: 2,
+      standing: 2,
       customerId: 222,
       driverName: 'Me Driver',
       division: 4,
@@ -72,7 +72,7 @@ const TT_STANDINGS: SeasonTtStandings = {
   carClasses: CAR_CLASSES,
   standings: [
     {
-      rank: 1,
+      standing: 1,
       customerId: 111,
       driverName: 'TT Leader',
       division: 2,
@@ -86,7 +86,7 @@ const TT_STANDINGS: SeasonTtStandings = {
       incidents: 20,
     },
     {
-      rank: 2,
+      standing: 2,
       customerId: 333,
       driverName: 'No Rating',
       division: 3,
@@ -112,7 +112,7 @@ const QUAL_RESULTS: SeasonQualifyResults = {
   availableWeeks: [0, 1, 2],
   results: [
     {
-      rank: 1,
+      standing: 1,
       customerId: 111,
       driverName: 'Pole Sitter',
       division: 2,
@@ -121,7 +121,7 @@ const QUAL_RESULTS: SeasonQualifyResults = {
       week: 2,
     },
     {
-      rank: 2,
+      standing: 2,
       customerId: 444,
       driverName: 'No Time',
       division: 5,

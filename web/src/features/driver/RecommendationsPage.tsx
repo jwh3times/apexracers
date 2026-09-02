@@ -53,7 +53,7 @@ function HeroCard({
             </h2>
           </div>
           <div className="flex items-center justify-center w-9 h-9 rounded-[10px] border border-primary-container/30 bg-primary-container/10 text-primary-container font-mono font-bold text-[14px] shrink-0">
-            #{rec.rank}
+            #{rec.recommendationRank}
           </div>
         </div>
 
@@ -156,7 +156,7 @@ function RecommendationTable({
               className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors"
             >
               <td className="td-p font-mono text-body-fluid text-on-surface-variant text-center">
-                #{r.rank}
+                #{r.recommendationRank}
               </td>
               <td className="td-p text-body-fluid font-medium text-on-surface max-w-0">
                 <span className="block truncate">{r.carName}</span>

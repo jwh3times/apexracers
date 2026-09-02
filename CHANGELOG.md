@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Recommendation and strategy responses now call ApexRacers' per-car ordering `recommendationRank`,
+  while championship, Time Trial, qualifying, and global-leaderboard responses call iRacing-awarded
+  positions `standing`. The frontend uses the same domain names throughout.
 
 ## [3.0.0] - 2026-09-02
 

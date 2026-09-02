@@ -19,7 +19,7 @@ public static class DemoStandingsData
     public static List<SeasonStandingDto> BuildStandings(int seasonId, int classId) =>
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonStandingDto(
-                Rank: i + 1,
+                Standing: i + 1,
                 CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,
@@ -32,7 +32,7 @@ public static class DemoStandingsData
     public static List<SeasonTtStandingDto> BuildTtStandings(int seasonId, int classId) =>
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonTtStandingDto(
-                Rank: i + 1,
+                Standing: i + 1,
                 CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,
@@ -46,7 +46,7 @@ public static class DemoStandingsData
     public static List<SeasonQualifyResultDto> BuildQualify(int seasonId, int classId, int week) =>
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonQualifyResultDto(
-                Rank: i + 1,
+                Standing: i + 1,
                 CustomerId: CustAt(seasonId, classId, i),
                 DriverName: NameAt(CustAt(seasonId, classId, i)),
                 Division: 1 + i % 5,

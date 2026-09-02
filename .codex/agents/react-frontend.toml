@@ -115,6 +115,9 @@ is needed, use `topPercentLabel`; never invert or floor the rank in a page or an
 Recommendation rows also carry `expectedPercentile`, the historical average used to project pace.
 Never label it as a Percentile Rank or convert it to a Top Share: a projected-only row has
 `percentileRank`, `topSharePercent`, and `fieldSize` null and must label the Expected Percentile.
+Use `recommendationRank` for the per-Car ordering on recommendation and strategy surfaces, and
+`standing` for championship, Time Trial, qualifying, and category-leaderboard positions. Do not
+introduce an unqualified `rank` client field or label; `CONTEXT.md` owns these domain distinctions.
 
 ### Race week numbering contract
 

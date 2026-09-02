@@ -78,7 +78,7 @@ export default function LeaderboardsPage() {
                       } transition-colors`}
                     >
                       <td className="td-p text-mono-fluid text-on-surface-variant text-right">
-                        {r.rank}
+                        {r.standing}
                       </td>
                       <td className="td-p text-body-fluid text-on-surface max-w-0">
                         <span className="block truncate">

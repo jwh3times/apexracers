@@ -16,14 +16,14 @@ vi.mock('../../context/AuthContext', () => ({
 const mockGetLeaderboard = vi.mocked(api.getLeaderboard);
 
 function entry(
-  rank: number,
+  standing: number,
   customerId: number,
   driverName: string,
   iRating: number
 ): GlobalLeaderboardEntry {
   return {
     categoryId: 5,
-    rank,
+    standing,
     customerId,
     driverName,
     location: 'US',
