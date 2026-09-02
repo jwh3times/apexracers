@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+No unreleased changes.
+
+## [3.0.0] - 2026-09-02
+
+### Changed
 
 - Car recommendations now distinguish a current Race Week Percentile Rank from the historical
   Expected Percentile used to project a lap. Projected-only cars no longer claim a place or size in
@@ -819,7 +823,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/jwh3times/apexracers/compare/v2.0.4...v3.0.0
 [2.0.4]: https://github.com/jwh3times/apexracers/compare/v2.0.3...v2.0.4
 [2.0.0]: https://github.com/jwh3times/apexracers/compare/v1.0.10...v2.0.0
 [1.0.9]: https://github.com/jwh3times/apexracers/compare/v1.0.8...v1.0.9
