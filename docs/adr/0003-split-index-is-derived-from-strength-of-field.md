@@ -31,8 +31,8 @@ unfalsifiable, and the overload is invisible at the point of use.
 - Subsessions ingested before this decision have no recoverable Split Index — their stored `0`s
   conflated the three cases — so the migration drops the old column rather than carrying values
   across, and those rows read as unknown until they are re-ingested.
-- Splits of one Race Session still cannot be queried together, because iRacing's session identity is
-  not persisted. The Split Index is derived from the payload of each Subsession individually, and
-  ApexRacers cannot reconstruct the sibling set from its own database.
+- Splits of one Race Session can be queried together by their persisted Race Session ID. Existing
+  Subsessions may have a null identity because the additive migration cannot reconstruct discarded
+  `session_id` values; those rows remain ungrouped until re-ingested.
 - The index remains zero-based everywhere it is stored or sent. The one-based Split Number exists
   only in display labels, mirroring how Race Week Index and Race Week Number are separated.

@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Ingested Subsessions now retain iRacing's Race Session ID, allowing all Splits from one scheduled
+  Race Session to be queried together. Existing rows remain explicitly unknown until re-ingested.
 
 ## [2.0.0] - 2026-08-29
 

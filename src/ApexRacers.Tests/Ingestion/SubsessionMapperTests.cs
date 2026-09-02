@@ -15,6 +15,7 @@ public class SubsessionMapperTests
         var end = start.AddMinutes(45);
         var source = new SubSessionResult
         {
+            SessionId = 311244815,
             SeasonId = 501,
             RaceWeekIndex = 7,
             Track = new Track { TrackId = 18, TrackName = "Spa" },
@@ -54,6 +55,7 @@ public class SubsessionMapperTests
             new SubsessionIndexer.EntryTally(Classified: 18, AiEntries: 1, TeamEntries: 4));
 
         Assert.Equal(99001, entity.Id);
+        Assert.Equal(311244815, entity.RaceSessionId);
         Assert.Equal(501, entity.SeasonId);
         Assert.Equal(7, entity.WeekNumber);
         Assert.Equal(weekId, entity.WeekId);

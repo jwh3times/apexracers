@@ -21,6 +21,7 @@ public static class SubsessionMapper
         new()
         {
             Id = subsessionId,
+            RaceSessionId = data.SessionId,
             SeasonId = data.SeasonId,
             WeekNumber = data.RaceWeekIndex,
             WeekId = weekId,
