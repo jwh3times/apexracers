@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [2.0.4] - 2026-09-02
+
 ### Added
 
 - Ingested Subsessions now retain iRacing's Race Session ID, allowing all Splits from one scheduled
@@ -811,7 +815,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/jwh3times/apexracers/compare/v2.0.3...v2.0.4
 [2.0.0]: https://github.com/jwh3times/apexracers/compare/v1.0.10...v2.0.0
 [1.0.9]: https://github.com/jwh3times/apexracers/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/jwh3times/apexracers/compare/v1.0.7...v1.0.8
