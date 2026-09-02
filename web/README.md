@@ -140,6 +140,11 @@ displayed lower-is-better `TOP X%` value through `toTopPercent`. Pass the raw ra
 `fieldSizeMessage` for the undersized-Field explanation. The threshold itself belongs to
 `ApexRacers.Core.FieldPercentile`, not the frontend.
 
+Recommendation responses keep the current Race Week's `percentileRank` separate from the historical
+`expectedPercentile` used for pace projection. A projected-only car has no place in the current Field,
+so its `percentileRank`, `topSharePercent`, and `fieldSize` are null; label its Expected Percentile
+instead of presenting it as a current Field result.
+
 ## API client
 
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.

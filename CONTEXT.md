@@ -240,7 +240,7 @@ The average of a Subject Driver's past Percentile Ranks for one Car in one Serie
 _Avoid_: Percentile Rank, Historical percentile, Average percentile
 
 **Projected Lap**:
-The lap time a Subject Driver's Percentile Rank corresponds to within a Field, read off that Field's spread of Personal Bests. An estimate of pace, never a Lap anyone drove.
+The lap time a Subject Driver's Percentile Rank or Expected Percentile corresponds to across the current Race Week's observed Race Best distribution for one Car. The distribution contains the Drivers who raced that Car and does not add a hypothetical Subject Driver who has no Lap there, so using it for projection does not claim they belong to that Field. An estimate of pace, never a Lap anyone drove.
 _Avoid_: Best Lap, Predicted lap, Estimated best
 
 **Recommendation Rank**:

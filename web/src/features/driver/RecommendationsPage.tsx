@@ -16,6 +16,20 @@ function percentile(p: number): string {
   return `${p.toFixed(1)}%`;
 }
 
+function percentileMetric(rec: CarRecommendation) {
+  return rec.percentileRank == null
+    ? {
+        label: 'Expected Percentile',
+        value: rec.expectedPercentile,
+        presentable: rec.expectedPercentile != null,
+      }
+    : {
+        label: 'Percentile Rank',
+        value: rec.percentileRank,
+        presentable: rec.isPercentilePresentable,
+      };
+}
+
 function HeroCard({
   rec,
   seriesId,
@@ -25,6 +39,8 @@ function HeroCard({
   seriesId: number;
   weekNumber: number;
 }) {
+  const metric = percentileMetric(rec);
+
   return (
     <div className="card-r card-shadow scan-texture border border-line-2 bg-surface overflow-hidden">
       <div className="card-p flex flex-col gap-5">
@@ -64,30 +80,32 @@ function HeroCard({
             </span>
           </div>
           <div>
-            <p className="text-th text-on-surface-variant mb-1">Your Percentile</p>
+            <p className="text-th text-on-surface-variant mb-1">{metric.label}</p>
             <span className="font-mono text-[22px] font-bold text-primary-container leading-none">
-              {rec.isPercentilePresentable ? percentile(rec.percentileRank) : '—'}
+              {metric.presentable && metric.value != null ? percentile(metric.value) : '—'}
             </span>
           </div>
-          <div>
-            <p className="text-th text-on-surface-variant mb-1">Drivers in field</p>
-            <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
-              {rec.sampleSize.toLocaleString()}
-            </span>
-          </div>
+          {rec.fieldSize != null && (
+            <div>
+              <p className="text-th text-on-surface-variant mb-1">Drivers in field</p>
+              <span className="font-mono text-[22px] font-bold text-on-surface leading-none">
+                {rec.fieldSize.toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Progress bar */}
-        {rec.isPercentilePresentable ? (
+        {metric.presentable && metric.value != null ? (
           <div className="h-[3px] bg-surface-container-highest rounded-full overflow-hidden">
             <div
               className="h-full bg-primary-container rounded-full"
-              style={{ width: `${rec.percentileRank}%` }}
+              style={{ width: `${metric.value}%` }}
             />
           </div>
         ) : (
           <p className="text-small-fluid text-on-surface-variant">
-            {fieldSizeMessage(rec.sampleSize)}
+            {fieldSizeMessage(rec.fieldSize!)}
           </p>
         )}
 
@@ -124,55 +142,67 @@ function RecommendationTable({
           <th className="th-p text-th text-on-surface-variant text-left">Car</th>
           <th className="th-p text-th text-on-surface-variant text-right">Best Lap</th>
           <th className="th-p text-th text-on-surface-variant text-right">Projected Lap</th>
-          <th className="th-p text-th text-on-surface-variant text-right w-28">Percentile</th>
+          <th className="th-p text-th text-on-surface-variant text-right w-36">Pace metric</th>
           <th className="th-p text-th text-on-surface-variant text-right w-24">Entries</th>
           <th className="th-p w-20" aria-label="Actions" />
         </tr>
       </thead>
       <tbody>
-        {recs.map(r => (
-          <tr
-            key={r.carId}
-            className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors"
-          >
-            <td className="td-p font-mono text-body-fluid text-on-surface-variant text-center">
-              #{r.rank}
-            </td>
-            <td className="td-p text-body-fluid font-medium text-on-surface max-w-0">
-              <span className="block truncate">{r.carName}</span>
-            </td>
-            <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
-              {r.bestLapSeconds != null ? formatLapTime(r.bestLapSeconds) : '—'}
-              {r.bestLapEvidence != null && (
-                <span
-                  className="block font-sans text-small-fluid text-on-surface-variant"
-                  title={lapEvidenceDescription(r.bestLapEvidence)}
-                >
-                  {lapEvidenceLabel(r.bestLapEvidence)}
+        {recs.map(r => {
+          const metric = percentileMetric(r);
+          return (
+            <tr
+              key={r.carId}
+              className="border-b border-line-2 last:border-b-0 hover:bg-surface-container transition-colors"
+            >
+              <td className="td-p font-mono text-body-fluid text-on-surface-variant text-center">
+                #{r.rank}
+              </td>
+              <td className="td-p text-body-fluid font-medium text-on-surface max-w-0">
+                <span className="block truncate">{r.carName}</span>
+              </td>
+              <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
+                {r.bestLapSeconds != null ? formatLapTime(r.bestLapSeconds) : '—'}
+                {r.bestLapEvidence != null && (
+                  <span
+                    className="block font-sans text-small-fluid text-on-surface-variant"
+                    title={lapEvidenceDescription(r.bestLapEvidence)}
+                  >
+                    {lapEvidenceLabel(r.bestLapEvidence)}
+                  </span>
+                )}
+              </td>
+              <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
+                {formatLapTime(r.projectedLapSeconds)}
+              </td>
+              <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
+                <span className="block font-sans text-small-fluid text-on-surface-variant">
+                  {metric.label}
                 </span>
-              )}
-            </td>
-            <td className="td-p font-mono text-mono-fluid text-on-surface text-right">
-              {formatLapTime(r.projectedLapSeconds)}
-            </td>
-            <td className="td-p font-mono text-mono-fluid text-primary-container font-semibold text-right">
-              {r.isPercentilePresentable ? percentile(r.percentileRank) : '—'}
-            </td>
-            <td className="td-p text-small-fluid text-on-surface-variant text-right tabular-nums">
-              <span title={!r.isPercentilePresentable ? fieldSizeMessage(r.sampleSize) : undefined}>
-                {r.sampleSize.toLocaleString()}
-              </span>
-            </td>
-            <td className="td-p text-right">
-              <Link
-                to={`/series/${seriesId}/weeks/${weekNumber}`}
-                className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
-              >
-                Race
-              </Link>
-            </td>
-          </tr>
-        ))}
+                {metric.presentable && metric.value != null ? percentile(metric.value) : '—'}
+              </td>
+              <td className="td-p text-small-fluid text-on-surface-variant text-right tabular-nums">
+                <span
+                  title={
+                    r.fieldSize != null && !r.isPercentilePresentable
+                      ? fieldSizeMessage(r.fieldSize)
+                      : undefined
+                  }
+                >
+                  {r.fieldSize?.toLocaleString() ?? '—'}
+                </span>
+              </td>
+              <td className="td-p text-right">
+                <Link
+                  to={`/series/${seriesId}/weeks/${weekNumber}`}
+                  className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
+                >
+                  Race
+                </Link>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

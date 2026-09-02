@@ -70,15 +70,18 @@ public record PercentileResultDto(
 /// <summary>
 /// One ranked Car recommendation for a Race Week. <c>BestLapEvidence</c> names which evidence
 /// produced <c>BestLapSeconds</c> and is null exactly when that lap is — a projected Car the
-/// Driver holds no lap for.
+/// Driver holds no lap for. <c>PercentileRank</c>, placement, and <c>FieldSize</c> exist only when
+/// the Driver has a Personal Best in this week's Field; <c>ExpectedPercentile</c> is the historical
+/// average used to produce <c>ProjectedLapSeconds</c>.
 /// </summary>
 public record CarRecommendationDto(
     int Rank,
     int CarId,
     string CarName,
-    double PercentileRank,
+    double? PercentileRank,
+    double? ExpectedPercentile,
     int? TopSharePercent,
-    int SampleSize,
+    int? FieldSize,
     bool IsPercentilePresentable,
     double ProjectedLapSeconds,
     double? BestLapSeconds,
@@ -616,6 +619,7 @@ public record CarStrategyDto(
     string TireNote,
     bool RainEnabled,
     double? PercentileRank,
+    double? ExpectedPercentile,
     int? TopSharePercent,
     int? FieldSize,
     bool IsPercentilePresentable,

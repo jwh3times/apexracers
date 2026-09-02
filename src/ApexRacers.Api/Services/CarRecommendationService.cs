@@ -101,6 +101,7 @@ public class CarRecommendationService(AppDbContext db)
             var driverHistorical = await db.SubsessionResults
                 .Where(r => r.Subsession.WeekId.HasValue
                          && r.Subsession.WeekId != weekDbId
+                         && r.Subsession.Season.SeriesId == week.SeriesId
                          && projectedCarIds.Contains(r.CarId)
                          && r.CustId == customerId
                          && r.BestLapSeconds > 0)
@@ -131,16 +132,15 @@ public class CarRecommendationService(AppDbContext db)
 
                 foreach (var carGroup in driverHistorical.GroupBy(r => r.CarId))
                 {
-                    double? best = null;
+                    var readings = new List<double>();
                     foreach (var entry in carGroup)
                     {
                         if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var otherLaps)) continue;
                         if (!FieldPercentile.IsPresentable(FieldPercentile.FieldSize(otherLaps))) continue;
-                        var pct = FieldPercentile.Rank(entry.BestLap, otherLaps);
-                        if (best is null || pct > best) best = pct;
+                        readings.Add(FieldPercentile.Rank(entry.BestLap, otherLaps));
                     }
-                    if (best is not null)
-                        historicalPercentileByCar[carGroup.Key] = best.Value;
+                    if (readings.Count > 0)
+                        historicalPercentileByCar[carGroup.Key] = readings.Average();
                 }
             }
         }
@@ -175,19 +175,20 @@ public class CarRecommendationService(AppDbContext db)
                         user, cachedPercentiles, existingCacheThisWeek,
                         carId, week.SeriesId, weekDbId, percentileRank, topShare, total, computedAt)
                     : RecordUndersizedField(
-                        user, existingCacheThisWeek,
+                        user, cachedPercentiles, existingCacheThisWeek,
                         carId, week.SeriesId, weekDbId, percentileRank, topShare, total, computedAt);
 
                 var actualSortedLaps = carField.Select(r => r.BestLap).ToList();
-                var projectedFromActual = ProjectedLapTime(actualSortedLaps, newAvg);
+                var projectedFromActual = ProjectedLapTime(actualSortedLaps, newAvg ?? percentileRank);
 
                 results.Add(new CarRecommendationDto(
                     Rank: 0,
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: percentileRank,
+                    ExpectedPercentile: newAvg,
                     TopSharePercent: topShare,
-                    SampleSize: total,
+                    FieldSize: total,
                     IsPercentilePresentable: presentable,
                     ProjectedLapSeconds: projectedFromActual ?? driverBest.LapSeconds,
                     BestLapSeconds: driverBest.LapSeconds,
@@ -209,11 +210,11 @@ public class CarRecommendationService(AppDbContext db)
                         user, cachedPercentiles, existingCacheThisWeek,
                         carId, week.SeriesId, weekDbId, percentileRank, topShare, total, computedAt)
                     : RecordUndersizedField(
-                        user, existingCacheThisWeek,
+                        user, cachedPercentiles, existingCacheThisWeek,
                         carId, week.SeriesId, weekDbId, percentileRank, topShare, total, computedAt);
 
                 var plSortedLaps = carField.Select(r => r.BestLap).ToList();
-                var plProjected  = ProjectedLapTime(plSortedLaps, newAvg);
+                var plProjected  = ProjectedLapTime(plSortedLaps, newAvg ?? percentileRank);
                 if (plProjected is null) continue;
 
                 results.Add(new CarRecommendationDto(
@@ -221,8 +222,9 @@ public class CarRecommendationService(AppDbContext db)
                     CarId: carId,
                     CarName: carName,
                     PercentileRank: percentileRank,
+                    ExpectedPercentile: newAvg,
                     TopSharePercent: topShare,
-                    SampleSize: total,
+                    FieldSize: total,
                     IsPercentilePresentable: presentable,
                     ProjectedLapSeconds: plProjected.Value,
                     BestLapSeconds: uploadedLap,
@@ -251,12 +253,13 @@ public class CarRecommendationService(AppDbContext db)
                     Rank: 0,
                     CarId: carId,
                     CarName: carName,
-                    PercentileRank: historicalPercentile,
+                    PercentileRank: null,
+                    ExpectedPercentile: historicalPercentile,
                     // No placement: this is a running average of past readings, not a position in
                     // this week's Field — the driver has no lap in it to hold a position with.
                     TopSharePercent: null,
-                    SampleSize: carField.Count,
-                    IsPercentilePresentable: FieldPercentile.IsPresentable(carField.Count),
+                    FieldSize: null,
+                    IsPercentilePresentable: false,
                     ProjectedLapSeconds: projectedLap.Value,
                     BestLapSeconds: null,
                     // No lap, so no evidence produced one.
@@ -293,7 +296,7 @@ public class CarRecommendationService(AppDbContext db)
             .Where(r => r.BestLapSeconds is not null
                      && r.TopSharePercent is not null
                      && r.IsPercentilePresentable)
-            .Select(r => new WeekCarPercentileDto(r.CarId, r.PercentileRank, r.TopSharePercent!.Value))
+            .Select(r => new WeekCarPercentileDto(r.CarId, r.PercentileRank!.Value, r.TopSharePercent!.Value))
             .ToList();
     }
 
@@ -302,7 +305,7 @@ public class CarRecommendationService(AppDbContext db)
     /// average (folding in the reading) and upserts the cache row. The single shared path for both
     /// the actual-lap and personal-lap branches.
     /// </summary>
-    private double RecordPercentileReading(
+    private double? RecordPercentileReading(
         ApplicationUser? user,
         Dictionary<int, (double Sum, int Count)> cachedPercentiles,
         Dictionary<int, CarPercentileResult> existingCacheThisWeek,
@@ -310,11 +313,12 @@ public class CarRecommendationService(AppDbContext db)
         double percentileRank, int topSharePercent, int sampleSize, DateTimeOffset computedAt)
     {
         var prior = cachedPercentiles.TryGetValue(carId, out var p) ? ((double Sum, int Count)?)p : null;
-        double? oldReading = existingCacheThisWeek.TryGetValue(carId, out var existing)
+        double? includedOldReading = existingCacheThisWeek.TryGetValue(carId, out var existing)
+            && FieldPercentile.IsPresentable(existing.SampleSize)
             ? existing.PercentileRank
             : null;
 
-        var runningAverage = RunningAveragePercentile(percentileRank, prior, oldReading);
+        var runningAverage = RunningAveragePercentile(percentileRank, prior, includedOldReading);
         UpsertPercentileCache(
             user, existingCacheThisWeek, carId, seriesId, weekDbId,
             percentileRank, topSharePercent, sampleSize, computedAt);
@@ -326,17 +330,30 @@ public class CarRecommendationService(AppDbContext db)
     /// Expected Percentiles exclude it. The arithmetic is retained for a later refresh, but is not
     /// folded into the running average.
     /// </summary>
-    private double RecordUndersizedField(
+    private double? RecordUndersizedField(
         ApplicationUser? user,
+        Dictionary<int, (double Sum, int Count)> cachedPercentiles,
         Dictionary<int, CarPercentileResult> existingCacheThisWeek,
         int carId, int seriesId, Guid weekDbId,
         double percentileRank, int topSharePercent, int sampleSize, DateTimeOffset computedAt)
     {
+        var prior = cachedPercentiles.TryGetValue(carId, out var aggregate)
+            ? existingCacheThisWeek.TryGetValue(carId, out var existing)
+                && FieldPercentile.IsPresentable(existing.SampleSize)
+                ? RemovePercentileReading(existing.PercentileRank, aggregate)
+                : aggregate.Sum / aggregate.Count
+            : null;
+
         UpsertPercentileCache(
             user, existingCacheThisWeek, carId, seriesId, weekDbId,
             percentileRank, topSharePercent, sampleSize, computedAt);
-        return percentileRank;
+        return prior;
     }
+
+    private static double? RemovePercentileReading(
+        double reading,
+        (double Sum, int Count) aggregate) =>
+        aggregate.Count > 1 ? (aggregate.Sum - reading) / (aggregate.Count - 1) : null;
 
     /// <summary>
     /// Folds this week's <paramref name="percentileRank"/> reading into the driver's prior

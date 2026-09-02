@@ -108,8 +108,9 @@ public class StrategyService(
                     tireNote,
                     car?.RainEnabled ?? false,
                     rec?.PercentileRank,
+                    rec?.ExpectedPercentile,
                     rec?.TopSharePercent,
-                    rec?.SampleSize,
+                    rec?.FieldSize,
                     rec?.IsPercentilePresentable ?? false,
                     rec?.ProjectedLapSeconds,
                     rec?.Rank);

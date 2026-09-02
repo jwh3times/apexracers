@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Car recommendations now distinguish a current Race Week Percentile Rank from the historical
+  Expected Percentile used to project a lap. Projected-only cars no longer claim a place or size in
+  a Field the Driver did not enter, and recommendation and strategy views label the metric they show.
 
 ## [2.0.4] - 2026-09-02
 

@@ -79,7 +79,9 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
 
       <div className="card-p flex flex-col gap-fluid">
         {/* Personal overlay */}
-        {car.percentileRank != null && (
+        {(car.percentileRank != null ||
+          car.expectedPercentile != null ||
+          car.projectedLapSeconds != null) && (
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {/* Only a car the driver has a lap in this week holds a placement in the field. A
                 projected car carries a running average of past readings and no placement. */}
@@ -89,6 +91,14 @@ function CarStrategyCard({ car, personalized }: { car: CarStrategy; personalized
                   {topShareLabel(car.topSharePercent)}
                 </span>{' '}
                 your pace
+              </span>
+            )}
+            {car.percentileRank == null && car.expectedPercentile != null && (
+              <span className="text-small-fluid text-on-surface-variant">
+                Expected Percentile{' '}
+                <span className="text-primary-container font-mono">
+                  {car.expectedPercentile.toFixed(1)}%
+                </span>
               </span>
             )}
             {!car.isPercentilePresentable && car.fieldSize != null && (
