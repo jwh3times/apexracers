@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [4.0.1] - 2026-09-02
+
 ### Added
 
 - Added `npm run sync:main` to move the public repository and installed private companion to `main`
@@ -834,7 +838,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/jwh3times/apexracers/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/jwh3times/apexracers/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/jwh3times/apexracers/compare/v2.0.4...v3.0.0
 [2.0.4]: https://github.com/jwh3times/apexracers/compare/v2.0.3...v2.0.4
