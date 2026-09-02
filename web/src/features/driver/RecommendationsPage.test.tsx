@@ -45,7 +45,7 @@ const MOCK_SERIES = [
 
 const MOCK_RECS = [
   {
-    rank: 1,
+    recommendationRank: 1,
     carId: 2,
     carName: 'Ferrari 296 GT3',
     percentileRank: 87.5,
@@ -58,7 +58,7 @@ const MOCK_RECS = [
     projectedLapSeconds: 78.2,
   },
   {
-    rank: 2,
+    recommendationRank: 2,
     carId: 1,
     carName: 'Porsche 992 GT3',
     percentileRank: null,

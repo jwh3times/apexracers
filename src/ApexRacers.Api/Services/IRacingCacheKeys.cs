@@ -67,17 +67,19 @@ public static class IRacingCacheKeys
 
     // ── Reference data (24 h) ─────────────────────────────────────────────────
 
+    // v2 separates ApexRacers' domain-specific Standing response field from legacy payloads
+    // serialized with the ambiguous Rank field. Reusing those rows would deserialize Standing as 0.
     public static CacheSpec Leaderboard(int categoryId) =>
-        new($"leaderboard:{categoryId}", ReferenceTtl);
+        new($"leaderboard:v2:{categoryId}", ReferenceTtl);
 
     public static CacheSpec Standings(int seasonId, int classId) =>
-        new($"standings:{seasonId}:{classId}", ReferenceTtl);
+        new($"standings:v2:{seasonId}:{classId}", ReferenceTtl);
 
     public static CacheSpec TimeTrialStandings(int seasonId, int classId) =>
-        new($"tt-standings:{seasonId}:{classId}", ReferenceTtl);
+        new($"tt-standings:v2:{seasonId}:{classId}", ReferenceTtl);
 
     public static CacheSpec QualifyResults(int seasonId, int classId, int week) =>
-        new($"qual:{seasonId}:{classId}:{week}", ReferenceTtl);
+        new($"qual:v2:{seasonId}:{classId}:{week}", ReferenceTtl);
 
     public static CacheSpec WorldRecord(int carId, int trackId) =>
         new($"wr:{carId}:{trackId}", ReferenceTtl);

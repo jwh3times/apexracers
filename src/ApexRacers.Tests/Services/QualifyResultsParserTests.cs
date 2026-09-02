@@ -37,7 +37,7 @@ public class QualifyResultsParserTests
 
         Assert.Equal(2, rows.Count);
         var first = rows[0];
-        Assert.Equal(1, first.Rank);
+        Assert.Equal(1, first.Standing);
         Assert.Equal(860419, first.CustomerId);
         Assert.Equal("Portu Silva", first.DriverName);
         Assert.Equal(2, first.Division);
@@ -59,7 +59,7 @@ public class QualifyResultsParserTests
         var rows = QualifyResultsParser.Parse([Chunk, second]);
 
         Assert.Equal(3, rows.Count);
-        Assert.Equal(new[] { 1, 2, 3 }, rows.Select(r => r.Rank));
+        Assert.Equal(new[] { 1, 2, 3 }, rows.Select(r => r.Standing));
     }
 
     [Fact]

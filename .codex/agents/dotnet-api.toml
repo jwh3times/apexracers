@@ -111,6 +111,10 @@ The project guide owns the Driver identity names on ApexRacers response DTOs. Th
 boundary rule is to translate upstream JSON/SDK spellings in parser and mapping adapters. If a renamed
 response DTO is one of the mapped types stored in `ExternalDataCache`, migrate its existing cache-key
 families explicitly; never rewrite unrelated cached SDK payloads by matching property names globally.
+The same boundary applies to positional names: response DTOs expose `RecommendationRank` for the
+ordering ApexRacers computes over Cars and `Standing` for a position iRacing awards to a Driver.
+Translate an upstream SDK or CSV `Rank` member in the mapper/parser; do not carry that ambiguous name
+across the ApexRacers contract boundary. `PercentileRank` remains the separate population statistic.
 
 ## AppDbContext and schemas
 

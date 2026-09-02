@@ -75,7 +75,7 @@ public record PercentileResultDto(
 /// average used to produce <c>ProjectedLapSeconds</c>.
 /// </summary>
 public record CarRecommendationDto(
-    int Rank,
+    int RecommendationRank,
     int CarId,
     string CarName,
     double? PercentileRank,
@@ -330,7 +330,7 @@ public record CarClassOptionDto(int CarClassId, string CarClassName);
 
 /// <summary>One driver row in a season's championship standings.</summary>
 public record SeasonStandingDto(
-    int Rank,
+    int Standing,
     long CustomerId,
     string DriverName,
     int Division,
@@ -353,7 +353,7 @@ public record SeasonStandingsDto(
 
 /// <summary>One driver row in a season's Time Trial standings.</summary>
 public record SeasonTtStandingDto(
-    int Rank,
+    int Standing,
     long CustomerId,
     string DriverName,
     int Division,
@@ -377,7 +377,7 @@ public record SeasonTtStandingsDto(
 
 /// <summary>One driver row in a race week's season qualifying results (best qualifying lap).</summary>
 public record SeasonQualifyResultDto(
-    int Rank,
+    int Standing,
     long CustomerId,
     string DriverName,
     int Division,
@@ -412,7 +412,7 @@ public record RaceGuideEntryDto(
 /// <summary>One driver row in a category's global leaderboard (ranked by iRating).</summary>
 public record GlobalLeaderboardEntryDto(
     int CategoryId,
-    int Rank,
+    int Standing,
     long CustomerId,
     string DriverName,
     string Location,
@@ -601,7 +601,7 @@ public record WeatherRiskDto(
 /// <summary>
 /// Per-car strategy context for one week: Balance of Performance, its shift vs the previous
 /// week, fuel/tire notes derived from the BoP, rain capability, and — when the caller is
-/// iRacing-linked — their personalized competitiveness (percentile, projected lap, optimal rank).
+/// iRacing-linked — their personalized competitiveness (percentile, projected lap, recommendation rank).
 /// </summary>
 public record CarStrategyDto(
     int CarId,
@@ -624,7 +624,7 @@ public record CarStrategyDto(
     int? FieldSize,
     bool IsPercentilePresentable,
     double? ProjectedLapSeconds,
-    int? OptimalRank);
+    int? RecommendationRank);
 
 /// <summary>
 /// A week's strategy briefing: track + pit context, weather risk, and per-car BoP/fuel/tire

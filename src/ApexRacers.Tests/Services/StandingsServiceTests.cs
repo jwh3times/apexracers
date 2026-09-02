@@ -147,7 +147,7 @@ public class StandingsServiceTests
         Assert.Equal(4091, dto.CarClassId);
         Assert.Equal("GT3 Class", dto.CarClassName);
         Assert.Equal(2, dto.CarClasses.Count);
-        Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Rank));
+        Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Standing));
         Assert.Equal("Leader", dto.Standings[0].DriverName);
         Assert.Equal(950, dto.Standings[0].Points);
         Assert.Equal(5.4, dto.Standings[0].AvgFinishPosition, precision: 3);
@@ -225,7 +225,7 @@ public class StandingsServiceTests
         var dto = await h.Service.GetTimeTrialStandingsAsync(SeriesId, carClassId: null, Ct);
 
         Assert.Equal(4091, dto.CarClassId);
-        Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Rank));
+        Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Standing));
         Assert.Equal("Leader", dto.Standings[0].DriverName);
         Assert.Equal(2500, dto.Standings[0].TtRating);
         Assert.Equal(800, dto.Standings[0].Points);
@@ -278,7 +278,7 @@ public class StandingsServiceTests
         Assert.Equal(4091, dto.CarClassId);
         Assert.Equal(2, dto.RaceWeekNum); // latest past week
         Assert.Equal(new[] { 0, 1, 2 }, dto.AvailableWeeks);
-        Assert.Equal(new[] { 1, 2 }, dto.Results.Select(r => r.Rank));
+        Assert.Equal(new[] { 1, 2 }, dto.Results.Select(r => r.Standing));
         Assert.Equal("Pole", dto.Results[0].DriverName);
         Assert.Equal(375.0, dto.Results[0].BestQualLapSeconds, precision: 4);
         Assert.Equal(7000, dto.Results[0].IRating);

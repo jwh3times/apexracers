@@ -121,7 +121,7 @@ public class StrategyServiceTests
         Assert.Null(bmw.PercentileRank);
         Assert.Null(bmw.ExpectedPercentile);
         Assert.Null(bmw.ProjectedLapSeconds);
-        Assert.Null(bmw.OptimalRank);
+        Assert.Null(bmw.RecommendationRank);
 
         var porsche = dto.Cars[1];
         Assert.Equal("Unchanged", porsche.BopTrend);
@@ -155,7 +155,7 @@ public class StrategyServiceTests
     }
 
     [Fact]
-    public async Task GetStrategyAsync_LinkedCaller_OverlaysRecommendationAndOrdersByOptimalRank()
+    public async Task GetStrategyAsync_LinkedCaller_OverlaysRecommendationAndOrdersByRecommendationRank()
     {
         await using var db = await SeededAsync();
 
@@ -198,7 +198,7 @@ public class StrategyServiceTests
         // BMW got a recommendation (rank 1) → it sorts ahead of the un-raced Porsche.
         var bmw = dto.Cars[0];
         Assert.Equal("BMW M4 GT3", bmw.CarName);
-        Assert.Equal(1, bmw.OptimalRank);
+        Assert.Equal(1, bmw.RecommendationRank);
         // Field of 3: (2 slower + 0.5 tied) / 3.
         Assert.Equal(250.0 / 3, bmw.PercentileRank!.Value, tolerance: 1e-10);
         Assert.Null(bmw.ExpectedPercentile); // Current Field has only three Drivers.
@@ -210,7 +210,7 @@ public class StrategyServiceTests
         // never a current Field reading or placement.
         var porsche = dto.Cars[1];
         Assert.Equal("Porsche 718 GT4", porsche.CarName);
-        Assert.Equal(2, porsche.OptimalRank);
+        Assert.Equal(2, porsche.RecommendationRank);
         Assert.Null(porsche.PercentileRank);
         Assert.Equal(50, porsche.ExpectedPercentile);
         Assert.Null(porsche.TopSharePercent);

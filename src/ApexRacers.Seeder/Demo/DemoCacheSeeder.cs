@@ -37,7 +37,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await DemoCache.UpsertAsync(db, IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key, DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
     }
 
-    /// <summary>leaderboard:1..6 (the API allows category 1-6; default 5).</summary>
+    /// <summary>Leaderboard entries for categories 1..6 (the API allows category 1-6; default 5).</summary>
     public async Task SeedLeaderboardsAsync(CancellationToken ct)
     {
         for (var categoryId = 1; categoryId <= 6; categoryId++)

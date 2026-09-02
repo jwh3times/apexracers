@@ -30,7 +30,7 @@ public class DemoCacheSeederAllTests
         await new DemoCacheSeeder(db).SeedAllAsync(Ct);
 
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.Profile(DemoData.DriverCustId).Key, Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "leaderboard:5", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.Leaderboard(5).Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.RaceGuide.Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "wr:132:1", Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.LapData(-10, DemoData.DriverCustId).Key, Ct));

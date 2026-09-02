@@ -109,12 +109,12 @@ public class CarRecommendationServiceTests
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Rank);
+        Assert.Equal(1, result[0].RecommendationRank);
         Assert.Equal(2, result[0].CarId);        // Car2: fastest actual lap (60 s)
         Assert.Equal(60.0, result[0].BestLapSeconds);
         Assert.NotNull(result[0].BestLapSeconds);
         Assert.Equal(LapEvidence.RaceLap, result[0].BestLapEvidence);
-        Assert.Equal(2, result[1].Rank);
+        Assert.Equal(2, result[1].RecommendationRank);
         Assert.Equal(1, result[1].CarId);        // Car1: slower actual lap (90 s)
         Assert.Equal(90.0, result[1].BestLapSeconds);
         Assert.NotNull(result[1].BestLapSeconds);
