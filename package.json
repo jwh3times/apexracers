@@ -6,6 +6,7 @@
     "bootstrap:private": "node scripts/bootstrap-private-repository.mjs",
     "repo:status": "node scripts/repository-status.mjs",
     "repo:status:check": "node scripts/repository-status.mjs --check",
+    "sync:main": "node scripts/sync-main.mjs",
     "sync:agents": "node scripts/sync-agent-configs.mjs"
   }
 }
