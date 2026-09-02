@@ -29,6 +29,7 @@ function makeCar(overrides: Partial<CarStrategy> = {}): CarStrategy {
     tireNote: 'Unlimited dry tire sets.',
     rainEnabled: false,
     percentileRank: null,
+    expectedPercentile: null,
     fieldSize: null,
     isPercentilePresentable: false,
     projectedLapSeconds: null,
@@ -78,6 +79,7 @@ function makeData(overrides: Partial<WeekStrategy> = {}): WeekStrategy {
         fuelNote: 'Fuel capped at 50% — shorter stints; plan an extra stop.',
         rainEnabled: true,
         percentileRank: 92,
+        expectedPercentile: 88,
         topSharePercent: 8,
         fieldSize: 100,
         isPercentilePresentable: true,
@@ -163,6 +165,47 @@ describe('StrategyPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('#1 for you')).toBeInTheDocument());
     expect(screen.getByText('TOP 8%')).toBeInTheDocument(); // topSharePercent 8 → TOP 8%
+  });
+
+  it('labels projected-only pace as an expected percentile without implying field membership', async () => {
+    mockGet.mockResolvedValue(
+      makeData({
+        cars: [
+          makeCar({
+            expectedPercentile: 72,
+            projectedLapSeconds: 70,
+            optimalRank: 1,
+          }),
+        ],
+      })
+    );
+    renderPage();
+
+    expect(await screen.findByText('Expected Percentile')).toBeInTheDocument();
+    expect(screen.getByText('72.0%')).toBeInTheDocument();
+    expect(screen.queryByText(/drivers in field/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps an undersized current-week result visible when no expected percentile exists', async () => {
+    mockGet.mockResolvedValue(
+      makeData({
+        cars: [
+          makeCar({
+            percentileRank: 100,
+            expectedPercentile: null,
+            fieldSize: 1,
+            isPercentilePresentable: false,
+            projectedLapSeconds: 70,
+            optimalRank: 1,
+          }),
+        ],
+      })
+    );
+    renderPage();
+
+    expect(await screen.findByText(/Only 1 driver has set a time this week/i)).toBeInTheDocument();
+    expect(screen.getByText('1:10.000')).toBeInTheDocument();
+    expect(screen.queryByText('Expected Percentile')).not.toBeInTheDocument();
   });
 
   it('shows a link-account hint per car when not personalized', async () => {

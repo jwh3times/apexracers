@@ -122,7 +122,7 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_ComputesHistoricalPercentileWhenNoCacheExists()
+    public async Task GetRecommendationsAsync_ComputesAverageExpectedPercentileWithinSeriesWhenNoCacheExists()
     {
         await using var db = DbContextFactory.Create();
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -133,22 +133,25 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
         AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 100);
 
-        // Previous week — driver 1 ran 60 s and beat all 3 others (100%)
-        var series2 = new Series { Id = 2, Name = "Other Series" };
-        var season2 = new Season { Id = 2, SeriesId = 2, Year = 2026, Quarter = 2, Active = true, Series = series2 };
+        // Two prior weeks in this Series: ranks 90 and 50, so Expected Percentile is 70.
         var prevTrack = new Track { Id = 88, Name = "Mugello", ConfigName = "GP" };
-        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 2, WeekNumber = 5, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = season2 };
-        var prevSubsession = new Subsession { Id = -2, SeasonId = 2, WeekNumber = 5, WeekId = prevWeek.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-14) };
-        db.Series.Add(series2);
-        db.Seasons.Add(season2);
+        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = week.Season };
+        var prevWeek2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 88, Track = prevTrack, Season = week.Season };
+        var prevSubsession = new Subsession { Id = -2, SeasonId = 1, WeekNumber = 2, WeekId = prevWeek.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-14) };
+        var prevSubsession2 = new Subsession { Id = -3, SeasonId = 1, WeekNumber = 3, WeekId = prevWeek2.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-7) };
         db.Tracks.Add(prevTrack);
-        db.Weeks.Add(prevWeek);
-        db.Subsessions.Add(prevSubsession);
+        db.Weeks.AddRange(prevWeek, prevWeek2);
+        db.Subsessions.AddRange(prevSubsession, prevSubsession2);
         AddResult(db, prevSubsession, car1, carClass, custId: 1, lapSeconds: 60);
         AddResult(db, prevSubsession, car1, carClass, custId: 101, lapSeconds: 65);
         AddResult(db, prevSubsession, car1, carClass, custId: 102, lapSeconds: 70);
         AddResult(db, prevSubsession, car1, carClass, custId: 103, lapSeconds: 75);
         AddResult(db, prevSubsession, car1, carClass, custId: 104, lapSeconds: 80);
+        AddResult(db, prevSubsession2, car1, carClass, custId: 1, lapSeconds: 75);
+        AddResult(db, prevSubsession2, car1, carClass, custId: 201, lapSeconds: 65);
+        AddResult(db, prevSubsession2, car1, carClass, custId: 202, lapSeconds: 70);
+        AddResult(db, prevSubsession2, car1, carClass, custId: 203, lapSeconds: 80);
+        AddResult(db, prevSubsession2, car1, carClass, custId: 204, lapSeconds: 85);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
@@ -157,10 +160,13 @@ public class CarRecommendationServiceTests
         Assert.Null(dto.BestLapSeconds);
         // No lap, so no evidence produced one — the two are absent together.
         Assert.Null(dto.BestLapEvidence);
-        // Field of 5 in the previous week: (4 slower + 0.5 tied) / 5 = 90.
-        Assert.Equal(90, dto.PercentileRank);
-        // 90th percentile in [70, 80, 90, 100]: pos = 3 x 0.1 = 0.3 → 73 s.
-        Assert.Equal(73, dto.ProjectedLapSeconds, tolerance: 1e-6);
+        Assert.Null(dto.PercentileRank);
+        Assert.Equal(70, dto.ExpectedPercentile);
+        Assert.Null(dto.TopSharePercent);
+        Assert.Null(dto.FieldSize);
+        Assert.False(dto.IsPercentilePresentable);
+        // 70th percentile in [70, 80, 90, 100]: pos = 3 x 0.3 = 0.9 → 79 s.
+        Assert.Equal(79, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
 
     [Fact]
@@ -190,7 +196,10 @@ public class CarRecommendationServiceTests
         Assert.Equal(1, dto.CarId);
         Assert.Null(dto.BestLapSeconds);
         Assert.Null(dto.BestLapEvidence);
-        Assert.Equal(50.0, dto.PercentileRank);
+        Assert.Null(dto.PercentileRank);
+        Assert.Equal(50.0, dto.ExpectedPercentile);
+        Assert.Null(dto.FieldSize);
+        Assert.False(dto.IsPercentilePresentable);
         // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
         Assert.Equal(80.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
     }
@@ -255,7 +264,9 @@ public class CarRecommendationServiceTests
 
         var dto = result.Single(r => r.CarId == car1.Id);
         // Field of 5: (4 slower + 0.5 tied) / 5.
-        Assert.Equal(90, dto.PercentileRank, tolerance: 1e-10);
+        Assert.Equal(90, dto.PercentileRank!.Value, tolerance: 1e-10);
+        Assert.Equal(90, dto.ExpectedPercentile!.Value, tolerance: 1e-10);
+        Assert.Equal(5, dto.FieldSize);
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
@@ -312,6 +323,73 @@ public class CarRecommendationServiceTests
         // Field of 5: (4 slower + 0.5 tied) / 5.
         Assert.Equal(90, entry.PercentileRank, tolerance: 1e-10);
         Assert.Equal(20, entry.TopSharePercent); // 1st of 5
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_UndersizedCurrentField_HasNoExpectedPercentileWithoutHistory()
+    {
+        await using var db = DbContextFactory.Create();
+        var (_, car, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
+        db.Users.Add(new ApplicationUser { Id = Guid.NewGuid(), IRacingCustomerId = 1, DisplayName = "Driver" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var dto = Assert.Single(await CreateService(db).GetRecommendationsAsync(
+            1, 1, 1, OfficialEvidence, TestContext.Current.CancellationToken));
+
+        Assert.NotNull(dto.PercentileRank);
+        Assert.Null(dto.ExpectedPercentile);
+        Assert.Equal(2, dto.FieldSize);
+        Assert.False(dto.IsPercentilePresentable);
+        Assert.True(dto.ProjectedLapSeconds > 0);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_UndersizedRowBecomesPresentable_AddsInsteadOfSubtractingOldReading()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
+        AddResult(db, subsession, car, carClass, custId: 3, lapSeconds: 80);
+        AddResult(db, subsession, car, carClass, custId: 4, lapSeconds: 90);
+        AddResult(db, subsession, car, carClass, custId: 5, lapSeconds: 100);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.CarPercentileResults.AddRange(
+            new CarPercentileResult { UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id, PercentileRank = 40, SampleSize = 3, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) },
+            new CarPercentileResult { UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = Guid.NewGuid(), PercentileRank = 80, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7) });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var dto = Assert.Single(await CreateService(db).GetRecommendationsAsync(
+            1, 1, 1, OfficialEvidence, TestContext.Current.CancellationToken));
+
+        Assert.Equal(90, dto.PercentileRank);
+        Assert.Equal(85, dto.ExpectedPercentile); // (prior 80 + current 90) / 2; old 40 was excluded.
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_PresentableRowBecomesUndersized_RemovesOldReadingFromExpectedPercentile()
+    {
+        await using var db = DbContextFactory.Create();
+        var (week, car, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 60);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 70);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.CarPercentileResults.AddRange(
+            new CarPercentileResult { UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id, PercentileRank = 40, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow.AddDays(-1) },
+            new CarPercentileResult { UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = Guid.NewGuid(), PercentileRank = 80, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7) });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var dto = Assert.Single(await CreateService(db).GetRecommendationsAsync(
+            1, 1, 1, OfficialEvidence, TestContext.Current.CancellationToken));
+
+        Assert.NotNull(dto.PercentileRank);
+        Assert.Equal(80, dto.ExpectedPercentile); // old current-week 40 was removed; new rank is undersized.
+        Assert.Equal(2, dto.FieldSize);
+        Assert.False(dto.IsPercentilePresentable);
     }
 
     // ── RunningAveragePercentile (pure helper) ───────────────────────────────

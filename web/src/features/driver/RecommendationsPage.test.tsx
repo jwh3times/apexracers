@@ -49,8 +49,9 @@ const MOCK_RECS = [
     carId: 2,
     carName: 'Ferrari 296 GT3',
     percentileRank: 87.5,
+    expectedPercentile: 85.0,
     topSharePercent: 12,
-    sampleSize: 200,
+    fieldSize: 200,
     isPercentilePresentable: true,
     bestLapSeconds: 78.5,
     bestLapEvidence: 'RaceLap' as const,
@@ -60,9 +61,10 @@ const MOCK_RECS = [
     rank: 2,
     carId: 1,
     carName: 'Porsche 992 GT3',
-    percentileRank: 72.0,
-    topSharePercent: 28,
-    sampleSize: 180,
+    percentileRank: null,
+    expectedPercentile: 72.0,
+    topSharePercent: null,
+    fieldSize: null,
     isPercentilePresentable: true,
     bestLapSeconds: null,
     bestLapEvidence: null,
@@ -169,7 +171,7 @@ describe('RecommendationsPage', () => {
     renderPage('?seriesId=1');
     await waitFor(() => {
       // Porsche has bestLapSeconds: null — dash appears in the Best Lap cell
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
   });
 
@@ -192,6 +194,36 @@ describe('RecommendationsPage', () => {
       expect(screen.getByText('Porsche 992 GT3')).toBeInTheDocument();
       expect(screen.getByText('#2')).toBeInTheDocument();
     });
+  });
+
+  it('distinguishes a current field rank from a historical expected percentile', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue(MOCK_RECS);
+    renderPage('?seriesId=1');
+
+    expect(await screen.findByText('Percentile Rank')).toBeInTheDocument();
+    expect(screen.getByText('Expected Percentile')).toBeInTheDocument();
+    expect(screen.getByText('72.0%')).toBeInTheDocument();
+    expect(screen.getAllByText('200').length).toBeGreaterThan(0);
+    expect(screen.queryByText('180')).not.toBeInTheDocument();
+  });
+
+  it('does not invent an expected percentile for an undersized current field', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetRecs.mockResolvedValue([
+      {
+        ...MOCK_RECS[0],
+        percentileRank: 100,
+        expectedPercentile: null,
+        fieldSize: 1,
+        isPercentilePresentable: false,
+      },
+    ]);
+    renderPage('?seriesId=1');
+
+    expect(await screen.findByText('Percentile Rank')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('Expected Percentile')).not.toBeInTheDocument();
   });
 
   it('shows the link-iRacing prompt pointing to Settings when the account is not linked', async () => {

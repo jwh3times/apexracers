@@ -159,8 +159,10 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         Assert.Equal(65.0, dto.BestLapSeconds);
         Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
         // 65s beats all 3 in a Field of 4: 3 + 0.5, over 4 = 87.5%.
-        Assert.Equal(87.5, dto.PercentileRank, tolerance: 1e-6);
+        Assert.Equal(87.5, dto.PercentileRank!.Value, tolerance: 1e-6);
+        Assert.Null(dto.ExpectedPercentile); // Current Field has only four Drivers.
         Assert.Equal(25, dto.TopSharePercent); // 1st of 4
+        Assert.Equal(4, dto.FieldSize);
     }
 
     [Fact]
@@ -247,6 +249,8 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         var dto = result.Single(r => r.CarId == car1.Id);
         Assert.Equal(65.0, dto.BestLapSeconds);
         Assert.Equal(87.5, dto.PercentileRank); // 65s beats all 3 in a Field of 4
+        Assert.Null(dto.ExpectedPercentile); // Old presentable row is removed; current Field is undersized.
+        Assert.Equal(4, dto.FieldSize);
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();

@@ -154,9 +154,10 @@ export interface CarRecommendation {
   rank: number;
   carId: number;
   carName: string;
-  percentileRank: number;
+  percentileRank: number | null;
+  expectedPercentile: number | null;
   topSharePercent: number | null;
-  sampleSize: number;
+  fieldSize: number | null;
   isPercentilePresentable: boolean;
   projectedLapSeconds: number;
   bestLapSeconds: number | null;
@@ -430,6 +431,7 @@ export interface CarStrategy {
   tireNote: string;
   rainEnabled: boolean;
   percentileRank: number | null;
+  expectedPercentile: number | null;
   topSharePercent: number | null;
   fieldSize: number | null;
   isPercentilePresentable: boolean;

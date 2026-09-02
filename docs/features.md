@@ -19,9 +19,10 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   have set a time; smaller fields report their driver count without presenting a
   coarse position as a meaningful competitiveness result.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
-  to set in each, with their percentile in that car shown alongside when the field is
-  large enough to support it. Undersized readings do not influence expected-percentile
-  history or driver analytics.
+  to set in each. A car the driver entered that Race Week shows its Field Size and, when
+  the field is large enough, the driver's Percentile Rank; a projected-only car instead labels the
+  historical Expected Percentile used for its projection and claims no place in that Field.
+  Undersized readings do not influence expected-percentile history or driver analytics.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
 - **Telemetry upload:** parse `.ibt` files, store the Timed Laps they recorded, and surface each

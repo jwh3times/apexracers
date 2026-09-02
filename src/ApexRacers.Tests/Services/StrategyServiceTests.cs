@@ -119,6 +119,7 @@ public class StrategyServiceTests
         Assert.False(bmw.LimitedTireSets);       // 0 = unlimited
         Assert.True(bmw.RainEnabled);
         Assert.Null(bmw.PercentileRank);
+        Assert.Null(bmw.ExpectedPercentile);
         Assert.Null(bmw.ProjectedLapSeconds);
         Assert.Null(bmw.OptimalRank);
 
@@ -173,6 +174,21 @@ public class StrategyServiceTests
         AddResult(db, subsession, Bmw, carClass, custId: 1, lapSeconds: 60);   // caller — fastest
         AddResult(db, subsession, Bmw, carClass, custId: 50, lapSeconds: 70);
         AddResult(db, subsession, Bmw, carClass, custId: 60, lapSeconds: 80);
+        AddResult(db, subsession, Porsche, carClass, custId: 101, lapSeconds: 65);
+        AddResult(db, subsession, Porsche, carClass, custId: 102, lapSeconds: 70);
+        AddResult(db, subsession, Porsche, carClass, custId: 103, lapSeconds: 75);
+        AddResult(db, subsession, Porsche, carClass, custId: 104, lapSeconds: 80);
+        AddResult(db, subsession, Porsche, carClass, custId: 105, lapSeconds: 85);
+        db.CarPercentileResults.Add(new CarPercentileResult
+        {
+            UserId = userId,
+            CarId = Porsche,
+            SeriesId = SeriesId,
+            WeekId = Guid.NewGuid(),
+            PercentileRank = 50,
+            SampleSize = 5,
+            ComputedAt = DateTimeOffset.UtcNow.AddDays(-7),
+        });
         await db.SaveChangesAsync(Ct);
 
         var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, userId, Ct);
@@ -185,15 +201,22 @@ public class StrategyServiceTests
         Assert.Equal(1, bmw.OptimalRank);
         // Field of 3: (2 slower + 0.5 tied) / 3.
         Assert.Equal(250.0 / 3, bmw.PercentileRank!.Value, tolerance: 1e-10);
+        Assert.Null(bmw.ExpectedPercentile); // Current Field has only three Drivers.
         Assert.Equal(34, bmw.TopSharePercent); // 1st of 3 = 33.3%, rounded up
+        Assert.Equal(3, bmw.FieldSize);
         Assert.NotNull(bmw.ProjectedLapSeconds);
 
-        // Porsche had no caller lap → no overlay, sorts last.
+        // Porsche has historical evidence but no current lap: it carries an Expected Percentile,
+        // never a current Field reading or placement.
         var porsche = dto.Cars[1];
         Assert.Equal("Porsche 718 GT4", porsche.CarName);
-        Assert.Null(porsche.OptimalRank);
+        Assert.Equal(2, porsche.OptimalRank);
         Assert.Null(porsche.PercentileRank);
+        Assert.Equal(50, porsche.ExpectedPercentile);
         Assert.Null(porsche.TopSharePercent);
+        Assert.Null(porsche.FieldSize);
+        Assert.False(porsche.IsPercentilePresentable);
+        Assert.NotNull(porsche.ProjectedLapSeconds);
     }
 
     [Fact]
