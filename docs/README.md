@@ -25,7 +25,10 @@ for builds, tests, CI, or normal external contribution.
 Maintainers can install the companion with `npm run bootstrap:private`; the helper retrieves its
 credential-free clone URL through the current 1Password identity or an explicitly supplied private
 service-account reference, and refuses to overwrite a non-empty directory. Run `npm run repo:status`
-to inspect both histories. Absence of `private/.git` is a supported state.
+to inspect both histories. Run `npm run sync:main` to switch both clean worktrees to `main` and
+fast-forward them from `origin/main`; the command refuses dirty or diverged worktrees and skips an
+uninstalled companion. Pass `-- --skip-private` to synchronize only the public worktree. Absence of
+`private/.git` is a supported state.
 
 ## Agent docs
 

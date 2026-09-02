@@ -287,6 +287,8 @@ the opposite direction from agents.
 npm run repo:status          # report branch, dirty state, upstream, and divergence for both repos
 npm run repo:status:check    # exit nonzero if an installed worktree is dirty or unsynchronized
 npm run bootstrap:private    # clone the optional companion into private/ using its 1Password URL
+npm run sync:main            # switch both clean worktrees to main and fast-forward from origin/main
+npm run sync:main -- --skip-private  # synchronize only the public worktree
 ```
 
 `bootstrap:private` reads the clone URL from the `ApexRacers Repository Access` 1Password item unless
