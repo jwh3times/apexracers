@@ -15,6 +15,7 @@ public class TrackCatalogService(AppDbContext db)
     {
         var tracks = await db.Tracks
             .AsNoTracking()
+            .Where(t => !t.Retired)
             .OrderBy(t => t.Name)
             .ThenBy(t => t.ConfigName)
             .ToListAsync(ct);

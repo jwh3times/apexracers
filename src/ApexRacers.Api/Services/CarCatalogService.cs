@@ -15,6 +15,7 @@ public class CarCatalogService(AppDbContext db)
     {
         var cars = await db.Cars
             .AsNoTracking()
+            .Where(c => c.Retired != true)
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
         return cars.Select(CarCatalogMapper.ToItem).ToList();

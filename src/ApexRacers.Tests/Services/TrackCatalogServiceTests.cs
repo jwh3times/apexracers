@@ -9,7 +9,13 @@ public class TrackCatalogServiceTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static Track MakeTrack(int id, string name, string config = "", string? folder = null, string? small = null) => new()
+    private static Track MakeTrack(
+        int id,
+        string name,
+        string config = "",
+        string? folder = null,
+        string? small = null,
+        bool retired = false) => new()
     {
         Id = id,
         Name = name,
@@ -18,6 +24,7 @@ public class TrackCatalogServiceTests
         TrackConfigLength = 2.5,
         AssetFolder = folder,
         SmallImageFile = small,
+        Retired = retired,
     };
 
     [Fact]
@@ -40,12 +47,27 @@ public class TrackCatalogServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_ReturnsDetailWithPersonalBests()
+    public async Task ListAsync_HidesRetiredTracks()
+    {
+        await using var db = DbContextFactory.Create();
+        db.Tracks.AddRange(
+            MakeTrack(1, "Current"),
+            MakeTrack(2, "Retired", retired: true));
+        await db.SaveChangesAsync(Ct);
+        var service = new TrackCatalogService(db);
+
+        var result = await service.ListAsync(Ct);
+
+        Assert.Equal(1, Assert.Single(result).TrackId);
+    }
+
+    [Fact]
+    public async Task GetAsync_RetiredTrack_ReturnsDetailWithHistoricalUploadedBests()
     {
         await using var db = DbContextFactory.Create();
         var userId = Guid.NewGuid();
         db.Cars.Add(new Car { Id = 132, Name = "Merc GT3", NameAbbreviated = "Merc" });
-        db.Tracks.Add(MakeTrack(18, "Spa", "GP", "/img/tracks/spa", "spa-large.jpg"));
+        db.Tracks.Add(MakeTrack(18, "Spa", "GP", "/img/tracks/spa", "spa-large.jpg", retired: true));
         db.UploadedLaps.Add(new UploadedLap
         {
             Id = Guid.NewGuid(), UserId = userId, CarId = 132, TrackId = 18,

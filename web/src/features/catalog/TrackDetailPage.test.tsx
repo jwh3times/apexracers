@@ -58,7 +58,7 @@ describe('TrackDetailPage', () => {
     mockGetTrack.mockResolvedValue(DETAIL);
   });
 
-  it('fetches the track by its route id', async () => {
+  it('fetches the track directly by route id independently of catalog-list membership', async () => {
     renderPage();
     await waitFor(() => expect(mockGetTrack).toHaveBeenCalledWith(18, expect.any(AbortSignal)));
   });
