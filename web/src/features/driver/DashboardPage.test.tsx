@@ -289,8 +289,8 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getAllByText('2:10.500').length).toBeGreaterThan(0));
   });
 
-  it('shows trackName only when configName is empty', async () => {
-    vi.mocked(api.getMyUploadedBests).mockResolvedValue([{ ...baseLap, configName: '' }]);
+  it('shows trackName only when configName is null', async () => {
+    vi.mocked(api.getMyUploadedBests).mockResolvedValue([{ ...baseLap, configName: null }]);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('Spa').length).toBeGreaterThan(0));
   });

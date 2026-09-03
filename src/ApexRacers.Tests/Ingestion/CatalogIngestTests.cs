@@ -102,4 +102,23 @@ public class CatalogIngestTests
         Assert.Equal("/img/tracks/spa", track.AssetFolder);
         Assert.Equal("https://map/spa/", track.TrackMapUrl);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("N/A")]
+    public void PopulateTrack_AbsentConfiguration_UsesEmptyStorageValue(string? configName)
+    {
+        var track = new CoreTrack { Id = 18, Name = "" };
+        var info = new Track
+        {
+            TrackId = 18,
+            TrackName = "Richmond Raceway",
+            ConfigName = configName!,
+        };
+
+        CatalogIngest.PopulateTrack(track, info, asset: null);
+
+        Assert.Equal(string.Empty, track.ConfigName);
+    }
 }

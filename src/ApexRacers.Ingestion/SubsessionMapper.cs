@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using Aydsko.iRacingData.Results;
 using CoreSubsessionResult = ApexRacers.Core.Models.SubsessionResult;
@@ -12,6 +13,18 @@ namespace ApexRacers.Ingestion;
 /// </summary>
 public static class SubsessionMapper
 {
+    /// <summary>
+    /// Maps the results payload's track block, where iRacing spells an absent Configuration Name
+    /// as <c>N/A</c>, to the catalog's canonical empty storage value.
+    /// </summary>
+    public static Track ToTrackEntity(WireSubsessionResult data) =>
+        new()
+        {
+            Id = data.Track.TrackId,
+            Name = data.Track.TrackName,
+            ConfigName = ConfigurationName.Normalize(data.Track.ConfigName),
+        };
+
     public static Subsession ToEntity(
         int subsessionId,
         WireSubsessionResult data,

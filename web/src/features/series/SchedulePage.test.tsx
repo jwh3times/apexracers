@@ -43,7 +43,7 @@ const SCHEDULE: SeasonSchedule = {
     {
       weekNumber: 2,
       trackName: 'Laguna Seca',
-      configName: '',
+      configName: null,
       startDate: '2999-01-01', // future → "Next Week"
       weather: null,
       bop: [],
@@ -110,7 +110,7 @@ describe('SchedulePage', () => {
         {
           weekNumber: 1,
           trackName: 'Thruxton',
-          configName: '',
+          configName: null,
           startDate: '2999-01-01',
           weather: null,
           bop: [],

@@ -1,4 +1,5 @@
 using ApexRacers.Api.Telemetry;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
@@ -56,7 +57,7 @@ public class TelemetryUploadService(AppDbContext db)
             {
                 Id         = session.IracingTrackId,
                 Name       = session.TrackName,
-                ConfigName = session.ConfigName,
+                ConfigName = ConfigurationName.Normalize(session.ConfigName),
             };
             db.Tracks.Add(track);
         }
@@ -104,7 +105,7 @@ public class TelemetryUploadService(AppDbContext db)
                 ? validLaps.Min(l => l.LapTimeSeconds)
                 : null,
             TrackName:  session.TrackName,
-            ConfigName: session.ConfigName,
+            ConfigName: ConfigurationName.Normalize(session.ConfigName),
             CarName:    session.CarName,
             CustomerId: session.DriverCustomerId,
             DriverName: session.DriverName

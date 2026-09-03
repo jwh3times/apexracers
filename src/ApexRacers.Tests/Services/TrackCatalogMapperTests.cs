@@ -60,6 +60,16 @@ public class TrackCatalogMapperTests
     }
 
     [Fact]
+    public void CatalogDtos_AbsentConfiguration_ReportNull()
+    {
+        var track = SampleTrack();
+        track.ConfigName = string.Empty;
+
+        Assert.Null(TrackCatalogMapper.ToItem(track).ConfigName);
+        Assert.Null(TrackCatalogMapper.ToDetail(track, []).ConfigName);
+    }
+
+    [Fact]
     public void ToDetail_MapsGeoPitImagesMapAndBests()
     {
         var bests = new List<UploadedBestDto>

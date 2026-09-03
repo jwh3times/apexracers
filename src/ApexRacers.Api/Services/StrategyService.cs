@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -125,7 +126,7 @@ public class StrategyService(
             seriesName,
             week.WeekNumber,
             week.TrackName,
-            week.ConfigName,
+            ConfigurationName.NullIfAbsent(week.ConfigName),
             week.LengthMiles,
             week.CornersPerLap,
             week.NumberPitstalls,

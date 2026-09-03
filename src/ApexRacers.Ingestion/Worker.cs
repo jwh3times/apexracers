@@ -242,12 +242,7 @@ public sealed class Worker(
                 // Upsert track if unknown
                 if (await db.Tracks.FindAsync([data.Track.TrackId], ct) is null)
                 {
-                    db.Tracks.Add(new Track
-                    {
-                        Id         = data.Track.TrackId,
-                        Name       = data.Track.TrackName,
-                        ConfigName = data.Track.ConfigName ?? "",
-                    });
+                    db.Tracks.Add(SubsessionMapper.ToTrackEntity(data));
                     await db.SaveChangesAsync(ct);
                 }
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData.Series;
@@ -149,7 +150,7 @@ public sealed class SeasonIngest(AppDbContext db)
     private static void PopulateTrack(Track track, SeasonScheduleItem source)
     {
         track.Name = source.Track.TrackName;
-        track.ConfigName = source.Track.ConfigName ?? string.Empty;
+        track.ConfigName = ConfigurationName.Normalize(source.Track.ConfigName);
     }
 
     private static void PopulateWeek(Week week, SeasonScheduleItem source, string? weatherJson)

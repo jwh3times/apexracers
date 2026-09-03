@@ -45,7 +45,7 @@ public class WeekCarStatsService(AppDbContext db)
             weekInfo.SeriesName,
             weekInfo.Category,
             weekInfo.TrackName,
-            weekInfo.TrackConfigName,
+            ConfigurationName.NullIfAbsent(weekInfo.TrackConfigName),
             weekInfo.TrackLengthMiles,
             cars);
     }

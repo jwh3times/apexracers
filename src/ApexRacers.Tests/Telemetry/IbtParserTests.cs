@@ -100,6 +100,19 @@ public class IbtParserTests
         Assert.Equal(35.0f, session.TrackTempCelsius, tolerance: 0.05f);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("N/A")]
+    public void Parse_AbsentConfiguration_NormalizesToEmptyInternalValue(string configName)
+    {
+        using var stream = FakeIbtBuilder.Build(configName: configName);
+
+        var session = IbtParser.Parse(stream);
+
+        Assert.Equal(string.Empty, session.ConfigName);
+    }
+
     [Fact]
     public void Parse_ValidLaps_ReturnsCorrectLapCountAndMarksAsValid()
     {

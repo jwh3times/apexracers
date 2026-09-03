@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.EntityFrameworkCore;
@@ -64,8 +65,8 @@ public class RaceHistoryService(CachedIRacingClient cached, AppDbContext db)
                 r.SeriesName,
                 r.TrackId,
                 r.TrackName,
-                configNames.TryGetValue(r.TrackId, out var config) && !string.IsNullOrWhiteSpace(config)
-                    ? config
+                configNames.TryGetValue(r.TrackId, out var config)
+                    ? ConfigurationName.NullIfAbsent(config)
                     : null,
                 r.CarId,
                 carNames.TryGetValue(r.CarId, out var name) ? name : $"Car {r.CarId}",

@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,7 +74,7 @@ public static class UploadedBestQuery
                 g.First().CarName,
                 g.Key.TrackId,
                 g.First().TrackName,
-                g.First().ConfigName,
+                ConfigurationName.NullIfAbsent(g.First().ConfigName),
                 g.Min(l => l.LapTimeSeconds),
                 g.Count(),
                 g.Max(l => l.RecordedAt)));

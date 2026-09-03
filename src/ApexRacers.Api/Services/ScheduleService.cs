@@ -56,7 +56,7 @@ public class ScheduleService(AppDbContext db)
         var weekDtos = weeks.Select(w => new ScheduleWeekDto(
             w.WeekNumber,
             w.TrackName,
-            w.ConfigName,
+            ConfigurationName.NullIfAbsent(w.ConfigName),
             w.StartDate,
             MapWeather(w.WeatherSummaryJson),
             (bopByWeek.TryGetValue(w.WeekNumber, out var list) ? list : [])

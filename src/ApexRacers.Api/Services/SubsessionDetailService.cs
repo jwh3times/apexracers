@@ -53,7 +53,7 @@ public class SubsessionDetailService(AppDbContext db)
             sub.StartTime,
             seriesName,
             sub.Track.Name,
-            string.IsNullOrEmpty(sub.Track.ConfigName) ? null : sub.Track.ConfigName,
+            ConfigurationName.NullIfAbsent(sub.Track.ConfigName),
             sub.EventStrengthOfField,
             sub.SplitIndex,
             sub.SplitCount,

@@ -111,7 +111,7 @@ public class SeasonIngestTests
         Assert.Equal(132, seasonCar.CarId);
 
         item.Track.TrackName = "Spa Updated";
-        item.Track.ConfigName = null;
+        item.Track.ConfigName = "N/A";
         item.StartDate = new DateOnly(2026, 8, 12);
         item.Weather.WeatherSummary!.TemperatureHigh = 29;
         item.CarRestrictions[0].WeightPenaltyKg = 15;

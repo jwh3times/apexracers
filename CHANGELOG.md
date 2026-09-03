@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Absent track Configuration Names from catalog, schedule, results, telemetry, and recap inputs now
+  normalize omitted, blank, and `N/A` spellings to one stored value; API responses consistently
+  expose that absence as `null`, and a data migration cleans previously stored variants.
 
 ## [4.0.2] - 2026-09-02
 
