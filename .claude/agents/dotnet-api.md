@@ -36,8 +36,10 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - The race-vs-uploaded choice behind a Personal Best is never re-compared inline either: call
   `ApexRacers.Core.PersonalBest.Select(raceBest, uploadedBest)` (nullable overload) or
   `Select(raceBest, uploadedBest)` (non-nullable overload, for a caller that has already proved the
-  Race Best exists) and carry the returned `PersonalBest.Evidence` onto the DTO alongside
-  `LapSeconds` — don't keep only the winning `double`. **A Race Best wins an exact tie**: it was set
+  Race Best exists) and carry the returned `PersonalBest.Evidence` onto the DTO. Carry it alongside
+  `LapSeconds` when the DTO exposes the lap; a compact DTO that exposes only a derived reading still
+  carries the evidence (`WeekCarPercentileDto` is the canonical example). Don't discard the evidence
+  just because the response omits the winning `double`. **A Race Best wins an exact tie**: it was set
   against the Field being ranked, so it is the better-evidenced of two equally fast laps; this is
   the same strict `<` test `PercentileCalculationService`, `CarRecommendationService`, and
   `UserAnalyticsService` each ran by hand before they shared this seam. `UserAnalyticsService`

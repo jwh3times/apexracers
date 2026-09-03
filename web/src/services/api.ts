@@ -116,6 +116,8 @@ export interface WeekCarPercentile {
   carId: number;
   percentileRank: number; // higher is better (e.g. 92 → faster than 92% of the field)
   topSharePercent: number; // placement share of the field; lower is better
+  /** Which evidence produced the personal best ranked against the week's race-lap field. */
+  personalBestLapEvidence: LapEvidence;
 }
 
 export interface DistributionBin {

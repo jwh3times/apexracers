@@ -118,6 +118,9 @@ Never label it as a Percentile Rank or convert it to a Top Share: a projected-on
 Use `recommendationRank` for the per-Car ordering on recommendation and strategy surfaces, and
 `standing` for championship, Time Trial, qualifying, and category-leaderboard positions. Do not
 introduce an unqualified `rank` client field or label; `CONTEXT.md` owns these domain distinctions.
+Week Detail's compact `WeekCarPercentile` retains `personalBestLapEvidence` even though it omits the
+lap time; render `lapEvidenceLabel` beneath its "Your pct" chip and use `lapEvidenceDescription` for
+the explanatory title rather than reducing the row to its Top Share alone.
 
 ### Race week numbering contract
 

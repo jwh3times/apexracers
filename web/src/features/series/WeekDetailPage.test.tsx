@@ -254,11 +254,16 @@ describe('WeekDetailPage', () => {
     expect(mockGetMyWeekPercentiles).not.toHaveBeenCalled();
   });
 
-  it('renders the Your pct chip for a signed-in driver with a percentile', async () => {
+  it('renders the Your pct chip with Race Lap evidence for a signed-in driver', async () => {
     mockUser = LINKED_USER;
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
     mockGetMyWeekPercentiles.mockResolvedValue([
-      { carId: 1, percentileRank: 92, topSharePercent: 8 },
+      {
+        carId: 1,
+        percentileRank: 92,
+        topSharePercent: 8,
+        personalBestLapEvidence: 'RaceLap',
+      },
     ]);
     renderPage('1', '10');
     await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
@@ -270,6 +275,31 @@ describe('WeekDetailPage', () => {
     );
     // percentileRank 92 → ceil(100-92) = TOP 8%
     expect(screen.getByText('TOP 8%')).toBeInTheDocument();
+    expect(screen.getByText('Race lap')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/official race/i)
+    );
+  });
+
+  it('renders Uploaded Lap evidence beneath the Your pct chip', async () => {
+    mockUser = LINKED_USER;
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
+    mockGetMyWeekPercentiles.mockResolvedValue([
+      {
+        carId: 1,
+        percentileRank: 92,
+        topSharePercent: 8,
+        personalBestLapEvidence: 'UploadedLap',
+      },
+    ]);
+
+    renderPage('1', '10');
+
+    expect(await screen.findByText('TOP 8%')).toBeInTheDocument();
+    expect(screen.getByText('Uploaded lap')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/uploaded telemetry/i)
+    );
   });
 
   it('lets a signed-in driver apply Uploaded Lap evidence to the Your pct overlay', async () => {

@@ -280,7 +280,8 @@ public class CarRecommendationService(AppDbContext db)
     /// The caller's own percentile per car for a week, for the Week Detail "Your pct" column.
     /// Reuses <see cref="GetRecommendationsAsync"/> (incl. Uploaded Laps) and keeps only cars the
     /// caller actually has a lap for this week (<c>BestLapSeconds</c> set) — projected-only cars,
-    /// whose percentile is a historical estimate rather than a real reading, are excluded.
+    /// whose percentile is a historical estimate rather than a real reading, are excluded. Each
+    /// returned reading carries the Race Lap or Uploaded Lap evidence behind its Personal Best.
     /// </summary>
     public async Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
         int seriesId,
@@ -296,7 +297,11 @@ public class CarRecommendationService(AppDbContext db)
             .Where(r => r.BestLapSeconds is not null
                      && r.TopSharePercent is not null
                      && r.IsPercentilePresentable)
-            .Select(r => new WeekCarPercentileDto(r.CarId, r.PercentileRank!.Value, r.TopSharePercent!.Value))
+            .Select(r => new WeekCarPercentileDto(
+                r.CarId,
+                r.PercentileRank!.Value,
+                r.TopSharePercent!.Value,
+                r.BestLapEvidence!.Value))
             .ToList();
     }
 

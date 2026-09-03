@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Week Detail's "Your pct" readings now name whether the Personal Best behind each percentile came
+  from a Race Lap or an Uploaded Lap, matching the evidence provenance shown on other percentile
+  surfaces.
 
 ## [6.0.0] - 2026-09-03
 
