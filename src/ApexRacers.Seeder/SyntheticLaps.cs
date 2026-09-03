@@ -23,10 +23,10 @@ public static class SyntheticLaps
 
     /// <summary>Generates a lap time from a base time, skill factor, and gaussian noise.</summary>
     public static double GenerateLapTime(
-        long driverId, int carId, int weekNumber,
+        long driverId, int carId, int raceWeekIndex,
         double baseLapSeconds, double skillFactor, double stdDev)
     {
-        int seed = HashCode.Combine((int)(driverId & 0x7FFFFFFF), carId, weekNumber);
+        int seed = HashCode.Combine((int)(driverId & 0x7FFFFFFF), carId, raceWeekIndex);
         var rng = new Random(seed);
         double lapTime = baseLapSeconds
             + ((skillFactor - 0.5) * stdDev * 5.0)

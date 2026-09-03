@@ -36,14 +36,14 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
         var week = new Week
         {
-            Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = WeekStart,
+            Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = WeekStart,
             EndTime = weekEnd, TrackId = 99, Track = track, Season = season,
         };
         var car = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
         var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
         var subsession = new Subsession
         {
-            Id = -1, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99,
+            Id = -1, SeasonId = 1, RaceWeekIndex = 1, WeekId = week.Id, TrackId = 99,
             StartTime = new DateTimeOffset(2026, 6, 17, 10, 0, 0, TimeSpan.Zero),
         };
         db.Series.Add(series);
@@ -96,7 +96,7 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
     private static Task<PercentileResultDto?> ComputeAsync(
         AppDbContext db, Guid userId, PersonalBestEvidence evidence) =>
         new PercentileCalculationService(db).ComputeAndCacheAsync(
-            seriesId: 1, weekNumber: 1, carId: 1, customerId: 1,
+            seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1,
             evidence: evidence, callerUserId: userId, ct: Ct);
 
     // ── The Race Week bound ───────────────────────────────────────────────────

@@ -16,7 +16,7 @@ const SCHEDULE: SeasonSchedule = {
   seriesName: 'GT3 Cup',
   weeks: [
     {
-      weekNumber: 1,
+      raceWeekIndex: 1,
       trackName: 'Thruxton',
       configName: 'Club',
       startDate: '2020-01-01', // safely in the past → "This Week"
@@ -41,7 +41,7 @@ const SCHEDULE: SeasonSchedule = {
       hasUploadedLapAtTrack: true,
     },
     {
-      weekNumber: 2,
+      raceWeekIndex: 2,
       trackName: 'Laguna Seca',
       configName: null,
       startDate: '2999-01-01', // future → "Next Week"
@@ -108,7 +108,7 @@ describe('SchedulePage', () => {
       seriesName: 'GT3 Cup',
       weeks: [
         {
-          weekNumber: 1,
+          raceWeekIndex: 1,
           trackName: 'Thruxton',
           configName: null,
           startDate: '2999-01-01',

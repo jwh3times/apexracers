@@ -225,16 +225,16 @@ public sealed class Worker(
                     .FirstOrDefault(s => s.SimSessionType == 6);
                 if (raceSession is null) continue;
 
-                // Resolve WeekId from DB (RaceWeekIndex is 0-based week number)
+                // Resolve WeekId from DB (RaceWeekIndex is zero-based).
                 var weekId = await db.Weeks
-                    .Where(w => w.SeasonId == data.SeasonId && w.WeekNumber == data.RaceWeekIndex)
+                    .Where(w => w.SeasonId == data.SeasonId && w.RaceWeekIndex == data.RaceWeekIndex)
                     .Select(w => (Guid?)w.Id)
                     .FirstOrDefaultAsync(ct);
 
                 if (weekId is null)
                 {
                     logger.LogWarning(
-                        "Week not found for season {SeasonId} week {WeekIndex} — skipping subsession {SubsessionId}",
+                        "Race Week not found for season {SeasonId} at index {RaceWeekIndex} — skipping subsession {SubsessionId}",
                         data.SeasonId, data.RaceWeekIndex, subsessionId);
                     continue;
                 }
@@ -320,7 +320,7 @@ public sealed class Worker(
                 stored++;
 
                 logger.LogDebug(
-                    "Indexed subsession {SubsessionId} (season {SeasonId} week {WeekIndex})",
+                    "Indexed subsession {SubsessionId} (season {SeasonId}, Race Week Index {RaceWeekIndex})",
                     subsessionId, data.SeasonId, data.RaceWeekIndex);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

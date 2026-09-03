@@ -84,9 +84,9 @@ function DistributionChart({ bins }: { bins: DistributionBin[] }) {
 }
 
 export default function PercentileCarPage() {
-  const { seriesId, weekNumber, carId } = useParams<{
+  const { seriesId, raceWeekIndex, carId } = useParams<{
     seriesId: string;
-    weekNumber: string;
+    raceWeekIndex: string;
     carId: string;
   }>();
   const location = useLocation();
@@ -107,13 +107,13 @@ export default function PercentileCarPage() {
   const effectiveId = profileId ?? lookedUpId;
 
   useEffect(() => {
-    if (!effectiveId || !seriesId || !weekNumber || !carId) return;
+    if (!effectiveId || !seriesId || !raceWeekIndex || !carId) return;
     let active = true;
     dispatch({ type: 'start' });
     api
       .getPercentile(
         Number(seriesId),
-        Number(weekNumber),
+        Number(raceWeekIndex),
         Number(carId),
         effectiveId,
         evidenceOptions
@@ -135,7 +135,7 @@ export default function PercentileCarPage() {
     return () => {
       active = false;
     };
-  }, [effectiveId, seriesId, weekNumber, carId, evidenceOptions]);
+  }, [effectiveId, seriesId, raceWeekIndex, carId, evidenceOptions]);
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -160,7 +160,7 @@ export default function PercentileCarPage() {
     <main className="page-wrap">
       {/* Breadcrumb */}
       <Link
-        to={`/series/${seriesId}/weeks/${weekNumber}`}
+        to={`/series/${seriesId}/weeks/${raceWeekIndex}`}
         className="inline-flex items-center gap-2 text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors mb-[10px]"
       >
         <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
@@ -172,7 +172,7 @@ export default function PercentileCarPage() {
       {/* Header */}
       <div className="mb-6">
         <p className="text-eyebrow text-primary-container">
-          WEEK {raceWeekNumber(Number(weekNumber))} · PERCENTILE
+          WEEK {raceWeekNumber(Number(raceWeekIndex))} · PERCENTILE
         </p>
         <h1 className="text-page-title text-on-surface mt-2 mb-1">{carName}</h1>
         {trackSubtitle && (

@@ -18,8 +18,8 @@ public class DemoCacheSeederStandingsTests
         db.Seasons.Add(new Season { Id = 6115, SeriesId = 444, Active = true, Year = 2026, Quarter = 2 });
         db.Seasons.Add(new Season { Id = 7000, SeriesId = 9, Active = false, Year = 2025, Quarter = 1 }); // inactive → skipped
         db.SeasonCarClasses.Add(new SeasonCarClass { SeasonId = 6115, CarClassId = 100 });
-        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, WeekNumber = 0, TrackId = 1 });
-        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, WeekNumber = 1, TrackId = 1 });
+        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
+        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, RaceWeekIndex = 1, TrackId = 1 });
         await db.SaveChangesAsync(Ct);
 
         await new DemoCacheSeeder(db).SeedStandingsAsync(Ct);

@@ -10,7 +10,7 @@ public class WeekConfiguration : IEntityTypeConfiguration<Week>
     {
         builder.HasKey(w => w.Id);
 
-        builder.HasIndex(w => new { w.SeasonId, w.WeekNumber }).IsUnique();
+        builder.HasIndex(w => new { w.SeasonId, w.RaceWeekIndex }).IsUnique();
 
         builder.HasOne(w => w.Track)
             .WithMany(t => t.Weeks)

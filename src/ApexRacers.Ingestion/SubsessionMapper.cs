@@ -36,7 +36,7 @@ public static class SubsessionMapper
             Id = subsessionId,
             RaceSessionId = data.SessionId,
             SeasonId = data.SeasonId,
-            WeekNumber = data.RaceWeekIndex,
+            RaceWeekIndex = data.RaceWeekIndex,
             WeekId = weekId,
             TrackId = data.Track.TrackId,
             OfficialSession = data.OfficialSession,

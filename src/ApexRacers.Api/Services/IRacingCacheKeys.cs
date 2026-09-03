@@ -78,16 +78,20 @@ public static class IRacingCacheKeys
     public static CacheSpec TimeTrialStandings(int seasonId, int classId) =>
         new($"tt-standings:v2:{seasonId}:{classId}", ReferenceTtl);
 
-    public static CacheSpec QualifyResults(int seasonId, int classId, int week) =>
-        new($"qual:v2:{seasonId}:{classId}:{week}", ReferenceTtl);
+    // v3: qualifying rows expose RaceWeekIndex rather than the legacy Week member.
+    public static CacheSpec QualifyResults(int seasonId, int classId, int raceWeekIndex) =>
+        new($"qual:v3:{seasonId}:{classId}:{raceWeekIndex}", ReferenceTtl);
 
     public static CacheSpec WorldRecord(int carId, int trackId) =>
         new($"wr:{carId}:{trackId}", ReferenceTtl);
 
     // ── Volatile ──────────────────────────────────────────────────────────────
 
-    /// <summary>A single global key: the race guide is the same board for every caller.</summary>
-    public static CacheSpec RaceGuide => new("race-guide", RaceGuideTtl);
+    /// <summary>
+    /// A single global key: the race guide is the same board for every caller. v2 carries the
+    /// canonical RaceWeekIndex member after the cached row contract changed.
+    /// </summary>
+    public static CacheSpec RaceGuide => new("race-guide:v2", RaceGuideTtl);
 
     // ── Driver search ─────────────────────────────────────────────────────────
 

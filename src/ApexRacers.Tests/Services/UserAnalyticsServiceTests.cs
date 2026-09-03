@@ -21,7 +21,7 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_UndersizedFieldReading_IsExcluded()
     {
         await using var db = DbContextFactory.Create();
-        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
         var userId = Guid.NewGuid();
         db.Users.Add(MakeUser(userId, iracingId: 42));
         db.CarPercentileResults.Add(new CarPercentileResult
@@ -49,7 +49,7 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_SingleCarResult_ReturnsCorrectDto()
     {
         await using var db = DbContextFactory.Create();
-        var (series, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var (series, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
         var carClass = AddCarClass(db, id: 1);
         var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
         var userId = Guid.NewGuid();
@@ -89,7 +89,7 @@ public class UserAnalyticsServiceTests
         // A telemetry UploadedLap at the same car+track is faster than the race best, so the
         // analytics personal-best is overlaid from it (UserAnalyticsService lines 95-99).
         await using var db = DbContextFactory.Create();
-        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
         var carClass = AddCarClass(db, id: 1);
         var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
         var userId = Guid.NewGuid();
@@ -137,8 +137,8 @@ public class UserAnalyticsServiceTests
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 10, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
         var car = new Car { Id = 1, Name = "Porsche 992", NameAbbreviated = "P" };
-        var week1 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, weekNumber: 1, trackName: "Monza", season: season, trackId: 101);
-        var week2 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, weekNumber: 2, trackName: "Spa", season: season, trackId: 102);
+        var week1 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, raceWeekIndex: 1, trackName: "Monza", season: season, trackId: 101);
+        var week2 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, raceWeekIndex: 2, trackName: "Spa", season: season, trackId: 102);
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Cars.Add(car);
@@ -167,8 +167,8 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_SeriesFilter_ExcludesOtherSeries()
     {
         await using var db = DbContextFactory.Create();
-        var (_, _, week1, car1) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
-        var (_, _, week2, car2) = SeedBaseGraph(db, seriesId: 2, weekNumber: 1);
+        var (_, _, week1, car1) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
+        var (_, _, week2, car2) = SeedBaseGraph(db, seriesId: 2, raceWeekIndex: 1);
 
         var userId = Guid.NewGuid();
         db.CarPercentileResults.AddRange(
@@ -190,7 +190,7 @@ public class UserAnalyticsServiceTests
         // opened. A Race Best belongs to one Race Week, so a lap from outside it cannot stand in
         // as that week's Personal Best however fast it was.
         await using var db = DbContextFactory.Create();
-        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
         var carClass = AddCarClass(db, id: 1);
         var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
         var userId = Guid.NewGuid();
@@ -221,7 +221,7 @@ public class UserAnalyticsServiceTests
     public async Task GetAnalyticsAsync_NoIRacingId_UsesOnlyAllowedUploadedEvidence()
     {
         await using var db = DbContextFactory.Create();
-        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, weekNumber: 1);
+        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
         var userId = Guid.NewGuid();
         db.Users.Add(MakeUser(userId, iracingId: null));
         db.CarPercentileResults.Add(new CarPercentileResult
@@ -334,12 +334,12 @@ public class UserAnalyticsServiceTests
     private static DateTimeOffset InsideWeekOne => DateTimeOffset.UtcNow.AddDays(-3);
 
     private static (Series series, Season season, Week week, Car car) SeedBaseGraph(
-        AppDbContext db, int seriesId, int weekNumber)
+        AppDbContext db, int seriesId, int raceWeekIndex)
     {
         var series = new Series { Id = seriesId, Name = $"Series {seriesId}" };
         var season = new Season { Id = seriesId * 10, SeriesId = seriesId, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var trackId = seriesId * 100 + weekNumber;
-        var week = MakeWeek(Guid.NewGuid(), season.Id, weekNumber, $"Track-{seriesId}", season, trackId);
+        var trackId = seriesId * 100 + raceWeekIndex;
+        var week = MakeWeek(Guid.NewGuid(), season.Id, raceWeekIndex, $"Track-{seriesId}", season, trackId);
         var car = new Car { Id = seriesId * 100 + 1, Name = $"Car {seriesId}", NameAbbreviated = $"C{seriesId}" };
         db.Series.Add(series);
         db.Seasons.Add(season);
@@ -349,16 +349,16 @@ public class UserAnalyticsServiceTests
         return (series, season, week, car);
     }
 
-    private static Week MakeWeek(Guid id, int seasonId, int weekNumber, string trackName, Season season, int trackId = 0)
+    private static Week MakeWeek(Guid id, int seasonId, int raceWeekIndex, string trackName, Season season, int trackId = 0)
     {
-        var resolvedTrackId = trackId == 0 ? seasonId * 100 + weekNumber : trackId;
+        var resolvedTrackId = trackId == 0 ? seasonId * 100 + raceWeekIndex : trackId;
         var track = new Track { Id = resolvedTrackId, Name = trackName, ConfigName = "Full" };
         return new Week
         {
             Id = id,
             SeasonId = seasonId,
-            WeekNumber = weekNumber,
-            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7 * weekNumber)),
+            RaceWeekIndex = raceWeekIndex,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7 * raceWeekIndex)),
             TrackId = resolvedTrackId,
             Track = track,
             Season = season,
@@ -378,7 +378,7 @@ public class UserAnalyticsServiceTests
         {
             Id          = id,
             SeasonId    = seasonId,
-            WeekNumber  = 0,
+            RaceWeekIndex  = 0,
             WeekId      = weekId,
             TrackId     = trackId,
             StartTime   = DateTimeOffset.UtcNow.AddHours(-2),

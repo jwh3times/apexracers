@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Zero-based Race Week positions are now named `raceWeekIndex` consistently across persistence,
+  public API fields and parameters, and frontend state. API clients must replace legacy `weekNumber`
+  and `raceWeekNum` names while continuing to pass the same numeric values.
 
 ## [5.0.1] - 2026-09-02
 

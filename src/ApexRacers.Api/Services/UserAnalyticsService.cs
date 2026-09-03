@@ -31,7 +31,7 @@ public class UserAnalyticsService(AppDbContext db)
                 SeriesName = r.Week.Season.Series.Name,
                 r.WeekId,
                 SeasonId = r.Week.SeasonId,
-                WeekNumber = r.Week.WeekNumber,
+                RaceWeekIndex = r.Week.RaceWeekIndex,
                 TrackName = r.Week.Track.Name,
                 ConfigName = r.Week.Track.ConfigName,
                 TrackId = r.Week.TrackId,
@@ -117,7 +117,7 @@ public class UserAnalyticsService(AppDbContext db)
             {
                 if (!lapsByCarTrack.TryGetValue((result.CarId, result.TrackId), out var carTrackLaps)) continue;
                 if (!windowsBySeason.TryGetValue(result.SeasonId, out var windows)) continue;
-                if (!windows.TryGetValue(result.WeekNumber, out var window)) continue;
+                if (!windows.TryGetValue(result.RaceWeekIndex, out var window)) continue;
 
                 var inWeek = carTrackLaps
                     .Where(p => window.Contains(p.RecordedAt))
@@ -158,7 +158,7 @@ public class UserAnalyticsService(AppDbContext db)
 
                 var history = ordered
                     .Select(r => new WeeklyPercentileDto(
-                        r.WeekNumber, r.TrackName, ConfigurationName.NullIfAbsent(r.ConfigName),
+                        r.RaceWeekIndex, r.TrackName, ConfigurationName.NullIfAbsent(r.ConfigName),
                         r.PercentileRank, r.TopSharePercent, r.SampleSize, r.ComputedAt))
                     .ToList();
 

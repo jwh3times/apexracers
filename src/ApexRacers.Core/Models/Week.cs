@@ -4,7 +4,7 @@ public class Week
 {
     public Guid Id { get; set; }
     public int SeasonId { get; set; }
-    public int WeekNumber { get; set; }
+    public int RaceWeekIndex { get; set; }
     public int TrackId { get; set; }
     public DateOnly StartDate { get; set; }
 

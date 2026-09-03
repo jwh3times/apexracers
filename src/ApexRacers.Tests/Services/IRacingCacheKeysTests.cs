@@ -33,9 +33,9 @@ public class IRacingCacheKeysTests
         Assert.Equal("leaderboard:v2:5", IRacingCacheKeys.Leaderboard(5).Key);
         Assert.Equal("standings:v2:6115:100", IRacingCacheKeys.Standings(6115, 100).Key);
         Assert.Equal("tt-standings:v2:6115:100", IRacingCacheKeys.TimeTrialStandings(6115, 100).Key);
-        Assert.Equal("qual:v2:6115:100:3", IRacingCacheKeys.QualifyResults(6115, 100, 3).Key);
+        Assert.Equal("qual:v3:6115:100:3", IRacingCacheKeys.QualifyResults(6115, 100, 3).Key);
         Assert.Equal("wr:132:532", IRacingCacheKeys.WorldRecord(132, 532).Key);
-        Assert.Equal("race-guide", IRacingCacheKeys.RaceGuide.Key);
+        Assert.Equal("race-guide:v2", IRacingCacheKeys.RaceGuide.Key);
     }
 
     [Fact]
@@ -45,6 +45,13 @@ public class IRacingCacheKeysTests
         Assert.NotEqual("standings:6115:100", IRacingCacheKeys.Standings(6115, 100).Key);
         Assert.NotEqual("tt-standings:6115:100", IRacingCacheKeys.TimeTrialStandings(6115, 100).Key);
         Assert.NotEqual("qual:6115:100:3", IRacingCacheKeys.QualifyResults(6115, 100, 3).Key);
+    }
+
+    [Fact]
+    public void RaceWeekResponseKeys_DoNotReuseLegacyMemberPayloads()
+    {
+        Assert.NotEqual("qual:v2:6115:100:3", IRacingCacheKeys.QualifyResults(6115, 100, 3).Key);
+        Assert.NotEqual("race-guide", IRacingCacheKeys.RaceGuide.Key);
     }
 
     [Fact]

@@ -10,7 +10,7 @@ public class CarRecommendationService(AppDbContext db)
 {
     public async Task<List<CarRecommendationDto>> GetRecommendationsAsync(
         int seriesId,
-        int weekNumber,
+        int raceWeekIndex,
         long customerId,
         PersonalBestEvidence evidence,
         CancellationToken ct = default)
@@ -19,8 +19,8 @@ public class CarRecommendationService(AppDbContext db)
         if (seasonId is null) return [];
 
         var week = await db.Weeks
-            .InSeason(seasonId.Value, weekNumber)
-            .Select(w => new { w.Id, SeriesId = w.Season.SeriesId, w.WeekNumber, w.TrackId })
+            .InSeason(seasonId.Value, raceWeekIndex)
+            .Select(w => new { w.Id, SeriesId = w.Season.SeriesId, w.RaceWeekIndex, w.TrackId })
             .FirstOrDefaultAsync(ct);
 
         if (week is null) return [];
@@ -76,7 +76,7 @@ public class CarRecommendationService(AppDbContext db)
         // Uploaded Bests per car at this Track, bounded to this Race Week (when the evidence
         // choice allows them). The bound is what makes them comparable with a Race Best, which
         // already belongs to one Race Week — see RaceWeekWindow.
-        var window = await db.RaceWeekWindowAsync(seasonId.Value, weekNumber, ct);
+        var window = await db.RaceWeekWindowAsync(seasonId.Value, raceWeekIndex, ct);
         var personalBestByCar = new Dictionary<int, double>();
         if (evidence.IncludesUploadedLaps && user is not null && window is { } weekWindow)
         {
@@ -284,13 +284,13 @@ public class CarRecommendationService(AppDbContext db)
     /// </summary>
     public async Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
         int seriesId,
-        int weekNumber,
+        int raceWeekIndex,
         long customerId,
         PersonalBestEvidence evidence,
         CancellationToken ct = default)
     {
         var recs = await GetRecommendationsAsync(
-            seriesId, weekNumber, customerId, evidence, ct);
+            seriesId, raceWeekIndex, customerId, evidence, ct);
 
         return recs
             .Where(r => r.BestLapSeconds is not null

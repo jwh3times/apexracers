@@ -258,14 +258,14 @@ export default function DashboardPage() {
                       <div>
                         <div className="text-body-fluid font-medium text-on-surface">{s.name}</div>
                         <div className="text-small-fluid text-on-surface-variant mt-0.5">
-                          {s.currentWeekNumber != null
-                            ? `Season ${s.seasonId} · ${raceWeekLabel(s.currentWeekNumber)}`
+                          {s.currentRaceWeekIndex != null
+                            ? `Season ${s.seasonId} · ${raceWeekLabel(s.currentRaceWeekIndex)}`
                             : 'Season upcoming'}
                         </div>
                       </div>
-                      {s.currentWeekNumber != null && (
+                      {s.currentRaceWeekIndex != null && (
                         <Link
-                          to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
+                          to={`/series/${s.id}/weeks/${s.currentRaceWeekIndex}`}
                           className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high whitespace-nowrap"
                         >
                           View Week
@@ -399,22 +399,22 @@ export default function DashboardPage() {
                     // 0 means "not started" here, which is why this converts rather than
                     // defaulting: an upcoming season and the opening week were both 0 before.
                     const weekNum =
-                      s.currentWeekNumber != null ? raceWeekNumber(s.currentWeekNumber) : 0;
+                      s.currentRaceWeekIndex != null ? raceWeekNumber(s.currentRaceWeekIndex) : 0;
                     const progressPct = Math.min(100, (weekNum / 12) * 100);
                     return (
                       <Link
                         key={s.id}
                         to={
-                          s.currentWeekNumber != null
-                            ? `/series/${s.id}/weeks/${s.currentWeekNumber}`
+                          s.currentRaceWeekIndex != null
+                            ? `/series/${s.id}/weeks/${s.currentRaceWeekIndex}`
                             : '/series'
                         }
                         className="block px-5 py-4 hover:bg-surface-container transition-colors"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-small-fluid font-mono text-primary-container font-semibold">
-                            {s.currentWeekNumber != null
-                              ? raceWeekLabel(s.currentWeekNumber)
+                            {s.currentRaceWeekIndex != null
+                              ? raceWeekLabel(s.currentRaceWeekIndex)
                               : 'Upcoming'}
                           </span>
                           <span

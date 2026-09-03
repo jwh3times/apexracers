@@ -208,12 +208,19 @@ function NoteRow({ icon, active, text }: { icon: string; active: boolean; text: 
 }
 
 export default function StrategyPage() {
-  const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
+  const { seriesId, raceWeekIndex } = useParams<{
+    seriesId: string;
+    raceWeekIndex: string;
+  }>();
   const id = Number(seriesId);
-  const week = Number(weekNumber);
-  const resource = useResource(signal => api.getWeekStrategy(id, week, signal), [id, week], {
-    fallbackMessage: 'Failed to load strategy.',
-  });
+  const parsedRaceWeekIndex = Number(raceWeekIndex);
+  const resource = useResource(
+    signal => api.getWeekStrategy(id, parsedRaceWeekIndex, signal),
+    [id, parsedRaceWeekIndex],
+    {
+      fallbackMessage: 'Failed to load strategy.',
+    }
+  );
 
   const data = resource.status === 'ok' ? resource.data : null;
   const risk = data ? riskStyle(data.weatherRisk.level) : null;
@@ -231,7 +238,7 @@ export default function StrategyPage() {
   return (
     <main className="page-wrap">
       <Link
-        to={`/series/${seriesId}/weeks/${weekNumber}`}
+        to={`/series/${seriesId}/weeks/${raceWeekIndex}`}
         className="inline-flex items-center gap-1 text-small-fluid text-on-surface-variant hover:text-primary-container transition-colors mb-4"
       >
         <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
@@ -246,7 +253,7 @@ export default function StrategyPage() {
         <>
           <div className="mb-6">
             <p className="text-eyebrow text-primary-container">
-              STRATEGY · WEEK {raceWeekNumber(data.weekNumber)}
+              STRATEGY · WEEK {raceWeekNumber(data.raceWeekIndex)}
             </p>
             <h1 className="text-page-title text-on-surface mt-2">{data.seriesName}</h1>
             <p className="text-body-fluid text-on-surface-variant mt-1">

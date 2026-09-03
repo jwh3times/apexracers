@@ -70,7 +70,7 @@ public class SeriesService(AppDbContext db)
             {
                 w.Id,
                 w.SeasonId,
-                w.WeekNumber,
+                w.RaceWeekIndex,
                 w.StartDate,
                 TrackName = (string?)w.Track.Name,
                 TrackConfigName = (string?)w.Track.ConfigName,
@@ -84,11 +84,11 @@ public class SeriesService(AppDbContext db)
             kvp => kvp.Key,
             kvp =>
             {
-                var weekNumber = SeasonCalendar.CurrentWeekNumber(
-                    kvp.Value.Select(w => (w.WeekNumber, w.StartDate)), onDate);
-                return weekNumber is null
+                var raceWeekIndex = SeasonCalendar.CurrentRaceWeekIndex(
+                    kvp.Value.Select(w => (w.RaceWeekIndex, w.StartDate)), onDate);
+                return raceWeekIndex is null
                     ? null
-                    : kvp.Value.First(w => w.WeekNumber == weekNumber.Value);
+                    : kvp.Value.First(w => w.RaceWeekIndex == raceWeekIndex.Value);
             });
 
         var currentWeekIds = currentWeekBySeason.Values
@@ -129,7 +129,7 @@ public class SeriesService(AppDbContext db)
                     season.SeriesId,
                     season.SeriesName,
                     season.Id,
-                    current?.WeekNumber,
+                    current?.RaceWeekIndex,
                     season.Category,
                     current?.TrackName,
                     ConfigurationName.NullIfAbsent(current?.TrackConfigName),

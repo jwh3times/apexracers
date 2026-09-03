@@ -108,8 +108,8 @@ const QUAL_RESULTS: SeasonQualifyResults = {
   carClassId: 4091,
   carClassName: 'GT3 Class',
   carClasses: CAR_CLASSES,
-  raceWeekNum: 2,
-  availableWeeks: [0, 1, 2],
+  raceWeekIndex: 2,
+  availableRaceWeekIndices: [0, 1, 2],
   results: [
     {
       standing: 1,
@@ -118,7 +118,7 @@ const QUAL_RESULTS: SeasonQualifyResults = {
       division: 2,
       iRating: 7000,
       bestQualLapSeconds: 375.0,
-      week: 2,
+      raceWeekIndex: 2,
     },
     {
       standing: 2,
@@ -127,7 +127,7 @@ const QUAL_RESULTS: SeasonQualifyResults = {
       division: 5,
       iRating: null,
       bestQualLapSeconds: -1,
-      week: 2,
+      raceWeekIndex: 2,
     },
   ],
 };
@@ -239,7 +239,7 @@ describe('StandingsPage', () => {
     expect(screen.getByText('6:15.000')).toBeInTheDocument(); // 375.0s formatted
     expect(screen.getByText('No Time')).toBeInTheDocument(); // sentinel row still renders
 
-    // Week selector reflects availableWeeks (1-based labels) and refetches on click.
+    // Week selector reflects availableRaceWeekIndices with one-based display labels and refetches on click.
     fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
     await waitFor(() =>
       expect(mockGetQualifyResults).toHaveBeenCalledWith(444, undefined, 0, expect.any(AbortSignal))

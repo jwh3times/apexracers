@@ -6,7 +6,7 @@ import { useResource } from '../../hooks/useResource';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
 function SeriesCard({ s }: { s: Series }) {
-  const active = s.currentWeekNumber != null;
+  const active = s.currentRaceWeekIndex != null;
 
   const inner = (
     <div className="card-r card-shadow border border-line-2 bg-surface overflow-hidden cursor-pointer hover:border-primary-container/30 transition-colors flex flex-col h-full">
@@ -36,7 +36,7 @@ function SeriesCard({ s }: { s: Series }) {
           )}
           <span className="text-[11px] font-mono text-on-surface-variant">
             S{s.seasonId}
-            {active ? ` · WK ${raceWeekNumber(s.currentWeekNumber!)}` : ''}
+            {active ? ` · WK ${raceWeekNumber(s.currentRaceWeekIndex!)}` : ''}
           </span>
         </div>
         <h3
@@ -104,7 +104,7 @@ function SeriesCard({ s }: { s: Series }) {
 
   if (active) {
     return (
-      <Link to={`/series/${s.id}/weeks/${s.currentWeekNumber}`} aria-label={s.name}>
+      <Link to={`/series/${s.id}/weeks/${s.currentRaceWeekIndex}`} aria-label={s.name}>
         {inner}
       </Link>
     );
@@ -152,9 +152,9 @@ export default function SeriesPage() {
     ? searchFiltered.filter(s => s.category === activeCategory)
     : searchFiltered;
 
-  const firstActive = series.find(s => s.currentWeekNumber != null);
+  const firstActive = series.find(s => s.currentRaceWeekIndex != null);
   const subtitle = firstActive
-    ? `Season ${firstActive.seasonId} · Week ${raceWeekNumber(firstActive.currentWeekNumber!)} Data`
+    ? `Season ${firstActive.seasonId} · Week ${raceWeekNumber(firstActive.currentRaceWeekIndex!)} Data`
     : `${series.length} series available`;
 
   return (

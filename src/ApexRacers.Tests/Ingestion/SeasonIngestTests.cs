@@ -96,7 +96,7 @@ public class SeasonIngestTests
         Assert.Equal("GP", track.ConfigName);
         Assert.NotEqual(Guid.Empty, week.Id);
         Assert.Equal(501, week.SeasonId);
-        Assert.Equal(7, week.WeekNumber);
+        Assert.Equal(7, week.RaceWeekIndex);
         Assert.Equal(18, week.TrackId);
         Assert.Equal(new DateOnly(2026, 8, 11), week.StartDate);
         Assert.Contains("\"temp_high\":26", week.WeatherSummaryJson);

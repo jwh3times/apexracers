@@ -254,11 +254,11 @@ export default function AnalyticsPage() {
   // Computing recommendations upserts the CarPercentileResult rows analytics reads,
   // so one call populates a first-visit-empty view (works in demo and live modes).
   const computePercentiles = async (sel: Series) => {
-    if (sel.currentWeekNumber == null) return;
+    if (sel.currentRaceWeekIndex == null) return;
     setComputing(true);
     setComputeError(null);
     try {
-      await api.getRecommendations(sel.id, sel.currentWeekNumber, evidenceOptions);
+      await api.getRecommendations(sel.id, sel.currentRaceWeekIndex, evidenceOptions);
       setRefreshVersion(version => version + 1);
     } catch {
       setComputeError('Could not compute percentiles — try the Recommendations page.');
@@ -424,7 +424,7 @@ export default function AnalyticsPage() {
               </Link>{' '}
               and compute your percentile to start tracking trends.
             </p>
-            {selectedSeries && selectedSeries.currentWeekNumber != null && (
+            {selectedSeries && selectedSeries.currentRaceWeekIndex != null && (
               <>
                 <p className="text-body-fluid text-on-surface-variant">
                   Analytics builds from your computed percentiles — nothing here yet.

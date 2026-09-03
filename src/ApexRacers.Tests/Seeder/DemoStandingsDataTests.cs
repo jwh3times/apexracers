@@ -19,8 +19,8 @@ public class DemoStandingsDataTests
     [Fact]
     public void BuildQualify_HasWeekAndSortedLapTimes()
     {
-        var rows = DemoStandingsData.BuildQualify(6115, 100, week: 2);
-        Assert.All(rows, r => Assert.Equal(2, r.Week));
+        var rows = DemoStandingsData.BuildQualify(6115, 100, raceWeekIndex: 2);
+        Assert.All(rows, r => Assert.Equal(2, r.RaceWeekIndex));
         for (var i = 1; i < rows.Count; i++)
             Assert.True(rows[i - 1].BestQualLapSeconds <= rows[i].BestQualLapSeconds);
         Assert.Contains(rows, r => r.CustomerId == DemoData.DriverCustId);

@@ -22,10 +22,10 @@ public static class DemoScheduleData
     });
 
     /// <summary>Deterministic per-car BoP: spreads weight/power a little by car id.</summary>
-    public static SeasonCarBop BuildBop(int seasonId, int week, int carId) => new()
+    public static SeasonCarBop BuildBop(int seasonId, int raceWeekIndex, int carId) => new()
     {
         SeasonId = seasonId,
-        WeekNumber = week,
+        RaceWeekIndex = raceWeekIndex,
         CarId = carId,
         WeightPenaltyKg = carId % 3 * 5,        // 0/5/10
         PowerAdjustPct = -(carId % 4) * 0.5,    // 0 to -1.5

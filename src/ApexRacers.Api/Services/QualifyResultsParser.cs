@@ -38,7 +38,7 @@ public static class QualifyResultsParser
                     Division: GetInt(row, "division"),
                     IRating: GetNullableInt(GetLicense(row), "irating"),
                     BestQualLapSeconds: lapTicks > 0 ? lapTicks / 10000.0 : NoLapSentinel,
-                    Week: GetInt(row, "week")));
+                    RaceWeekIndex: GetInt(row, "week")));
             }
         }
 

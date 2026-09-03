@@ -52,18 +52,18 @@ public readonly record struct RaceWeekWindow(DateTimeOffset Start, DateTimeOffse
 
     /// <summary>
     /// Windows for every Race Week of one season, each bounded by the following Week's start when
-    /// it reported no end of its own. Ordered by start date, with the Week number breaking a tie —
+    /// it reported no end of its own. Ordered by start date, with the Race Week Index breaking a tie —
     /// the same ordering <c>SeasonCalendar</c> uses, so "the next Week" means the same thing in
     /// both places.
     /// </summary>
-    public static IReadOnlyList<(int WeekNumber, RaceWeekWindow Window)> ForSeason(
-        IEnumerable<(int WeekNumber, DateOnly StartDate, DateTimeOffset? EndTime)> weeks)
+    public static IReadOnlyList<(int RaceWeekIndex, RaceWeekWindow Window)> ForSeason(
+        IEnumerable<(int RaceWeekIndex, DateOnly StartDate, DateTimeOffset? EndTime)> weeks)
     {
-        var ordered = weeks.OrderBy(w => w.StartDate).ThenBy(w => w.WeekNumber).ToList();
+        var ordered = weeks.OrderBy(w => w.StartDate).ThenBy(w => w.RaceWeekIndex).ToList();
 
         return ordered
             .Select((week, i) => (
-                week.WeekNumber,
+                week.RaceWeekIndex,
                 Window: For(
                     week.StartDate,
                     week.EndTime,

@@ -83,7 +83,7 @@ function WeekCard({ week, tag }: { week: ScheduleWeek; tag: 'this' | 'next' | nu
       <div className="card-hp scan-texture border-b border-line-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-eyebrow text-on-surface-variant">
-            {raceWeekLabel(week.weekNumber)}
+            {raceWeekLabel(week.raceWeekIndex)}
           </span>
           <h3 className="text-section-head text-on-surface">
             {week.trackName}
@@ -129,7 +129,7 @@ export default function SchedulePage() {
   const today = new Date().toISOString().slice(0, 10);
   const weeks = resource.status === 'ok' ? resource.data.weeks : [];
   const past = weeks.filter(w => w.startDate <= today);
-  const currentWeekNumber = past.length > 0 ? past[past.length - 1].weekNumber : null;
+  const currentRaceWeekIndex = past.length > 0 ? past[past.length - 1].raceWeekIndex : null;
 
   return (
     <main className="page-wrap">
@@ -158,12 +158,12 @@ export default function SchedulePage() {
             <div className="flex flex-col gap-fluid">
               {weeks.map(w => (
                 <WeekCard
-                  key={w.weekNumber}
+                  key={w.raceWeekIndex}
                   week={w}
                   tag={
-                    w.weekNumber === currentWeekNumber
+                    w.raceWeekIndex === currentRaceWeekIndex
                       ? 'this'
-                      : currentWeekNumber != null && w.weekNumber === currentWeekNumber + 1
+                      : currentRaceWeekIndex != null && w.raceWeekIndex === currentRaceWeekIndex + 1
                         ? 'next'
                         : null
                   }

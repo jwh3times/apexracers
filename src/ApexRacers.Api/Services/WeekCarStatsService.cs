@@ -7,26 +7,26 @@ namespace ApexRacers.Api.Services;
 
 public class WeekCarStatsService(AppDbContext db)
 {
-    public async Task<List<WeekCarDto>> GetCarsForWeekAsync(int seriesId, int weekNumber, CancellationToken ct = default)
+    public async Task<List<WeekCarDto>> GetCarsForWeekAsync(int seriesId, int raceWeekIndex, CancellationToken ct = default)
     {
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
         if (seasonId is null) return [];
 
         var weekDbId = await db.Weeks
-            .InSeason(seasonId.Value, weekNumber)
+            .InSeason(seasonId.Value, raceWeekIndex)
             .Select(w => (Guid?)w.Id)
             .FirstOrDefaultAsync(ct);
 
         return weekDbId is null ? [] : await BuildCarStatsAsync(weekDbId.Value, ct);
     }
 
-    public async Task<WeekDetailDto?> GetWeekDetailAsync(int seriesId, int weekNumber, CancellationToken ct = default)
+    public async Task<WeekDetailDto?> GetWeekDetailAsync(int seriesId, int raceWeekIndex, CancellationToken ct = default)
     {
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
         if (seasonId is null) return null;
 
         var weekInfo = await db.Weeks
-            .InSeason(seasonId.Value, weekNumber)
+            .InSeason(seasonId.Value, raceWeekIndex)
             .Select(w => new
             {
                 WeekId           = w.Id,

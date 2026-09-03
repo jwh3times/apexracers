@@ -58,16 +58,19 @@ function sortCars(cars: WeekCar[], mode: SortMode): WeekCar[] {
 }
 
 export default function WeekDetailPage() {
-  const { seriesId, weekNumber } = useParams<{ seriesId: string; weekNumber: string }>();
+  const { seriesId, raceWeekIndex } = useParams<{
+    seriesId: string;
+    raceWeekIndex: string;
+  }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
   const [sort, setSort] = useState<SortMode>('best');
   const detailResource = useResource<WeekDetail>(
-    signal => api.getWeekDetail(Number(seriesId), Number(weekNumber), signal),
-    [seriesId, weekNumber],
+    signal => api.getWeekDetail(Number(seriesId), Number(raceWeekIndex), signal),
+    [seriesId, raceWeekIndex],
     {
-      enabled: !!seriesId && !!weekNumber,
+      enabled: !!seriesId && !!raceWeekIndex,
       fallbackMessage: 'Failed to load week data.',
     }
   );
@@ -76,10 +79,10 @@ export default function WeekDetailPage() {
   // column blank rather than surfacing an error on this otherwise-public page.
   const percentileResource = useResource(
     signal =>
-      api.getMyWeekPercentiles(Number(seriesId), Number(weekNumber), evidenceOptions, signal),
-    [seriesId, weekNumber, user, evidenceOptions],
+      api.getMyWeekPercentiles(Number(seriesId), Number(raceWeekIndex), evidenceOptions, signal),
+    [seriesId, raceWeekIndex, user, evidenceOptions],
     {
-      enabled: !!seriesId && !!weekNumber && !!user,
+      enabled: !!seriesId && !!raceWeekIndex && !!user,
       onNotLinked: { fallback: [] },
       onError: { fallback: [] },
     }
@@ -132,7 +135,7 @@ export default function WeekDetailPage() {
             Browse series
           </Link>
           <p className="text-eyebrow text-primary-container">
-            {weekNumber ? `WEEK ${raceWeekNumber(Number(weekNumber))}` : 'WEEK DETAIL'}
+            {raceWeekIndex ? `WEEK ${raceWeekNumber(Number(raceWeekIndex))}` : 'WEEK DETAIL'}
             {detail?.category ? ` · ${detail.category.toUpperCase()}` : ''}
           </p>
           <h1 className="text-page-title text-on-surface mt-2 mb-1">
@@ -160,17 +163,17 @@ export default function WeekDetailPage() {
               Standings
             </Link>
           )}
-          {seriesId && weekNumber && (
+          {seriesId && raceWeekIndex && (
             <Link
-              to={`/series/${seriesId}/weeks/${weekNumber}/strategy`}
+              to={`/series/${seriesId}/weeks/${raceWeekIndex}/strategy`}
               className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
             >
               Strategy
             </Link>
           )}
-          {weekNumber && (
+          {raceWeekIndex && (
             <Link
-              to={`/recommendations?seriesId=${seriesId}&weekNumber=${weekNumber}`}
+              to={`/recommendations?seriesId=${seriesId}&raceWeekIndex=${raceWeekIndex}`}
               className="text-small-fluid text-on-surface-variant hover:text-on-surface transition-colors"
             >
               See my car recommendations
@@ -322,7 +325,7 @@ export default function WeekDetailPage() {
                       className="cursor-pointer hover:bg-surface-container transition-colors"
                       onClick={() =>
                         navigate(
-                          `/series/${seriesId}/weeks/${weekNumber}/cars/${car.carId}/percentile`,
+                          `/series/${seriesId}/weeks/${raceWeekIndex}/cars/${car.carId}/percentile`,
                           { state: { carName: car.carName } }
                         )
                       }

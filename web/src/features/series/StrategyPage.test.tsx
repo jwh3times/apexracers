@@ -42,7 +42,7 @@ function makeData(overrides: Partial<WeekStrategy> = {}): WeekStrategy {
   return {
     seriesId: 444,
     seriesName: 'GT Sprint',
-    weekNumber: 3,
+    raceWeekIndex: 3,
     trackName: 'Thruxton',
     configName: 'Club',
     trackLengthMiles: 2.36,
@@ -113,7 +113,7 @@ function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/series/444/weeks/3/strategy']}>
       <Routes>
-        <Route path="/series/:seriesId/weeks/:weekNumber/strategy" element={<StrategyPage />} />
+        <Route path="/series/:seriesId/weeks/:raceWeekIndex/strategy" element={<StrategyPage />} />
       </Routes>
     </MemoryRouter>
   );

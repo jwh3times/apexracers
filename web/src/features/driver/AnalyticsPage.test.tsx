@@ -33,7 +33,7 @@ const MOCK_SERIES = [
     id: 1,
     name: 'VRS GT3 Sprint',
     seasonId: 2024,
-    currentWeekNumber: 5,
+    currentRaceWeekIndex: 5,
     category: null,
     trackName: null,
     trackConfigName: null,
@@ -44,7 +44,7 @@ const MOCK_SERIES = [
     id: 2,
     name: 'Porsche Cup',
     seasonId: 2024,
-    currentWeekNumber: 3,
+    currentRaceWeekIndex: 3,
     category: null,
     trackName: null,
     trackConfigName: null,
@@ -69,7 +69,7 @@ const MOCK_ANALYTICS = [
     totalWeeks: 48,
     percentileHistory: [
       {
-        weekNumber: 1,
+        raceWeekIndex: 1,
         trackName: 'Monza',
         configName: 'GP',
         percentileRank: 80.0,
@@ -78,7 +78,7 @@ const MOCK_ANALYTICS = [
         computedAt: '2026-01-01T00:00:00Z',
       },
       {
-        weekNumber: 2,
+        raceWeekIndex: 2,
         trackName: 'Spa',
         configName: 'Full',
         percentileRank: 92.0,
@@ -103,7 +103,7 @@ const MOCK_ANALYTICS = [
     totalWeeks: 20,
     percentileHistory: [
       {
-        weekNumber: 1,
+        raceWeekIndex: 1,
         trackName: 'Monza',
         configName: 'GP',
         percentileRank: 60.0,
@@ -112,7 +112,7 @@ const MOCK_ANALYTICS = [
         computedAt: '2026-01-01T00:00:00Z',
       },
       {
-        weekNumber: 2,
+        raceWeekIndex: 2,
         trackName: 'Spa',
         configName: 'Full',
         percentileRank: 70.0,
@@ -278,7 +278,7 @@ describe('AnalyticsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
 
-    // MOCK_SERIES[0] has id 1 and currentWeekNumber 5
+    // MOCK_SERIES[0] has id 1 and currentRaceWeekIndex 5
     await waitFor(() =>
       expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
         includeUploadedLaps: false,
@@ -292,7 +292,7 @@ describe('AnalyticsPage', () => {
   });
 
   it('hides the compute CTA when the series has no current week', async () => {
-    mockGetSeries.mockResolvedValue([{ ...MOCK_SERIES[0], currentWeekNumber: null }]);
+    mockGetSeries.mockResolvedValue([{ ...MOCK_SERIES[0], currentRaceWeekIndex: null }]);
     mockGetMyAnalytics.mockResolvedValue([]);
     renderPage();
 

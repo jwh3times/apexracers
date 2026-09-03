@@ -71,7 +71,7 @@ public sealed class SeasonIngest(AppDbContext db)
 
             var week = await db.Weeks.FirstOrDefaultAsync(
                 candidate => candidate.SeasonId == seasonId
-                    && candidate.WeekNumber == item.RaceWeekNum,
+                    && candidate.RaceWeekIndex == item.RaceWeekNum,
                 ct);
 
             if (week is null)
@@ -79,7 +79,7 @@ public sealed class SeasonIngest(AppDbContext db)
                 week = new Week
                 {
                     SeasonId = seasonId,
-                    WeekNumber = item.RaceWeekNum,
+                    RaceWeekIndex = item.RaceWeekNum,
                 };
                 db.Weeks.Add(week);
                 PopulateWeek(week, item, weatherJson);
@@ -102,7 +102,7 @@ public sealed class SeasonIngest(AppDbContext db)
                     bop = new SeasonCarBop
                     {
                         SeasonId = seasonId,
-                        WeekNumber = item.RaceWeekNum,
+                        RaceWeekIndex = item.RaceWeekNum,
                         CarId = restriction.CarId,
                     };
                     db.SeasonCarBops.Add(bop);

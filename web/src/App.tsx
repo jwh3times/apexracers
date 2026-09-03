@@ -104,10 +104,13 @@ function AppRoutes() {
           <Route path="/series" element={<SeriesPage />} />
           <Route path="/series/:seriesId/schedule" element={<SchedulePage />} />
           <Route path="/series/:seriesId/standings" element={<StandingsPage />} />
-          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
-          <Route path="/series/:seriesId/weeks/:weekNumber/strategy" element={<StrategyPage />} />
+          <Route path="/series/:seriesId/weeks/:raceWeekIndex" element={<WeekDetailPage />} />
           <Route
-            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+            path="/series/:seriesId/weeks/:raceWeekIndex/strategy"
+            element={<StrategyPage />}
+          />
+          <Route
+            path="/series/:seriesId/weeks/:raceWeekIndex/cars/:carId/percentile"
             element={<PercentileCarPage />}
           />
           <Route path="/races/:subsessionId" element={<RaceDetailPage />} />

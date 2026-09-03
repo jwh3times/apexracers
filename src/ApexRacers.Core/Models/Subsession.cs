@@ -9,7 +9,7 @@ public class Subsession
     /// </summary>
     public int? RaceSessionId { get; set; }         // session_id
     public int SeasonId { get; set; }
-    public int WeekNumber { get; set; }            // race_week_num (0-based)
+    public int RaceWeekIndex { get; set; }            // race_week_num (0-based)
     public Guid? WeekId { get; set; }              // FK → Week (nullable)
     public int TrackId { get; set; }               // FK → Track
     public bool OfficialSession { get; set; }

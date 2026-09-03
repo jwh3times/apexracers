@@ -21,16 +21,16 @@ public class StrategyService(
     SubjectDriverContext subjectDriverContext)
 {
     public async Task<WeekStrategyDto> GetStrategyAsync(
-        int seriesId, int weekNumber, Guid? userId, CancellationToken ct)
+        int seriesId, int raceWeekIndex, Guid? userId, CancellationToken ct)
     {
         var season = await db.CurrentSeasonOrThrowAsync(seriesId, ct);
         var seriesName = await db.SeriesNameAsync(seriesId, ct);
 
         var week = await db.Weeks
-            .Where(w => w.SeasonId == season.Id && w.WeekNumber == weekNumber)
+            .Where(w => w.SeasonId == season.Id && w.RaceWeekIndex == raceWeekIndex)
             .Select(w => new
             {
-                w.WeekNumber,
+                w.RaceWeekIndex,
                 w.TrackId,
                 TrackName = w.Track.Name,
                 w.Track.ConfigName,
@@ -42,19 +42,19 @@ public class StrategyService(
                 w.WeatherSummaryJson,
             })
             .FirstOrDefaultAsync(ct)
-            ?? throw new KeyNotFoundException($"No week {weekNumber} for series {seriesId}.");
+            ?? throw new KeyNotFoundException($"No week {raceWeekIndex} for series {seriesId}.");
 
         var weather = ScheduleService.MapWeather(week.WeatherSummaryJson);
 
         // BoP for this week and the previous one (for the week-over-week shift), in one query.
         var bopRows = await db.SeasonCarBops
             .Where(b => b.SeasonId == season.Id
-                     && (b.WeekNumber == weekNumber || b.WeekNumber == weekNumber - 1))
+                     && (b.RaceWeekIndex == raceWeekIndex || b.RaceWeekIndex == raceWeekIndex - 1))
             .ToListAsync(ct);
 
-        var currentBop = bopRows.Where(b => b.WeekNumber == weekNumber).ToList();
+        var currentBop = bopRows.Where(b => b.RaceWeekIndex == raceWeekIndex).ToList();
         var prevBop = bopRows
-            .Where(b => b.WeekNumber == weekNumber - 1)
+            .Where(b => b.RaceWeekIndex == raceWeekIndex - 1)
             .ToDictionary(b => b.CarId);
 
         var carIds = currentBop.Select(b => b.CarId).Distinct().ToList();
@@ -75,7 +75,7 @@ public class StrategyService(
         var recsByCar = personalized
             ? (await recommendations.GetRecommendationsAsync(
                 seriesId,
-                weekNumber,
+                raceWeekIndex,
                 subjectDriverCustId!.Value,
                 PersonalBestEvidence.OfficialRaceLapsOnly,
                 ct))
@@ -124,7 +124,7 @@ public class StrategyService(
         return new WeekStrategyDto(
             seriesId,
             seriesName,
-            week.WeekNumber,
+            week.RaceWeekIndex,
             week.TrackName,
             ConfigurationName.NullIfAbsent(week.ConfigName),
             week.LengthMiles,
