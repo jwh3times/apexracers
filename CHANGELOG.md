@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Repository portability checks now recognize a clean linked-worktree branch exactly at its
+  recorded remote base, and main synchronization safely fast-forwards that branch when another
+  worktree already holds `main`, while continuing to reject dirty, local-only, behind, and diverged
+  work.
 
 ## [4.0.1] - 2026-09-02
 
