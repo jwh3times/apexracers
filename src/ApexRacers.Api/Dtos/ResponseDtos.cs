@@ -119,7 +119,7 @@ public record TelemetryUploadResultDto(
     int ValidLaps,
     double? BestLapSeconds,
     string TrackName,
-    string ConfigName,
+    string? ConfigName,
     string CarName,
     long CustomerId,
     string DriverName);
@@ -134,7 +134,7 @@ public record UploadedBestDto(
     string CarName,
     int TrackId,
     string TrackName,
-    string ConfigName,
+    string? ConfigName,
     double BestLapSeconds,
     int LapCount,
     DateTimeOffset LastRecordedAt);
@@ -142,7 +142,7 @@ public record UploadedBestDto(
 public record WeeklyPercentileDto(
     int WeekNumber,
     string TrackName,
-    string ConfigName,
+    string? ConfigName,
     double PercentileRank,
     int TopSharePercent,
     int SampleSize,
@@ -316,7 +316,7 @@ public record CarBopDto(
 public record ScheduleWeekDto(
     int WeekNumber,
     string TrackName,
-    string ConfigName,
+    string? ConfigName,
     DateOnly StartDate,
     WeatherSummaryDto? Weather,
     IReadOnlyList<CarBopDto> Bop,
@@ -561,7 +561,7 @@ public record CarCatalogDetailDto(
 public record TrackCatalogItemDto(
     int TrackId,
     string Name,
-    string ConfigName,
+    string? ConfigName,
     string? Category,
     double? LengthMiles,
     int? CornersPerLap,
@@ -573,7 +573,7 @@ public record TrackCatalogItemDto(
 public record TrackCatalogDetailDto(
     int TrackId,
     string Name,
-    string ConfigName,
+    string? ConfigName,
     string? Category,
     double? LengthMiles,
     int? CornersPerLap,
@@ -635,7 +635,7 @@ public record WeekStrategyDto(
     string SeriesName,
     int WeekNumber,
     string TrackName,
-    string ConfigName,
+    string? ConfigName,
     double? TrackLengthMiles,
     int? CornersPerLap,
     int? NumberPitstalls,

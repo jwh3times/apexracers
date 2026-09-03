@@ -132,7 +132,7 @@ public class SeriesService(AppDbContext db)
                     current?.WeekNumber,
                     season.Category,
                     current?.TrackName,
-                    current?.TrackConfigName,
+                    ConfigurationName.NullIfAbsent(current?.TrackConfigName),
                     counts.Cars,
                     counts.Drivers);
             })

@@ -77,5 +77,5 @@ public static class DemoMemberData
     public static RecapSnapshot BuildRecap(long custId) =>
         new(
             new FavoriteCarDto(132, "BMW M4 GT3", null),
-            new FavoriteTrackDto(47, "Laguna Seca", "", null));
+            new FavoriteTrackDto(47, "Laguna Seca", null, null));
 }

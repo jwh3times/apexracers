@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using AydskoCar = Aydsko.iRacingData.Cars.CarInfo;
 using AydskoCarAsset = Aydsko.iRacingData.Cars.CarAssetDetail;
@@ -38,7 +39,7 @@ public static class CatalogIngest
     public static void PopulateTrack(Track track, AydskoTrack info, AydskoTrackAsset? asset)
     {
         track.Name = info.TrackName;
-        track.ConfigName = info.ConfigName ?? string.Empty;
+        track.ConfigName = ConfigurationName.Normalize(info.ConfigName);
         track.CategoryId = info.CategoryId;
         track.Category = info.Category;
         track.TrackConfigLength = (double)info.TrackConfigLength;

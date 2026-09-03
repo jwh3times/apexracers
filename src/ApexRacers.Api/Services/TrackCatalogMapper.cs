@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Services;
@@ -13,7 +14,7 @@ public static class TrackCatalogMapper
         new(
             track.Id,
             track.Name,
-            track.ConfigName,
+            ConfigurationName.NullIfAbsent(track.ConfigName),
             track.Category,
             track.TrackConfigLength,
             track.CornersPerLap,
@@ -27,7 +28,7 @@ public static class TrackCatalogMapper
         new(
             track.Id,
             track.Name,
-            track.ConfigName,
+            ConfigurationName.NullIfAbsent(track.ConfigName),
             track.Category,
             track.TrackConfigLength,
             track.CornersPerLap,

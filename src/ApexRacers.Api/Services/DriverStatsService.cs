@@ -1,5 +1,6 @@
 using System.Globalization;
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using Aydsko.iRacingData;
 using Aydsko.iRacingData.Member;
 
@@ -82,10 +83,20 @@ public class DriverStatsService(CachedIRacingClient cached)
                     ? new FavoriteCarDto(fc.CarId, fc.CarName, fc.CarImageUrl?.ToString())
                     : null;
                 var favTrack = stats?.FavoriteTrack is { } ft
-                    ? new FavoriteTrackDto(ft.TrackId, ft.TrackName, ft.ConfigName, ft.TrackLogoUrl?.ToString())
+                    ? new FavoriteTrackDto(
+                        ft.TrackId,
+                        ft.TrackName,
+                        ConfigurationName.NullIfAbsent(ft.ConfigName),
+                        ft.TrackLogoUrl?.ToString())
                     : null;
                 return new RecapSnapshot(favCar, favTrack);
             }, ct);
+
+        // Normalize again after the cache boundary so a short-lived entry written by an older
+        // build cannot leak its upstream N/A spelling while it waits for the six-hour TTL.
+        var favoriteTrack = recap.FavoriteTrack is { } cachedTrack
+            ? cachedTrack with { ConfigName = ConfigurationName.NullIfAbsent(cachedTrack.ConfigName) }
+            : null;
 
         return new DriverProfileDto(
             subjectDriverCustId,
@@ -97,7 +108,7 @@ public class DriverStatsService(CachedIRacingClient cached)
             career,
             thisYear,
             recap.FavoriteCar,
-            recap.FavoriteTrack);
+            favoriteTrack);
     }
 
     /// <summary>

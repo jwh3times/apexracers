@@ -8,6 +8,21 @@ namespace ApexRacers.Tests.Ingestion;
 public class SubsessionMapperTests
 {
     [Fact]
+    public void ToTrackEntity_ResultsNotApplicableConfiguration_StoresAbsence()
+    {
+        var source = new SubSessionResult
+        {
+            Track = new Track { TrackId = 18, TrackName = "Richmond Raceway", ConfigName = "N/A" },
+        };
+
+        var entity = SubsessionMapper.ToTrackEntity(source);
+
+        Assert.Equal(18, entity.Id);
+        Assert.Equal("Richmond Raceway", entity.Name);
+        Assert.Equal(string.Empty, entity.ConfigName);
+    }
+
+    [Fact]
     public void ToEntity_MapsEveryPersistedSubsessionField()
     {
         var weekId = Guid.NewGuid();

@@ -231,7 +231,7 @@ public class DriverStatsServiceTests
             },
         };
 
-    private static MemberRecap RecapWithFavorites() => new()
+    private static MemberRecap RecapWithFavorites(string configName = "Industriefahrten") => new()
     {
         CustomerId = (int)CustId,
         Year = 2026,
@@ -247,7 +247,7 @@ public class DriverStatsServiceTests
             {
                 TrackId = 249,
                 TrackName = "Nürburgring Nordschleife",
-                ConfigName = "Industriefahrten",
+                ConfigName = configName,
                 TrackLogoUrl = new Uri("https://images-static.iracing.com/img/logos/tracks/nurburgring.png"),
             },
         },
@@ -324,6 +324,23 @@ public class DriverStatsServiceTests
         await client.Received(1).GetMemberSummaryAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
         await client.Received(1).GetMemberRecapAsync(
             Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetDriverProfileAsync_NotApplicableFavoriteTrackConfiguration_IsNullBeforeAndAfterCache()
+    {
+        var (service, _, db) = BuildProfile(
+            ProfileWithInfo(),
+            CareerWith((5, "Sports Car", 94, 4)),
+            SummaryWith(75, 1),
+            RecapWithFavorites("N/A"));
+        await using var _db = db;
+
+        var first = await service.GetDriverProfileAsync(CustId, Ct);
+        var cached = await service.GetDriverProfileAsync(CustId, Ct);
+
+        Assert.Null(first.FavoriteTrack!.ConfigName);
+        Assert.Null(cached.FavoriteTrack!.ConfigName);
     }
 
     // ── GetComparisonSideAsync ────────────────────────────────────────────────

@@ -58,14 +58,14 @@ describe('MyLapsPage', () => {
     await waitFor(() => expect(screen.getByText(/not found/i)).toBeInTheDocument());
   });
 
-  it('formats track name without config suffix when configName is empty', async () => {
+  it('formats track name without config suffix when configName is null', async () => {
     mockGetMyLaps.mockResolvedValue([
       {
         carId: 2,
         carName: 'Mazda MX-5',
         trackId: 149,
         trackName: 'Lime Rock Park',
-        configName: '',
+        configName: null,
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',
@@ -85,7 +85,7 @@ describe('MyLapsPage', () => {
         carName: 'Slow Car',
         trackId: 201,
         trackName: 'Track A',
-        configName: '',
+        configName: null,
         bestLapSeconds: 150.0,
         lapCount: 3,
         lastRecordedAt: '2026-05-01T10:00:00Z',
@@ -95,7 +95,7 @@ describe('MyLapsPage', () => {
         carName: 'Fast Car',
         trackId: 202,
         trackName: 'Track B',
-        configName: '',
+        configName: null,
         bestLapSeconds: 88.5,
         lapCount: 7,
         lastRecordedAt: '2026-05-02T10:00:00Z',
@@ -105,7 +105,7 @@ describe('MyLapsPage', () => {
         carName: 'Medium Car',
         trackId: 203,
         trackName: 'Track C',
-        configName: '',
+        configName: null,
         bestLapSeconds: 120.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-03T10:00:00Z',
@@ -139,7 +139,7 @@ describe('MyLapsPage', () => {
         carName: 'Mazda MX-5',
         trackId: 149,
         trackName: 'Lime Rock Park',
-        configName: '',
+        configName: null,
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',
@@ -174,7 +174,7 @@ describe('MyLapsPage', () => {
         carName: 'Mazda MX-5',
         trackId: 149,
         trackName: 'Lime Rock Park',
-        configName: '',
+        configName: null,
         bestLapSeconds: 60.0,
         lapCount: 5,
         lastRecordedAt: '2026-05-10T08:00:00Z',

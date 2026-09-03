@@ -1,3 +1,4 @@
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
@@ -121,7 +122,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
             {
                 Id = trackId,
                 Name = spec.Name,
-                ConfigName = spec.Config,
+                ConfigName = ConfigurationName.Normalize(spec.Config),
                 CategoryId = 2,
                 Category = "road",
                 TrackConfigLength = spec.Length,

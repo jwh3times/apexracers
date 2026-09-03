@@ -30,7 +30,8 @@ public class UploadedBestQueryTests
             // 12 and 13 are labelled identically on purpose: iRacing happens to label every
             // configuration apart today, and the grouping must not depend on that holding.
             new Track { Id = 12, Name = "Twin Ring", ConfigName = "Full" },
-            new Track { Id = 13, Name = "Twin Ring", ConfigName = "Full" });
+            new Track { Id = 13, Name = "Twin Ring", ConfigName = "Full" },
+            new Track { Id = 14, Name = "Richmond Raceway", ConfigName = "" });
         db.UploadedLaps.AddRange(laps);
         await db.SaveChangesAsync(Ct);
         return db;
@@ -97,6 +98,17 @@ public class UploadedBestQueryTests
         Assert.Equal(11, row.TrackId);
         Assert.Equal("Spa", row.TrackName);
         Assert.Equal("Endurance", row.ConfigName);
+    }
+
+    [Fact]
+    public async Task AbsentConfiguration_ReportsNull()
+    {
+        await using var db = await SeedAsync(Lap(1, 14, 100.0));
+
+        var row = Assert.Single(await UploadedBestQuery.RunAsync(
+            db.UploadedLaps.Where(l => l.UserId == UserId), UploadedBestOrder.FastestFirst, Ct));
+
+        Assert.Null(row.ConfigName);
     }
 
     [Fact]

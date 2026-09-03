@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 
 namespace ApexRacers.Api.Services;
 
@@ -43,7 +44,7 @@ public static class SharedRaceAnalysis
             .Select(g => new SharedTrackPaceDto(
                 g.Key,
                 g.First().TrackName,
-                string.IsNullOrWhiteSpace(g.First().ConfigName) ? null : g.First().ConfigName,
+                ConfigurationName.NullIfAbsent(g.First().ConfigName),
                 BestLap(g.Select(x => x.YourBestLapSeconds)),
                 BestLap(g.Select(x => x.RivalBestLapSeconds))))
             .OrderBy(p => p.TrackName, StringComparer.Ordinal)

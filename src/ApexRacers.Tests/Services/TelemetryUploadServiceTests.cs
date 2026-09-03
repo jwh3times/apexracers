@@ -141,6 +141,19 @@ public class TelemetryUploadServiceTests
     }
 
     [Fact]
+    public async Task ProcessAsync_AbsentConfiguration_StoresAndReturnsEmptyInternalValue()
+    {
+        await using var db = DbContextFactory.Create();
+        var svc = new TelemetryUploadService(db);
+
+        using var stream = FakeIbtBuilder.Build(laps: 1, configName: "N/A");
+        var result = await svc.ProcessAsync(stream, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, result.ConfigName);
+        Assert.Equal(string.Empty, db.Tracks.Single().ConfigName);
+    }
+
+    [Fact]
     public async Task ProcessAsync_AllInvalidLaps_ReturnsZeroValidAndNullBest()
     {
         await using var db = DbContextFactory.Create();

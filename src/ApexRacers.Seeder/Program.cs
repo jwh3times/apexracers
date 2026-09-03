@@ -137,7 +137,7 @@ var newTracks = trackCatalog.Values
         {
             Id                = t.TrackId,
             Name              = t.TrackName,
-            ConfigName        = t.ConfigName ?? "",
+            ConfigName        = ConfigurationName.Normalize(t.ConfigName),
             CategoryId        = t.CategoryId,
             Category          = t.Category,
             TrackConfigLength = t.TrackConfigLength,

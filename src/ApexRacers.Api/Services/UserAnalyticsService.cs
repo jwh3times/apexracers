@@ -158,7 +158,7 @@ public class UserAnalyticsService(AppDbContext db)
 
                 var history = ordered
                     .Select(r => new WeeklyPercentileDto(
-                        r.WeekNumber, r.TrackName, r.ConfigName,
+                        r.WeekNumber, r.TrackName, ConfigurationName.NullIfAbsent(r.ConfigName),
                         r.PercentileRank, r.TopSharePercent, r.SampleSize, r.ComputedAt))
                     .ToList();
 

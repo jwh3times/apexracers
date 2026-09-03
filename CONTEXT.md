@@ -57,7 +57,7 @@ The display name a Track carries. It is shared with every other Track at the sam
 _Avoid_: Track, Venue name, Circuit name
 
 **Configuration Name**:
-The label distinguishing a Track from the others at its Venue. It is frequently absent, which costs no identity, since a Track is addressed by its identifier rather than by its labels.
+The label distinguishing a Track from the others at its Venue. It is frequently absent, which costs no identity, since a Track is addressed by its identifier rather than by its labels; an omitted, blank, or “N/A” label all mean no Configuration Name.
 _Avoid_: Config, Layout name, Variant
 
 **Retired Track**:

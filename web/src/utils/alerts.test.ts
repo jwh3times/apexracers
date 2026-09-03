@@ -33,7 +33,7 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
     percentileHistory: history.map((percentileRank, i) => ({
       weekNumber: i + 1,
       trackName: 'Spa',
-      configName: '',
+      configName: null,
       percentileRank,
       topSharePercent: 100 - Math.round(percentileRank),
       sampleSize: 100,

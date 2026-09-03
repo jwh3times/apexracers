@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [5.0.0] - 2026-09-02
+
+### Changed
+
+- Configuration Name fields now serialize as `null` when absent instead of the internal empty-string
+  representation, so API clients must treat those fields as nullable.
+
+### Fixed
+
+- Catalog, schedule, results, telemetry, and recap ingestion now normalizes omitted, blank, and `N/A`
+  Configuration Names to one stored value; a data migration cleans previously stored variants.
+
 ## [4.0.2] - 2026-09-02
 
 ### Fixed
@@ -847,7 +859,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v4.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/jwh3times/apexracers/compare/v4.0.2...v5.0.0
 [4.0.2]: https://github.com/jwh3times/apexracers/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/jwh3times/apexracers/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/jwh3times/apexracers/compare/v3.0.0...v4.0.0

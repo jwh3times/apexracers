@@ -1,4 +1,5 @@
 using System.Text;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Telemetry;
@@ -178,7 +179,7 @@ public static class IbtParser
         {
             IracingTrackId     = info.TrackId,
             TrackName          = info.TrackName,
-            ConfigName         = info.ConfigName,
+            ConfigName         = ConfigurationName.Normalize(info.ConfigName),
             IracingCarId       = info.CarId,
             CarName            = info.CarName,
             CarNameAbbreviated = info.CarNameShort.Length > 0 ? info.CarNameShort : info.CarName,

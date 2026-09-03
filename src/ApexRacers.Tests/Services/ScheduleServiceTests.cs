@@ -121,6 +121,7 @@ public class ScheduleServiceTests
         Assert.True(w1.HasUploadedLapAtTrack);
 
         var w2 = dto.Weeks[1];
+        Assert.Null(w2.ConfigName);
         Assert.Null(w2.Weather);
         Assert.Empty(w2.Bop);
         Assert.False(w2.HasUploadedLapAtTrack);

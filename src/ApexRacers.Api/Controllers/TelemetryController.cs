@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,7 +50,7 @@ public class TelemetryController(
                 result.ValidLaps,
                 result.BestLapSeconds,
                 result.TrackName,
-                result.ConfigName,
+                ConfigurationName.NullIfAbsent(result.ConfigName),
                 result.CarName,
                 result.CustomerId,
                 result.DriverName));

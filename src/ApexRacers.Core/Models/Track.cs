@@ -4,7 +4,7 @@ public class Track
 {
     public int Id { get; set; }          // iRacing track_id
     public required string Name { get; set; }        // track_name
-    public string ConfigName { get; set; } = "";     // config_name (empty string when no config)
+    public string ConfigName { get; set; } = "";     // canonical storage value is empty when absent
     public int? CategoryId { get; set; }             // category_id
     public string? Category { get; set; }            // e.g. "road", "oval"
     public double? TrackConfigLength { get; set; }   // miles

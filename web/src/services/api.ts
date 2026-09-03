@@ -34,7 +34,7 @@ export interface TelemetryUploadResult {
   validLaps: number;
   bestLapSeconds: number | null;
   trackName: string;
-  configName: string;
+  configName: string | null;
   carName: string;
   customerId: number;
   driverName: string;
@@ -43,7 +43,7 @@ export interface TelemetryUploadResult {
 export interface WeeklyPercentile {
   weekNumber: number;
   trackName: string;
-  configName: string;
+  configName: string | null;
   percentileRank: number;
   topSharePercent: number;
   sampleSize: number;
@@ -88,7 +88,7 @@ export interface UploadedBest {
   carName: string;
   trackId: number; // the track identity; trackName is the venue's and is shared by every layout
   trackName: string;
-  configName: string;
+  configName: string | null;
   bestLapSeconds: number;
   lapCount: number;
   lastRecordedAt: string; // ISO 8601
@@ -395,7 +395,7 @@ export interface CarBop {
 export interface ScheduleWeek {
   weekNumber: number;
   trackName: string;
-  configName: string;
+  configName: string | null;
   startDate: string; // ISO date (yyyy-MM-dd)
   weather: WeatherSummary | null;
   bop: CarBop[];
@@ -444,7 +444,7 @@ export interface WeekStrategy {
   seriesName: string;
   weekNumber: number;
   trackName: string;
-  configName: string;
+  configName: string | null;
   trackLengthMiles: number | null;
   cornersPerLap: number | null;
   numberPitstalls: number | null;
@@ -653,7 +653,7 @@ export interface CarCatalogDetail extends CarCatalogItem {
 export interface TrackCatalogItem {
   trackId: number;
   name: string;
-  configName: string;
+  configName: string | null;
   category: string | null;
   lengthMiles: number | null;
   cornersPerLap: number | null;

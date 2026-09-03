@@ -156,7 +156,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
             seriesId, weekNumber, carId, customerId,
             percentileRank, fieldPosition, topSharePercent, total,
             FieldPercentile.IsPresentable(total), computedAt,
-            week.SeriesName, week.TrackName, week.TrackConfigName,
+            week.SeriesName, week.TrackName, ConfigurationName.NullIfAbsent(week.TrackConfigName),
             driverBest.LapSeconds, driverBest.Evidence, fieldBest, fieldMedian,
             distribution, wrLap, wrGap, excluded);
     }
