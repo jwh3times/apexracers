@@ -670,5 +670,11 @@ public record AchievementsDto(
 /// <summary>
 /// The caller's own percentile for one car in a week (for the Week Detail "Your pct" column).
 /// Only cars the caller actually has a lap for this week are returned.
+/// <c>PersonalBestLapEvidence</c> names whether that ranked Personal Best came from a Race Lap
+/// or an Uploaded Lap.
 /// </summary>
-public record WeekCarPercentileDto(int CarId, double PercentileRank, int TopSharePercent);
+public record WeekCarPercentileDto(
+    int CarId,
+    double PercentileRank,
+    int TopSharePercent,
+    LapEvidence PersonalBestLapEvidence);

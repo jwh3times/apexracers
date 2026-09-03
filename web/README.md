@@ -140,6 +140,11 @@ displayed lower-is-better `TOP X%` value through `toTopPercent`. Pass the raw ra
 `fieldSizeMessage` for the undersized-Field explanation. The threshold itself belongs to
 `ApexRacers.Core.FieldPercentile`, not the frontend.
 
+Week Detail's compact "Your pct" result also carries `personalBestLapEvidence`. Keep the evidence
+attached to the same row as its percentile, and render `lapEvidenceLabel` beneath the chip with
+`lapEvidenceDescription` as its explanatory title; a summary can omit the lap time without hiding
+which Personal Best evidence produced its reading.
+
 Recommendation responses keep the current Race Week's `percentileRank` separate from the historical
 `expectedPercentile` used for pace projection. A projected-only car has no place in the current Field,
 so its `percentileRank`, `topSharePercent`, and `fieldSize` are null; label its Expected Percentile

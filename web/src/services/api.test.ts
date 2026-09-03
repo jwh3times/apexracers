@@ -171,7 +171,14 @@ describe('api', () => {
 
   describe('getMyWeekPercentiles', () => {
     it('calls GET /api/series/:id/weeks/:n/my-percentiles', async () => {
-      const data = [{ carId: 1, percentileRank: 92 }];
+      const data = [
+        {
+          carId: 1,
+          percentileRank: 92,
+          topSharePercent: 8,
+          personalBestLapEvidence: 'RaceLap' as const,
+        },
+      ];
       mockFetchOk(data);
       const result = await api.getMyWeekPercentiles(7, 12);
       expect(fetch).toHaveBeenCalledWith(

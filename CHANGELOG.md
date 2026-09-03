@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [6.1.0] - 2026-09-03
+
+### Changed
+
+- Week Detail's "Your pct" readings now name whether the Personal Best behind each percentile came
+  from a Race Lap or an Uploaded Lap, matching the evidence provenance shown on other percentile
+  surfaces.
+
 ## [6.0.0] - 2026-09-03
 
 ### Changed
@@ -874,7 +882,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.0...HEAD
+[6.1.0]: https://github.com/jwh3times/apexracers/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/jwh3times/apexracers/compare/v5.0.1...v6.0.0
 [5.0.1]: https://github.com/jwh3times/apexracers/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/jwh3times/apexracers/compare/v4.0.2...v5.0.0

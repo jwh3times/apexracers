@@ -96,6 +96,11 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         new CarRecommendationService(db).GetRecommendationsAsync(
             seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
 
+    private static Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
+        AppDbContext db, PersonalBestEvidence evidence) =>
+        new CarRecommendationService(db).GetMyPercentilesAsync(
+            seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
+
     // ── The Race Week bound ───────────────────────────────────────────────────
 
     [Fact]
@@ -184,6 +189,27 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         // The driver did race this car this week, so the number alone cannot tell them the ranked
         // lap was an uploaded one. The evidence is what makes that legible.
         Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
+    }
+
+    [Fact]
+    public async Task GetMyPercentilesAsync_CarriesUploadedLapEvidence()
+    {
+        await using var db = await postgres.CreateDbContextAsync(Ct);
+        var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 75);
+        AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 85);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        AddUploadedLap(db, userId, carId: car1.Id, lapSeconds: 65.0, recordedAt: InsideWeek);
+        await db.SaveChangesAsync(Ct);
+
+        var dto = Assert.Single(await GetMyPercentilesAsync(
+            db, PersonalBestEvidence.FromRequest(true, null)));
+
+        Assert.Equal(LapEvidence.UploadedLap, dto.PersonalBestLapEvidence);
     }
 
     [Fact]

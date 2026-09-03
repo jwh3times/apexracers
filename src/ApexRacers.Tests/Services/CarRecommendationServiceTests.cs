@@ -323,6 +323,7 @@ public class CarRecommendationServiceTests
         // Field of 5: (4 slower + 0.5 tied) / 5.
         Assert.Equal(90, entry.PercentileRank, tolerance: 1e-10);
         Assert.Equal(20, entry.TopSharePercent); // 1st of 5
+        Assert.Equal(LapEvidence.RaceLap, entry.PersonalBestLapEvidence);
     }
 
     [Fact]

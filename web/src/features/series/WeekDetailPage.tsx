@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api, type WeekDetail, type WeekCar } from '../../services/api';
+import { api, type WeekDetail, type WeekCar, type WeekCarPercentile } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,7 @@ import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
+import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
 
 type SortMode = 'best' | 'consistency' | 'volume';
 
@@ -89,8 +90,8 @@ export default function WeekDetailPage() {
   );
   const myPercentiles =
     percentileResource.status === 'ok'
-      ? new Map(percentileResource.data.map(r => [r.carId, r.topSharePercent]))
-      : new Map<number, number>();
+      ? new Map(percentileResource.data.map(r => [r.carId, r]))
+      : new Map<number, WeekCarPercentile>();
 
   if (detailResource.status !== 'ok') {
     return (
@@ -319,6 +320,7 @@ export default function WeekDetailPage() {
               <tbody>
                 {sorted.map((car, i) => {
                   const isFirst = i === 0;
+                  const personalPercentile = myPercentiles.get(car.carId);
                   return (
                     <tr
                       key={car.carId}
@@ -378,11 +380,21 @@ export default function WeekDetailPage() {
                       {/* Your pct (signed-in drivers) */}
                       {showMyPct && (
                         <td className="td-p border-b border-line-2 text-right">
-                          {myPercentiles.has(car.carId) ? (
-                            <PercentileBadge
-                              topSharePercent={myPercentiles.get(car.carId)!}
-                              size="chip"
-                            />
+                          {personalPercentile ? (
+                            <div className="inline-flex flex-col items-end gap-1">
+                              <PercentileBadge
+                                topSharePercent={personalPercentile.topSharePercent}
+                                size="chip"
+                              />
+                              <span
+                                className="text-small-fluid leading-none text-on-surface-variant"
+                                title={lapEvidenceDescription(
+                                  personalPercentile.personalBestLapEvidence
+                                )}
+                              >
+                                {lapEvidenceLabel(personalPercentile.personalBestLapEvidence)}
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-on-surface-variant/40">—</span>
                           )}
