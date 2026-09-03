@@ -50,12 +50,12 @@ function makeCar(overrides: Partial<WeekDetail['cars'][number]> = {}): WeekDetai
   };
 }
 
-function renderPage(seriesId = '1', weekNumber = '10') {
+function renderPage(seriesId = '1', raceWeekIndex = '10') {
   return render(
     <PaceSourceProvider>
-      <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekNumber}`]}>
+      <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${raceWeekIndex}`]}>
         <Routes>
-          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+          <Route path="/series/:seriesId/weeks/:raceWeekIndex" element={<WeekDetailPage />} />
         </Routes>
       </MemoryRouter>
     </PaceSourceProvider>
@@ -126,7 +126,7 @@ describe('WeekDetailPage', () => {
     renderPage('1', '10');
     await waitFor(() => {
       const link = screen.getByRole('link', { name: /see my car recommendations/i });
-      expect(link).toHaveAttribute('href', '/recommendations?seriesId=1&weekNumber=10');
+      expect(link).toHaveAttribute('href', '/recommendations?seriesId=1&raceWeekIndex=10');
     });
   });
 
@@ -189,9 +189,9 @@ describe('WeekDetailPage', () => {
       <PaceSourceProvider>
         <MemoryRouter initialEntries={['/series/1/weeks/10']}>
           <Routes>
-            <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+            <Route path="/series/:seriesId/weeks/:raceWeekIndex" element={<WeekDetailPage />} />
             <Route
-              path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+              path="/series/:seriesId/weeks/:raceWeekIndex/cars/:carId/percentile"
               element={<div>Percentile Detail</div>}
             />
           </Routes>

@@ -49,13 +49,15 @@ public static class DemoSeedVerifier
         {
             var classIds = await db.SeasonCarClasses
                 .Where(c => c.SeasonId == seasonId).Select(c => c.CarClassId).ToListAsync(ct);
-            var weekNums = await db.Weeks
-                .Where(w => w.SeasonId == seasonId).Select(w => w.WeekNumber).ToListAsync(ct);
+            var raceWeekIndices = await db.Weeks
+                .Where(w => w.SeasonId == seasonId).Select(w => w.RaceWeekIndex).ToListAsync(ct);
             foreach (var classId in classIds)
             {
                 expectedStandings.Add(IRacingCacheKeys.Standings(seasonId, classId).Key);
                 expectedStandings.Add(IRacingCacheKeys.TimeTrialStandings(seasonId, classId).Key);
-                expectedStandings.AddRange(weekNums.Select(w => IRacingCacheKeys.QualifyResults(seasonId, classId, w).Key));
+                expectedStandings.AddRange(raceWeekIndices.Select(
+                    raceWeekIndex => IRacingCacheKeys.QualifyResults(
+                        seasonId, classId, raceWeekIndex).Key));
             }
         }
         AddSetCheck(checks, "standings", expectedStandings, keySet);

@@ -15,11 +15,11 @@ public class CarRecommendationServiceTests
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
         var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
         var car1 = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
         var car2 = new Car { Id = 2, Name = "Ferrari 296 GT3", NameAbbreviated = "F296" };
         var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
-        var subsession = new Subsession { Id = -1, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-2) };
+        var subsession = new Subsession { Id = -1, SeasonId = 1, RaceWeekIndex = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-2) };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Tracks.Add(track);
@@ -65,7 +65,7 @@ public class CarRecommendationServiceTests
     {
         await using var db = DbContextFactory.Create();
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, weekNumber: 99, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 99, raceWeekIndex: 99, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -79,7 +79,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 999, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -98,7 +98,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 2, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var subsession2 = new Subsession { Id = -2, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-1) };
+        var subsession2 = new Subsession { Id = -2, SeasonId = 1, RaceWeekIndex = 1, WeekId = week.Id, TrackId = 99, StartTime = DateTimeOffset.UtcNow.AddHours(-1) };
         db.Subsessions.Add(subsession2);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -106,7 +106,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession2, car2, carClass, custId: 3, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].RecommendationRank);
@@ -135,10 +135,10 @@ public class CarRecommendationServiceTests
 
         // Two prior weeks in this Series: ranks 90 and 50, so Expected Percentile is 70.
         var prevTrack = new Track { Id = 88, Name = "Mugello", ConfigName = "GP" };
-        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = week.Season };
-        var prevWeek2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 88, Track = prevTrack, Season = week.Season };
-        var prevSubsession = new Subsession { Id = -2, SeasonId = 1, WeekNumber = 2, WeekId = prevWeek.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-14) };
-        var prevSubsession2 = new Subsession { Id = -3, SeasonId = 1, WeekNumber = 3, WeekId = prevWeek2.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-7) };
+        var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = week.Season };
+        var prevWeek2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 88, Track = prevTrack, Season = week.Season };
+        var prevSubsession = new Subsession { Id = -2, SeasonId = 1, RaceWeekIndex = 2, WeekId = prevWeek.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-14) };
+        var prevSubsession2 = new Subsession { Id = -3, SeasonId = 1, RaceWeekIndex = 3, WeekId = prevWeek2.Id, TrackId = 88, StartTime = DateTimeOffset.UtcNow.AddDays(-7) };
         db.Tracks.Add(prevTrack);
         db.Weeks.AddRange(prevWeek, prevWeek2);
         db.Subsessions.AddRange(prevSubsession, prevSubsession2);
@@ -154,7 +154,7 @@ public class CarRecommendationServiceTests
         AddResult(db, prevSubsession2, car1, carClass, custId: 204, lapSeconds: 85);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Null(dto.BestLapSeconds);
@@ -190,7 +190,7 @@ public class CarRecommendationServiceTests
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, weekNumber: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
+        var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
         Assert.Equal(1, dto.CarId);
@@ -226,7 +226,7 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
+            seriesId: 1, raceWeekIndex: 1, customerId: 1,
             evidence: OfficialEvidence,
             ct: TestContext.Current.CancellationToken);
 
@@ -258,7 +258,7 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
+            seriesId: 1, raceWeekIndex: 1, customerId: 1,
             evidence: OfficialEvidence,
             ct: TestContext.Current.CancellationToken);
 
@@ -314,7 +314,7 @@ public class CarRecommendationServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await CreateService(db).GetMyPercentilesAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1,
+            seriesId: 1, raceWeekIndex: 1, customerId: 1,
             evidence: PersonalBestEvidence.OfficialRaceLapsOnly,
             ct: TestContext.Current.CancellationToken);
 

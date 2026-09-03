@@ -21,7 +21,7 @@ export interface Series {
   id: number;
   name: string;
   seasonId: number;
-  currentWeekNumber: number | null;
+  currentRaceWeekIndex: number | null;
   category: string | null;
   trackName: string | null;
   trackConfigName: string | null;
@@ -41,7 +41,7 @@ export interface TelemetryUploadResult {
 }
 
 export interface WeeklyPercentile {
-  weekNumber: number;
+  raceWeekIndex: number;
   trackName: string;
   configName: string | null;
   percentileRank: number;
@@ -127,7 +127,7 @@ export interface DistributionBin {
 
 export interface PercentileResult {
   seriesId: number;
-  weekNumber: number;
+  raceWeekIndex: number;
   carId: number;
   customerId: number;
   percentileRank: number;
@@ -393,7 +393,7 @@ export interface CarBop {
 }
 
 export interface ScheduleWeek {
-  weekNumber: number;
+  raceWeekIndex: number;
   trackName: string;
   configName: string | null;
   startDate: string; // ISO date (yyyy-MM-dd)
@@ -442,7 +442,7 @@ export interface CarStrategy {
 export interface WeekStrategy {
   seriesId: number;
   seriesName: string;
-  weekNumber: number;
+  raceWeekIndex: number;
   trackName: string;
   configName: string | null;
   trackLengthMiles: number | null;
@@ -475,7 +475,7 @@ export interface RaceGuideEntry {
   startTime: string; // ISO 8601
   endTime: string; // ISO 8601
   entryCount: number;
-  raceWeekNum: number;
+  raceWeekIndex: number;
 }
 
 export interface CarClassOption {
@@ -537,7 +537,7 @@ export interface SeasonQualifyResult {
   division: number;
   iRating: number | null;
   bestQualLapSeconds: number;
-  week: number;
+  raceWeekIndex: number;
 }
 
 export interface SeasonQualifyResults {
@@ -546,8 +546,8 @@ export interface SeasonQualifyResults {
   carClassId: number;
   carClassName: string;
   carClasses: CarClassOption[];
-  raceWeekNum: number;
-  availableWeeks: number[];
+  raceWeekIndex: number;
+  availableRaceWeekIndices: number[];
   results: SeasonQualifyResult[];
 }
 
@@ -706,35 +706,39 @@ export const api = {
     return request('/api/series', { signal });
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekNumber — series + track metadata and full car breakdown */
-  getWeekDetail(seriesId: number, weekNumber: number, signal?: AbortSignal): Promise<WeekDetail> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}`, { signal });
+  /** GET /api/series/:seriesId/weeks/:raceWeekIndex — series + track metadata and full car breakdown */
+  getWeekDetail(
+    seriesId: number,
+    raceWeekIndex: number,
+    signal?: AbortSignal
+  ): Promise<WeekDetail> {
+    return request(`/api/series/${seriesId}/weeks/${raceWeekIndex}`, { signal });
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekNumber/cars — cars with aggregate lap stats */
-  getCarsForWeek(seriesId: number, weekNumber: number): Promise<WeekCar[]> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars`);
+  /** GET /api/series/:seriesId/weeks/:raceWeekIndex/cars — cars with aggregate lap stats */
+  getCarsForWeek(seriesId: number, raceWeekIndex: number): Promise<WeekCar[]> {
+    return request(`/api/series/${seriesId}/weeks/${raceWeekIndex}/cars`);
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekNumber/my-percentiles — the caller's per-car percentile
+  /** GET /api/series/:seriesId/weeks/:raceWeekIndex/my-percentiles — the caller's per-car percentile
    * for the week (only cars they've raced). Authorize; throws IRacingNotLinkedError when unlinked. */
   getMyWeekPercentiles(
     seriesId: number,
-    weekNumber: number,
+    raceWeekIndex: number,
     options?: PersonalBestEvidenceOptions,
     signal?: AbortSignal
   ): Promise<WeekCarPercentile[]> {
     const qs = appendPersonalBestEvidence(new URLSearchParams(), options).toString();
     return request(
-      `/api/series/${seriesId}/weeks/${weekNumber}/my-percentiles${qs ? `?${qs}` : ''}`,
+      `/api/series/${seriesId}/weeks/${raceWeekIndex}/my-percentiles${qs ? `?${qs}` : ''}`,
       { signal }
     );
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile?customerId= */
+  /** GET /api/series/:seriesId/weeks/:raceWeekIndex/cars/:carId/percentile?customerId= */
   getPercentile(
     seriesId: number,
-    weekNumber: number,
+    raceWeekIndex: number,
     carId: number,
     customerId: number,
     options?: PersonalBestEvidenceOptions,
@@ -742,19 +746,23 @@ export const api = {
   ): Promise<PercentileResult> {
     const qs = new URLSearchParams({ customerId: String(customerId) });
     appendPersonalBestEvidence(qs, options);
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/cars/${carId}/percentile?${qs}`, {
-      signal,
-    });
+    return request(
+      `/api/series/${seriesId}/weeks/${raceWeekIndex}/cars/${carId}/percentile?${qs}`,
+      { signal }
+    );
   },
 
-  /** GET /api/users/me/recommendations?seriesId=&weekNumber= */
+  /** GET /api/users/me/recommendations?seriesId=&raceWeekIndex= */
   getRecommendations(
     seriesId: number,
-    weekNumber: number,
+    raceWeekIndex: number,
     options?: PersonalBestEvidenceOptions,
     signal?: AbortSignal
   ): Promise<CarRecommendation[]> {
-    const qs = new URLSearchParams({ seriesId: String(seriesId), weekNumber: String(weekNumber) });
+    const qs = new URLSearchParams({
+      seriesId: String(seriesId),
+      raceWeekIndex: String(raceWeekIndex),
+    });
     appendPersonalBestEvidence(qs, options);
     return request(`/api/users/me/recommendations?${qs}`, { signal });
   },
@@ -882,14 +890,14 @@ export const api = {
     return request(`/api/series/${seriesId}/schedule`, { signal });
   },
 
-  /** GET /api/series/:seriesId/weeks/:weekNumber/strategy — per-week BoP/weather/fuel strategy
+  /** GET /api/series/:seriesId/weeks/:raceWeekIndex/strategy — per-week BoP/weather/fuel strategy
    * briefing; personalizes the "optimal for you" overlay when the caller is iRacing-linked */
   getWeekStrategy(
     seriesId: number,
-    weekNumber: number,
+    raceWeekIndex: number,
     signal?: AbortSignal
   ): Promise<WeekStrategy> {
-    return request(`/api/series/${seriesId}/weeks/${weekNumber}/strategy`, { signal });
+    return request(`/api/series/${seriesId}/weeks/${raceWeekIndex}/strategy`, { signal });
   },
 
   /** GET /api/leaderboards?categoryId= — global top-N drivers for a category (ranked by iRating) */
@@ -917,16 +925,16 @@ export const api = {
     return request(`/api/series/${seriesId}/tt-standings${qs}`, { signal });
   },
 
-  /** GET /api/series/:seriesId/qualify-results?carClassId=&weekNumber= — weekly qualifying results */
+  /** GET /api/series/:seriesId/qualify-results?carClassId=&raceWeekIndex= — weekly qualifying results */
   getQualifyResults(
     seriesId: number,
     carClassId?: number,
-    weekNumber?: number,
+    raceWeekIndex?: number,
     signal?: AbortSignal
   ): Promise<SeasonQualifyResults> {
     const params = new URLSearchParams();
     if (carClassId != null) params.set('carClassId', String(carClassId));
-    if (weekNumber != null) params.set('weekNumber', String(weekNumber));
+    if (raceWeekIndex != null) params.set('raceWeekIndex', String(raceWeekIndex));
     const qs = params.toString();
     return request(`/api/series/${seriesId}/qualify-results${qs ? `?${qs}` : ''}`, { signal });
   },

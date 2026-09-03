@@ -72,7 +72,7 @@ public class SubsessionMapperTests
         Assert.Equal(99001, entity.Id);
         Assert.Equal(311244815, entity.RaceSessionId);
         Assert.Equal(501, entity.SeasonId);
-        Assert.Equal(7, entity.WeekNumber);
+        Assert.Equal(7, entity.RaceWeekIndex);
         Assert.Equal(weekId, entity.WeekId);
         Assert.Equal(18, entity.TrackId);
         Assert.True(entity.OfficialSession);

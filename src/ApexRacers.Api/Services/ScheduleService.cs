@@ -23,10 +23,10 @@ public class ScheduleService(AppDbContext db)
 
         var weeks = await db.Weeks
             .Where(w => w.SeasonId == season.Id)
-            .OrderBy(w => w.WeekNumber)
+            .OrderBy(w => w.RaceWeekIndex)
             .Select(w => new
             {
-                w.WeekNumber,
+                w.RaceWeekIndex,
                 w.TrackId,
                 TrackName = w.Track.Name,
                 w.Track.ConfigName,
@@ -38,7 +38,9 @@ public class ScheduleService(AppDbContext db)
         var bop = await db.SeasonCarBops
             .Where(b => b.SeasonId == season.Id)
             .ToListAsync(ct);
-        var bopByWeek = bop.GroupBy(b => b.WeekNumber).ToDictionary(g => g.Key, g => g.ToList());
+        var bopByRaceWeekIndex = bop
+            .GroupBy(b => b.RaceWeekIndex)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var carIds = bop.Select(b => b.CarId).Distinct().ToList();
         var carNames = await db.Cars
@@ -54,12 +56,12 @@ public class ScheduleService(AppDbContext db)
                 .ToListAsync(ct)).ToHashSet();
 
         var weekDtos = weeks.Select(w => new ScheduleWeekDto(
-            w.WeekNumber,
+            w.RaceWeekIndex,
             w.TrackName,
             ConfigurationName.NullIfAbsent(w.ConfigName),
             w.StartDate,
             MapWeather(w.WeatherSummaryJson),
-            (bopByWeek.TryGetValue(w.WeekNumber, out var list) ? list : [])
+            (bopByRaceWeekIndex.TryGetValue(w.RaceWeekIndex, out var list) ? list : [])
                 .Select(b => new CarBopDto(
                     b.CarId,
                     carNames.TryGetValue(b.CarId, out var name) ? name : $"Car {b.CarId}",

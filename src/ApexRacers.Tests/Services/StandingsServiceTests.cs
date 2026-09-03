@@ -90,7 +90,7 @@ public class StandingsServiceTests
                 {
                     Id = Guid.NewGuid(),
                     SeasonId = SeasonId,
-                    WeekNumber = w,
+                    RaceWeekIndex = w,
                     TrackId = 100 + w,
                     StartDate = new DateOnly(2026, 1, 1).AddDays(w * 7),
                 });
@@ -273,11 +273,11 @@ public class StandingsServiceTests
         var h = Build(qualifyChunkInfo: Ci(), qualifyChunks: [QualChunk]);
         await using var _db = h.Db;
 
-        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekNum: null, Ct);
+        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekIndex: null, Ct);
 
         Assert.Equal(4091, dto.CarClassId);
-        Assert.Equal(2, dto.RaceWeekNum); // latest past week
-        Assert.Equal(new[] { 0, 1, 2 }, dto.AvailableWeeks);
+        Assert.Equal(2, dto.RaceWeekIndex); // latest past week
+        Assert.Equal(new[] { 0, 1, 2 }, dto.AvailableRaceWeekIndices);
         Assert.Equal(new[] { 1, 2 }, dto.Results.Select(r => r.Standing));
         Assert.Equal("Pole", dto.Results[0].DriverName);
         Assert.Equal(375.0, dto.Results[0].BestQualLapSeconds, precision: 4);
@@ -290,9 +290,9 @@ public class StandingsServiceTests
         var h = Build(qualifyChunkInfo: Ci(), qualifyChunks: [QualChunk]);
         await using var _db = h.Db;
 
-        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekNum: 1, Ct);
+        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekIndex: 1, Ct);
 
-        Assert.Equal(1, dto.RaceWeekNum);
+        Assert.Equal(1, dto.RaceWeekIndex);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class StandingsServiceTests
         var h = Build(qualifyChunkInfo: null, qualifyChunks: [QualChunk]);
         await using var _db = h.Db;
 
-        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekNum: 0, Ct);
+        var dto = await h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekIndex: 0, Ct);
 
         Assert.Empty(dto.Results);
         await h.Downloader.DidNotReceive().DownloadAsync(

@@ -59,12 +59,12 @@ public class ScheduleServiceTests
         db.Tracks.Add(new Track { Id = 47, Name = "Laguna Seca", ConfigName = "" });
         db.Weeks.Add(new Week
         {
-            Id = Guid.NewGuid(), SeasonId = SeasonId, WeekNumber = 1, TrackId = 532,
+            Id = Guid.NewGuid(), SeasonId = SeasonId, RaceWeekIndex = 1, TrackId = 532,
             StartDate = new DateOnly(2026, 5, 29), WeatherSummaryJson = WeatherJson(),
         });
         db.Weeks.Add(new Week
         {
-            Id = Guid.NewGuid(), SeasonId = SeasonId, WeekNumber = 2, TrackId = 47,
+            Id = Guid.NewGuid(), SeasonId = SeasonId, RaceWeekIndex = 2, TrackId = 47,
             StartDate = new DateOnly(2026, 6, 5), WeatherSummaryJson = null,
         });
         db.Cars.Add(new Car { Id = 132, Name = "BMW M4 GT3", NameAbbreviated = "BMW" });
@@ -73,12 +73,12 @@ public class ScheduleServiceTests
         db.SeasonCarBops.AddRange(
             new SeasonCarBop
             {
-                SeasonId = SeasonId, WeekNumber = 1, CarId = 132,
+                SeasonId = SeasonId, RaceWeekIndex = 1, CarId = 132,
                 WeightPenaltyKg = 10, PowerAdjustPct = -1.5, MaxPctFuelFill = 50, MaxDryTireSets = 0,
             },
             new SeasonCarBop
             {
-                SeasonId = SeasonId, WeekNumber = 1, CarId = 119,
+                SeasonId = SeasonId, RaceWeekIndex = 1, CarId = 119,
                 WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2,
             });
         // Track familiarity is deliberately independent of the scheduled cars and Race Week dates.
@@ -104,7 +104,7 @@ public class ScheduleServiceTests
 
         Assert.Equal(SeriesId, dto.SeriesId);
         Assert.Equal("GT3 Cup", dto.SeriesName);
-        Assert.Equal(new[] { 1, 2 }, dto.Weeks.Select(w => w.WeekNumber)); // ordered
+        Assert.Equal(new[] { 1, 2 }, dto.Weeks.Select(w => w.RaceWeekIndex)); // ordered
 
         var w1 = dto.Weeks[0];
         Assert.Equal("Thruxton", w1.TrackName);
@@ -142,13 +142,13 @@ public class ScheduleServiceTests
     public async Task GetScheduleAsync_UnknownCarBop_FallsBackToCarIdLabel()
     {
         await using var db = await SeededAsync();
-        db.SeasonCarBops.Add(new SeasonCarBop { SeasonId = SeasonId, WeekNumber = 2, CarId = 999 });
+        db.SeasonCarBops.Add(new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = 2, CarId = 999 });
         await db.SaveChangesAsync(Ct);
         var service = new ScheduleService(db);
 
         var dto = await service.GetScheduleAsync(SeriesId, null, Ct);
 
-        Assert.Equal("Car 999", dto.Weeks.Single(w => w.WeekNumber == 2).Bop.Single().CarName);
+        Assert.Equal("Car 999", dto.Weeks.Single(w => w.RaceWeekIndex == 2).Bop.Single().CarName);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class ScheduleServiceTests
         var dto = await service.GetScheduleAsync(SeriesId, null, Ct);
 
         Assert.Equal(2, dto.Weeks.Count);
-        Assert.Equal("Thruxton", dto.Weeks.Single(w => w.WeekNumber == 1).TrackName);
+        Assert.Equal("Thruxton", dto.Weeks.Single(w => w.RaceWeekIndex == 1).TrackName);
     }
 
     [Theory]

@@ -91,7 +91,7 @@ export default function LivePage() {
                         )}
                       </td>
                       <td className="td-p text-mono-fluid text-on-surface-variant text-right">
-                        {raceWeekNumber(r.raceWeekNum)}
+                        {raceWeekNumber(r.raceWeekIndex)}
                       </td>
                       <td className="td-p text-mono-fluid text-on-surface-variant text-right">
                         {r.entryCount.toLocaleString()}

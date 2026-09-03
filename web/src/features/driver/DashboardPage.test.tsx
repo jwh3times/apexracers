@@ -44,7 +44,7 @@ const baseSeries: Series = {
   id: 1,
   name: 'GT3 Cup',
   seasonId: 10,
-  currentWeekNumber: 5,
+  currentRaceWeekIndex: 5,
   category: null,
   trackName: null,
   trackConfigName: null,
@@ -256,13 +256,13 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getAllByText('GT3 Cup').length).toBeGreaterThan(0));
   });
 
-  it('shows "Season upcoming" when currentWeekNumber is null', async () => {
-    vi.mocked(api.getSeries).mockResolvedValue([{ ...baseSeries, currentWeekNumber: null }]);
+  it('shows "Season upcoming" when currentRaceWeekIndex is null', async () => {
+    vi.mocked(api.getSeries).mockResolvedValue([{ ...baseSeries, currentRaceWeekIndex: null }]);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('Season upcoming').length).toBeGreaterThan(0));
   });
 
-  it('shows View Week link when currentWeekNumber is set', async () => {
+  it('shows View Week link when currentRaceWeekIndex is set', async () => {
     vi.mocked(api.getSeries).mockResolvedValue([baseSeries]);
     renderPage();
     await waitFor(() =>

@@ -159,7 +159,7 @@ public class RaceWeekWindowTests
 
         var windows = RaceWeekWindow.ForSeason(weeks);
 
-        Assert.Equal([0, 1, 2], windows.Select(w => w.WeekNumber));
+        Assert.Equal([0, 1, 2], windows.Select(w => w.RaceWeekIndex));
         Assert.Equal(new DateTimeOffset(2026, 3, 24, 0, 0, 0, TimeSpan.Zero), windows[0].Window.End);
     }
 

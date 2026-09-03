@@ -33,11 +33,11 @@ function percentileMetric(rec: CarRecommendation) {
 function HeroCard({
   rec,
   seriesId,
-  weekNumber,
+  raceWeekIndex,
 }: {
   rec: CarRecommendation;
   seriesId: number;
-  weekNumber: number;
+  raceWeekIndex: number;
 }) {
   const metric = percentileMetric(rec);
 
@@ -111,7 +111,7 @@ function HeroCard({
 
         {/* CTA */}
         <Link
-          to={`/series/${seriesId}/weeks/${weekNumber}`}
+          to={`/series/${seriesId}/weeks/${raceWeekIndex}`}
           className="self-start inline-flex items-center gap-2 btn-fluid border-transparent bg-primary-container text-on-primary-fixed font-semibold transition-all"
           style={{ boxShadow: '0 0 26px -8px var(--color-primary-container)' }}
         >
@@ -128,11 +128,11 @@ function HeroCard({
 function RecommendationTable({
   recs,
   seriesId,
-  weekNumber,
+  raceWeekIndex,
 }: {
   recs: CarRecommendation[];
   seriesId: number;
-  weekNumber: number;
+  raceWeekIndex: number;
 }) {
   return (
     <table className="w-full border-collapse">
@@ -194,7 +194,7 @@ function RecommendationTable({
               </td>
               <td className="td-p text-right">
                 <Link
-                  to={`/series/${seriesId}/weeks/${weekNumber}`}
+                  to={`/series/${seriesId}/weeks/${raceWeekIndex}`}
                   className="inline-flex items-center gap-2 btn-fluid-sm border border-line-2 bg-surface-container text-on-surface font-semibold transition-all hover:bg-surface-container-high"
                 >
                   Race
@@ -225,13 +225,13 @@ export default function RecommendationsPage() {
   const selectedSeriesId =
     seriesIdParam != null ? Number(seriesIdParam) : (allSeries[0]?.id ?? null);
   const selectedSeries = allSeries.find(s => s.id === selectedSeriesId) ?? null;
-  const weekNumber = selectedSeries?.currentWeekNumber ?? null;
+  const raceWeekIndex = selectedSeries?.currentRaceWeekIndex ?? null;
 
   const recommendations = useResource(
-    signal => api.getRecommendations(selectedSeriesId, weekNumber!, evidenceOptions, signal),
-    [selectedSeriesId, weekNumber, evidenceOptions],
+    signal => api.getRecommendations(selectedSeriesId, raceWeekIndex!, evidenceOptions, signal),
+    [selectedSeriesId, raceWeekIndex, evidenceOptions],
     {
-      enabled: selectedSeriesId != null && weekNumber != null,
+      enabled: selectedSeriesId != null && raceWeekIndex != null,
       fallbackMessage: 'Failed to load recommendations.',
     }
   );
@@ -252,9 +252,9 @@ export default function RecommendationsPage() {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             {/* Left: week description */}
             <p className="text-body-fluid text-on-surface-variant max-w-prose">
-              {weekNumber != null ? (
+              {raceWeekIndex != null ? (
                 <>
-                  {raceWeekLabel(weekNumber)} &mdash; ranked by your fastest estimated lap. Cars
+                  {raceWeekLabel(raceWeekIndex)} &mdash; ranked by your fastest estimated lap. Cars
                   you&apos;ve driven use your actual best time; others are projected from your
                   historical percentile.
                 </>
@@ -289,11 +289,11 @@ export default function RecommendationsPage() {
 
       <div className="flex flex-col gap-fluid">
         {/* Pace source selector */}
-        {selectedSeries && weekNumber != null && (
+        {selectedSeries && raceWeekIndex != null && (
           <CalculationSource value={paceSource} onChange={setPaceSource} />
         )}
 
-        {selectedSeriesId != null && weekNumber != null && (
+        {selectedSeriesId != null && raceWeekIndex != null && (
           <ResourceView
             resource={recommendations}
             notLinkedReason="Link your iRacing account to see personalized recommendations."
@@ -324,12 +324,12 @@ export default function RecommendationsPage() {
         {recommendations.status === 'ok' &&
           recommendations.data.length > 0 &&
           selectedSeriesId != null &&
-          weekNumber != null && (
+          raceWeekIndex != null && (
             <>
               <HeroCard
                 rec={recommendations.data[0]}
                 seriesId={selectedSeriesId}
-                weekNumber={weekNumber}
+                raceWeekIndex={raceWeekIndex}
               />
 
               {recommendations.data.length > 1 && (
@@ -340,7 +340,7 @@ export default function RecommendationsPage() {
                   <RecommendationTable
                     recs={recommendations.data.slice(1)}
                     seriesId={selectedSeriesId}
-                    weekNumber={weekNumber}
+                    raceWeekIndex={raceWeekIndex}
                   />
                 </div>
               )}

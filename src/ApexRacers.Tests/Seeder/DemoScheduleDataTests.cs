@@ -19,7 +19,7 @@ public class DemoScheduleDataTests
     {
         var bop = DemoScheduleData.BuildBop(6115, 2, 132);
         Assert.Equal(6115, bop.SeasonId);
-        Assert.Equal(2, bop.WeekNumber);
+        Assert.Equal(2, bop.RaceWeekIndex);
         Assert.Equal(132, bop.CarId);
         Assert.True(bop.MaxPctFuelFill is > 0 and <= 100);
     }

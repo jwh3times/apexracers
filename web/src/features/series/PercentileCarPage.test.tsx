@@ -30,7 +30,7 @@ function makeBin(i: number, containsUser = false) {
 
 const MOCK_RESULT: PercentileResult = {
   seriesId: 9001,
-  weekNumber: 1,
+  raceWeekIndex: 1,
   carId: 9001,
   customerId: 100001,
   percentileRank: 73.4,
@@ -71,7 +71,7 @@ function renderPage(
       >
         <Routes>
           <Route
-            path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+            path="/series/:seriesId/weeks/:raceWeekIndex/cars/:carId/percentile"
             element={<PercentileCarPage />}
           />
         </Routes>

@@ -8,7 +8,7 @@ public class SeasonCarBopConfiguration : IEntityTypeConfiguration<SeasonCarBop>
 {
     public void Configure(EntityTypeBuilder<SeasonCarBop> builder)
     {
-        builder.HasKey(b => new { b.SeasonId, b.WeekNumber, b.CarId });
-        builder.HasIndex(b => new { b.SeasonId, b.WeekNumber });
+        builder.HasKey(b => new { b.SeasonId, b.RaceWeekIndex, b.CarId });
+        builder.HasIndex(b => new { b.SeasonId, b.RaceWeekIndex });
     }
 }

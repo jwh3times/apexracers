@@ -347,13 +347,13 @@ foreach (var schedule in schedules)
         var startDate = DateOnly.Parse(week.StartDate);
 
         var existing = await db.Weeks.FirstOrDefaultAsync(
-            w => w.SeasonId == week.SeasonId && w.WeekNumber == week.RaceWeekNum);
+            w => w.SeasonId == week.SeasonId && w.RaceWeekIndex == week.RaceWeekIndex);
 
         if (existing is null)
             db.Weeks.Add(new Week
             {
                 SeasonId   = week.SeasonId,
-                WeekNumber = week.RaceWeekNum,
+                RaceWeekIndex = week.RaceWeekIndex,
                 TrackId    = week.Track.TrackId,
                 StartDate  = startDate,
             });
@@ -399,11 +399,11 @@ foreach (var schedule in schedules)
     var weekRows = await db.Weeks
         .Where(w => w.SeasonId == firstWeek.SeasonId)
         .ToListAsync();
-    var weekByNumber = weekRows.ToDictionary(w => w.WeekNumber);
+    var raceWeekByIndex = weekRows.ToDictionary(w => w.RaceWeekIndex);
 
     foreach (var week in schedule.Schedules)
     {
-        if (!weekByNumber.TryGetValue(week.RaceWeekNum, out var weekRow))
+        if (!raceWeekByIndex.TryGetValue(week.RaceWeekIndex, out var weekRow))
             continue;
 
         var carIds = week.CarRestrictions.Select(c => c.CarId).ToList();
@@ -415,7 +415,7 @@ foreach (var schedule in schedules)
 
         // One synthetic subsession per car per week. Each driver races one car
         // so the (SubsessionId, CustId) PK is never violated.
-        // ID formula: -(seasonId * 10000 + weekNum * 100 + carIndex)
+        // ID formula: -(seasonId * 10000 + raceWeekIndex * 100 + carIndex)
         for (int carIndex = 0; carIndex < carIds.Count; carIndex++)
         {
             var carId     = carIds[carIndex];
@@ -427,7 +427,7 @@ foreach (var schedule in schedules)
             carClassByCar.TryGetValue(carId, out var carClassId);
             if (carClassId == 0 || !dbCarClassIds.Contains(carClassId)) continue;
 
-            var subsessionId = -(firstWeek.SeasonId * 10000 + week.RaceWeekNum * 100 + carIndex);
+            var subsessionId = -(firstWeek.SeasonId * 10000 + week.RaceWeekIndex * 100 + carIndex);
 
             bool alreadySeeded = await db.Subsessions.AnyAsync(s => s.Id == subsessionId);
             if (alreadySeeded) continue;
@@ -436,7 +436,7 @@ foreach (var schedule in schedules)
             {
                 Id                   = subsessionId,
                 SeasonId             = firstWeek.SeasonId,
-                WeekNumber           = week.RaceWeekNum,
+                RaceWeekIndex           = week.RaceWeekIndex,
                 WeekId               = weekRow.Id,
                 TrackId              = week.Track.TrackId,
                 OfficialSession      = true,
@@ -456,7 +456,7 @@ foreach (var schedule in schedules)
                 .Select(kvp => (
                     CustId: kvp.Key,
                     LapSeconds: SyntheticLaps.GenerateLapTime(
-                        kvp.Key, carId, week.RaceWeekNum,
+                        kvp.Key, carId, week.RaceWeekIndex,
                         baseLap + carOffset, kvp.Value, stdDev)))
                 .OrderBy(x => x.LapSeconds)
                 .ToList();

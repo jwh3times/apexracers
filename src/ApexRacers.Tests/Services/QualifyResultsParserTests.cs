@@ -43,7 +43,7 @@ public class QualifyResultsParserTests
         Assert.Equal(2, first.Division);
         Assert.Equal(7480, first.IRating);
         Assert.Equal(375.4685, first.BestQualLapSeconds, precision: 4); // 3754685 / 10000
-        Assert.Equal(0, first.Week);
+        Assert.Equal(0, first.RaceWeekIndex);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class QualifyResultsParserTests
         var rows = QualifyResultsParser.Parse([json]);
 
         Assert.Equal(QualifyResultsParser.NoLapSentinel, rows[0].BestQualLapSeconds);
-        Assert.Equal(2, rows[0].Week);
+        Assert.Equal(2, rows[0].RaceWeekIndex);
     }
 
     [Fact]

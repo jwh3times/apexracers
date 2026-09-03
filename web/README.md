@@ -149,6 +149,10 @@ instead of presenting it as a current Field result.
 
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
 
+Race-week response fields, request parameters, and route state use `raceWeekIndex`; keep that value
+unchanged when calling the API and use `raceWeekNumber` / `raceWeekLabel` only for presentation. See
+[`CONTEXT.md`](../CONTEXT.md) for the canonical Race Week Index / Race Week Number vocabulary.
+
 The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
 
 Read-only page requests use `src/hooks/useResource.ts`. Its fetcher receives an `AbortSignal`; pass

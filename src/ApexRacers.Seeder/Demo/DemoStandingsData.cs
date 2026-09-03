@@ -43,7 +43,8 @@ public static class DemoStandingsData
                 Incidents: 30 + i))
             .ToList();
 
-    public static List<SeasonQualifyResultDto> BuildQualify(int seasonId, int classId, int week) =>
+    public static List<SeasonQualifyResultDto> BuildQualify(
+        int seasonId, int classId, int raceWeekIndex) =>
         Enumerable.Range(0, FieldSize)
             .Select(i => new SeasonQualifyResultDto(
                 Standing: i + 1,
@@ -52,6 +53,6 @@ public static class DemoStandingsData
                 Division: 1 + i % 5,
                 IRating: 3000 - i * 45,
                 BestQualLapSeconds: 84.0 + i * 0.12,
-                Week: week))
+                RaceWeekIndex: raceWeekIndex))
             .ToList();
 }

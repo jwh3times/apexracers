@@ -32,7 +32,7 @@ function soonRace(): RaceGuideEntry {
     startTime: new Date(Date.now() + 10 * 60000).toISOString(), // 10 min out
     endTime: new Date(Date.now() + 45 * 60000).toISOString(),
     entryCount: 20,
-    raceWeekNum: 3,
+    raceWeekIndex: 3,
   };
 }
 
