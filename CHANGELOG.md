@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Default car and track catalog lists now omit retired entries while their identifier-based detail
+  routes and historical Uploaded Bests remain reachable.
 
 ## [5.0.0] - 2026-09-02
 

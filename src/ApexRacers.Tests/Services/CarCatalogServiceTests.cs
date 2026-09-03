@@ -9,7 +9,12 @@ public class CarCatalogServiceTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static Car MakeCar(int id, string name, string? folder = null, string? small = null) => new()
+    private static Car MakeCar(
+        int id,
+        string name,
+        string? folder = null,
+        string? small = null,
+        bool? retired = null) => new()
     {
         Id = id,
         Name = name,
@@ -17,6 +22,7 @@ public class CarCatalogServiceTests
         CategoriesJson = """["road"]""",
         AssetFolder = folder,
         SmallImageFile = small,
+        Retired = retired,
     };
 
     [Fact]
@@ -39,11 +45,27 @@ public class CarCatalogServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_ReturnsDetailWithCarClassesAndPersonalBests()
+    public async Task ListAsync_HidesOnlyRetiredCars()
+    {
+        await using var db = DbContextFactory.Create();
+        db.Cars.AddRange(
+            MakeCar(1, "Current with unknown status"),
+            MakeCar(2, "Current", retired: false),
+            MakeCar(3, "Retired", retired: true));
+        await db.SaveChangesAsync(Ct);
+        var service = new CarCatalogService(db);
+
+        var result = await service.ListAsync(Ct);
+
+        Assert.Equal([1, 2], result.Select(c => c.CarId).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task GetAsync_RetiredCar_ReturnsDetailWithCarClassesAndHistoricalUploadedBests()
     {
         await using var db = DbContextFactory.Create();
         var userId = Guid.NewGuid();
-        db.Cars.Add(MakeCar(132, "Merc GT3", "/img/cars/merc", "merc-large.jpg"));
+        db.Cars.Add(MakeCar(132, "Merc GT3", "/img/cars/merc", "merc-large.jpg", retired: true));
         db.CarClasses.Add(new CarClass { Id = 2523, Name = "GT3 Class", ShortName = "GT3" });
         db.CarClassCars.Add(new CarClassCar { CarClassId = 2523, CarId = 132 });
         db.Tracks.Add(new Track { Id = 18, Name = "Spa", ConfigName = "GP" });

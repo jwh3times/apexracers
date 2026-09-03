@@ -57,7 +57,7 @@ describe('CarDetailPage', () => {
     mockGetCar.mockResolvedValue(DETAIL);
   });
 
-  it('fetches the car by its route id', async () => {
+  it('fetches the car directly by route id independently of catalog-list membership', async () => {
     renderPage();
     await waitFor(() => expect(mockGetCar).toHaveBeenCalledWith(132, expect.any(AbortSignal)));
   });
