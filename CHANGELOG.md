@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [6.0.0] - 2026-09-03
+
 ### Changed
 
 - Zero-based Race Week positions are now named `raceWeekIndex` consistently across persistence,
@@ -870,7 +874,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v5.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/jwh3times/apexracers/compare/v5.0.1...v6.0.0
 [5.0.1]: https://github.com/jwh3times/apexracers/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/jwh3times/apexracers/compare/v4.0.2...v5.0.0
 [4.0.2]: https://github.com/jwh3times/apexracers/compare/v4.0.1...v4.0.2

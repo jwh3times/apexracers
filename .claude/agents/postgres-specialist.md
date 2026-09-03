@@ -26,7 +26,7 @@ Two schemas in one database:
 | `Seasons`              | int PK      | Belongs to Series; `Active` bool                                                                                                                             |
 | `SeasonCars`           | composite   | Links Season ↔ Car                                                                                                                                          |
 | `SeasonCarClasses`     | composite   | Links Season ↔ CarClass                                                                                                                                     |
-| `Weeks`                | **Guid PK** | Belongs to Season; `TrackId` FK; `WeatherSummaryJson` is a serialized `WeatherForecastSnapshot`; nullable `EndTime` is iRacing's exact `week_end_time` (typically 21:00 UTC on the seventh day, not midnight), null for rows ingested before the column existed or whose payload omitted it — `Core.RaceWeekWindow` derives a fallback boundary rather than treating a null end as open-ended |
+| `Weeks`                | **Guid PK** | Belongs to Season; `RaceWeekIndex` is its zero-based position and is unique within the Season; `TrackId` FK; `WeatherSummaryJson` is a serialized `WeatherForecastSnapshot`; nullable `EndTime` is iRacing's exact `week_end_time` (typically 21:00 UTC on the seventh day, not midnight), null for rows ingested before the column existed or whose payload omitted it — `Core.RaceWeekWindow` derives a fallback boundary rather than treating a null end as open-ended |
 | `Tracks`               | int PK      | Full iRacing track catalog (Name, ConfigName, Category, TrackConfigLength, IsDirt, IsOval, Location, TimeZone, Retired). One row is one configuration, not a venue — `Name` is shared and is never an identity |
 | `Cars`                 | int PK      | Car definitions (Name, RelativeSpeed)                                                                                                                        |
 | `CarClasses`           | int PK      | Car class groupings (Name, ShortName, RelativeSpeed)                                                                                                         |
@@ -66,10 +66,13 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Critical indexes
 
-`SubsessionResult` has indexes that drive every percentile query:
+Percentile queries use indexes on both sides of the `SubsessionResult` → `Subsession` join:
 
-- `(CarId, WeekId)` — filters all results for a car in a week (via `Subsession.WeekId`)
-- `(CustId, SeasonId, RaceWeekIndex)` — finds a specific driver's results for a week
+- `SubsessionResult (CarId, SubsessionId)` and `SubsessionResult (CustId)` narrow results by Car or
+  Driver.
+- `Subsession (WeekId)` narrows results to one persisted Week, while
+  `Subsession (SeasonId, RaceWeekIndex)` supports the ApexRacers-owned zero-based Race Week lookup.
+- `Week (SeasonId, RaceWeekIndex)` is unique and resolves a Race Week Index to its persisted Week ID.
 
 `RefreshToken.TokenHash` has a unique index — lookup by hash is the only way to find a token (raw tokens are never stored).
 
