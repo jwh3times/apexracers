@@ -486,7 +486,7 @@ upstream absence sentinel or expose the internal empty-string representation thr
 - `RaceGuideService` — "race now" board (60 s).
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
-- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + Uploaded Best overlay; no creds at read time.
+- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + Uploaded Best overlay; no creds at read time. Lists omit retired entries, while ID-based detail keeps them reachable with their class relationships and historical Uploaded Bests.
 - `UploadedBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
   order), used by `UploadedLapService` and the catalog services' overlays instead of each holding
   its own copy. It sees Uploaded Laps only — a Personal Best also weighs the Race Best. See

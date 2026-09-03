@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [5.0.1] - 2026-09-02
+
 ### Changed
 
 - Default car and track catalog lists now omit retired entries while their identifier-based detail
@@ -862,7 +866,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v5.0.1...HEAD
+[5.0.1]: https://github.com/jwh3times/apexracers/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/jwh3times/apexracers/compare/v4.0.2...v5.0.0
 [4.0.2]: https://github.com/jwh3times/apexracers/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/jwh3times/apexracers/compare/v4.0.0...v4.0.1
