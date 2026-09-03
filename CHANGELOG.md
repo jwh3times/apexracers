@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [4.0.2] - 2026-09-02
+
+### Fixed
+
+- Repository portability checks now recognize a clean linked-worktree branch exactly at its
+  recorded remote base, and main synchronization safely fast-forwards that branch when another
+  worktree already holds `main`, while continuing to reject dirty, local-only, behind, and diverged
+  work.
+
 ## [4.0.1] - 2026-09-02
 
 ### Added
@@ -838,7 +847,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v4.0.2...HEAD
+[4.0.2]: https://github.com/jwh3times/apexracers/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/jwh3times/apexracers/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/jwh3times/apexracers/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/jwh3times/apexracers/compare/v2.0.4...v3.0.0

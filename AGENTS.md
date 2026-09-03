@@ -284,11 +284,12 @@ the opposite direction from agents.
 ### Public/private repository coordination
 
 ```bash
-npm run repo:status          # report branch, dirty state, upstream, and divergence for both repos
+npm run repo:status          # report branch, dirty state, upstream/base, and divergence for both repos
 npm run repo:status:check    # exit nonzero if an installed worktree is dirty or unsynchronized
 npm run bootstrap:private    # clone the optional companion into private/ using its 1Password URL
-npm run sync:main            # switch both clean worktrees to main and fast-forward from origin/main
+npm run sync:main            # synchronize both clean worktrees with origin/main
 npm run sync:main -- --skip-private  # synchronize only the public worktree
+npm run test:repo            # run the dependency-free repository coordination tests
 ```
 
 `bootstrap:private` reads the clone URL from the `ApexRacers Repository Access` 1Password item unless
@@ -298,6 +299,12 @@ through `--service-account-reference` or `APEXRACERS_OP_SERVICE_ACCOUNT_REFERENC
 only in memory for the child command. The helper refuses to overwrite a non-empty `private/`
 directory. Absence of `private/.git` is a valid public-contributor state. Before calling work
 portable, inspect both repositories; commit and push each history from its own root.
+
+`repo:status` compares an ordinary branch with its upstream. A linked-worktree branch without an
+upstream may use its recorded remote base instead; it passes `--check` only when clean and exactly at
+that base, so local-only, behind, and diverged work still fails. `sync:main` normally switches to and
+fast-forwards `main`. When another linked worktree already holds `main`, it keeps the current clean
+branch and fast-forwards it only when that branch contains no commits outside `origin/main`.
 
 ### Cloud Deployment
 
