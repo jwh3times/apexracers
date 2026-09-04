@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [6.1.3] - 2026-09-04
+
+### Fixed
+
+- The four triage labels the contributor documentation describes — `needs-triage`, `needs-info`,
+  `ready-for-agent`, and `ready-for-human` — now exist in the issue tracker. Only `wontfix` did
+  before, so tooling that applied a documented label failed outright instead of degrading.
+
+### Changed
+
+- The triage label reference now states what each label means in practice, including that
+  `needs-info` covers any missing evidence rather than only an unanswered question to a reporter,
+  and that `ready-for-human` marks work needing credentials, access, or a maintainer decision rather
+  than work that is merely difficult.
+
 ## [6.1.2] - 2026-09-04
 
 ### Added
@@ -901,7 +916,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.3...HEAD
+[6.1.3]: https://github.com/jwh3times/apexracers/compare/v6.1.2...v6.1.3
 [6.1.2]: https://github.com/jwh3times/apexracers/compare/v6.1.1...v6.1.2
 [6.1.0]: https://github.com/jwh3times/apexracers/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/jwh3times/apexracers/compare/v5.0.1...v6.0.0
