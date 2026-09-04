@@ -39,5 +39,5 @@ using the `<major>.<minor>.<build>` format.
 
 Public docs should describe product capabilities, setup, contribution workflow, and
 safe architecture guidance. Private docs should hold deployment runbooks, raw API
-samples, security findings, credentials follow-ups, and detailed implementation
-archives.
+samples, and archived implementation notes. Open, unfixed security findings are
+tracked as draft GitHub security advisories on this repository, not in a private doc.
