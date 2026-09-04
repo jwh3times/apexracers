@@ -38,14 +38,14 @@ export default function StandingsPage() {
   const { user } = useAuth();
   const [view, setView] = useState<View>('championship');
   const [carClassId, setCarClassId] = useState<number | null>(null);
-  const [week, setWeek] = useState<number | null>(null);
+  const [raceWeekIndex, setRaceWeekIndex] = useState<number | null>(null);
 
-  // Reset the class/week selection when switching views so a stale week doesn't leak across tabs.
+  // Reset the class/Race Week Index selection when switching views so stale input cannot leak across tabs.
   function selectView(next: View) {
     if (next === view) return;
     setView(next);
     setCarClassId(null);
-    setWeek(null);
+    setRaceWeekIndex(null);
   }
 
   const resource = useResource<Payload>(
@@ -56,10 +56,10 @@ export default function StandingsPage() {
         : view === 'tt'
           ? api.getTtStandings(id, cls, signal).then(data => ({ view: 'tt', data }) as const)
           : api
-              .getQualifyResults(id, cls, week ?? undefined, signal)
+              .getQualifyResults(id, cls, raceWeekIndex ?? undefined, signal)
               .then(data => ({ view: 'qualifying', data }) as const);
     },
-    [id, view, carClassId, week],
+    [id, view, carClassId, raceWeekIndex],
     { fallbackMessage: 'Failed to load standings.' }
   );
 
@@ -128,7 +128,7 @@ export default function StandingsPage() {
           )}
 
           {resource.data.view === 'qualifying' && (
-            <WeekSelector data={resource.data.data} onSelect={setWeek} />
+            <WeekSelector data={resource.data.data} onSelect={setRaceWeekIndex} />
           )}
 
           {renderBody(resource.data, myCustId)}
@@ -143,19 +143,19 @@ function WeekSelector({
   onSelect,
 }: {
   data: SeasonQualifyResults;
-  onSelect: (week: number) => void;
+  onSelect: (raceWeekIndex: number) => void;
 }) {
-  if (data.availableWeeks.length <= 1) return null;
+  if (data.availableRaceWeekIndices.length <= 1) return null;
   return (
     <div className="flex flex-wrap gap-2 mb-6">
-      {data.availableWeeks.map(w => (
+      {data.availableRaceWeekIndices.map(raceWeekIndex => (
         <button
-          key={w}
+          key={raceWeekIndex}
           type="button"
-          onClick={() => onSelect(w)}
-          className={chipClass(w === data.raceWeekNum)}
+          onClick={() => onSelect(raceWeekIndex)}
+          className={chipClass(raceWeekIndex === data.raceWeekIndex)}
         >
-          {raceWeekLabel(w)}
+          {raceWeekLabel(raceWeekIndex)}
         </button>
       ))}
     </div>

@@ -20,7 +20,7 @@ function rows(): RaceGuideEntry[] {
       startTime: new Date(now - 10 * 60_000).toISOString(), // started 10m ago
       endTime: new Date(now + 20 * 60_000).toISOString(), // ends in 20m → LIVE
       entryCount: 53,
-      raceWeekNum: 5,
+      raceWeekIndex: 5,
     },
     {
       seriesId: 231,
@@ -28,7 +28,7 @@ function rows(): RaceGuideEntry[] {
       startTime: new Date(now + 30 * 60_000).toISOString(), // starts in 30m
       endTime: new Date(now + 60 * 60_000).toISOString(),
       entryCount: 79,
-      raceWeekNum: 11,
+      raceWeekIndex: 11,
     },
   ];
 }
@@ -72,7 +72,7 @@ describe('LivePage', () => {
         startTime: new Date(now + 95 * 60_000).toISOString(), // 1h 35m out
         endTime: new Date(now + 120 * 60_000).toISOString(),
         entryCount: 10,
-        raceWeekNum: 1,
+        raceWeekIndex: 1,
       },
     ]);
     render(<LivePage />);
@@ -87,7 +87,7 @@ describe('LivePage', () => {
         startTime: '2020-01-01T00:00:00Z', // fixed 2020→2099 window (demo race-guide sentinel)
         endTime: '2099-01-01T00:00:00Z',
         entryCount: 30,
-        raceWeekNum: 3,
+        raceWeekIndex: 3,
       },
     ]);
     render(<LivePage />);
@@ -104,7 +104,7 @@ describe('LivePage', () => {
         startTime: new Date(now + 10 * 60_000).toISOString(),
         endTime: new Date(now + 40 * 60_000).toISOString(),
         entryCount: 12,
-        raceWeekNum: 2,
+        raceWeekIndex: 2,
       },
     ]);
     render(<LivePage />);

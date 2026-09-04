@@ -25,9 +25,9 @@ namespace ApexRacers.Api.Services;
 /// </summary>
 public static class SeasonQueries
 {
-    /// <summary>One numbered week of an already-resolved season.</summary>
-    public static IQueryable<Week> InSeason(this IQueryable<Week> weeks, int seasonId, int weekNumber) =>
-        weeks.Where(w => w.SeasonId == seasonId && w.WeekNumber == weekNumber);
+    /// <summary>One Race Week by its Index in an already-resolved season.</summary>
+    public static IQueryable<Week> InSeason(this IQueryable<Week> weeks, int seasonId, int raceWeekIndex) =>
+        weeks.Where(w => w.SeasonId == seasonId && w.RaceWeekIndex == raceWeekIndex);
 
     /// <summary>
     /// The series' current season id, or <c>null</c> when the series has no season to show.
@@ -107,7 +107,7 @@ public static class SeasonQueries
     }
 
     /// <summary>
-    /// The time span each Race Week of a season covers, keyed by Week number.
+    /// The time span each Race Week of a season covers, keyed by Race Week Index.
     ///
     /// <para>The whole season is loaded rather than the one Week a caller asked about, because a
     /// Week that reported no end time is bounded by the <em>next</em> Week's start — which cannot
@@ -118,22 +118,22 @@ public static class SeasonQueries
     {
         var weeks = await db.Weeks
             .Where(w => w.SeasonId == seasonId)
-            .Select(w => new { w.WeekNumber, w.StartDate, w.EndTime })
+            .Select(w => new { w.RaceWeekIndex, w.StartDate, w.EndTime })
             .ToListAsync(ct);
 
         return RaceWeekWindow
-            .ForSeason(weeks.Select(w => (w.WeekNumber, w.StartDate, w.EndTime)))
-            .ToDictionary(x => x.WeekNumber, x => x.Window);
+            .ForSeason(weeks.Select(w => (w.RaceWeekIndex, w.StartDate, w.EndTime)))
+            .ToDictionary(x => x.RaceWeekIndex, x => x.Window);
     }
 
     /// <summary>
     /// The time span one Race Week covers, or <c>null</c> when the season has no such Week.
     /// </summary>
     public static async Task<RaceWeekWindow?> RaceWeekWindowAsync(
-        this AppDbContext db, int seasonId, int weekNumber, CancellationToken ct)
+        this AppDbContext db, int seasonId, int raceWeekIndex, CancellationToken ct)
     {
         var windows = await db.RaceWeekWindowsAsync(seasonId, ct);
-        return windows.TryGetValue(weekNumber, out var window) ? window : null;
+        return windows.TryGetValue(raceWeekIndex, out var window) ? window : null;
     }
 
     /// <summary>The series' display name, or empty when the series is unknown.</summary>

@@ -50,12 +50,12 @@ function makeCar(overrides: Partial<WeekDetail['cars'][number]> = {}): WeekDetai
   };
 }
 
-function renderPage(seriesId = '1', weekNumber = '10') {
+function renderPage(seriesId = '1', raceWeekIndex = '10') {
   return render(
     <PaceSourceProvider>
-      <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${weekNumber}`]}>
+      <MemoryRouter initialEntries={[`/series/${seriesId}/weeks/${raceWeekIndex}`]}>
         <Routes>
-          <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+          <Route path="/series/:seriesId/weeks/:raceWeekIndex" element={<WeekDetailPage />} />
         </Routes>
       </MemoryRouter>
     </PaceSourceProvider>
@@ -126,7 +126,7 @@ describe('WeekDetailPage', () => {
     renderPage('1', '10');
     await waitFor(() => {
       const link = screen.getByRole('link', { name: /see my car recommendations/i });
-      expect(link).toHaveAttribute('href', '/recommendations?seriesId=1&weekNumber=10');
+      expect(link).toHaveAttribute('href', '/recommendations?seriesId=1&raceWeekIndex=10');
     });
   });
 
@@ -189,9 +189,9 @@ describe('WeekDetailPage', () => {
       <PaceSourceProvider>
         <MemoryRouter initialEntries={['/series/1/weeks/10']}>
           <Routes>
-            <Route path="/series/:seriesId/weeks/:weekNumber" element={<WeekDetailPage />} />
+            <Route path="/series/:seriesId/weeks/:raceWeekIndex" element={<WeekDetailPage />} />
             <Route
-              path="/series/:seriesId/weeks/:weekNumber/cars/:carId/percentile"
+              path="/series/:seriesId/weeks/:raceWeekIndex/cars/:carId/percentile"
               element={<div>Percentile Detail</div>}
             />
           </Routes>
@@ -254,11 +254,16 @@ describe('WeekDetailPage', () => {
     expect(mockGetMyWeekPercentiles).not.toHaveBeenCalled();
   });
 
-  it('renders the Your pct chip for a signed-in driver with a percentile', async () => {
+  it('renders the Your pct chip with Race Lap evidence for a signed-in driver', async () => {
     mockUser = LINKED_USER;
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
     mockGetMyWeekPercentiles.mockResolvedValue([
-      { carId: 1, percentileRank: 92, topSharePercent: 8 },
+      {
+        carId: 1,
+        percentileRank: 92,
+        topSharePercent: 8,
+        personalBestLapEvidence: 'RaceLap',
+      },
     ]);
     renderPage('1', '10');
     await waitFor(() => expect(screen.getByText(/your pct/i)).toBeInTheDocument());
@@ -270,6 +275,31 @@ describe('WeekDetailPage', () => {
     );
     // percentileRank 92 → ceil(100-92) = TOP 8%
     expect(screen.getByText('TOP 8%')).toBeInTheDocument();
+    expect(screen.getByText('Race lap')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/official race/i)
+    );
+  });
+
+  it('renders Uploaded Lap evidence beneath the Your pct chip', async () => {
+    mockUser = LINKED_USER;
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar({ carId: 1 })] });
+    mockGetMyWeekPercentiles.mockResolvedValue([
+      {
+        carId: 1,
+        percentileRank: 92,
+        topSharePercent: 8,
+        personalBestLapEvidence: 'UploadedLap',
+      },
+    ]);
+
+    renderPage('1', '10');
+
+    expect(await screen.findByText('TOP 8%')).toBeInTheDocument();
+    expect(screen.getByText('Uploaded lap')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/uploaded telemetry/i)
+    );
   });
 
   it('lets a signed-in driver apply Uploaded Lap evidence to the Your pct overlay', async () => {

@@ -6,7 +6,7 @@ public record SeriesDto(
     int Id,
     string Name,
     int SeasonId,
-    int? CurrentWeekNumber,
+    int? CurrentRaceWeekIndex,
     string? Category,
     string? TrackName,
     string? TrackConfigName,
@@ -46,7 +46,7 @@ public record UploadedBestOutsideWeekDto(double LapSeconds, DateTimeOffset Recor
 /// </summary>
 public record PercentileResultDto(
     int SeriesId,
-    int WeekNumber,
+    int RaceWeekIndex,
     int CarId,
     long CustomerId,
     double PercentileRank,
@@ -140,7 +140,7 @@ public record UploadedBestDto(
     DateTimeOffset LastRecordedAt);
 
 public record WeeklyPercentileDto(
-    int WeekNumber,
+    int RaceWeekIndex,
     string TrackName,
     string? ConfigName,
     double PercentileRank,
@@ -314,7 +314,7 @@ public record CarBopDto(
 
 /// <summary>One Race Week, including whether the caller has an Uploaded Lap at its Track.</summary>
 public record ScheduleWeekDto(
-    int WeekNumber,
+    int RaceWeekIndex,
     string TrackName,
     string? ConfigName,
     DateOnly StartDate,
@@ -322,7 +322,7 @@ public record ScheduleWeekDto(
     IReadOnlyList<CarBopDto> Bop,
     bool HasUploadedLapAtTrack);
 
-/// <summary>A series' active-season schedule (weeks ordered by week number).</summary>
+/// <summary>A series' active-season schedule (Race Weeks ordered by Race Week Index).</summary>
 public record SeasonScheduleDto(int SeriesId, string SeriesName, IReadOnlyList<ScheduleWeekDto> Weeks);
 
 /// <summary>A car class available for a season's standings (for the class selector).</summary>
@@ -383,12 +383,12 @@ public record SeasonQualifyResultDto(
     int Division,
     int? IRating,
     double BestQualLapSeconds,
-    int Week);
+    int RaceWeekIndex);
 
 /// <summary>
 /// Season qualifying results for a series' active season, chosen car class + race week.
-/// <see cref="RaceWeekNum"/> is the 0-based iRacing week; <see cref="AvailableWeeks"/> lists
-/// the season's known weeks for the selector.
+/// <see cref="RaceWeekIndex"/> is the zero-based iRacing Race Week Index;
+/// <see cref="AvailableRaceWeekIndices"/> lists the season's known indices for the selector.
 /// </summary>
 public record SeasonQualifyResultsDto(
     int SeriesId,
@@ -396,8 +396,8 @@ public record SeasonQualifyResultsDto(
     int CarClassId,
     string CarClassName,
     IReadOnlyList<CarClassOptionDto> CarClasses,
-    int RaceWeekNum,
-    IReadOnlyList<int> AvailableWeeks,
+    int RaceWeekIndex,
+    IReadOnlyList<int> AvailableRaceWeekIndices,
     IReadOnlyList<SeasonQualifyResultDto> Results);
 
 /// <summary>An official session starting soon (race-now live guide), newest start first.</summary>
@@ -407,7 +407,7 @@ public record RaceGuideEntryDto(
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
     int EntryCount,
-    int RaceWeekNum);
+    int RaceWeekIndex);
 
 /// <summary>One driver row in a category's global leaderboard (ranked by iRating).</summary>
 public record GlobalLeaderboardEntryDto(
@@ -633,7 +633,7 @@ public record CarStrategyDto(
 public record WeekStrategyDto(
     int SeriesId,
     string SeriesName,
-    int WeekNumber,
+    int RaceWeekIndex,
     string TrackName,
     string? ConfigName,
     double? TrackLengthMiles,
@@ -670,5 +670,11 @@ public record AchievementsDto(
 /// <summary>
 /// The caller's own percentile for one car in a week (for the Week Detail "Your pct" column).
 /// Only cars the caller actually has a lap for this week are returned.
+/// <c>PersonalBestLapEvidence</c> names whether that ranked Personal Best came from a Race Lap
+/// or an Uploaded Lap.
 /// </summary>
-public record WeekCarPercentileDto(int CarId, double PercentileRank, int TopSharePercent);
+public record WeekCarPercentileDto(
+    int CarId,
+    double PercentileRank,
+    int TopSharePercent,
+    LapEvidence PersonalBestLapEvidence);

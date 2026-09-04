@@ -42,7 +42,7 @@ describe('api', () => {
 
   describe('getSeries', () => {
     it('calls GET /api/series and returns parsed data', async () => {
-      const data = [{ id: 1, name: 'GT3 Cup', seasonId: 10, currentWeekNumber: 5 }];
+      const data = [{ id: 1, name: 'GT3 Cup', seasonId: 10, currentRaceWeekIndex: 5 }];
       mockFetchOk(data);
       const result = await api.getSeries();
       expect(fetch).toHaveBeenCalledWith('/api/series', expect.objectContaining({}));
@@ -171,7 +171,14 @@ describe('api', () => {
 
   describe('getMyWeekPercentiles', () => {
     it('calls GET /api/series/:id/weeks/:n/my-percentiles', async () => {
-      const data = [{ carId: 1, percentileRank: 92 }];
+      const data = [
+        {
+          carId: 1,
+          percentileRank: 92,
+          topSharePercent: 8,
+          personalBestLapEvidence: 'RaceLap' as const,
+        },
+      ];
       mockFetchOk(data);
       const result = await api.getMyWeekPercentiles(7, 12);
       expect(fetch).toHaveBeenCalledWith(
@@ -208,10 +215,10 @@ describe('api', () => {
   // ── getPercentile ───────────────────────────────────────────────────────────
 
   describe('getPercentile', () => {
-    it('calls GET with seriesId, weekNumber, carId, and customerId query param', async () => {
+    it('calls GET with seriesId, raceWeekIndex, carId, and customerId query param', async () => {
       const data = {
         seriesId: 1,
-        weekNumber: 5,
+        raceWeekIndex: 5,
         carId: 3,
         customerId: 99,
         percentileRank: 75.0,
@@ -242,11 +249,11 @@ describe('api', () => {
   // ── getRecommendations ──────────────────────────────────────────────────────
 
   describe('getRecommendations', () => {
-    it('calls GET with seriesId and weekNumber query params', async () => {
+    it('calls GET with seriesId and raceWeekIndex query params', async () => {
       mockFetchOk([]);
       await api.getRecommendations(1, 4);
       expect(fetch).toHaveBeenCalledWith(
-        '/api/users/me/recommendations?seriesId=1&weekNumber=4',
+        '/api/users/me/recommendations?seriesId=1&raceWeekIndex=4',
         expect.objectContaining({})
       );
     });
@@ -260,7 +267,7 @@ describe('api', () => {
       });
 
       expect(fetch).toHaveBeenCalledWith(
-        '/api/users/me/recommendations?seriesId=1&weekNumber=4&includeUploadedLaps=true&uploadedLapTypes=Qualifying',
+        '/api/users/me/recommendations?seriesId=1&raceWeekIndex=4&includeUploadedLaps=true&uploadedLapTypes=Qualifying',
         expect.objectContaining({})
       );
     });
@@ -708,7 +715,7 @@ describe('api', () => {
 
   describe('getWeekStrategy', () => {
     it('calls GET /api/series/:id/weeks/:n/strategy and returns parsed data', async () => {
-      const data = { seriesId: 444, seriesName: 'GT3 Cup', weekNumber: 3, cars: [] };
+      const data = { seriesId: 444, seriesName: 'GT3 Cup', raceWeekIndex: 3, cars: [] };
       mockFetchOk(data);
       const result = await api.getWeekStrategy(444, 3);
       expect(fetch).toHaveBeenCalledWith(
@@ -786,20 +793,20 @@ describe('api', () => {
   // ── getQualifyResults ─────────────────────────────────────────────────────
 
   describe('getQualifyResults', () => {
-    it('includes carClassId and weekNumber query params when both provided', async () => {
+    it('includes carClassId and raceWeekIndex query params when both provided', async () => {
       mockFetchOk({ seriesId: 444, results: [] });
       await api.getQualifyResults(444, 4091, 2);
       expect(fetch).toHaveBeenCalledWith(
-        '/api/series/444/qualify-results?carClassId=4091&weekNumber=2',
+        '/api/series/444/qualify-results?carClassId=4091&raceWeekIndex=2',
         expect.objectContaining({})
       );
     });
 
-    it('includes only weekNumber when carClassId is omitted', async () => {
+    it('includes only raceWeekIndex when carClassId is omitted', async () => {
       mockFetchOk({ seriesId: 444, results: [] });
       await api.getQualifyResults(444, undefined, 0);
       expect(fetch).toHaveBeenCalledWith(
-        '/api/series/444/qualify-results?weekNumber=0',
+        '/api/series/444/qualify-results?raceWeekIndex=0',
         expect.objectContaining({})
       );
     });

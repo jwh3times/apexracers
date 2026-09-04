@@ -16,6 +16,6 @@ public static class DemoRaceGuideData
                 Start: Past,
                 End: FarFuture,
                 EntryCount: 18 + i * 3,
-                RaceWeekNumber: 0))
+                RaceWeekIndex: 0))
             .ToList();
 }

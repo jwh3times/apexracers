@@ -53,15 +53,15 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         {
             var classIds = await db.SeasonCarClasses
                 .Where(c => c.SeasonId == seasonId).Select(c => c.CarClassId).ToListAsync(ct);
-            var weeks = await db.Weeks
-                .Where(w => w.SeasonId == seasonId).Select(w => w.WeekNumber).ToListAsync(ct);
+            var raceWeekIndices = await db.Weeks
+                .Where(w => w.SeasonId == seasonId).Select(w => w.RaceWeekIndex).ToListAsync(ct);
 
             foreach (var classId in classIds)
             {
                 await DemoCache.UpsertAsync(db, IRacingCacheKeys.Standings(seasonId, classId).Key, DemoStandingsData.BuildStandings(seasonId, classId), ct);
                 await DemoCache.UpsertAsync(db, IRacingCacheKeys.TimeTrialStandings(seasonId, classId).Key, DemoStandingsData.BuildTtStandings(seasonId, classId), ct);
-                foreach (var week in weeks)
-                    await DemoCache.UpsertAsync(db, IRacingCacheKeys.QualifyResults(seasonId, classId, week).Key, DemoStandingsData.BuildQualify(seasonId, classId, week), ct);
+                foreach (var raceWeekIndex in raceWeekIndices)
+                    await DemoCache.UpsertAsync(db, IRacingCacheKeys.QualifyResults(seasonId, classId, raceWeekIndex).Key, DemoStandingsData.BuildQualify(seasonId, classId, raceWeekIndex), ct);
             }
         }
     }
@@ -92,9 +92,9 @@ public sealed class DemoCacheSeeder(AppDbContext db)
                 foreach (var carId in carIds)
                 {
                     var exists = await db.SeasonCarBops
-                        .AnyAsync(b => b.SeasonId == seasonId && b.WeekNumber == week.WeekNumber && b.CarId == carId, ct);
+                        .AnyAsync(b => b.SeasonId == seasonId && b.RaceWeekIndex == week.RaceWeekIndex && b.CarId == carId, ct);
                     if (!exists)
-                        db.SeasonCarBops.Add(DemoScheduleData.BuildBop(seasonId, week.WeekNumber, carId));
+                        db.SeasonCarBops.Add(DemoScheduleData.BuildBop(seasonId, week.RaceWeekIndex, carId));
                 }
             }
         }

@@ -118,12 +118,15 @@ Never label it as a Percentile Rank or convert it to a Top Share: a projected-on
 Use `recommendationRank` for the per-Car ordering on recommendation and strategy surfaces, and
 `standing` for championship, Time Trial, qualifying, and category-leaderboard positions. Do not
 introduce an unqualified `rank` client field or label; `CONTEXT.md` owns these domain distinctions.
+Week Detail's compact `WeekCarPercentile` retains `personalBestLapEvidence` even though it omits the
+lap time; render `lapEvidenceLabel` beneath its "Your pct" chip and use `lapEvidenceDescription` for
+the explanatory title rather than reducing the row to its Top Share alone.
 
 ### Race week numbering contract
 
-Every race week number the API returns, every route param, and every `api.ts` call is the **Race Week
+Every race-week position the API returns, every route param, and every `api.ts` call is the **Race Week
 Index** — iRacing's zero-based `race_week_num`. Never render one of those values directly as a
-user-facing label (`` `Week ${weekNumber}` `` reads "Week 0" for a season's opening week). Convert at the display
+user-facing label (`` `Week ${raceWeekIndex}` `` reads "Week 0" for a season's opening week). Convert at the display
 boundary with `utils/raceWeek.ts`: `raceWeekLabel(index)` for the full label (`"Week 1"`), or
 `raceWeekNumber(index)` when only the **Race Week Number** (the one-based ordinal) is needed inline.
 Keep passing the original, unconverted index to `api.ts` methods and route params — the conversion is

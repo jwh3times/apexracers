@@ -23,13 +23,13 @@ public class SeriesServiceTests
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_ActiveSeasonWithStartedWeek_ReturnsCurrentWeekNumber()
+    public async Task GetActiveSeriesAsync_ActiveSeasonWithStartedWeek_ReturnsCurrentRaceWeekIndex()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
         var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), TrackId = 99, Track = track, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Tracks.Add(track);
@@ -42,7 +42,7 @@ public class SeriesServiceTests
         Assert.Equal(1, dto.Id);
         Assert.Equal("GT3 Cup", dto.Name);
         Assert.Equal(1, dto.SeasonId);
-        Assert.Equal(1, dto.CurrentWeekNumber);
+        Assert.Equal(1, dto.CurrentRaceWeekIndex);
         Assert.Equal("Spa", dto.TrackName);
         Assert.Equal("Full", dto.TrackConfigName);
         Assert.Equal(0, dto.CarCount);
@@ -50,13 +50,13 @@ public class SeriesServiceTests
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_ActiveSeasonWithFutureWeekOnly_ReturnsNullCurrentWeekNumber()
+    public async Task GetActiveSeriesAsync_ActiveSeasonWithFutureWeekOnly_ReturnsNullCurrentRaceWeekIndex()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
         var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
-        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackId = 99, Track = track, Season = season };
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), TrackId = 99, Track = track, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Tracks.Add(track);
@@ -66,19 +66,19 @@ public class SeriesServiceTests
         var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
         var dto = Assert.Single(result);
-        Assert.Null(dto.CurrentWeekNumber);
+        Assert.Null(dto.CurrentRaceWeekIndex);
     }
 
     [Fact]
-    public async Task GetActiveSeriesAsync_MultipleStartedWeeks_ReturnsMostRecentWeekNumber()
+    public async Task GetActiveSeriesAsync_MultipleStartedWeeks_ReturnsMostRecentRaceWeekIndex()
     {
         await using var db = DbContextFactory.Create();
         var series = new Series { Id = 1, Name = "GT3 Cup" };
         var season = new Season { Id = 1, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
         var track1 = new Track { Id = 1, Name = "Monza", ConfigName = "Full" };
         var track2 = new Track { Id = 2, Name = "Spa", ConfigName = "Full" };
-        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 1, Track = track1, Season = season };
-        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 2, Track = track2, Season = season };
+        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 1, Track = track1, Season = season };
+        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 2, Track = track2, Season = season };
         db.Series.Add(series);
         db.Seasons.Add(season);
         db.Tracks.AddRange(track1, track2);
@@ -87,7 +87,7 @@ public class SeriesServiceTests
 
         var result = await new SeriesService(db).GetActiveSeriesAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, result[0].CurrentWeekNumber);
+        Assert.Equal(2, result[0].CurrentRaceWeekIndex);
         Assert.Equal("Spa", result[0].TrackName);
     }
 
@@ -101,14 +101,14 @@ public class SeriesServiceTests
         var car1 = new Car { Id = 1, Name = "Ferrari 296", NameAbbreviated = "Ferrari" };
         var car2 = new Car { Id = 2, Name = "Porsche 992", NameAbbreviated = "Porsche" };
         var carClass = new CarClass { Id = 10, Name = "GT3", ShortName = "GT3", RelativeSpeed = 100 };
-        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 99, Track = track, Season = season };
-        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 99, Track = track, Season = season };
+        var week1 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 99, Track = track, Season = season };
+        var week2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 99, Track = track, Season = season };
         // Official subsession in current week (week2) — 2 cars, 2 drivers
-        var sub2 = new Subsession { Id = 2, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = true, EventStrengthOfField = 200, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week2 };
+        var sub2 = new Subsession { Id = 2, SeasonId = 1, RaceWeekIndex = 2, TrackId = 99, OfficialSession = true, EventStrengthOfField = 200, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week2 };
         // Non-official subsession in current week — should not count
-        var sub3 = new Subsession { Id = 3, SeasonId = 1, WeekNumber = 2, TrackId = 99, OfficialSession = false, EventStrengthOfField = 50, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 1, SplitCount = 2, Season = season, Track = track, Week = week2 };
+        var sub3 = new Subsession { Id = 3, SeasonId = 1, RaceWeekIndex = 2, TrackId = 99, OfficialSession = false, EventStrengthOfField = 50, StartTime = DateTimeOffset.UtcNow.AddDays(-7), SplitIndex = 1, SplitCount = 2, Season = season, Track = track, Week = week2 };
         // Official subsession in previous week — should not count
-        var sub1 = new Subsession { Id = 1, SeasonId = 1, WeekNumber = 1, TrackId = 99, OfficialSession = true, EventStrengthOfField = 100, StartTime = DateTimeOffset.UtcNow.AddDays(-14), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week1 };
+        var sub1 = new Subsession { Id = 1, SeasonId = 1, RaceWeekIndex = 1, TrackId = 99, OfficialSession = true, EventStrengthOfField = 100, StartTime = DateTimeOffset.UtcNow.AddDays(-14), SplitIndex = 0, SplitCount = 1, Season = season, Track = track, Week = week1 };
 
         db.Series.Add(series);
         db.Seasons.Add(season);
@@ -156,12 +156,12 @@ public class SeriesServiceTests
         db.Weeks.AddRange(
             new Week
             {
-                Id = Guid.NewGuid(), SeasonId = 100, WeekNumber = 0, TrackId = 1, Track = monza, Season = q2,
+                Id = Guid.NewGuid(), SeasonId = 100, RaceWeekIndex = 0, TrackId = 1, Track = monza, Season = q2,
                 StartDate = DateOnly.FromDateTime(today.AddDays(-q2StartDaysAgo)),
             },
             new Week
             {
-                Id = Guid.NewGuid(), SeasonId = 200, WeekNumber = 0, TrackId = 2, Track = spa, Season = q3,
+                Id = Guid.NewGuid(), SeasonId = 200, RaceWeekIndex = 0, TrackId = 2, Track = spa, Season = q3,
                 StartDate = DateOnly.FromDateTime(today.AddDays(q3StartsInDays)),
             });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -179,7 +179,7 @@ public class SeriesServiceTests
 
         var dto = Assert.Single(result);
         Assert.Equal(100, dto.SeasonId);
-        Assert.Equal(0, dto.CurrentWeekNumber);
+        Assert.Equal(0, dto.CurrentRaceWeekIndex);
         Assert.Equal("Monza", dto.TrackName);
     }
 
@@ -194,7 +194,7 @@ public class SeriesServiceTests
 
         var dto = Assert.Single(result);
         Assert.Equal(200, dto.SeasonId);
-        Assert.Equal(0, dto.CurrentWeekNumber);
+        Assert.Equal(0, dto.CurrentRaceWeekIndex);
         Assert.Equal("Spa", dto.TrackName);
     }
 
@@ -212,7 +212,7 @@ public class SeriesServiceTests
         db.Tracks.Add(track);
         db.Weeks.Add(new Week
         {
-            Id = Guid.NewGuid(), SeasonId = 300, WeekNumber = 0, TrackId = 1, Track = track, Season = season,
+            Id = Guid.NewGuid(), SeasonId = 300, RaceWeekIndex = 0, TrackId = 1, Track = track, Season = season,
             StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)),
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -221,7 +221,7 @@ public class SeriesServiceTests
 
         var dto = Assert.Single(result);
         Assert.Equal(300, dto.SeasonId);
-        Assert.Null(dto.CurrentWeekNumber);
+        Assert.Null(dto.CurrentRaceWeekIndex);
     }
 
     [Fact]

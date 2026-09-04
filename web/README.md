@@ -140,6 +140,11 @@ displayed lower-is-better `TOP X%` value through `toTopPercent`. Pass the raw ra
 `fieldSizeMessage` for the undersized-Field explanation. The threshold itself belongs to
 `ApexRacers.Core.FieldPercentile`, not the frontend.
 
+Week Detail's compact "Your pct" result also carries `personalBestLapEvidence`. Keep the evidence
+attached to the same row as its percentile, and render `lapEvidenceLabel` beneath the chip with
+`lapEvidenceDescription` as its explanatory title; a summary can omit the lap time without hiding
+which Personal Best evidence produced its reading.
+
 Recommendation responses keep the current Race Week's `percentileRank` separate from the historical
 `expectedPercentile` used for pace projection. A projected-only car has no place in the current Field,
 so its `percentileRank`, `topSharePercent`, and `fieldSize` are null; label its Expected Percentile
@@ -148,6 +153,10 @@ instead of presenting it as a current Field result.
 ## API client
 
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
+
+Race-week response fields, request parameters, and route state use `raceWeekIndex`; keep that value
+unchanged when calling the API and use `raceWeekNumber` / `raceWeekLabel` only for presentation. See
+[`CONTEXT.md`](../CONTEXT.md) for the canonical Race Week Index / Race Week Number vocabulary.
 
 The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
 

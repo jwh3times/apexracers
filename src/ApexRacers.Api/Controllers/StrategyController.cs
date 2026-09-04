@@ -9,16 +9,16 @@ namespace ApexRacers.Api.Controllers;
 // personalized "optimal for you" overlay (per-car percentile, projected lap, rank) is included;
 // otherwise it is simply omitted.
 [ApiController]
-[Route("api/series/{seriesId:int}/weeks/{weekNumber:int}/strategy")]
+[Route("api/series/{seriesId:int}/weeks/{raceWeekIndex:int}/strategy")]
 public class StrategyController(StrategyService strategy) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAsync(int seriesId, int weekNumber, CancellationToken ct)
+    public async Task<IActionResult> GetAsync(int seriesId, int raceWeekIndex, CancellationToken ct)
     {
         Guid? userId = Guid.TryParse(User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var uid)
             ? uid
             : null;
 
-        return Ok(await strategy.GetStrategyAsync(seriesId, weekNumber, userId, ct));
+        return Ok(await strategy.GetStrategyAsync(seriesId, raceWeekIndex, userId, ct));
     }
 }

@@ -122,7 +122,7 @@ const sampleSeries = [
     id: 1,
     name: 'VRS GT3 Sprint',
     seasonId: 2024,
-    currentWeekNumber: 5,
+    currentRaceWeekIndex: 5,
     category: null,
     trackName: null,
     trackConfigName: null,
@@ -133,7 +133,7 @@ const sampleSeries = [
     id: 2,
     name: 'Porsche Cup',
     seasonId: 2024,
-    currentWeekNumber: null,
+    currentRaceWeekIndex: null,
     category: null,
     trackName: null,
     trackConfigName: null,
@@ -243,7 +243,7 @@ describe('ProfilePage', () => {
   it('shows WK badge for active series and Off Season for inactive', async () => {
     mockGetSeries.mockResolvedValue(sampleSeries);
     renderPage();
-    // currentWeekNumber is the zero-based Race Week Index 5, shown as Race Week Number 6.
+    // currentRaceWeekIndex 5 is shown as Race Week Number 6.
     await waitFor(() => expect(screen.getByText('WK 6')).toBeInTheDocument());
     expect(screen.getByText('Off Season')).toBeInTheDocument();
   });

@@ -11,7 +11,7 @@ function race(overrides: Partial<RaceGuideEntry> = {}): RaceGuideEntry {
     startTime: '2026-06-20T12:15:00Z', // 15 min out
     endTime: '2026-06-20T13:00:00Z',
     entryCount: 20,
-    raceWeekNum: 3,
+    raceWeekIndex: 3,
     ...overrides,
   };
 }
@@ -31,7 +31,7 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
     medianLapSeconds: null,
     totalWeeks: history.length,
     percentileHistory: history.map((percentileRank, i) => ({
-      weekNumber: i + 1,
+      raceWeekIndex: i + 1,
       trackName: 'Spa',
       configName: null,
       percentileRank,

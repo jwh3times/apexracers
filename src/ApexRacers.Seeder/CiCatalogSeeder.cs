@@ -15,7 +15,7 @@ public static class CiCatalog
     public const int SeasonId   = 99001;
     public const int CarClassId = 9901;
     public const int WeekCount  = 8;
-    public const int CurrentWeek = 4;          // week whose date window contains "today"
+    public const int CurrentRaceWeekIndex = 4; // Race Week whose date window contains "today"
     public const long DriverStart = 100_001;   // includes DemoData.DriverCustId + RivalCustId
     public const int DriverCount  = 60;
 
@@ -156,19 +156,19 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                 CarClassId = CiCatalog.CarClassId,
             });
 
-        // Week N starts (N - CurrentWeek) weeks away, anchored 3 days back so the
-        // CurrentWeek window always contains "today" for current-week UI logic.
-        for (var week = 1; week <= CiCatalog.WeekCount; week++)
+        // Each Race Week Index starts relative to CurrentRaceWeekIndex, anchored 3 days back so
+        // the current Race Week window always contains "today" for current-week UI logic.
+        for (var raceWeekIndex = 1; raceWeekIndex <= CiCatalog.WeekCount; raceWeekIndex++)
         {
             var exists = await db.Weeks.AnyAsync(
-                w => w.SeasonId == CiCatalog.SeasonId && w.WeekNumber == week);
+                w => w.SeasonId == CiCatalog.SeasonId && w.RaceWeekIndex == raceWeekIndex);
             if (exists) continue;
             db.Weeks.Add(new Week
             {
                 SeasonId = CiCatalog.SeasonId,
-                WeekNumber = week,
-                TrackId = CiCatalog.TrackIds[week - 1],
-                StartDate = today.AddDays(((week - CiCatalog.CurrentWeek) * 7) - 3),
+                RaceWeekIndex = raceWeekIndex,
+                TrackId = CiCatalog.TrackIds[raceWeekIndex - 1],
+                StartDate = today.AddDays(((raceWeekIndex - CiCatalog.CurrentRaceWeekIndex) * 7) - 3),
             });
         }
 
@@ -190,9 +190,9 @@ public sealed class CiCatalogSeeder(AppDbContext db)
 
         int subsessions = 0, results = 0;
 
-        foreach (var week in weeks.OrderBy(w => w.WeekNumber))
+        foreach (var week in weeks.OrderBy(w => w.RaceWeekIndex))
         {
-            var trackLength = TrackSpecs[week.WeekNumber - 1].Length;
+            var trackLength = TrackSpecs[week.RaceWeekIndex - 1].Length;
             var baseLap = trackLength / AvgSpeedMph * 3600.0;
             var stdDev = Math.Max(1.0, baseLap * 0.02);
 
@@ -200,7 +200,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
             {
                 var carId = CiCatalog.CarIds[carIndex];
                 // Same id formula as the main seeder: unique per (season, week, car), negative.
-                var subsessionId = -((CiCatalog.SeasonId * 10000) + (week.WeekNumber * 100) + carIndex);
+                var subsessionId = -((CiCatalog.SeasonId * 10000) + (week.RaceWeekIndex * 100) + carIndex);
 
                 if (await db.Subsessions.AnyAsync(s => s.Id == subsessionId)) continue;
 
@@ -208,7 +208,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                 {
                     Id = subsessionId,
                     SeasonId = CiCatalog.SeasonId,
-                    WeekNumber = week.WeekNumber,
+                    RaceWeekIndex = week.RaceWeekIndex,
                     WeekId = week.Id,
                     TrackId = week.TrackId,
                     OfficialSession = true,
@@ -230,7 +230,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                     .Select(kvp => (
                         CustId: kvp.Key,
                         LapSeconds: SyntheticLaps.GenerateLapTime(
-                            kvp.Key, carId, week.WeekNumber,
+                            kvp.Key, carId, week.RaceWeekIndex,
                             baseLap + carOffset, kvp.Value, stdDev)))
                     .OrderBy(x => x.LapSeconds)
                     .ToList();

@@ -18,9 +18,9 @@ public class DemoCacheSeederAllTests
         await using var db = DbContextFactory.Create();
         db.Seasons.Add(new Season { Id = 6115, SeriesId = 444, Active = true, Year = 2026, Quarter = 2 });
         db.SeasonCarClasses.Add(new SeasonCarClass { SeasonId = 6115, CarClassId = 100 });
-        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, WeekNumber = 0, TrackId = 1 });
+        db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
         db.SeasonCars.Add(new SeasonCar { SeasonId = 6115, CarId = 132 });
-        db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, WeekNumber = 0, TrackId = 1 });
+        db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
         db.SubsessionResults.Add(new SubsessionResult
         {
             SubsessionId = -10, CustId = DemoData.DriverCustId, CarId = 132, BestLapSeconds = 90.0,

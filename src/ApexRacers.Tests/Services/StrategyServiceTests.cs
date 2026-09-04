@@ -13,7 +13,7 @@ public class StrategyServiceTests
 {
     private const int SeriesId = 444;
     private const int SeasonId = 6115;
-    private const int TargetWeek = 2;
+    private const int TargetRaceWeekIndex = 2;
     private const int Bmw = 132;
     private const int Porsche = 119;
 
@@ -54,13 +54,13 @@ public class StrategyServiceTests
         db.Tracks.AddRange(track, prevTrack);
         db.Weeks.Add(new Week
         {
-            Id = Guid.NewGuid(), SeasonId = SeasonId, WeekNumber = TargetWeek, TrackId = 532,
+            Id = Guid.NewGuid(), SeasonId = SeasonId, RaceWeekIndex = TargetRaceWeekIndex, TrackId = 532,
             StartDate = new DateOnly(2026, 6, 5), Season = season, Track = track,
             WeatherSummaryJson = withWeather ? WeatherJson(precip) : null,
         });
         db.Weeks.Add(new Week
         {
-            Id = Guid.NewGuid(), SeasonId = SeasonId, WeekNumber = 1, TrackId = 47,
+            Id = Guid.NewGuid(), SeasonId = SeasonId, RaceWeekIndex = 1, TrackId = 47,
             StartDate = new DateOnly(2026, 5, 29), Season = season, Track = prevTrack,
         });
 
@@ -69,11 +69,11 @@ public class StrategyServiceTests
 
         db.SeasonCarBops.AddRange(
             // Target week.
-            new SeasonCarBop { SeasonId = SeasonId, WeekNumber = TargetWeek, CarId = Bmw, WeightPenaltyKg = 10, PowerAdjustPct = -1.5, MaxPctFuelFill = 50, MaxDryTireSets = 0 },
-            new SeasonCarBop { SeasonId = SeasonId, WeekNumber = TargetWeek, CarId = Porsche, WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2 },
+            new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = TargetRaceWeekIndex, CarId = Bmw, WeightPenaltyKg = 10, PowerAdjustPct = -1.5, MaxPctFuelFill = 50, MaxDryTireSets = 0 },
+            new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = TargetRaceWeekIndex, CarId = Porsche, WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2 },
             // Previous week — BMW was lighter / less restricted (so target = Nerfed); Porsche unchanged.
-            new SeasonCarBop { SeasonId = SeasonId, WeekNumber = 1, CarId = Bmw, WeightPenaltyKg = 5, PowerAdjustPct = -1.0 },
-            new SeasonCarBop { SeasonId = SeasonId, WeekNumber = 1, CarId = Porsche, WeightPenaltyKg = 0, PowerAdjustPct = 0 });
+            new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = 1, CarId = Bmw, WeightPenaltyKg = 5, PowerAdjustPct = -1.0 },
+            new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = 1, CarId = Porsche, WeightPenaltyKg = 0, PowerAdjustPct = 0 });
 
         await db.SaveChangesAsync(Ct);
         return db;
@@ -90,11 +90,11 @@ public class StrategyServiceTests
     {
         await using var db = await SeededAsync(precip: 5m);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, userId: null, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, userId: null, Ct);
 
         Assert.Equal(SeriesId, dto.SeriesId);
         Assert.Equal("GT Sprint", dto.SeriesName);
-        Assert.Equal(TargetWeek, dto.WeekNumber);
+        Assert.Equal(TargetRaceWeekIndex, dto.RaceWeekIndex);
         Assert.Equal("Thruxton", dto.TrackName);
         Assert.Equal("Club", dto.ConfigName);
         Assert.Equal(2.36, dto.TrackLengthMiles);
@@ -135,7 +135,7 @@ public class StrategyServiceTests
     {
         await using var db = await SeededAsync(precip: 60m);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, null, Ct);
 
         Assert.Equal("High", dto.WeatherRisk.Level);
         Assert.Equal(60, dto.WeatherRisk.PrecipChancePct);
@@ -147,7 +147,7 @@ public class StrategyServiceTests
     {
         await using var db = await SeededAsync(withWeather: false);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, null, Ct);
 
         Assert.Null(dto.Weather);
         Assert.Equal("Low", dto.WeatherRisk.Level);
@@ -165,9 +165,9 @@ public class StrategyServiceTests
         var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
         db.CarClasses.Add(carClass);
         var weekId = await db.Weeks
-            .Where(w => w.SeasonId == SeasonId && w.WeekNumber == TargetWeek)
+            .Where(w => w.SeasonId == SeasonId && w.RaceWeekIndex == TargetRaceWeekIndex)
             .Select(w => w.Id).FirstAsync(Ct);
-        var subsession = new Subsession { Id = -1, SeasonId = SeasonId, WeekNumber = TargetWeek, WeekId = weekId, TrackId = 532, StartTime = DateTimeOffset.UtcNow.AddHours(-2) };
+        var subsession = new Subsession { Id = -1, SeasonId = SeasonId, RaceWeekIndex = TargetRaceWeekIndex, WeekId = weekId, TrackId = 532, StartTime = DateTimeOffset.UtcNow.AddHours(-2) };
         db.Subsessions.Add(subsession);
         await db.SaveChangesAsync(Ct);
 
@@ -191,7 +191,7 @@ public class StrategyServiceTests
         });
         await db.SaveChangesAsync(Ct);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, userId, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, userId, Ct);
 
         Assert.True(dto.Personalized);
 
@@ -223,10 +223,10 @@ public class StrategyServiceTests
     public async Task GetStrategyAsync_UnknownCarInBop_FallsBackToCarIdLabel()
     {
         await using var db = await SeededAsync();
-        db.SeasonCarBops.Add(new SeasonCarBop { SeasonId = SeasonId, WeekNumber = TargetWeek, CarId = 999 });
+        db.SeasonCarBops.Add(new SeasonCarBop { SeasonId = SeasonId, RaceWeekIndex = TargetRaceWeekIndex, CarId = 999 });
         await db.SaveChangesAsync(Ct);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, null, Ct);
 
         Assert.Contains(dto.Cars, c => c.CarName == "Car 999");
     }
@@ -239,7 +239,7 @@ public class StrategyServiceTests
         await db.SaveChangesAsync(Ct);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct));
+            () => CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, null, Ct));
     }
 
     [Fact]
@@ -249,9 +249,9 @@ public class StrategyServiceTests
         // the briefing for the week drivers just ran must not disappear with it.
         await using var db = await SeededAsync(active: false);
 
-        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetWeek, null, Ct);
+        var dto = await CreateService(db).GetStrategyAsync(SeriesId, TargetRaceWeekIndex, null, Ct);
 
-        Assert.Equal(TargetWeek, dto.WeekNumber);
+        Assert.Equal(TargetRaceWeekIndex, dto.RaceWeekIndex);
         Assert.Equal("Thruxton", dto.TrackName);
     }
 
@@ -261,7 +261,7 @@ public class StrategyServiceTests
         await using var db = await SeededAsync();
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => CreateService(db).GetStrategyAsync(SeriesId, weekNumber: 99, null, Ct));
+            () => CreateService(db).GetStrategyAsync(SeriesId, raceWeekIndex: 99, null, Ct));
     }
 
     private static void AddResult(AppDbContext db, Subsession subsession, int carId, CarClass carClass, long custId, double lapSeconds)

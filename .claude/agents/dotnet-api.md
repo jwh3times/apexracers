@@ -36,8 +36,10 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 - The race-vs-uploaded choice behind a Personal Best is never re-compared inline either: call
   `ApexRacers.Core.PersonalBest.Select(raceBest, uploadedBest)` (nullable overload) or
   `Select(raceBest, uploadedBest)` (non-nullable overload, for a caller that has already proved the
-  Race Best exists) and carry the returned `PersonalBest.Evidence` onto the DTO alongside
-  `LapSeconds` — don't keep only the winning `double`. **A Race Best wins an exact tie**: it was set
+  Race Best exists) and carry the returned `PersonalBest.Evidence` onto the DTO. Carry it alongside
+  `LapSeconds` when the DTO exposes the lap; a compact DTO that exposes only a derived reading still
+  carries the evidence (`WeekCarPercentileDto` is the canonical example). Don't discard the evidence
+  just because the response omits the winning `double`. **A Race Best wins an exact tie**: it was set
   against the Field being ranked, so it is the better-evidenced of two equally fast laps; this is
   the same strict `<` test `PercentileCalculationService`, `CarRecommendationService`, and
   `UserAnalyticsService` each ran by hand before they shared this seam. `UserAnalyticsService`
@@ -57,8 +59,8 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
     `{ CarId, TrackId }` in the same style, just with an added `RecordedAt` range filter. Don't read that as three call sites
     forgetting the shared helper; it's the same helper's invariants without its all-time scope.
 - **A Personal Best's Uploaded side is bounded to the Race Week being ranked, never fetched all-time.**
-  Call `AppDbContext.RaceWeekWindowAsync(seasonId, weekNumber, ct)` (single Week) or
-  `RaceWeekWindowsAsync(seasonId, ct)` (whole season, keyed by Week number — `SeasonQueries`,
+  Call `AppDbContext.RaceWeekWindowAsync(seasonId, raceWeekIndex, ct)` (single Week) or
+  `RaceWeekWindowsAsync(seasonId, ct)` (whole season, keyed by Race Week Index — `SeasonQueries`,
   `src/ApexRacers.Api/Services/SeasonQueries.cs`) to get a `Core.RaceWeekWindow`, then filter
   `UploadedLap.RecordedAt` with `window.Contains(recordedAt)` (or the equivalent `>= Start && <
   End` range pushed into SQL — see the SQLite-vs-Npgsql translation note in the Tests section below).
@@ -84,7 +86,7 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   `SeasonQueries` extensions (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead:
   `AppDbContext.CurrentSeasonIdAsync(seriesId, ct, today?)` / `CurrentSeasonIdsAsync(seriesIds, ct,
   today?)` (batched — one query per set of series, not per series), `IQueryable<Week>.InSeason(seasonId,
-  weekNumber)`, `AppDbContext.CurrentSeasonOrThrowAsync` (the one
+  raceWeekIndex)`, `AppDbContext.CurrentSeasonOrThrowAsync` (the one
   `KeyNotFoundException("No current season for series {id}.")` wording), `AppDbContext.SeriesNameAsync`.
   The `today` parameter exists only so tests can sit exactly on a changeover boundary — production
   callers never pass it. The selection rule itself — the season whose first race week began most
@@ -94,8 +96,8 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   exactly the bug this replaced. `InSeason` composes on an already-resolved season id (a `CurrentSeasonId*`
   call is a round trip, so callers await it once before composing the week projection they need).
 - "Which week is the season currently in" is never re-derived per caller either — call
-  `ApexRacers.Core.SeasonCalendar.CurrentWeekNumber(weeks, today)`: latest week whose start date is
-  on/before `today`, week number only breaking a tie. It returns `null` before the season starts
+  `ApexRacers.Core.SeasonCalendar.CurrentRaceWeekIndex(weeks, today)`: latest week whose start date is
+  on/before `today`, Race Week Index only breaking a tie. It returns `null` before the season starts
   **by design** — the pre-season fallback (blank cell vs. first week) is a per-caller UI choice, not
   something this method should decide for every caller.
 

@@ -18,7 +18,7 @@ public class DemoCacheSeederCompletionTests
     private static async Task<AppDbContext> SeededResultsAsync()
     {
         var db = DbContextFactory.Create();
-        db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, WeekNumber = 0, TrackId = 532 });
+        db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, RaceWeekIndex = 0, TrackId = 532 });
         db.SubsessionResults.Add(new SubsessionResult
         {
             SubsessionId = -10, CustId = DemoData.DriverCustId, CarId = 132, BestLapSeconds = 90.0,

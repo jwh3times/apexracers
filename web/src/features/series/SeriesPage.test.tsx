@@ -16,7 +16,7 @@ function mk(overrides: Partial<Series> = {}): Series {
     id: 1,
     name: 'GT3 Cup',
     seasonId: 10,
-    currentWeekNumber: 5,
+    currentRaceWeekIndex: 5,
     category: null,
     trackName: null,
     trackConfigName: null,
@@ -57,13 +57,13 @@ describe('SeriesPage', () => {
     await waitFor(() => expect(screen.getByText(/no active series/i)).toBeInTheDocument());
   });
 
-  it('renders series as links when currentWeekNumber is set', async () => {
+  it('renders series as links when currentRaceWeekIndex is set', async () => {
     mockGetSeries.mockResolvedValue([
       {
         id: 1,
         name: 'GT3 Cup',
         seasonId: 10,
-        currentWeekNumber: 5,
+        currentRaceWeekIndex: 5,
         category: null,
         trackName: null,
         trackConfigName: null,
@@ -79,9 +79,9 @@ describe('SeriesPage', () => {
   });
 
   it('labels the opening race week as WK 1 while still routing to index 0', async () => {
-    // The bug: currentWeekNumber is iRacing's zero-based Race Week Index, so the first week of a
+    // The zero-based Race Week Index 0 is the first week of a
     // season rendered as "WK 0". The label is one-based; the route it links to must not be.
-    mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: 0 })]);
+    mockGetSeries.mockResolvedValue([mk({ currentRaceWeekIndex: 0 })]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText(/WK 1$/)).toBeInTheDocument();
@@ -93,13 +93,13 @@ describe('SeriesPage', () => {
   });
 
   it('labels a later race week one-based', async () => {
-    mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: 5 })]);
+    mockGetSeries.mockResolvedValue([mk({ currentRaceWeekIndex: 5 })]);
     renderPage();
     await waitFor(() => expect(screen.getByText(/WK 6$/)).toBeInTheDocument());
   });
 
-  it('renders series as plain text when currentWeekNumber is null', async () => {
-    mockGetSeries.mockResolvedValue([mk({ currentWeekNumber: null })]);
+  it('renders series as plain text when currentRaceWeekIndex is null', async () => {
+    mockGetSeries.mockResolvedValue([mk({ currentRaceWeekIndex: null })]);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('GT3 Cup')).toBeInTheDocument();

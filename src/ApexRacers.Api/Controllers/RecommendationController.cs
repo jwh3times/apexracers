@@ -17,7 +17,7 @@ public class RecommendationsController(
     [HttpGet]
     public async Task<IActionResult> GetRecommendationsAsync(
         [FromQuery] int seriesId,
-        [FromQuery] int weekNumber,
+        [FromQuery] int raceWeekIndex,
         [FromQuery] bool includeUploadedLaps = false,
         [FromQuery] List<LapSessionType>? uploadedLapTypes = null,
         CancellationToken ct = default)
@@ -31,6 +31,6 @@ public class RecommendationsController(
         var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, weekNumber, subjectDriverCustId, evidence, ct));
+            seriesId, raceWeekIndex, subjectDriverCustId, evidence, ct));
     }
 }

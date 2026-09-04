@@ -74,26 +74,27 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
     }
 
     public async Task<SeasonQualifyResultsDto> GetQualifyResultsAsync(
-        int seriesId, int? carClassId, int? raceWeekNum, CancellationToken ct)
+        int seriesId, int? carClassId, int? raceWeekIndex, CancellationToken ct)
     {
         var ctx = await ResolveAsync(seriesId, carClassId, ct);
 
         var weeks = await db.Weeks
             .Where(w => w.SeasonId == ctx.SeasonId)
-            .OrderBy(w => w.WeekNumber)
-            .Select(w => new { w.WeekNumber, w.StartDate })
+            .OrderBy(w => w.RaceWeekIndex)
+            .Select(w => new { w.RaceWeekIndex, w.StartDate })
             .ToListAsync(ct);
-        var availableWeeks = weeks.Select(w => w.WeekNumber).ToList();
-        var week = raceWeekNum ?? CurrentWeek(weeks.Select(w => (w.WeekNumber, w.StartDate)));
+        var availableRaceWeekIndices = weeks.Select(w => w.RaceWeekIndex).ToList();
+        var selectedRaceWeekIndex = raceWeekIndex
+            ?? CurrentRaceWeekIndex(weeks.Select(w => (w.RaceWeekIndex, w.StartDate)));
 
         var results = await cached.GetOrFetchAsync<IReadOnlyList<SeasonQualifyResultDto>>(
-            IRacingCacheKeys.QualifyResults(ctx.SeasonId, ctx.ClassId, week),
+            IRacingCacheKeys.QualifyResults(ctx.SeasonId, ctx.ClassId, selectedRaceWeekIndex),
             async c =>
             {
                 // The SDK type drops the lap time, so we only use it for the authenticated first
                 // hop: the header carries fresh signed chunk URLs we download + parse ourselves.
                 var header = (await c.GetSeasonQualifyResultsAsync(
-                    ctx.SeasonId, ctx.ClassId, week, null, ct)).Data.Item1;
+                    ctx.SeasonId, ctx.ClassId, selectedRaceWeekIndex, null, ct)).Data.Item1;
                 var info = header.ChunkInfo;
                 if (info?.ChunkFileNames is not { Length: > 0 })
                     return [];
@@ -108,7 +109,7 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
 
         return new SeasonQualifyResultsDto(
             seriesId, ctx.SeriesName, ctx.ClassId, ctx.ClassName, ctx.Classes,
-            week, availableWeeks, results);
+            selectedRaceWeekIndex, availableRaceWeekIndices, results);
     }
 
     /// <summary>
@@ -116,13 +117,13 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
     /// a standings page has to render some week, so unlike the series list it cannot show nothing.
     /// The selection rule itself lives in <see cref="SeasonCalendar"/>.
     /// </summary>
-    private static int CurrentWeek(IEnumerable<(int WeekNumber, DateOnly StartDate)> weeks)
+    private static int CurrentRaceWeekIndex(IEnumerable<(int RaceWeekIndex, DateOnly StartDate)> weeks)
     {
         var list = weeks.ToList();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        return SeasonCalendar.CurrentWeekNumber(list, today)
-            ?? (list.Count > 0 ? list.Min(w => w.WeekNumber) : 0);
+        return SeasonCalendar.CurrentRaceWeekIndex(list, today)
+            ?? (list.Count > 0 ? list.Min(w => w.RaceWeekIndex) : 0);
     }
 
     private sealed record ResolvedContext(

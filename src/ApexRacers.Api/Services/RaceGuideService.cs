@@ -50,7 +50,7 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
                 s.Start,
                 s.End,
                 s.EntryCount,
-                s.RaceWeekNumber))
+                s.RaceWeekIndex))
             .ToList();
     }
 
@@ -62,4 +62,4 @@ public class RaceGuideService(CachedIRacingClient cached, AppDbContext db)
 
 /// <summary>SDK-decoupled cache row for <c>race-guide</c> (public so the demo seeder can build it).</summary>
 public sealed record RaceGuideCacheRow(
-    int SeriesId, DateTimeOffset Start, DateTimeOffset End, int EntryCount, int RaceWeekNumber);
+    int SeriesId, DateTimeOffset Start, DateTimeOffset End, int EntryCount, int RaceWeekIndex);

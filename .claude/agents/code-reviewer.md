@@ -55,6 +55,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag a `FieldSize` assigned from a queried row count rather than `FieldPercentile.FieldSize(otherLaps)`. The queried rows hold the driver only when they raced, so their count can describe a different population. A projected-only recommendation must carry null because the Driver did not enter the current-week Field.
 - Flag any attempt to derive a "top X%" from a percentile rank (`100 - rank`, `ceil(100 - rank)`) in a service, a DTO, or the web client. The rank splits ties and counts the driver in its own denominator, so it does not invert to a placement — call `TopSharePercent` and carry the result.
 - Flag a recommendation contract or UI that substitutes an Expected Percentile into `PercentileRank`, or presents the former as a current Field placement. They are distinct metrics: projected-only recommendations carry `PercentileRank`, `TopSharePercent`, and `FieldSize` as null.
+- Flag a Personal-Best-derived response that discards `PersonalBest.Evidence`, including compact
+  responses that omit the lap time itself. `WeekCarPercentileDto` must keep
+  `PersonalBestLapEvidence`, and Week Detail must present it with the "Your pct" chip.
 
 **Uploaded Best projection**
 
@@ -70,7 +73,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 **Season / week resolution**
 
 - Flag any hand-rolled active-season or active-week predicate (`Where(s => s.Active).OrderByDescending(Year).ThenByDescending(Quarter)`, on either `Season` or `Week`) instead of a call to the `SeasonQueries` extensions (`CurrentSeasonIdAsync`, `CurrentSeasonIdsAsync`, `InSeason`, `CurrentSeasonOrThrowAsync`, `SeriesNameAsync`). That predicate is the exact bug `SeasonQueries` replaced (issue #177): it picks whichever season iRacing flagged active most recently, which during a changeover is the *incoming* season before it has raced a single week, not the one the field is actually racing. The correct rule — the season whose first race week began most recently, holding the slot through the inter-season gap — is `Core.SeasonCalendar.CurrentSeasonId`; flag any reimplementation of it inline as well as any call site that reintroduces the old ordering as a shortcut.
-- Flag any new inline "current week" derivation (comparing `Week.StartDate`/`WeekNumber` by hand) instead of a call to `ApexRacers.Core.SeasonCalendar.CurrentWeekNumber`. It's fine for the caller to choose its own pre-season fallback when the result is `null` — that's by design — but the selection rule itself (start date first, week number to break a tie) must not be reimplemented per call site.
+- Flag any new inline "current week" derivation (comparing `Week.StartDate`/`RaceWeekIndex` by hand) instead of a call to `ApexRacers.Core.SeasonCalendar.CurrentRaceWeekIndex`. It's fine for the caller to choose its own pre-season fallback when the result is `null` — that's by design — but the selection rule itself (start date first, Race Week Index to break a tie) must not be reimplemented per call site.
 
 **iRacing cache keys**
 

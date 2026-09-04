@@ -10,7 +10,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 {
     public async Task<PercentileResultDto?> ComputeAndCacheAsync(
         int seriesId,
-        int weekNumber,
+        int raceWeekIndex,
         int carId,
         long customerId,
         PersonalBestEvidence evidence,
@@ -21,7 +21,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         if (seasonId is null) return null;
 
         var week = await db.Weeks
-            .InSeason(seasonId.Value, weekNumber)
+            .InSeason(seasonId.Value, raceWeekIndex)
             .Select(w => new
             {
                 w.Id,
@@ -56,7 +56,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         // to one Race Week, so bounding the uploaded side is what makes the two comparable: an
         // all-time Uploaded Best would otherwise bring a lap from another season — a different
         // build, a different BoP, possibly dry weather against a wet week — into this week's Field.
-        var window = await db.RaceWeekWindowAsync(seasonId.Value, weekNumber, ct);
+        var window = await db.RaceWeekWindowAsync(seasonId.Value, raceWeekIndex, ct);
 
         double? uploadedBest = null;
         UploadedBestOutsideWeekDto? excluded = null;
@@ -153,7 +153,7 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
         double? wrGap = wrLap is null ? null : Math.Round(driverBest.LapSeconds - wrLap.Value, 4);
 
         return new PercentileResultDto(
-            seriesId, weekNumber, carId, customerId,
+            seriesId, raceWeekIndex, carId, customerId,
             percentileRank, fieldPosition, topSharePercent, total,
             FieldPercentile.IsPresentable(total), computedAt,
             week.SeriesName, week.TrackName, ConfigurationName.NullIfAbsent(week.TrackConfigName),

@@ -20,6 +20,6 @@ public class StandingsController(StandingsService standings) : ControllerBase
 
     [HttpGet("{id:int}/qualify-results")]
     public async Task<IActionResult> GetQualifyAsync(
-        int id, [FromQuery] int? carClassId, [FromQuery] int? weekNumber, CancellationToken ct) =>
-        Ok(await standings.GetQualifyResultsAsync(id, carClassId, weekNumber, ct));
+        int id, [FromQuery] int? carClassId, [FromQuery] int? raceWeekIndex, CancellationToken ct) =>
+        Ok(await standings.GetQualifyResultsAsync(id, carClassId, raceWeekIndex, ct));
 }

@@ -60,6 +60,7 @@ public class RaceGuideServiceTests
         Assert.Equal(231, rows[1].SeriesId);
         Assert.Equal("GT Sprint", rows[1].SeriesName);
         Assert.Equal(40, rows[1].EntryCount);
+        Assert.Equal(5, rows[1].RaceWeekIndex);
     }
 
     [Fact]

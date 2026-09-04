@@ -33,7 +33,7 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         var track = new Track { Id = 99, Name = "Spa", ConfigName = "Full" };
         var week = new Week
         {
-            Id = Guid.NewGuid(), SeasonId = 1, WeekNumber = 1, StartDate = WeekStart,
+            Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 1, StartDate = WeekStart,
             TrackId = 99, Track = track, Season = season,
         };
         var car1 = new Car { Id = 1, Name = "Porsche 992 GT3", NameAbbreviated = "P992" };
@@ -41,7 +41,7 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
         var subsession = new Subsession
         {
-            Id = -1, SeasonId = 1, WeekNumber = 1, WeekId = week.Id, TrackId = 99,
+            Id = -1, SeasonId = 1, RaceWeekIndex = 1, WeekId = week.Id, TrackId = 99,
             StartTime = new DateTimeOffset(2026, 6, 17, 10, 0, 0, TimeSpan.Zero),
         };
         db.Series.Add(series);
@@ -94,7 +94,12 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
     private static Task<List<CarRecommendationDto>> RecommendAsync(
         AppDbContext db, PersonalBestEvidence evidence) =>
         new CarRecommendationService(db).GetRecommendationsAsync(
-            seriesId: 1, weekNumber: 1, customerId: 1, evidence: evidence, ct: Ct);
+            seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
+
+    private static Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
+        AppDbContext db, PersonalBestEvidence evidence) =>
+        new CarRecommendationService(db).GetMyPercentilesAsync(
+            seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
 
     // ── The Race Week bound ───────────────────────────────────────────────────
 
@@ -184,6 +189,27 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         // The driver did race this car this week, so the number alone cannot tell them the ranked
         // lap was an uploaded one. The evidence is what makes that legible.
         Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
+    }
+
+    [Fact]
+    public async Task GetMyPercentilesAsync_CarriesUploadedLapEvidence()
+    {
+        await using var db = await postgres.CreateDbContextAsync(Ct);
+        var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
+        AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 90);
+        AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 80);
+        AddResult(db, subsession, car1, carClass, custId: 200, lapSeconds: 70);
+        AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 75);
+        AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 85);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        AddUploadedLap(db, userId, carId: car1.Id, lapSeconds: 65.0, recordedAt: InsideWeek);
+        await db.SaveChangesAsync(Ct);
+
+        var dto = Assert.Single(await GetMyPercentilesAsync(
+            db, PersonalBestEvidence.FromRequest(true, null)));
+
+        Assert.Equal(LapEvidence.UploadedLap, dto.PersonalBestLapEvidence);
     }
 
     [Fact]

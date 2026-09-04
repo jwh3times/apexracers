@@ -239,7 +239,7 @@ function trackLabel(lap: UploadedBest): string {
 }
 
 function SeriesCard({ s }: { s: Series }) {
-  const active = s.currentWeekNumber != null;
+  const active = s.currentRaceWeekIndex != null;
   return (
     <div className="glass-panel p-5 rounded-xl border border-line-2 relative overflow-hidden hover:bg-surface-container-highest transition-all hover:border-primary-fixed-dim/30 group">
       <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
@@ -251,7 +251,7 @@ function SeriesCard({ s }: { s: Series }) {
         <h4 className="font-body-lg font-bold text-on-surface pr-2 truncate">{s.name}</h4>
         {active && (
           <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2 py-1 rounded shrink-0">
-            WK {raceWeekNumber(s.currentWeekNumber!)}
+            WK {raceWeekNumber(s.currentRaceWeekIndex!)}
           </span>
         )}
       </div>
@@ -275,7 +275,7 @@ function SeriesCard({ s }: { s: Series }) {
       </div>
       {active ? (
         <Link
-          to={`/series/${s.id}/weeks/${s.currentWeekNumber}`}
+          to={`/series/${s.id}/weeks/${s.currentRaceWeekIndex}`}
           className="w-full py-2 bg-surface-container-highest hover:bg-surface-container-high border border-line-2 rounded font-body-sm text-body-sm text-on-surface transition-colors flex items-center justify-center gap-2"
         >
           View Week Details

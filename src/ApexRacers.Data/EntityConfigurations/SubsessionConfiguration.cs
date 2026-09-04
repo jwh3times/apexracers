@@ -11,7 +11,7 @@ public class SubsessionConfiguration : IEntityTypeConfiguration<Subsession>
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).ValueGeneratedNever();
 
-        builder.HasIndex(s => new { s.SeasonId, s.WeekNumber });
+        builder.HasIndex(s => new { s.SeasonId, s.RaceWeekIndex });
         builder.HasIndex(s => s.WeekId);
         builder.HasIndex(s => s.RaceSessionId);
 

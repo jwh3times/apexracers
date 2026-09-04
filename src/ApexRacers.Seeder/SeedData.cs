@@ -69,7 +69,7 @@ public record ScheduleWeekEntry(
     [property: JsonPropertyName("season_name")]      string SeasonName,
     [property: JsonPropertyName("series_id")]        int SeriesId,
     [property: JsonPropertyName("series_name")]      string SeriesName,
-    [property: JsonPropertyName("race_week_num")]    int RaceWeekNum,
+    [property: JsonPropertyName("race_week_num")]    int RaceWeekIndex,
     [property: JsonPropertyName("start_date")]       string StartDate,
     [property: JsonPropertyName("track")]            ScheduleTrackRef Track,
     [property: JsonPropertyName("car_restrictions")] List<CarRestrictionEntry> CarRestrictions
