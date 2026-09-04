@@ -22,8 +22,7 @@ You are keeping the ApexRacers project documentation current. Your job is to det
 | `docs/features.md`                       | Public docs readers           | Public product capability overview                                                                                                                              |
 | `docs/roadmap.md`                        | Public docs readers           | Public high-level project status and roadmap                                                                                                                    |
 | `web/README.md`                          | Frontend developers           | Stack versions, dev commands, project structure, API client, auth pattern, contexts, design system                                                              |
-| `private/ROADMAP.md`                     | Maintainers                   | Detailed remaining work / blockers / active milestones. Carries **no** completed record (that's `archive.md`).                                                  |
-| `private/archive.md`                     | Maintainers                   | Detailed completed-work log, newest first; build-era detail merged in at the bottom. Prepend new dated entries at the **top**.                                  |
+| ApexRacers project board                 | Maintainers                   | Remaining / blocked / parked work — the single tracker, at https://github.com/users/jwh3times/projects/2. Not a file; update it with `gh`, never by writing Markdown. |
 | `CHANGELOG.md` (repo root)               | Public release notes          | Keep a Changelog + SemVer. Add shipped work under `[Unreleased]`; version tags/GitHub Releases are automated on merges to `main`. The one **shipped** doc here. |
 | `private/PRD.md`                         | Maintainers                   | Full product spec, implementation context, and internal detail                                                                                                  |
 | `private/ops/azure-deployment-runbook.md`    | Maintainers                   | Exact Azure resource names, command targets, and deployment details that should not be published.                                                               |
@@ -59,13 +58,14 @@ another doc; point at `CONTEXT.md` instead.
 
 **Any feature, milestone, or planned item completed (or cancelled/parked)**
 
-When invoked by `/ship`, the public PR is still unmerged: leave private roadmap, archive, and product
-status unchanged so they do not claim it shipped. `/end-session` reconciles those files after merge.
-Outside `/ship`, apply the private updates below only when the companion is installed and the outcome
-is already true.
+When invoked by `/ship`, the public PR is still unmerged: leave the project board and product status
+unchanged so they do not claim it shipped. `/end-session` reconciles the board after merge. Outside
+`/ship`, apply the board update below only when the outcome is already true.
 
-- `private/ROADMAP.md`: remove the shipped item (or update its status if parked/cancelled). ROADMAP carries no completed record.
-- `private/archive.md`: **prepend** a new dated entry (newest first) summarizing what shipped — this is the canonical completed-work log. Leave the bottom build-era sections alone; add new work at the top.
+- **Project board:** close the issue the work completed, or re-status its item (`Parked` if parked,
+  `Blocked` with a *Blocked by* reason if it turned out to be blocked). Closed issues plus
+  `CHANGELOG.md` are the completed-work record — there is no Markdown backlog to edit, and
+  `private/archive.md` is frozen and must not be appended to.
 - `CHANGELOG.md` (repo root): add a bullet under `[Unreleased]` in the right category (`Added` / `Changed` / `Fixed` / `Removed` / `Security`). **Do not** assign a version or date during ordinary feature/fix work. `.github/workflows/version.yml` creates standard SemVer `<major>.<minor>.<build>` tags and GitHub Releases automatically on merges to `main`; `web/package.json` selects the major/minor line, and `x.y.0` is valid for a fresh major/minor bump. The `/ship` skill (`.claude/skills/ship/SKILL.md`) is the deliberate later step that rolls `[Unreleased]` into a dated section for the version its merge will mint — if you were invoked from `/ship`, leave that roll (and `CHANGELOG.md`'s dated sections) to it and only touch `[Unreleased]`.
 - `docs/features.md` / `docs/roadmap.md`: update only when public-facing capabilities or high-level status change.
 
@@ -117,8 +117,9 @@ is already true.
 - Any doc you own whose prose names the same concept: reword it to the glossary term only if it now
   reads as a synonym that term's `_Avoid_` list rules out — a casual, non-conflicting usage doesn't
   need to change. Point at `CONTEXT.md`; don't copy the definition.
-- `private/ROADMAP.md`: if a still-blocked milestone is what would produce a newly-defined term (e.g.
-  a sign-in milestone that would create a "Verified Identity"), cross-reference the term there.
+- **Project board:** if a still-blocked milestone is what would produce a newly-defined term (e.g. a
+  sign-in milestone that would create a "Verified Identity"), cross-reference the term in that
+  issue's body.
 - Do not rename code symbols to match new vocabulary unless separately asked — a glossary landing is
   documentation, not a refactor mandate.
 

@@ -1,8 +1,12 @@
 # ApexRacers Roadmap
 
-This is the public, high-level roadmap. Maintainer-only task plans, private runbooks,
-and historical implementation notes live in an optional private companion repository
-checked out at `private/`, which this repository ignores and never requires.
+This is the public, high-level roadmap — the themes, not the task list.
+
+**Individual remaining work is tracked as GitHub issues in this repository**, grouped by
+milestone. Start there for anything concrete; this page only explains the shape of the work.
+
+Private runbooks and historical implementation notes live in an optional private companion
+repository checked out at `private/`, which this repository ignores and never requires.
 
 ## Current Status
 
