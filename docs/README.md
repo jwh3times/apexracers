@@ -17,10 +17,17 @@ This directory contains public, contributor-safe project documentation.
 
 ## Private docs
 
-Maintainer-only planning, deployment runbooks, sanitized API samples, security audit details, and
-archived implementation notes live in a standalone private companion repository checked out at
-`private/`. The public repository intentionally ignores the nested worktree and must not require it
-for builds, tests, CI, or normal external contribution.
+Deployment runbooks, the full product spec, sanitized API samples, and archived implementation notes
+live in a standalone private companion repository checked out at `private/`. The public repository
+intentionally ignores the nested worktree and must not require it for builds, tests, CI, or normal
+external contribution.
+
+Remaining, blocked, and parked work is tracked on the [ApexRacers project board][board] instead,
+backed by public GitHub issues — see `AGENTS.md` for how work moves through it. Open, unfixed
+security findings are held as draft GitHub security advisories on this repository rather than in a
+private planning doc, so nothing is disclosed publicly before a fix ships.
+
+[board]: https://github.com/users/jwh3times/projects/2
 
 Maintainers can install the companion with `npm run bootstrap:private`; the helper retrieves its
 credential-free clone URL through the current 1Password identity or an explicitly supplied private

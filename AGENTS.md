@@ -26,9 +26,8 @@ section dated for the version the merge will mint. Run `/ship` (or say "ship it"
 ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
-it captures what the session learned into memory, brings the GitHub issues it touched and the
-`private/` planning docs up to date, and cleans the regenerable build/test leftovers out of the
-working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
+it captures what the session learned into memory, brings the GitHub issues and project board items
+it touched up to date, and cleans the regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
 section, or pushes. Run `/ship` first if a branch is finished, then `/end-session`.
 
 ## Agent config parity (Claude Code ↔ Codex)
@@ -105,7 +104,7 @@ configuration supplied by their user or environment, and the sync script does no
   fields, the chunked result/lap-data structure, iRacing semantics like percentile / BoP /
   license-category / lap-time fields) — stop and ask before designing against a guess. **Ground truth
   here is usually not a live call:** the iRacing OAuth credentials are unavailable (the standing
-  blocker — see ROADMAP.md), so you typically can't fetch a fresh sample. Verify **before** writing the
+  blocker — see the project board), so you typically can't fetch a fresh sample. Verify **before** writing the
   implementation against what _is_ obtainable:
 
   - the captured field shapes in `private/iracing-api-response-objects/` — the authoritative shape
@@ -139,14 +138,16 @@ outer-repository Git history cannot see its changes.
 | `docs/features.md`                        | Public product capabilities and workflows.                                                             |
 | `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
 | `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
-| `private/ROADMAP.md`                      | Maintainer-only detailed remaining work, blockers, and active milestones.                              |
-| `private/archive.md`                      | Maintainer-only detailed completed-work log.                                                           |
+| [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
+| `private/archive.md`                      | Maintainer-only completed-work log — **frozen** at 2026-09-03; do not append.                          |
 | `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
 | `private/ops/azure-deployment-runbook.md` | Maintainer-only Azure resource names, command targets, and deployment details.                         |
 | `private/iracing-api-response-objects/`   | Local captured iRacing API JSON field shapes — read before mapping any endpoint when available.        |
 
+[board]: https://github.com/users/jwh3times/projects/2
+
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
-workflow changes; update private planning docs when maintainer-only roadmap/archive detail changes; and
+workflow changes; close or re-status the project-board item the work belongs to; and
 add a bullet under the `CHANGELOG.md` `[Unreleased]` section (correct
 `Added`/`Changed`/`Fixed`/`Removed`/`Security` category). Releases are automatic on merges to `main`:
 `.github/workflows/version.yml`

@@ -74,7 +74,7 @@ gate needing `npm run build`), and process facts (`main` is protected by a rules
 Do **not** save what the repo already records: architecture, service responsibilities, test
 commands, and schema all live in `AGENTS.md`, `CONTEXT.md`, `docs/adr/`, and the `.claude/agents/`
 specialists — a memory duplicating those goes stale the moment the file changes. Session-local
-detail (what a specific PR did) belongs in `private/archive.md`, not memory.
+detail (what a specific PR did) belongs in the issue and `CHANGELOG.md`, not memory.
 
 Then:
 
@@ -82,12 +82,19 @@ Then:
 - **Session proved a memory wrong?** Correct or delete it — a stale memory is worse than none.
 - Every new or renamed file needs its `MEMORY.md` pointer line added or fixed.
 
-### 3. Update GitHub issues
+### 3. Update GitHub issues and the project board
 
 Issues are the tracker (`jwh3times/apexracers`), driven with `gh` — the full command vocabulary is
 in `docs/agents/issue-tracker.md`, and the label strings are in `docs/agents/triage-labels.md`
 (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Use those files
 rather than inventing commands or labels.
+
+Issues carry the *work*; the private [project board][board] carries its *state* — `Status`
+(`Todo` / `In Progress` / `Blocked` / `Parked` / `Done`) and `Blocked by`. There is no Markdown
+backlog: the board replaced `private/ROADMAP.md` on 2026-09-04. Every issue this session opened
+belongs on it.
+
+[board]: https://github.com/users/jwh3times/projects/2
 
 Start from what is open, so nothing the session touched is missed:
 
@@ -104,12 +111,16 @@ For each issue this session touched:
 - **Advanced but unfinished** — comment with where it actually stands and what the next concrete
   step is. Future-you reads this comment cold.
 - **Blocked** — comment with the blocker and, if it is a *new* blocker, whether it is the standing
-  iRacing-credentials one (see `private/ROADMAP.md`) or something new worth its own issue.
+  iRacing-credentials one (the project board's *Blocked by* field names the standing blockers) or
+  something new worth its own issue. Set the board item's Status to `Blocked` and its *Blocked by*
+  to the matching reason.
 - **Understanding changed** — if the session showed the issue body is now wrong or under-specified,
   correct the body or comment the correction. An issue that describes the wrong problem costs more
   than a missing one.
 - **Newly discovered work** — open an issue rather than leaving it in a doc or a code comment.
-  Label it per the triage vocabulary.
+  Label it per the triage vocabulary, then add it to the board
+  (`gh project item-add 2 --owner jwh3times --url <issue-url>`) and set its `Status` and
+  `Blocked by`. An issue that never reaches the board is invisible to the next session.
 
 Do not close an issue on the strength of an unmerged branch, and do not bulk-relabel issues this
 session never touched — that is `/triage`'s job.
@@ -123,20 +134,25 @@ reconciliation could not run and do not create an ignored orphan directory.
 
 | File | Update when |
 | --- | --- |
-| `private/ROADMAP.md` | Remaining/blocked/parked work changed. Remove what shipped (this file carries **no** completed record), re-rank the "Next work item", and refresh the `**Last updated:**` line and the "Status at a glance" counts. |
-| `private/archive.md` | Something shipped. **Prepend** a dated entry at the top, newest-first. Leave the build-era sections at the bottom alone. |
 | `private/PRD.md` | A **feature-level** change — capability added, planned feature cancelled, user story revised. Not implementation detail. |
-| `private/reviews/security-review-findings.md` | A security finding was made, accepted, or resolved. |
 | `private/ops/azure-deployment-runbook.md` / `private/ops/iracing-rollout.md` | Deployment resources or commands changed, or a rollout gate advanced. |
 | `private/reviews/architecture-findings.md` | A disposition from the 2026-08-08 review was actioned or overturned. This is a record, not a live backlog. |
 | `private/iracing-api-response-objects/` | A **new** payload shape was captured. Add it — never delete or overwrite one (step 5). |
 
-If `/ship` already ran `docs-updater` on this branch, verify rather than redo: check that ROADMAP
-lost the shipped item and archive gained the dated entry, and fill only the gaps.
+`private/archive.md` is **frozen** — never append to it. Completed work is recorded by closed issues
+plus `CHANGELOG.md`.
+
+**A security finding is never a Markdown file and never a public issue before the fix ships.** Open a
+repository security advisory on the public repo (`gh api --method POST
+repos/jwh3times/apexracers/security-advisories`), which stays private while in draft, and track the
+fix as a **draft** item on the project board so the board stays useful without disclosing anything.
+`private/archive/security-audit-2026-06-23.md` is the retired audit record, not a live findings list.
+
+If `/ship` already ran `docs-updater` on this branch, verify rather than redo, and fill only the gaps.
 
 Private changes belong to a separate commit in the companion repository. This skill does not
 silently commit or push either repository: report the private diff and ask before committing it. An
-open public PR is not shipped; leave roadmap/archive shipped-state unchanged until merge.
+open public PR is not shipped; leave board items open until merge.
 
 ### 5. Clean up the local workspace
 

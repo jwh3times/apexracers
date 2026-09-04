@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [6.1.2] - 2026-09-04
+
+### Added
+
+- An architecture decision record documenting that per-lap pace traces stay readable for any Driver
+  because official lap data is already public through iRacing, and recording why restricting them to
+  the caller or to their followed rivals was rejected.
+
+### Changed
+
+- Public documentation now names GitHub issues and milestones as the task list for remaining work.
+  The roadmap describes themes only, and the private companion is described as holding runbooks,
+  samples, and archived notes rather than planning.
+- Open, unfixed security findings are now tracked as draft GitHub security advisories on this
+  repository instead of a private document, so a finding is never disclosed publicly before its fix
+  ships.
+- The documentation and session-close agent guidance now updates the tracker directly rather than
+  maintaining a parallel Markdown backlog and completed-work log.
+
 ## [6.1.0] - 2026-09-03
 
 ### Changed
@@ -882,7 +901,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.2...HEAD
+[6.1.2]: https://github.com/jwh3times/apexracers/compare/v6.1.1...v6.1.2
 [6.1.0]: https://github.com/jwh3times/apexracers/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/jwh3times/apexracers/compare/v5.0.1...v6.0.0
 [5.0.1]: https://github.com/jwh3times/apexracers/compare/v5.0.0...v5.0.1
