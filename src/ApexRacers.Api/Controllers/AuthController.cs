@@ -129,7 +129,7 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
         if (!Guid.TryParse(userIdStr, out var userId))
             return Unauthorized();
 
-        await auth.RequestEmailChangeAsync(userId, request.NewEmail, ct);
+        await auth.RequestEmailChangeAsync(userId, request.NewEmail, request.CurrentPassword, ct);
         // Generic response — never reveals whether the target address is already in use.
         return Ok(new MessageResponse("If that address is available, a confirmation email has been sent."));
     }

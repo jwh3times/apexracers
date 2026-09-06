@@ -139,6 +139,11 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
   - `AlphaOrAbove` → `RequireClaim("role", "Alpha", "Admin")`
   - `BetaOrAbove` → `RequireClaim("role", "Beta", "Alpha", "Admin")`
 - Self-service role changes (Standard/Beta/Alpha) via `PUT /api/auth/role`; Admin cannot self-demote.
+- Email-change requests require the current password before address lookup or email delivery.
+  Profile updates require it before any mutation when a supplied non-null Customer ID differs from
+  the stored Claimed Identity. An omitted/null ID keeps the existing claim; an unchanged ID and
+  display-name/theme-only updates remain password-free. Missing and incorrect passwords share one
+  non-disclosing error. This checks the local User's password, not ownership of the iRacing Driver.
 - Admin promotion uses `AdminSeedService` at startup; the project guide owns its eligibility rules.
   `AdminService.SetUserRoleAsync` rejects an Admin target role using case-insensitive comparison
   (matching Identity role lookup), and rejects changes to an existing Admin.

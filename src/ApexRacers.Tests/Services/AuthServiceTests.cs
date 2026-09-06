@@ -236,6 +236,89 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
     // ── UpdateProfileAsync ────────────────────────────────────────────────────
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(null, "")]
+    [InlineData(null, "wrong")]
+    [InlineData(100L, null)]
+    [InlineData(100L, "")]
+    [InlineData(100L, "wrong")]
+    public async Task UpdateProfileAsync_ChangedClaimWithoutCorrectPassword_RejectsBeforeAnyProfileMutation(
+        long? existingCustomerId, string? currentPassword)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
+        user.IRacingCustomerId = existingCustomerId;
+        Assert.True((await userManager.UpdateAsync(user)).Succeeded);
+        var originalName = user.DisplayName;
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.UpdateProfileAsync(
+            reg.UserId, new UpdateProfileRequest("Changed", 200L, "dark", currentPassword), ct));
+
+        Assert.Equal("Current password is incorrect.", ex.Message);
+        Assert.Equal(originalName, user.DisplayName);
+        Assert.Equal(existingCustomerId, user.IRacingCustomerId);
+        Assert.Equal("auto", user.ThemePreference);
+        var stored = await provider.GetRequiredService<AppDbContext>().Users.AsNoTracking()
+            .SingleAsync(u => u.Id == reg.UserId, ct);
+        Assert.Equal(originalName, stored.DisplayName);
+        Assert.Equal(existingCustomerId, stored.IRacingCustomerId);
+        Assert.Equal("auto", stored.ThemePreference);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(100L)]
+    public async Task UpdateProfileAsync_ChangedClaimWithCorrectPassword_UpdatesProfile(long? existingCustomerId)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
+        user.IRacingCustomerId = existingCustomerId;
+        Assert.True((await userManager.UpdateAsync(user)).Succeeded);
+
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Changed", 200L, "dark", "Pass1234"), ct);
+
+        var stored = await provider.GetRequiredService<AppDbContext>().Users.AsNoTracking()
+            .SingleAsync(u => u.Id == reg.UserId, ct);
+        Assert.Equal("Changed", stored.DisplayName);
+        Assert.Equal(200L, stored.IRacingCustomerId);
+        Assert.Equal("dark", stored.ThemePreference);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(100L)]
+    public async Task UpdateProfileAsync_UnchangedClaim_UpdatesNameAndThemeWithoutPassword(long? requestedCustomerId)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
+        user.IRacingCustomerId = 100L;
+        Assert.True((await userManager.UpdateAsync(user)).Succeeded);
+
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Changed", requestedCustomerId, "dark"), ct);
+
+        var stored = await provider.GetRequiredService<AppDbContext>().Users.AsNoTracking()
+            .SingleAsync(u => u.Id == reg.UserId, ct);
+        Assert.Equal("Changed", stored.DisplayName);
+        Assert.Equal(100L, stored.IRacingCustomerId);
+        Assert.Equal("dark", stored.ThemePreference);
+    }
+
     [Fact]
     public async Task UpdateProfileAsync_UpdatesDisplayName()
     {
@@ -257,7 +340,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
 
         var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L), TestContext.Current.CancellationToken);
+        var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L, CurrentPassword: "Pass1234"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -279,13 +362,13 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             TestContext.Current.CancellationToken);
         await svc.UpdateProfileAsync(
             first.UserId,
-            new UpdateProfileRequest("First Driver", 123456L),
+            new UpdateProfileRequest("First Driver", 123456L, CurrentPassword: "Pass1234"),
             TestContext.Current.CancellationToken);
 
         var ex = await Assert.ThrowsAsync<ClaimedIdentityConflictException>(() =>
             svc.UpdateProfileAsync(
                 second.UserId,
-                new UpdateProfileRequest("Second Driver", 123456L),
+                new UpdateProfileRequest("Second Driver", 123456L, CurrentPassword: "Pass1234"),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(ClaimedIdentityConflictException.DefaultMessage, ex.Message);
@@ -320,11 +403,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var outcomes = await Task.WhenAll(
             CaptureAsync(() => firstService.UpdateProfileAsync(
                 firstUserId,
-                new UpdateProfileRequest("First Driver", customerId),
+                new UpdateProfileRequest("First Driver", customerId, CurrentPassword: "Pass1234"),
                 TestContext.Current.CancellationToken)),
             CaptureAsync(() => secondService.UpdateProfileAsync(
                 secondUserId,
-                new UpdateProfileRequest("Second Driver", customerId),
+                new UpdateProfileRequest("Second Driver", customerId, CurrentPassword: "Pass1234"),
                 TestContext.Current.CancellationToken)));
 
         Assert.Single(outcomes, outcome => outcome is null);
@@ -399,7 +482,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
 
         var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L), TestContext.Current.CancellationToken);
+        await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L, CurrentPassword: "Pass1234"), TestContext.Current.CancellationToken);
 
         // Second update without IRacingCustomerId — should not clear the first one
         var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name Two"), TestContext.Current.CancellationToken);
@@ -971,6 +1054,35 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
     // ── RequestEmailChangeAsync (C1) ─────────────────────────────────────────
 
+    [Theory]
+    [InlineData(null, "new@example.com")]
+    [InlineData("", "new@example.com")]
+    [InlineData("wrong", "new@example.com")]
+    [InlineData(null, "taken@example.com")]
+    [InlineData("", "taken@example.com")]
+    [InlineData("wrong", "taken@example.com")]
+    public async Task RequestEmailChangeAsync_WithoutCorrectPassword_RejectsAndSendsNothing(
+        string? currentPassword, string newEmail)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), ct);
+        await svc.RegisterAsync(new RegisterRequest("taken@example.com", "Pass1234"), ct);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RequestEmailChangeAsync(reg.UserId, newEmail, currentPassword, ct));
+
+        Assert.Equal("Current password is incorrect.", ex.Message);
+        Assert.Empty(emails.Sent);
+        var stored = await provider.GetRequiredService<AppDbContext>().Users.AsNoTracking()
+            .SingleAsync(u => u.Id == reg.UserId, ct);
+        Assert.Equal("old@example.com", stored.Email);
+        Assert.Equal("old@example.com", stored.UserName);
+    }
+
     [Fact]
     public async Task RequestEmailChangeAsync_NewAddress_SendsVerificationToNewEmail()
     {
@@ -980,11 +1092,20 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider, emails);
         var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var verification = Assert.Single(emails.Sent, e => e.To == "new@example.com");
         Assert.Contains("https://test.apexracers.gg/verify-email", verification.HtmlBody);
         Assert.Contains(reg.UserId.ToString(), verification.HtmlBody);
+
+        var link = new Uri(Assert.Single(verification.TextBody.Split('\n'), line => line.StartsWith("https://")));
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(link.Query);
+        await svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", query["token"].ToString(), TestContext.Current.CancellationToken);
+
+        var stored = await provider.GetRequiredService<AppDbContext>().Users.AsNoTracking()
+            .SingleAsync(u => u.Id == reg.UserId, TestContext.Current.CancellationToken);
+        Assert.Equal("new@example.com", stored.Email);
+        Assert.Equal("new@example.com", stored.UserName);
     }
 
     [Fact]
@@ -996,7 +1117,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider, emails);
         var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var notice = Assert.Single(emails.Sent, e => e.To == "old@example.com");
         Assert.Contains("new@example.com", notice.HtmlBody);
@@ -1013,7 +1134,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await svc.RegisterAsync(new RegisterRequest("taken@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         var reg = await svc.RegisterAsync(new RegisterRequest("me@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        await svc.RequestEmailChangeAsync(reg.UserId, "taken@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestEmailChangeAsync(reg.UserId, "taken@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         Assert.Empty(emails.Sent);
     }
