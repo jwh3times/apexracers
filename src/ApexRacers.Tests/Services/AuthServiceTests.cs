@@ -749,6 +749,56 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     // ── ChangePasswordAsync (T4) ──────────────────────────────────────────────
 
     [Fact]
+    public async Task ChangePasswordAsync_Success_RevokesAllPriorRefreshTokensOnlyForTheUser()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("change@example.com", "OldPass1"), ct);
+        var firstLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
+        var secondLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
+        var otherUser = await svc.RegisterAsync(new RegisterRequest("other@example.com", "OtherPass1"), ct);
+        var priorTokens = new[] { reg.RefreshToken!, firstLogin.Auth!.RefreshToken!, secondLogin.Auth!.RefreshToken! };
+
+        await svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "NewPass2"), ct);
+
+        var db = provider.GetRequiredService<AppDbContext>();
+        var rows = await db.RefreshTokens.AsNoTracking().Where(t => t.UserId == reg.UserId).ToListAsync(ct);
+        Assert.Equal(3, rows.Count);
+        Assert.All(rows, token => Assert.NotNull(token.RevokedAt));
+        foreach (var token in priorTokens)
+            await Assert.ThrowsAsync<InvalidOperationException>(() => svc.RefreshAsync(token, ct));
+
+        var otherRow = await db.RefreshTokens.AsNoTracking().SingleAsync(t => t.UserId == otherUser.UserId, ct);
+        Assert.Null(otherRow.RevokedAt);
+        Assert.Equal(otherUser.UserId, (await svc.RefreshAsync(otherUser.RefreshToken!, ct)).UserId);
+    }
+
+    [Theory]
+    [InlineData("WrongOld", "NewPass2")]
+    [InlineData("OldPass1", "ab")]
+    public async Task ChangePasswordAsync_Failure_PreservesPriorRefreshTokens(string currentPassword, string newPassword)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await svc.RegisterAsync(new RegisterRequest("unchanged@example.com", "OldPass1"), ct);
+        var login = await svc.LoginAsync(new LoginRequest("unchanged@example.com", "OldPass1"), ct);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest(currentPassword, newPassword), ct));
+
+        var rows = await provider.GetRequiredService<AppDbContext>().RefreshTokens.AsNoTracking()
+            .Where(t => t.UserId == reg.UserId).ToListAsync(ct);
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, token => Assert.Null(token.RevokedAt));
+        Assert.Equal(reg.UserId, (await svc.RefreshAsync(reg.RefreshToken!, ct)).UserId);
+        Assert.Equal(reg.UserId, (await svc.RefreshAsync(login.Auth!.RefreshToken!, ct)).UserId);
+    }
+
+    [Fact]
     public async Task ChangePasswordAsync_CorrectCurrentPassword_SwapsTheLoginPassword()
     {
         await using var provider = BuildProvider();

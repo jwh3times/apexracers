@@ -386,6 +386,10 @@ export default function SettingsPage() {
             </div>
 
             <form onSubmit={changePassword} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <p className="md:col-span-3 text-small-fluid text-on-surface-variant">
+                After changing your password, you’ll need to sign in again on every device,
+                including this one, when current sessions expire (within 15 minutes).
+              </p>
               <div>
                 <label
                   htmlFor="current-password"
