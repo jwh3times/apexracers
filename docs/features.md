@@ -42,6 +42,17 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 
 ## Access Model
 
+Changing an email address or setting a new Claimed Identity Customer ID requires the current account
+password. Ordinary display-name/theme edits and an unchanged Customer ID do not. This confirms access
+to the local account; a Claimed Identity still does not prove ownership of an iRacing Driver.
+
+**API clients upgrading to v8.0.0:** include `currentPassword` in the JSON body of
+`POST /api/auth/request-email-change` alongside `newEmail`. Include it in
+`PUT /api/auth/profile` when supplying an initial or changed non-null `iRacingCustomerId`.
+An omitted or null Customer ID preserves the existing claim. Missing or incorrect passwords reject
+these sensitive updates before any profile mutation or email delivery; response shapes and the
+email confirmation-link step are unchanged. The Settings page supplies the password for both flows.
+
 Successful password changes revoke the account's active refresh tokens on every device, including
 the current one. Existing access tokens remain valid until their normal expiry (up to 15 minutes);
 devices must then sign in again. A rejected password change leaves sessions unchanged.

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [8.0.0] - 2026-09-06
+
+### Security
+
+- Email-change requests and initial or changed Claimed Identity Customer IDs now require the current
+  password. Missing or incorrect passwords are rejected before profile updates or email delivery.
+  Display-name/theme edits and an unchanged Customer ID remain password-free. Settings now collects
+  the password for each sensitive operation; API clients must send `currentPassword` for these requests.
+
 ## [7.0.2] - 2026-09-06
 
 ### Security
@@ -940,7 +949,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v7.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.0...HEAD
+[8.0.0]: https://github.com/jwh3times/apexracers/compare/v7.0.2...v8.0.0
 [7.0.2]: https://github.com/jwh3times/apexracers/compare/v7.0.1...v7.0.2
 [7.0.1]: https://github.com/jwh3times/apexracers/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/jwh3times/apexracers/compare/v6.1.3...v7.0.0
