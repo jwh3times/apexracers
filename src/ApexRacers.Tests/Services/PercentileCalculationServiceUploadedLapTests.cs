@@ -95,7 +95,7 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
 
     private static Task<PercentileResultDto?> ComputeAsync(
         AppDbContext db, Guid userId, PersonalBestEvidence evidence) =>
-        new PercentileCalculationService(db).ComputeAndCacheAsync(
+        new PercentileCalculationService(db, new SubjectDriverContext(db, new FeatureFlagEligibility(db))).ComputeAndCacheAsync(
             seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1,
             evidence: evidence, callerUserId: userId, ct: Ct);
 

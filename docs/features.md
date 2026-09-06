@@ -8,7 +8,9 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 - **Series and week browsing:** view active series, current race weeks, eligible cars,
   track context, and aggregate lap-time statistics.
 - **Percentile calculation:** compare a driver's lap time against the field for a
-  series, week, and car, with cached results for repeat visits. Personal Best surfaces
+  series, week, and car. Results for the caller's Subject Driver are saved for analytics and
+  recommendations; looking up another Driver does not change that history. Eligible demo users
+  save results for the Demo Driver. Personal Best surfaces
   consistently use official race laps by default and let the driver opt in uploaded laps
   with an optional session-type filter; that choice follows them between related pages.
   Each Personal Best is shown with the evidence that produced it, so a lap set in an
