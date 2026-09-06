@@ -493,7 +493,7 @@ describe('api', () => {
   describe('updateProfile', () => {
     it('calls PUT /api/auth/profile with display name and customer ID', async () => {
       mockFetchOk({ token: 'new-jwt', userId: 'u1', displayName: 'Updated Name' });
-      const result = await api.updateProfile('Updated Name', 100042);
+      const result = await api.updateProfile('Updated Name', 100042, 'current-secret');
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/profile',
         expect.objectContaining({
@@ -501,6 +501,7 @@ describe('api', () => {
           body: JSON.stringify({
             displayName: 'Updated Name',
             iRacingCustomerId: 100042,
+            currentPassword: 'current-secret',
           }),
         })
       );
@@ -1188,13 +1189,13 @@ describe('api', () => {
         json: () => Promise.resolve({ message: 'ok' }),
         text: () => Promise.resolve(''),
       } as Response);
-      await api.requestEmailChange('new@example.com');
+      await api.requestEmailChange('new@example.com', 'current-secret');
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/auth/request-email-change',
         expect.objectContaining({ method: 'POST' })
       );
       const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-      expect(body).toEqual({ newEmail: 'new@example.com' });
+      expect(body).toEqual({ newEmail: 'new@example.com', currentPassword: 'current-secret' });
     });
   });
 

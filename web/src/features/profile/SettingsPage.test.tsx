@@ -104,7 +104,7 @@ describe('SettingsPage', () => {
     await user.type(input, 'Speed Demon');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null);
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Speed Demon', null, undefined);
       expect(mockUpdateSession).toHaveBeenCalledWith({
         token: 'new-tok',
         userId: 'u1',
@@ -134,7 +134,7 @@ describe('SettingsPage', () => {
     await user.type(emailInput, 'new@example.com');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => {
-      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null);
+      expect(vi.mocked(api.updateProfile)).toHaveBeenCalledWith('Jerry', null, undefined);
     });
   });
 
@@ -440,8 +440,13 @@ describe('SettingsPage', () => {
     renderPage();
     const emailInput = screen.getByLabelText(/email address/i);
     fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password to change email'), {
+      target: { value: 'current-secret' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
-    await waitFor(() => expect(api.requestEmailChange).toHaveBeenCalledWith('new@example.com'));
+    await waitFor(() =>
+      expect(api.requestEmailChange).toHaveBeenCalledWith('new@example.com', 'current-secret')
+    );
     expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
   });
 
@@ -458,11 +463,95 @@ describe('SettingsPage', () => {
     renderPage();
     const emailInput = screen.getByLabelText(/email address/i);
     fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password to change email'), {
+      target: { value: 'current-secret' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
     expect(await screen.findByText(/pending verification/i)).toBeInTheDocument();
 
     // Editing the email input should clear the pending notice
     fireEvent.change(emailInput, { target: { value: 'another@example.com' } });
     expect(screen.queryByText(/pending verification/i)).not.toBeInTheDocument();
+  });
+  it.each([null, 100042])(
+    'requires a separate password for an identity change from %s and clears it after failure',
+    async initialId => {
+      mockUser = {
+        token: 'tok',
+        userId: 'u1',
+        displayName: 'Jerry',
+        email: 'j@j.com',
+        iRacingCustomerId: initialId,
+        role: 'Standard',
+      };
+      vi.mocked(api.updateProfile).mockRejectedValue(new Error('Current password is incorrect.'));
+      renderPage();
+      expect(
+        screen.queryByLabelText('Password to change iRacing identity')
+      ).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {
+        target: { value: '200042' },
+      });
+      const password = screen.getByLabelText('Password to change iRacing identity');
+      expect(password).toBeRequired();
+      expect(password).toHaveAttribute('autocomplete', 'current-password');
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(api.updateProfile).not.toHaveBeenCalled();
+      fireEvent.change(password, { target: { value: 'identity-secret' } });
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(await screen.findByText('Current password is incorrect.')).toBeInTheDocument();
+      expect(api.updateProfile).toHaveBeenCalledWith('Jerry', 200042, 'identity-secret');
+      expect(password).toHaveValue('');
+      fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {
+        target: { value: initialId?.toString() ?? '' },
+      });
+      expect(
+        screen.queryByLabelText('Password to change iRacing identity')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  it('requires email reauthentication and clears the password after rejection', async () => {
+    vi.mocked(api.requestEmailChange).mockRejectedValue(
+      new Error('Current password is incorrect.')
+    );
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'new@example.com' },
+    });
+    const password = screen.getByLabelText('Password to change email');
+    expect(password).toHaveAttribute('autocomplete', 'current-password');
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    expect(api.requestEmailChange).not.toHaveBeenCalled();
+    fireEvent.change(password, { target: { value: 'wrong-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: /verify new email/i }));
+    expect(await screen.findByText('Current password is incorrect.')).toBeInTheDocument();
+    expect(password).toHaveValue('');
+  });
+
+  it('clears sensitive form state when the signed-in user changes', () => {
+    mockUser = {
+      token: 'tok',
+      userId: 'u1',
+      displayName: 'Jerry',
+      email: 'j@j.com',
+      iRacingCustomerId: null,
+      role: 'Standard',
+    };
+    const { rerender } = renderPage();
+    fireEvent.change(screen.getByLabelText(/iRacing Customer ID/i), {
+      target: { value: '200042' },
+    });
+    fireEvent.change(screen.getByLabelText('Password to change iRacing identity'), {
+      target: { value: 'identity-secret' },
+    });
+    fireEvent.change(screen.getByLabelText('Password to change email'), {
+      target: { value: 'email-secret' },
+    });
+    mockUser = { ...mockUser, userId: 'u2', email: 'other@example.com' };
+    rerender(<SettingsPage />);
+    expect(screen.getByLabelText('Password to change email')).toHaveValue('');
+    expect(screen.queryByLabelText('Password to change iRacing identity')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/email address/i)).toHaveValue('other@example.com');
   });
 });

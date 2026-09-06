@@ -780,10 +780,14 @@ export const api = {
   },
 
   /** PUT /api/auth/profile — update display name and optional iRacing customer ID, returns fresh JWT */
-  updateProfile(displayName: string, iRacingCustomerId: number | null): Promise<AuthResult> {
+  updateProfile(
+    displayName: string,
+    iRacingCustomerId: number | null,
+    currentPassword?: string
+  ): Promise<AuthResult> {
     return request('/api/auth/profile', {
       method: 'PUT',
-      json: { displayName, iRacingCustomerId },
+      json: { displayName, iRacingCustomerId, currentPassword },
     });
   },
 
@@ -815,8 +819,11 @@ export const api = {
   },
 
   /** POST /api/auth/request-email-change — send a verification link to the new address */
-  requestEmailChange(newEmail: string): Promise<{ message: string }> {
-    return request('/api/auth/request-email-change', { method: 'POST', json: { newEmail } });
+  requestEmailChange(newEmail: string, currentPassword: string): Promise<{ message: string }> {
+    return request('/api/auth/request-email-change', {
+      method: 'POST',
+      json: { newEmail, currentPassword },
+    });
   },
 
   /** POST /api/auth/confirm-email-change — apply a pending email change from the emailed link */

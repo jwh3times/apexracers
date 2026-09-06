@@ -12,6 +12,11 @@ const TIER_DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  return <SettingsForm key={user?.userId ?? 'guest'} />;
+}
+
+function SettingsForm() {
   const { user, logout, updateSession, alertsEnabled, setAlertsEnabled } = useAuth();
   const { theme, setTheme } = useTheme();
 
@@ -20,6 +25,10 @@ export default function SettingsPage() {
   const [iRacingCustomerId, setIRacingCustomerId] = useState(
     user?.iRacingCustomerId?.toString() ?? ''
   );
+  const [identityPassword, setIdentityPassword] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const identityChanging =
+    !!iRacingCustomerId && Number(iRacingCustomerId) !== user?.iRacingCustomerId;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -69,7 +78,8 @@ export default function SettingsPage() {
     try {
       const result = await api.updateProfile(
         displayName,
-        iRacingCustomerId ? Number(iRacingCustomerId) : null
+        iRacingCustomerId ? Number(iRacingCustomerId) : null,
+        identityChanging ? identityPassword : undefined
       );
       await updateSession(result);
       setProfileSaved(true);
@@ -77,6 +87,7 @@ export default function SettingsPage() {
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Failed to save profile.');
     } finally {
+      setIdentityPassword('');
       setProfileSaving(false);
     }
   }
@@ -85,16 +96,18 @@ export default function SettingsPage() {
     e.preventDefault();
     setEmailError(null);
     if (!email || email === user?.email) {
+      setEmailPassword('');
       setEmailError('Enter a different email address.');
       return;
     }
     setEmailSaving(true);
     try {
-      await api.requestEmailChange(email);
+      await api.requestEmailChange(email, emailPassword);
       setEmailPending(email);
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Failed to request email change.');
     } finally {
+      setEmailPassword('');
       setEmailSaving(false);
     }
   }
@@ -205,7 +218,10 @@ export default function SettingsPage() {
                   type="number"
                   min="1"
                   value={iRacingCustomerId}
-                  onChange={e => setIRacingCustomerId(e.target.value)}
+                  onChange={e => {
+                    setIRacingCustomerId(e.target.value);
+                    setIdentityPassword('');
+                  }}
                   placeholder="e.g. 100042"
                   className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface font-body-sm text-body-sm px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim transition-colors"
                 />
@@ -214,6 +230,26 @@ export default function SettingsPage() {
                   OAuth is available.
                 </p>
               </div>
+
+              {identityChanging && (
+                <div>
+                  <label
+                    htmlFor="identity-password"
+                    className="block text-small-fluid text-on-surface-variant mb-2"
+                  >
+                    Password to change iRacing identity
+                  </label>
+                  <input
+                    id="identity-password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={identityPassword}
+                    onChange={e => setIdentityPassword(e.target.value)}
+                    className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface text-body-fluid px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim"
+                  />
+                </div>
+              )}
 
               {profileError && (
                 <p className="font-body-sm text-body-sm text-error">{profileError}</p>
@@ -257,6 +293,23 @@ export default function SettingsPage() {
                   Changing your email sends a confirmation link to the new address. Your sign-in
                   email won&apos;t change until you confirm it.
                 </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="email-password"
+                  className="block text-small-fluid text-on-surface-variant mb-2"
+                >
+                  Password to change email
+                </label>
+                <input
+                  id="email-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={emailPassword}
+                  onChange={e => setEmailPassword(e.target.value)}
+                  className="w-full bg-surface-container-high border border-line-2 rounded text-on-surface text-body-fluid px-3 py-2 focus:outline-none focus:border-primary-fixed-dim focus:ring-1 focus:ring-primary-fixed-dim"
+                />
               </div>
               {emailError && <p className="font-body-sm text-body-sm text-error">{emailError}</p>}
               <div className="pt-2">

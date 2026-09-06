@@ -82,6 +82,9 @@ public class AuthService(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
+        if (request.IRacingCustomerId.HasValue && request.IRacingCustomerId != user.IRacingCustomerId)
+            await RequireCurrentPasswordAsync(user, request.CurrentPassword);
+
         user.DisplayName = request.DisplayName.Trim();
         if (request.IRacingCustomerId.HasValue)
             user.IRacingCustomerId = request.IRacingCustomerId.Value;
@@ -208,7 +211,7 @@ public class AuthService(
     /// email is unchanged until <see cref="ConfirmEmailChangeAsync"/> runs. Enumeration-safe — if the target
     /// address already belongs to another account, nothing is sent.
     /// </summary>
-    public async Task RequestEmailChangeAsync(Guid userId, string newEmail, CancellationToken ct = default)
+    public async Task RequestEmailChangeAsync(Guid userId, string newEmail, string? currentPassword, CancellationToken ct = default)
     {
         newEmail = newEmail?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(newEmail))
@@ -217,6 +220,8 @@ public class AuthService(
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return;
+
+        await RequireCurrentPasswordAsync(user, currentPassword);
 
         var existing = await userManager.FindByEmailAsync(newEmail);
         if (existing is not null && existing.Id != userId)
@@ -277,6 +282,12 @@ public class AuthService(
         => throw new NotImplementedException();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private async Task RequireCurrentPasswordAsync(ApplicationUser user, string? currentPassword)
+    {
+        if (string.IsNullOrEmpty(currentPassword) || !await userManager.CheckPasswordAsync(user, currentPassword))
+            throw new InvalidOperationException("Current password is incorrect.");
+    }
 
     internal async Task<string> GenerateJwtAsync(ApplicationUser user)
     {
