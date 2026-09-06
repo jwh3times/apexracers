@@ -83,8 +83,10 @@ public static class IbtParser
             (long)varHeaderOffset + (long)numVars * VarHeaderSize > fileLen)
             throw new InvalidDataException("Invalid variable header offset or count in .ibt header.");
 
-        // Data buffer base offset must be non-negative.
-        if (bufLen < 0 || firstBufOffset < 0)
+        // The first data buffer must fit within the file before its length can be allocated.
+        // Subtract after checking the offset to avoid overflowing header-derived int32 sums.
+        if (bufLen < 0 || firstBufOffset < 0 || firstBufOffset > fileLen ||
+            bufLen > fileLen - firstBufOffset)
             throw new InvalidDataException("Invalid data buffer configuration in .ibt header.");
 
         // DateTimeOffset.FromUnixTimeSeconds throws ArgumentOutOfRangeException outside

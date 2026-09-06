@@ -72,6 +72,84 @@ public class IbtParserTests
         Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
     }
 
+    [Theory]
+    [InlineData(36, int.MaxValue)]
+    [InlineData(36, 9)]
+    [InlineData(36, -1)]
+    [InlineData(52, int.MaxValue)]
+    [InlineData(52, -1)]
+    public void Parse_InvalidDataBuffer_RejectsBeforeReadingPayload(int headerOffset, int value)
+    {
+        using var valid = FakeIbtBuilder.Build(laps: 0);
+        var bytes = valid.ToArray();
+        // The valid file has exactly one eight-byte record. int.MaxValue also exercises
+        // arithmetic that would overflow if buffer offset + length were added as int32.
+        BitConverter.GetBytes(value).CopyTo(bytes, headerOffset);
+        using var stream = new HeaderOnlyStream(bytes);
+
+        var exception = Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+
+        Assert.Equal("Invalid data buffer configuration in .ibt header.", exception.Message);
+    }
+
+    [Fact]
+    public void Parse_NonemptyDataBufferAtEndOfFile_RejectsBeforeReadingPayload()
+    {
+        using var valid = FakeIbtBuilder.Build(laps: 0);
+        var bytes = valid.ToArray();
+        BitConverter.GetBytes(bytes.Length).CopyTo(bytes, 52);
+        using var stream = new HeaderOnlyStream(bytes);
+
+        var exception = Assert.Throws<InvalidDataException>(() => IbtParser.Parse(stream));
+
+        Assert.Equal("Invalid data buffer configuration in .ibt header.", exception.Message);
+    }
+
+    [Fact]
+    public void Parse_EmptyDataBufferAtEndOfFile_ReturnsSessionMetadata()
+    {
+        using var valid = FakeIbtBuilder.Build(includesLapVars: false);
+        var bytes = valid.ToArray();
+        BitConverter.GetBytes(bytes.Length).CopyTo(bytes, 52);
+        BitConverter.GetBytes(0).CopyTo(bytes, 36);
+        using var stream = new MemoryStream(bytes);
+
+        var session = IbtParser.Parse(stream);
+
+        Assert.Equal(42, session.IracingTrackId);
+        Assert.Empty(session.Laps);
+    }
+
+    [Fact]
+    public void Parse_DataBufferEndsExactlyAtEndOfFile_AcceptsCompleteRecord()
+    {
+        using var stream = FakeIbtBuilder.Build(laps: 0);
+
+        var session = IbtParser.Parse(stream);
+
+        Assert.Equal(42, session.IracingTrackId);
+        Assert.Empty(session.Laps);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Parse_PartialTrailingRecord_PreservesEarlierCompleteLap(bool inferRecordCount)
+    {
+        using var valid = FakeIbtBuilder.Build(laps: 2);
+        var bytes = valid.ToArray()[..^4];
+        if (inferRecordCount)
+            BitConverter.GetBytes(0).CopyTo(bytes, 140);
+        using var stream = new MemoryStream(bytes);
+
+        var session = IbtParser.Parse(stream);
+
+        var lap = Assert.Single(session.Laps);
+        Assert.Equal(1, lap.LapNumber);
+        Assert.Equal(90.5, lap.LapTimeSeconds);
+        Assert.True(lap.IsValid);
+    }
+
     [Fact]
     public void Parse_ValidStream_ReturnsCorrectSessionInfo()
     {
@@ -203,6 +281,16 @@ public class IbtParserTests
     }
 
     // ── Helper: wraps a stream and disables seeking ───────────────────────────
+
+    // Fail safely before YAML/variable reads or record-buffer allocation if a malformed
+    // header escapes validation. Red runs with int.MaxValue never allocate that buffer.
+    private sealed class HeaderOnlyStream(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override long Seek(long offset, SeekOrigin origin) =>
+            offset == 0 && origin == SeekOrigin.Begin
+                ? base.Seek(offset, origin)
+                : throw new InvalidOperationException("Parser reached payload before rejecting invalid buffer bounds.");
+    }
 
     private sealed class NonSeekableStream(Stream inner) : Stream
     {
