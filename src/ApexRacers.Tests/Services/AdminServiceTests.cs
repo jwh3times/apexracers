@@ -348,8 +348,14 @@ public class AdminServiceTests
 
     // ── SetUserRoleAsync ──────────────────────────────────────────────────────
 
-    [Fact]
-    public async Task SetUserRoleAsync_ValidRole_UpdatesUserRole()
+    [Theory]
+    [InlineData("Standard", "Beta")]
+    [InlineData("Standard", "Alpha")]
+    [InlineData("Beta", "Standard")]
+    [InlineData("Beta", "Alpha")]
+    [InlineData("Alpha", "Standard")]
+    [InlineData("Alpha", "Beta")]
+    public async Task SetUserRoleAsync_ValidRole_UpdatesUserRole(string currentRole, string newRole)
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
@@ -358,11 +364,42 @@ public class AdminServiceTests
 
         var user = new ApplicationUser { DisplayName = "Racer", UserName = "r@example.com", Email = "r@example.com" };
         await userManager.CreateAsync(user, "Pass1234");
-        await userManager.AddToRoleAsync(user, "Standard");
+        Assert.True((await userManager.AddToRoleAsync(user, currentRole)).Succeeded);
 
-        var dto = await svc.SetUserRoleAsync(user.Id, "Alpha", TestContext.Current.CancellationToken);
+        var dto = await svc.SetUserRoleAsync(user.Id, newRole, TestContext.Current.CancellationToken);
 
-        Assert.Equal("Alpha", dto.Role);
+        Assert.Equal(newRole, dto.Role);
+        Assert.Equal([newRole], await userManager.GetRolesAsync(user));
+    }
+
+    [Theory]
+    [InlineData("Standard", "Admin")]
+    [InlineData("Beta", "Admin")]
+    [InlineData("Alpha", "Admin")]
+    [InlineData("Standard", "admin")]
+    [InlineData("Beta", "admin")]
+    [InlineData("Alpha", "admin")]
+    [InlineData("Standard", "ADMIN")]
+    [InlineData("Beta", "ADMIN")]
+    [InlineData("Alpha", "ADMIN")]
+    [InlineData("Standard", "aDmIn")]
+    [InlineData("Beta", "aDmIn")]
+    [InlineData("Alpha", "aDmIn")]
+    public async Task SetUserRoleAsync_AdminPromotion_ThrowsAndPreservesExistingRole(string currentRole, string newRole)
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var svc = BuildService(provider);
+        var user = new ApplicationUser { DisplayName = "Racer", UserName = "r@example.com", Email = "r@example.com" };
+        Assert.True((await userManager.CreateAsync(user, "Pass1234")).Succeeded);
+        Assert.True((await userManager.AddToRoleAsync(user, currentRole)).Succeeded);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SetUserRoleAsync(user.Id, newRole, TestContext.Current.CancellationToken));
+
+        Assert.Equal("Admin role is managed via Key Vault and cannot be changed here.", exception.Message);
+        Assert.Equal([currentRole], await userManager.GetRolesAsync(user));
     }
 
     [Fact]
@@ -392,8 +429,11 @@ public class AdminServiceTests
         await userManager.CreateAsync(user, "Pass1234");
         await userManager.AddToRoleAsync(user, "Admin");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.SetUserRoleAsync(user.Id, "Standard", TestContext.Current.CancellationToken));
+
+        Assert.Equal("Admin role is managed via Key Vault and cannot be changed here.", exception.Message);
+        Assert.Equal(["Admin"], await userManager.GetRolesAsync(user));
     }
 
     [Fact]

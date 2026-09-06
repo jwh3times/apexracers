@@ -38,7 +38,7 @@ public class AdminService(
         var currentRoles = await userManager.GetRolesAsync(user);
 
         // Admin membership is managed exclusively via ADMIN_SEED_EMAILS in Key Vault
-        if (currentRoles.Contains("Admin"))
+        if (currentRoles.Contains("Admin") || string.Equals(newRole, "Admin", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Admin role is managed via Key Vault and cannot be changed here.");
 
         await userManager.RemoveFromRolesAsync(user, currentRoles);
