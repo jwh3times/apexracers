@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
-public class PercentileCalculationService(AppDbContext db, WorldRecordService? worldRecords = null)
+public class PercentileCalculationService(
+    AppDbContext db, SubjectDriverContext subjectDriverContext, WorldRecordService? worldRecords = null)
 {
     public async Task<PercentileResultDto?> ComputeAndCacheAsync(
         int seriesId,
@@ -107,7 +108,10 @@ public class PercentileCalculationService(AppDbContext db, WorldRecordService? w
 
         var computedAt = DateTimeOffset.UtcNow;
 
-        if (user is not null)
+        // Personal analytics may cache only the caller's resolved Subject Driver. Other Driver
+        // lookups remain readable, but must not replace this User's own percentile history.
+        if (user is not null &&
+            customerId == await subjectDriverContext.GetSubjectDriverCustIdAsync(user.Id, ct))
         {
             var cached = await db.CarPercentileResults
                 .FirstOrDefaultAsync(
