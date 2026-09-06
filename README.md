@@ -67,6 +67,12 @@ The API starts on `http://localhost:5000`. In Development, the Scalar API refere
 `http://localhost:5000/scalar/v1`, backed by the OpenAPI document at
 `http://localhost:5000/openapi/v1.json`.
 
+Startup admin seeding uses `ADMIN_SEED_EMAILS`, a comma-separated list of addresses. A matching
+account must already have a confirmed email before it can be promoted. Registration alone does
+not confirm email; an operator must verify ownership of both the mailbox and the account before
+confirming a bootstrap account. Existing Admin memberships are preserved. Maintainer bootstrap
+steps live in the private companion's deployment runbook.
+
 ### 5. Run the frontend
 
 ```bash

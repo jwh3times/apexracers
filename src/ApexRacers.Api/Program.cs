@@ -203,6 +203,7 @@ builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<RefreshTokenStore>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AdminSeedService>();
 
 var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
 if (!string.IsNullOrWhiteSpace(acsConnectionString))
@@ -239,7 +240,6 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
     // Ensure all roles exist
     foreach (var roleName in new[] { "Standard", "Beta", "Alpha", "Admin" })
@@ -248,21 +248,9 @@ using (var scope = app.Services.CreateScope())
             await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
     }
 
-    // Promote any users listed in ADMIN_SEED_EMAILS (Key Vault: ADMIN-SEED-EMAILS)
-    var adminEmails = (app.Configuration["ADMIN_SEED_EMAILS"] ?? "")
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    foreach (var email in adminEmails)
-    {
-        var adminUser = await userManager.FindByEmailAsync(email);
-        if (adminUser is null) continue;
-
-        var currentRoles = await userManager.GetRolesAsync(adminUser);
-        if (currentRoles.Contains("Admin")) continue;
-
-        await userManager.RemoveFromRolesAsync(adminUser, currentRoles);
-        await userManager.AddToRoleAsync(adminUser, "Admin");
-    }
+    // Promote confirmed accounts listed in ADMIN_SEED_EMAILS (Key Vault: ADMIN-SEED-EMAILS).
+    var adminSeed = scope.ServiceProvider.GetRequiredService<AdminSeedService>();
+    await adminSeed.PromoteConfirmedUsersAsync(app.Configuration["ADMIN_SEED_EMAILS"]);
 
     // Purge refresh tokens that expired more than 30 days ago so the table does not
     // grow without bound (revoked/expired rows are otherwise never deleted).
