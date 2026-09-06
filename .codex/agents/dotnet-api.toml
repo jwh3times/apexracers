@@ -153,6 +153,9 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 - `RotateAsync(rawToken)`: validates the hash against that predicate, revokes the old token, inserts a replacement, and returns its user ID + raw credential in one `SaveChangesAsync`. Rotation is cap-exempt because it replaces one active credential with one.
 - `RevokeAsync(rawToken)`: best-effort; unknown and already-revoked credentials are no-ops. A specifically presented expired credential may still be stamped revoked.
 - Issuance caps active tokens per user at 5 by revoking the oldest before adding the new token; `RevokeAllActiveAsync` touches only canonically active rows.
+- Successful password changes, password resets, and email changes revoke the account's active
+  refresh tokens through the store. Password change issues no replacement token pair; existing access
+  tokens retain their normal expiry, including on the requesting device.
 - `PurgeExpiredAsync(retention)` deletes only rows with `ExpiresAt < now - retention`; the exact boundary remains.
 - `POST /api/auth/refresh` and `POST /api/auth/logout` do **not** have `[Authorize]` — the refresh token is its own credential and these endpoints must work after the JWT expires.
 

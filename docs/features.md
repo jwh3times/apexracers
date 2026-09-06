@@ -42,6 +42,10 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 
 ## Access Model
 
+Successful password changes revoke the account's active refresh tokens on every device, including
+the current one. Existing access tokens remain valid until their normal expiry (up to 15 minutes);
+devices must then sign in again. A rejected password change leaves sessions unchanged.
+
 The application uses local account authentication with JWT access tokens and rotating
 refresh tokens. Users have one role at a time: `Standard`, `Beta`, `Alpha`, or `Admin`.
 Feature flags can be enabled for a minimum role tier.

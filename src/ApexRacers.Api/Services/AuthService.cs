@@ -183,6 +183,8 @@ public class AuthService(
             // (e.g. "Passwords must be at least 8 characters."); surface them to the caller.
             throw new InvalidOperationException(
                 string.Join(" ", result.Errors.Select(e => e.Description)));
+
+        await refreshTokens.RevokeAllActiveAsync(user.Id, ct);
     }
 
     /// <summary>

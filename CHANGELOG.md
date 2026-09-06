@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [7.0.2] - 2026-09-06
+
+### Security
+
+- Successful password changes now revoke all active refresh tokens for the account, including the
+  current device's token. Existing access tokens remain valid until expiry; devices must then sign
+  in again. Failed password changes preserve existing refresh tokens.
+
 ## [7.0.1] - 2026-09-05
 
 ### Security
@@ -932,7 +940,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v7.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v7.0.2...HEAD
+[7.0.2]: https://github.com/jwh3times/apexracers/compare/v7.0.1...v7.0.2
 [7.0.1]: https://github.com/jwh3times/apexracers/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/jwh3times/apexracers/compare/v6.1.3...v7.0.0
 [6.1.3]: https://github.com/jwh3times/apexracers/compare/v6.1.2...v6.1.3
