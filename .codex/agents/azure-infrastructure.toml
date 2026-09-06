@@ -85,10 +85,10 @@ CORS is configured for Development only (`ViteDev` policy allowing `http://local
 
 ## ADMIN_SEED_EMAILS
 
-Comma-separated list in Key Vault (`ADMIN-SEED-EMAILS`). At API startup, users whose
-email matches are promoted to the `Admin` role. This is the only way to create the
-first admin; there is no admin bootstrap API. Changes take effect on next API restart
-or deployment.
+Comma-separated list in Key Vault (`ADMIN-SEED-EMAILS`). For startup promotion eligibility,
+see `AdminSeedService` in the project guide. This is the only way to create the first
+admin; there is no admin bootstrap API. Changes take effect on next API restart or
+deployment.
 
 ## Database connection
 

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [7.0.0] - 2026-09-05
+
+### Security
+
+- Startup admin seeding now requires a confirmed email before promoting a configured account.
+  Unconfirmed accounts retain their current roles; existing Admin memberships are preserved.
+  Fresh admin bootstrap requires operator verification and confirmation before restarting the API.
+
 ## [6.1.3] - 2026-09-04
 
 ### Fixed
@@ -916,7 +924,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v6.1.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v7.0.0...HEAD
+[7.0.0]: https://github.com/jwh3times/apexracers/compare/v6.1.3...v7.0.0
 [6.1.3]: https://github.com/jwh3times/apexracers/compare/v6.1.2...v6.1.3
 [6.1.2]: https://github.com/jwh3times/apexracers/compare/v6.1.1...v6.1.2
 [6.1.0]: https://github.com/jwh3times/apexracers/compare/v6.0.0...v6.1.0
