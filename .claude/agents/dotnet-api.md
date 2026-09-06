@@ -139,7 +139,9 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
   - `AlphaOrAbove` → `RequireClaim("role", "Alpha", "Admin")`
   - `BetaOrAbove` → `RequireClaim("role", "Beta", "Alpha", "Admin")`
 - Self-service role changes (Standard/Beta/Alpha) via `PUT /api/auth/role`; Admin cannot self-demote.
-- Admin promotion only via `ADMIN_SEED_EMAILS` at startup or `AdminController`.
+- Admin promotion uses `AdminSeedService` at startup; the project guide owns its eligibility rules.
+  `AdminService.SetUserRoleAsync` rejects an Admin target role using case-insensitive comparison
+  (matching Identity role lookup), and rejects changes to an existing Admin.
 
 ### Refresh token rotation
 

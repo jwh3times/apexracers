@@ -37,7 +37,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 - **Catalog exploration:** browse current cars and tracks, including Uploaded Best overlays
   when the user has telemetry data. Retired catalog entries stay available through their direct
   detail URLs so historical laps remain reachable without crowding the default lists.
-- **Admin controls:** manage user roles and feature flags through an Admin-only panel.
+- **Admin controls:** manage non-Admin user roles and feature flags through an Admin-only panel.
+  Admin promotion uses startup seeding; the role-management API cannot grant or remove Admin.
 
 ## Access Model
 
