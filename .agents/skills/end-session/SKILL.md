@@ -22,9 +22,10 @@ discovered) and **issue tracking** (what the session actually moved).
 ## What this is not
 
 - **Not `/ship`.** This skill does not evaluate SemVer impact, write a dated CHANGELOG section,
-  push, or open a PR. If a branch is finished, run `/ship` **first**, then this. If a branch is
+  push source branches, or open a PR. Publishing the required human-follow-up wiki updates in
+  step 3 is part of this skill. If a branch is finished, run `/ship` **first**, then this. If a branch is
   mid-flight, leave it mid-flight — record where it stands and stop.
-- **Not `docs-updater`.** That agent owns the doc matrix for a *shipped change*. This skill covers
+- **Not `docs-updater`.** That agent owns the doc matrix for completed implementation work. This skill covers
   what a session learned that no diff records — a blocker's real cause, a decision, a dead end, a
   correction to a planning assumption.
 - **Not a `git clean -xfd`.** Several ignored paths here are irreplaceable (below).
@@ -83,8 +84,9 @@ Then:
 
 ### 3. Update GitHub issues and the project board
 
-Issues are the tracker (`jwh3times/apexracers`), driven with `gh` — the full command vocabulary is
-in `docs/agents/issue-tracker.md`, and the label strings are in `docs/agents/triage-labels.md`
+Public implementation issues live in `jwh3times/apexracers`; human follow-up issues live in
+`jwh3times/apexracers-private`. Both use the same private board and are driven with `gh`.
+The full command vocabulary is in `docs/agents/issue-tracker.md`, and the label strings are in `docs/agents/triage-labels.md`
 (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). Use those files
 rather than inventing commands or labels.
 
@@ -120,6 +122,11 @@ For each issue this session touched:
   Label it per the triage vocabulary, then add it to the board
   (`gh project item-add 2 --owner jwh3times --url <issue-url>`) and set its `Status` and
   `Blocked by`. An issue that never reaches the board is invisible to the next session.
+
+For every required human action left by completed work, execute `docs/agents/human-actions.md`.
+Reconcile existing follow-ups from docs-updater or `/ship`, create missing private issues, label and
+add them to the board, and publish step-by-step wiki instructions. Verify the issue/wiki links before
+closing the session; local companion absence does not imply remote access is unavailable.
 
 Do not close an issue on the strength of an unmerged branch, and do not bulk-relabel issues this
 session never touched — that is `/triage`'s job.
@@ -207,6 +214,8 @@ Close with a short, honest summary:
 
 - Memories added / updated / deleted, with the one-line reason for each
 - Issues commented, closed, relabelled, or opened — with numbers
+- Required human follow-ups: private issue and published wiki links, or exact access/publication
+  blockers; explicitly state when none remain
 - `private/` docs updated, their separate commit/push state, or that the companion was absent
 - What was deleted from the workspace, and what was deliberately left (and why)
 - **Anything left open**: uncommitted changes, unpushed branches, an open PR awaiting review, a

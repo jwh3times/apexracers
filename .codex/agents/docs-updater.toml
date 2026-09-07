@@ -54,12 +54,21 @@ author. Your job with them is narrower: keep the docs you do own pointing at the
 "New domain glossary term or ADR added" below. Never restate a `CONTEXT.md` term's definition in
 another doc; point at `CONTEXT.md` instead.
 
+## Required human-action handoff
+
+When completed work leaves human action, execute `docs/agents/human-actions.md` before reporting
+documentation complete. Create/update the private follow-up issues, board entries, and published
+step-by-step wiki instructions; verify their links. This also applies during `/ship`: follow-ups can
+be pending a merge without claiming that the parent work shipped. Report issue/wiki URLs or the
+exact publication blocker, even if there were no source documentation changes.
+
 ## What triggers what update
 
 **Any feature, milestone, or planned item completed (or cancelled/parked)**
 
 When invoked by `/ship`, the public PR is still unmerged: leave the project board and product status
-unchanged so they do not claim it shipped. `/end-session` reconciles the board after merge. Outside
+unchanged so they do not claim it shipped. Creating pending human follow-ups under the procedure
+above is required and does not close or advance the parent item. `/end-session` reconciles the board after merge. Outside
 `/ship`, apply the board update below only when the outcome is already true.
 
 - **Project board:** close the issue the work completed, or re-status its item (`Parked` if parked,

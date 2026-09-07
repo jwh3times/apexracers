@@ -126,6 +126,11 @@ claims unchanged; `/end-session` reconciles the separate companion after the pub
 may update a private document only for a current maintainer fact that does not claim the PR shipped,
 and any such change belongs to the private repository's own commit and push.
 
+Before finishing the docs refresh, require docs-updater to execute `docs/agents/human-actions.md`
+for every human action left by the branch. Verify private issues, board tracking, and published wiki
+instructions even while the PR is pending. Capture the links for the private follow-up and user handoff; report any private
+access blocker explicitly. This does not mark the branch shipped.
+
 ### 5. Write the CHANGELOG entry
 
 The repo's convention is a `## [Unreleased]` section that accumulates undated
@@ -227,6 +232,9 @@ gh pr list --head "$(git branch --show-current)" --state open --json number -q '
 - **PR exists** → `gh pr edit <number>` to refresh the body. Do not open a second PR.
 
 ### 9. Report
+
+Include private follow-up issue and wiki links for required human actions, or state that none remain.
+Keep private operational details in the private destinations; report unavailable publication steps.
 
 Give the user: the release-impact decision and evidence, the PR URL, the version
 this merge will mint, and anything the fast checks surfaced. State plainly that

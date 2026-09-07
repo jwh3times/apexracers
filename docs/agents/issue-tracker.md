@@ -11,6 +11,10 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
+Human follow-ups from completed agent work use the private companion issue tracker, shared private
+board, and private wiki under `docs/agents/human-actions.md`. Always select that repository explicitly
+for these follow-ups; public implementation issues retain the conventions above.
+
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
 ## Pull requests as a triage surface
