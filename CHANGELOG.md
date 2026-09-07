@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
-## [8.0.3] - 2026-09-06
+## [8.0.3] - 2026-09-07
 
 ### Security
 
 - Telemetry uploads require existing Car and Track catalog entries and cannot create catalog rows
   from uploaded metadata. Unknown IDs are rejected before any laps are saved.
+
+### Changed
+
+- Agent completion workflows now track required human actions as private follow-up issues on the
+  project board, with step-by-step private wiki instructions and verified cross-links.
 
 ## [8.0.2] - 2026-09-06
 

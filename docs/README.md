@@ -23,7 +23,8 @@ intentionally ignores the nested worktree and must not require it for builds, te
 external contribution.
 
 Remaining, blocked, and parked work is tracked on the [ApexRacers project board][board] instead,
-backed by public GitHub issues — see `AGENTS.md` for how work moves through it. Open, unfixed
+backed by public implementation issues and private companion human-follow-up issues — see
+`AGENTS.md` for how work moves through it. Open, unfixed
 security findings are held as draft GitHub security advisories on this repository rather than in a
 private planning doc, so nothing is disclosed publicly before a fix ships.
 
