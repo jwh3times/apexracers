@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [8.0.3] - 2026-09-06
+
+### Security
+
+- Telemetry uploads require existing Car and Track catalog entries and cannot create catalog rows
+  from uploaded metadata. Unknown IDs are rejected before any laps are saved.
+
 ## [8.0.2] - 2026-09-06
 
 ### Security
@@ -964,7 +971,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.3...HEAD
+[8.0.3]: https://github.com/jwh3times/apexracers/compare/v8.0.2...v8.0.3
 [8.0.2]: https://github.com/jwh3times/apexracers/compare/v8.0.1...v8.0.2
 [8.0.1]: https://github.com/jwh3times/apexracers/compare/v8.0.0...v8.0.1
 [8.0.0]: https://github.com/jwh3times/apexracers/compare/v7.0.2...v8.0.0
