@@ -23,7 +23,7 @@ public class TelemetryUploadService(AppDbContext db)
 
         // Reject before anything is written. An accepted upload's laps become the uploader's own
         // pace and are ranked against a field of real race laps, so telemetry driven by someone
-        // else must not reach the database at all — not even the catalog rows upserted below.
+        // else must not reach the database at all.
         // A caller with no Claimed Identity has nothing to check against and is let through; the
         // recording Driver is still stored, so the lap says whose it is either way.
         if (recordedBy is { } fileCustId && claimedCustId is { } claimed && fileCustId != claimed)
@@ -34,33 +34,12 @@ public class TelemetryUploadService(AppDbContext db)
                 "linked Customer ID in Settings.");
         }
 
-        // Upsert the car — the ingestion worker is the authoritative source but
-        // telemetry files can arrive before ingestion has run.
-        var car = await db.Cars.FindAsync([session.IracingCarId], ct);
-        if (car is null)
-        {
-            car = new Car
-            {
-                Id = session.IracingCarId,
-                Name = session.CarName,
-                NameAbbreviated = session.CarNameAbbreviated,
-            };
-            db.Cars.Add(car);
-        }
-
-        // Upsert the track — the ingestion worker is the authoritative source but
-        // telemetry files can arrive before ingestion has run.
-        var track = await db.Tracks.FindAsync([session.IracingTrackId], ct);
-        if (track is null)
-        {
-            track = new Track
-            {
-                Id         = session.IracingTrackId,
-                Name       = session.TrackName,
-                ConfigName = ConfigurationName.Normalize(session.ConfigName),
-            };
-            db.Tracks.Add(track);
-        }
+        // Catalog ingestion and seeding own Car/Track metadata. An uploaded recording may
+        // reference existing IDs, but its untrusted YAML must never create public catalog rows.
+        if (!await db.Cars.AnyAsync(car => car.Id == session.IracingCarId, ct) ||
+            !await db.Tracks.AnyAsync(track => track.Id == session.IracingTrackId, ct))
+            throw new InvalidOperationException(
+                "This telemetry's car or track is not in the catalog yet. Try again after the catalog is updated.");
 
         var validLaps = session.Laps.Where(l => l.IsValid).ToList();
 
