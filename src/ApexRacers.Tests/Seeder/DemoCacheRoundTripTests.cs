@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
+using ApexRacers.Seeder;
 using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Xunit;
@@ -57,6 +58,37 @@ public class DemoCacheRoundTripTests
         var races = await new RaceHistoryService(Offline(db), db)
             .GetRecentRacesAsync(DemoData.DriverCustId, Ct);
         Assert.NotNull(races);
+    }
+
+    [Fact]
+    public async Task SeededRecentRaces_AllOpenThroughSubsessionDetailService()
+    {
+        await using var db = DbContextFactory.Create();
+        await new CiCatalogSeeder(db).SeedAsync();
+        await new DemoCacheSeeder(db).SeedActivityAsync(Ct);
+
+        var races = await new RaceHistoryService(Offline(db), db)
+            .GetRecentRacesAsync(DemoData.DriverCustId, Ct);
+
+        Assert.NotEmpty(races);
+        var detail = new SubsessionDetailService(db);
+        foreach (var race in races)
+        {
+            var openedRace = await detail.GetAsync(race.SubsessionId, Ct);
+            Assert.Equal(race.SubsessionId, openedRace.SubsessionId);
+            Assert.Equal(race.StartTime, openedRace.StartTime);
+            Assert.Equal(race.SeriesName, openedRace.SeriesName);
+            Assert.Equal(race.TrackName, openedRace.TrackName);
+
+            var demoResult = Assert.Single(
+                openedRace.Results,
+                result => result.CustomerId == DemoData.DriverCustId);
+            Assert.Equal(race.StartPosition, demoResult.StartPosition);
+            Assert.Equal(race.FinishPosition, demoResult.FinishPosition);
+            Assert.Equal(race.Incidents, demoResult.Incidents);
+            Assert.Equal(race.IRatingDelta, demoResult.IRatingDelta);
+            Assert.Equal(race.SrDelta, demoResult.SrDelta);
+        }
     }
 
     [Fact]

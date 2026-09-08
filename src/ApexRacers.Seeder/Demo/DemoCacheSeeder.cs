@@ -34,7 +34,54 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     public async Task SeedActivityAsync(CancellationToken ct)
     {
         await DemoCache.UpsertAsync(db, IRacingCacheKeys.Awards(DemoData.DriverCustId).Key, DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
-        await DemoCache.UpsertAsync(db, IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key, DemoActivityData.BuildRecentRaces(DemoData.DriverCustId), ct);
+
+        var persistedRaces = await db.SubsessionResults
+            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0)
+            .Select(r => new
+            {
+                r.SubsessionId,
+                SessionStartTime = r.Subsession.StartTime,
+                SeriesName = r.Subsession.Season.Series.Name,
+                r.Subsession.TrackId,
+                TrackName = r.Subsession.Track.Name,
+                r.CarId,
+                r.StartingPosition,
+                r.FinishPosition,
+                r.Incidents,
+                r.NewIRating,
+                r.OldIRating,
+                r.NewSubLevel,
+                r.OldSubLevel,
+                StrengthOfField = r.Subsession.EventStrengthOfField,
+                Points = r.ChampPoints,
+            })
+            .ToListAsync(ct);
+
+        var recentRaces = persistedRaces
+            .OrderByDescending(r => r.SessionStartTime)
+            .ThenBy(r => r.SubsessionId)
+            .Take(6)
+            .Select(r => new RecentRaceCacheRow(
+                r.SubsessionId,
+                r.SessionStartTime,
+                r.SeriesName,
+                r.TrackId,
+                r.TrackName,
+                r.CarId,
+                r.StartingPosition,
+                r.FinishPosition,
+                r.Incidents,
+                r.NewIRating - r.OldIRating,
+                (r.NewSubLevel - r.OldSubLevel) / 100.0,
+                r.StrengthOfField,
+                r.Points))
+            .ToList();
+
+        await DemoCache.UpsertAsync(
+            db,
+            IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key,
+            recentRaces,
+            ct);
     }
 
     /// <summary>Leaderboard entries for categories 1..6 (the API allows category 1-6; default 5).</summary>

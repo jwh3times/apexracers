@@ -14,13 +14,4 @@ public class DemoActivityDataTests
             Assert.True(awards[i - 1].AwardDate >= awards[i].AwardDate); // newest first
         Assert.All(awards, a => Assert.False(string.IsNullOrWhiteSpace(a.Name)));
     }
-
-    [Fact]
-    public void BuildRecentRaces_NonEmpty_WithDeltasAndRealCarIds()
-    {
-        var races = DemoActivityData.BuildRecentRaces(100_001);
-        Assert.NotEmpty(races);
-        Assert.All(races, r => Assert.True(r.SubsessionId < 0)); // synthetic negative ids
-        Assert.Contains(races, r => r.IRatingDelta != 0);
-    }
 }
