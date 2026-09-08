@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
@@ -37,6 +38,7 @@ public static class DemoSeedVerifier
         // 2. activity
         AddSetCheck(checks, "activity",
             [IRacingCacheKeys.Awards(DemoData.DriverCustId).Key, IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key], keySet);
+        await AddRecentRaceLinksCheckAsync(checks, db, ct);
 
         // 3. leaderboards 1..6
         AddSetCheck(checks, "leaderboards",
@@ -144,5 +146,59 @@ public static class DemoSeedVerifier
             missing.Count == 0
                 ? $"{expected.Count} keys present"
                 : $"missing {missing.Count}/{expected.Count}: {string.Join(", ", missing.Take(5))}…"));
+    }
+
+    private static async Task AddRecentRaceLinksCheckAsync(
+        List<VerificationCheck> checks,
+        AppDbContext db,
+        CancellationToken ct)
+    {
+        var key = IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key;
+        var payload = await db.ExternalDataCaches
+            .Where(c => c.CacheKey == key)
+            .Select(c => c.Payload)
+            .SingleOrDefaultAsync(ct);
+        if (payload is null)
+        {
+            checks.Add(new("recent-race-links", false, "recent-races payload is missing"));
+            return;
+        }
+
+        List<RecentRaceCacheRow?>? recentRaces;
+        try
+        {
+            recentRaces = JsonSerializer.Deserialize<List<RecentRaceCacheRow?>>(payload);
+        }
+        catch (JsonException)
+        {
+            checks.Add(new("recent-race-links", false, "recent-races payload is malformed"));
+            return;
+        }
+
+        if (recentRaces is null || recentRaces.Any(r => r is null))
+        {
+            checks.Add(new("recent-race-links", false, "recent-races payload is malformed"));
+            return;
+        }
+
+        if (recentRaces.Count == 0)
+        {
+            checks.Add(new("recent-race-links", false, "payload contains no recent races"));
+            return;
+        }
+
+        var recentIds = recentRaces.Select(r => r!.SubsessionId).Distinct().ToList();
+        var persistedIds = await db.Subsessions
+            .Where(s => recentIds.Contains(s.Id))
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        var missing = recentIds.Except(persistedIds).ToList();
+
+        checks.Add(new(
+            "recent-race-links",
+            missing.Count == 0,
+            missing.Count == 0
+                ? $"{recentIds.Count} recent races resolve"
+                : $"missing subsessions: {string.Join(", ", missing.Take(5))}…"));
     }
 }
