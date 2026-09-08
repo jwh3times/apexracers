@@ -23,7 +23,8 @@ intentionally ignores the nested worktree and must not require it for builds, te
 external contribution.
 
 Remaining, blocked, and parked work is tracked on the [ApexRacers project board][board] instead,
-backed by public GitHub issues — see `AGENTS.md` for how work moves through it. Open, unfixed
+backed by public implementation issues and private companion human-follow-up issues — see
+`AGENTS.md` for how work moves through it. Open, unfixed
 security findings are held as draft GitHub security advisories on this repository rather than in a
 private planning doc, so nothing is disclosed publicly before a fix ships.
 
@@ -71,3 +72,7 @@ authored side (`.claude/agents/` or `.agents/skills/`), re-run the script, and
 commit every side that changed. Never replace a generated directory with a
 symlink back to its source — see the **Agent config parity** section in `AGENTS.md`
 for why, and for the full mapping.
+
+Required human actions arising from completed agent work follow
+[Human follow-ups](agents/human-actions.md): private issues and board tracking paired with
+step-by-step private wiki instructions. Docs-updater, ship, end-session, and wizard use that procedure.

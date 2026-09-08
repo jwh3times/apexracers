@@ -28,7 +28,8 @@ ready for review.
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
 it touched up to date, and cleans the regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
-section, or pushes. Run `/ship` first if a branch is finished, then `/end-session`.
+section, or pushes source branches. It does publish required human-follow-up wiki instructions.
+Run `/ship` first if a branch is finished, then `/end-session`.
 
 ## Agent config parity (Claude Code ↔ Codex)
 
@@ -138,13 +139,19 @@ outer-repository Git history cannot see its changes.
 | `docs/features.md`                        | Public product capabilities and workflows.                                                             |
 | `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
 | `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
-| [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
+| [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues and private companion human-follow-up issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
 | `private/archive.md`                      | Maintainer-only completed-work log — **frozen** at 2026-09-03; do not append.                          |
 | `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
 | `private/ops/azure-deployment-runbook.md` | Maintainer-only Azure resource names, command targets, and deployment details.                         |
 | `private/iracing-api-response-objects/`   | Local captured iRacing API JSON field shapes — read before mapping any endpoint when available.        |
 
 [board]: https://github.com/users/jwh3times/projects/2
+
+**Human follow-ups:** when completed agent work leaves required human action, follow
+`docs/agents/human-actions.md`: create or update a private companion issue labelled
+`ready-for-human`, add it to the private ApexRacers board, and publish step-by-step private wiki
+instructions with reciprocal links. This is part of the completion handoff, including before merge
+when applicable; report any access blocker instead of silently omitting it.
 
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
 workflow changes; close or re-status the project-board item the work belongs to; and

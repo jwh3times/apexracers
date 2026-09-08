@@ -30,7 +30,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   a race week.
 - **Telemetry upload:** parse `.ibt` files, store the Timed Laps they recorded, and surface each
   driver's Uploaded Best per car and track. A file recorded by a driver other than the one
-  linked to the uploading account is refused.
+  linked to the uploading account is refused. The Car and Track must already exist in the catalog
+  before upload; files with unknown catalog IDs are refused.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.
