@@ -24,10 +24,10 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 
 - `POST /api/auth/refresh` — no `[Authorize]`; accepts `{ refreshToken }`, returns new JWT + new refresh token. Raw token is never stored; the DB holds its SHA-256 hash.
 - `POST /api/auth/logout` — no `[Authorize]`; revokes the refresh token (best-effort, always returns 204).
-- Test rotation: after a successful refresh, send the old refresh token again — should return 401.
-- Test: send a syntactically valid but unknown token — should return 401, not 500.
-- Test: send an already-revoked token (token where `RevokedAt` is set) — should return 401.
-- Test: send an expired token (past `ExpiresAt`) — should return 401.
+- Test sequential reuse: after a successful refresh, send the old refresh token again — should return 401, and both the replacement and another active token for that User should then fail. Another User's token must still work.
+- Test: send a syntactically valid but unknown token — should return 401, not 500, without revoking other sessions.
+- Test: send a retained already-revoked token, including one also past `ExpiresAt` — should return 401 and revoke that User's active refresh tokens. Check that the warning includes only the User ID, not the raw token or its hash.
+- Test: send an expired token that was never revoked — should return 401 without revoking other sessions. Existing JWTs remain valid until their normal expiry after refresh-token revocation.
 - Test: can the refresh endpoint be used without any token at all? Should return 401.
 - Test: does logout return 204 for an unknown token (must not leak whether a token exists)?
 

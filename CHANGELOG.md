@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.0.11] - 2026-09-09
+
 ### Security
 
 - Rejecting reuse of an already-revoked refresh token now revokes the account's active refresh tokens
@@ -1002,7 +1006,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.10...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.11...HEAD
+[8.0.11]: https://github.com/jwh3times/apexracers/compare/v8.0.10...v8.0.11
 [8.0.10]: https://github.com/jwh3times/apexracers/compare/v8.0.9...v8.0.10
 [8.0.9]: https://github.com/jwh3times/apexracers/compare/v8.0.8...v8.0.9
 [8.0.8]: https://github.com/jwh3times/apexracers/compare/v8.0.7...v8.0.8
