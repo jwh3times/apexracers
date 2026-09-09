@@ -272,9 +272,19 @@ app.UseMiddleware<SecurityHeadersMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().DisableRateLimiting();
-    app.MapScalarApiReference(options => options
-            .WithTitle("ApexRacers API v1")
-            .WithOpenApiRoutePattern("/openapi/{documentName}.json"))
+    app.MapScalarApiReference((options, context) =>
+        {
+            var nonce = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            options.WithTitle("ApexRacers API v1")
+                .WithOpenApiRoutePattern("/openapi/{documentName}.json")
+                .DisableDefaultFonts()
+                .DisableAgent()
+                .DisableTelemetry()
+                .AddHeadContent($"<meta property=\"csp-nonce\" content=\"{nonce}\" />")
+                .WithNonce(nonce);
+            context.Response.Headers.ContentSecurityPolicy = ContentSecurityPolicy.ForScalar(nonce);
+            context.Response.Headers.CacheControl = "no-store";
+        })
         .DisableRateLimiting();
     app.UseCors("ViteDev");
 }

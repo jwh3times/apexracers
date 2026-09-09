@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // Keep small font subsets as same-origin files, not data: URLs, for the SPA CSP.
+    build: { assetsInlineLimit: 0 },
     server: {
       proxy: {
         '/api': {

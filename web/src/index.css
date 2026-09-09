@@ -257,6 +257,19 @@ html.theme-light {
   }
 
   .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined Variable';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
     font-variation-settings:
       'FILL' 0,
       'wght' 400,
@@ -275,6 +288,24 @@ html.theme-light {
    without any component needing to know the screen size.
    ─────────────────────────────────────────────────────────────────────────── */
 @layer utilities {
+  /* Original decorative login artwork, rendered without external image assets. */
+  .login-atmosphere {
+    background-image:
+      radial-gradient(ellipse at 20% 35%, rgba(0, 224, 255, 0.35), transparent 55%),
+      repeating-linear-gradient(135deg, transparent 0 78px, rgba(0, 224, 255, 0.08) 79px 80px);
+  }
+
+  .login-telemetry-grid {
+    background-image:
+      linear-gradient(rgba(0, 224, 255, 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 224, 255, 0.2) 1px, transparent 1px),
+      radial-gradient(ellipse at 10% 80%, rgba(0, 224, 255, 0.3), transparent 65%);
+    background-size:
+      32px 32px,
+      32px 32px,
+      100% 100%;
+  }
+
   /* Page wrapper — full width, fluid side padding, no hard max-width cap */
   .page-wrap {
     width: 100%;

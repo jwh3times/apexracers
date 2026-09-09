@@ -5,12 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 
 type Tab = 'signin' | 'register';
 
-const BG_STEERING_WHEEL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCfE9XCfxUwXzjRnyo5pyQD6yht0Pg4nfW7OKx6_iNRwee9CUFw4IH2LB0vkFYo9b8tGvlZaf8SKrjwQzMkIFBv_UlGfxoanNFNB7qqSJ48aOOoFJT1P5iRvjNt3RhFqAIhy8BcuMGxvyH2NpLRgbvdROuFtJUIznyucti-mJpCAJ2TWfDsKM89Q2RQU4-R1FsE9PL6KPdJ_SrlzJQ1kB5wWI3g-uIHKFShhheb3U3U-Vku1N0DTBhHTGAW5xoCglAYnFxHxi13Ivc';
-
-const BG_TELEMETRY =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCI4n2qoVOlelbevOQIuuMo6Z-2UAqRv123lnT9qZIi59i7ZB7JIbUW34m4Jk9zhY-UGJVp_S7REUYa_Y1kxF-zwjm7gCWVUNPdhtSvxmKJxGZcs91vdQtokzja3NLAfFADjKpsyttIu5kJIk3ih4dbuZb6w-p9PytVnBaWiI5DFzZAiOfFIqQA9puG7pANcNF3Iw28VtL5sH_znf2g34Pd2mKW6TCSAEwXdOmukWgSHkYgbVZ-czCvBuyr6UwbXIjXwlNt5JMu-cg';
-
 export default function LoginPage() {
   const [tab, setTab] = useState<Tab>('signin');
   const [email, setEmail] = useState('');
@@ -52,11 +46,8 @@ export default function LoginPage() {
 
   return (
     <div className="bg-background text-on-background antialiased min-h-screen relative overflow-hidden flex items-center justify-center p-4 md:p-margin">
-      {/* Atmospheric background image */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center opacity-30"
-        style={{ backgroundImage: `url('${BG_STEERING_WHEEL}')` }}
-      />
+      {/* Original CSS artwork; no third-party image request. */}
+      <div aria-hidden="true" className="login-atmosphere absolute inset-0 z-0 opacity-30" />
       {/* Gradient overlay */}
       <div className="absolute inset-0 z-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
 
@@ -64,8 +55,8 @@ export default function LoginPage() {
         {/* ── Left panel: branding ── */}
         <div className="hidden md:flex md:w-5/12 bg-surface-container-highest relative flex-col justify-between p-12 overflow-hidden border-r border-line">
           <div
-            className="absolute inset-0 opacity-20 pointer-events-none bg-cover bg-center"
-            style={{ backgroundImage: `url('${BG_TELEMETRY}')` }}
+            aria-hidden="true"
+            className="login-telemetry-grid absolute inset-0 opacity-20 pointer-events-none"
           />
           <div className="relative z-10">
             <h1 className="font-display-lg text-display-lg text-primary-fixed-dim font-extrabold tracking-tighter mb-2">
