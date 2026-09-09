@@ -12,7 +12,10 @@ namespace ApexRacers.Api.Services;
 /// capping, and retention cleanup. Raw credentials leave this module only as return values and
 /// are never attached to a persisted entity.
 /// </summary>
-public sealed class RefreshTokenStore(AppDbContext db, TimeProvider timeProvider)
+public sealed class RefreshTokenStore(
+    AppDbContext db,
+    TimeProvider timeProvider,
+    ILogger<RefreshTokenStore> logger)
 {
     private const int RefreshTokenDays = 7;
     private const int MaxActiveTokensPerUser = 5;
@@ -35,9 +38,18 @@ public sealed class RefreshTokenStore(AppDbContext db, TimeProvider timeProvider
         var now = timeProvider.GetUtcNow();
         var hash = HashToken(rawToken);
         var stored = await db.RefreshTokens
-            .Where(ActiveAt(now))
             .FirstOrDefaultAsync(token => token.TokenHash == hash, ct)
             ?? throw new InvalidOperationException("Invalid or expired refresh token.");
+
+        if (stored.RevokedAt is not null)
+        {
+            await RevokeAllActiveAsync(stored.UserId, ct);
+            logger.LogWarning("Refresh-token reuse detected for user {UserId}.", stored.UserId);
+            throw new InvalidOperationException("Invalid or expired refresh token.");
+        }
+
+        if (stored.ExpiresAt <= now)
+            throw new InvalidOperationException("Invalid or expired refresh token.");
 
         stored.RevokedAt = now;
         var replacement = CreateToken(stored.UserId, now);

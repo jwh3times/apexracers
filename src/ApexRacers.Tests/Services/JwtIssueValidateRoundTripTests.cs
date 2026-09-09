@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
@@ -71,7 +72,7 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
             .Build();
 
         var refreshTokens = new RefreshTokenStore(
-            provider.GetRequiredService<AppDbContext>(), TimeProvider.System);
+            provider.GetRequiredService<AppDbContext>(), TimeProvider.System, NullLogger<RefreshTokenStore>.Instance);
         var service = new AuthService(
             provider.GetRequiredService<UserManager<ApplicationUser>>(),
             config,

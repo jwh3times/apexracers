@@ -155,7 +155,12 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 - Raw token: 64 random bytes (via `RandomNumberGenerator.Fill`) encoded as Base64.
 - Stored in DB as SHA-256 hash (`RefreshToken` entity in `identity.RefreshTokens`). The raw token is never persisted.
 - Active means exactly `RevokedAt == null && ExpiresAt > timeProvider.GetUtcNow()`; a token expiring exactly now is inactive. Keep every active-token query behind the store's canonical predicate rather than adding a time-reading property to the entity.
-- `RotateAsync(rawToken)`: validates the hash against that predicate, revokes the old token, inserts a replacement, and returns its user ID + raw credential in one `SaveChangesAsync`. Rotation is cap-exempt because it replaces one active credential with one.
+- `RotateAsync(rawToken)`: looks up the hash including revoked rows. Presenting a retained revoked
+  token revokes that user's active refresh tokens before rejecting the request, even if the presented
+  token has also expired. Unknown tokens and unrevoked expired tokens only reject. Successful rotation
+  revokes the old token and inserts its replacement in one `SaveChangesAsync`; it is cap-exempt.
+  Reuse warnings contain the User ID, never raw credentials or their hashes. This is account-wide
+  revocation, not a persisted per-device token-family model; issued access tokens keep their expiry.
 - `RevokeAsync(rawToken)`: best-effort; unknown and already-revoked credentials are no-ops. A specifically presented expired credential may still be stamped revoked.
 - Issuance caps active tokens per user at 5 by revoking the oldest before adding the new token; `RevokeAllActiveAsync` touches only canonically active rows.
 - Successful password changes, password resets, and email changes revoke the account's active

@@ -60,6 +60,10 @@ Successful password changes revoke the account's active refresh tokens on every 
 the current one. Existing access tokens remain valid until their normal expiry (up to 15 minutes);
 devices must then sign in again. A rejected password change leaves sessions unchanged.
 
+Presenting a retained, already-revoked refresh token also revokes the account's active refresh tokens as a
+possible credential-reuse signal. Devices must sign in again when their current access tokens expire;
+an unknown token or an expired token that was never revoked does not affect other sessions.
+
 The application uses local account authentication with JWT access tokens and rotating
 refresh tokens. Users have one role at a time: `Standard`, `Beta`, `Alpha`, or `Admin`.
 Non-Admin users can choose Standard, Beta, or Alpha in Settings. Beta and Alpha are self-selected
