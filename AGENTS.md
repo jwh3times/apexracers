@@ -176,9 +176,13 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 >
 > - `iracing-live` (M1, shipped) — real creds. When off, iRacing routes render `ComingSoonPage` and nav
 >   items are hidden.
-> - `iracing-demo` (Alpha-gated) — reveals the same surface backed by clearly-labeled **synthetic** demo
+> - `iracing-demo` (Alpha opt-in preview) — reveals the same surface backed by clearly-labeled **synthetic** demo
 >   data. `SubjectDriverContext` resolves the caller's Subject Driver to the Demo Driver
 >   (`DemoData.DriverCustId`) for any User on the demo surface.
+>
+> **Preview tiers are self-selected.** Non-Admin Users can choose Standard, Beta, or Alpha in
+> Settings. `MinimumRole=Alpha` exposes a feature to anyone who opts in; it does not establish an
+> approved tester group or protect service-account quota. Plan Alpha previews for that open audience.
 >
 > `useIracingSurface` owns the `iracing-live` **OR** `iracing-demo` decision used by `RequireFlag`,
 > `visibleNav`, and in-page panels. `RequireFlag` renders nothing until the current flag owner is

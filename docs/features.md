@@ -62,7 +62,10 @@ devices must then sign in again. A rejected password change leaves sessions unch
 
 The application uses local account authentication with JWT access tokens and rotating
 refresh tokens. Users have one role at a time: `Standard`, `Beta`, `Alpha`, or `Admin`.
-Feature flags can be enabled for a minimum role tier.
+Non-Admin users can choose Standard, Beta, or Alpha in Settings. Beta and Alpha are self-selected
+preview tiers. Feature flags can be enabled for a minimum role tier;
+an Alpha preview is open to anyone who opts in, rather than an invitation-only tester group.
+Admin remains separately controlled.
 
 Most account, telemetry, recommendation, and personal analytics views require sign-in.
 Selected series, schedule, standings, catalog, strategy, and race-detail views are
