@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- The forgot-password response no longer returns the password-reset token in the Development
+  environment. The token now leaves the server only inside the emailed link, so a Development
+  instance that is reachable over the network can no longer be used to take over an account from
+  nothing but an email address. The response is byte-identical in every environment and whether or
+  not the account exists.
+
+### Added
+
+- `DEV_MAIL_DROP_PATH` writes each outbound account email to a local directory as JSON instead of
+  delivering it, so password-reset and email-change flows stay testable without an email provider.
+  The API refuses to start with it set outside Development. `docker compose up` enables it against
+  `TestResults/mail/`.
 
 ## [8.0.11] - 2026-09-09
 

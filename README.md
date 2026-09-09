@@ -177,9 +177,15 @@ iRacing does not have a self-service developer portal. To obtain OAuth 2.0 crede
 Password-reset and email-change-verification emails are sent through the configured
 email provider when `ACS_CONNECTION_STRING` is set. The API also reads
 `ACS_SENDER_ADDRESS` and `APP_BASE_URL` to build account links. When
-`ACS_CONNECTION_STRING` is not set, local development uses a logging sender instead of
-sending real mail; password reset still works locally because the Development
-environment returns the reset token in the response body.
+`ACS_CONNECTION_STRING` is not set, the API logs the subject only and delivers nothing —
+account links are never logged, because they carry single-use credentials.
+
+To follow a reset link locally, set `DEV_MAIL_DROP_PATH` to a directory and the API writes
+each outbound email there as JSON instead of sending it. `docker compose up` does this
+already, dropping mail into `TestResults/mail/` in the repo root; the E2E suite reads the
+reset link back out of the same directory. The drop is Development-only — the API refuses to
+start with `DEV_MAIL_DROP_PATH` set in any other environment, because the files hold live
+reset links in cleartext.
 
 ## Contributing & support
 

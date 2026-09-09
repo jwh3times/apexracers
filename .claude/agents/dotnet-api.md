@@ -148,6 +148,24 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
   `AdminService.SetUserRoleAsync` rejects an Admin target role using case-insensitive comparison
   (matching Identity role lookup), and rejects changes to an existing Admin.
 
+### Account credentials never leave through a response
+
+Password-reset and email-change tokens are single-use credentials. They leave the server **only**
+inside the link `AccountEmailTemplates` builds, and they are never returned in a response body,
+never written to a log, and never surfaced by any endpoint — not even behind an
+`IWebHostEnvironment.IsDevelopment()` check. `AuthService.RequestPasswordResetAsync` deliberately
+returns `Task`, not the token, so no controller can echo it; do not "helpfully" restore a return
+value. It previously returned the token for a Development-only echo in
+`POST /api/auth/forgot-password`, which turned any network-reachable Development instance into
+full account takeover from nothing but an email address (GHSA-qmqp-gxpr-867g). The forgot-password
+response is the same generic acknowledgement in every environment and whether or not the account
+exists.
+
+To exercise a link-bearing flow without an email provider, set `DEV_MAIL_DROP_PATH` and read the
+`FileDropEmailSender` output — `EmailDelivery.Select` throws on startup if that variable is set
+outside Development. Service tests read tokens the same way, out of `FakeEmailSender` via
+`EmailLinks.TokenFrom`, rather than from a return value.
+
 ### Refresh token rotation
 
 `AuthService` delegates the complete refresh-token lifecycle to `RefreshTokenStore`, which issues a **7-day rotating refresh token** alongside every JWT. Rules:

@@ -11,10 +11,10 @@ export interface AuthResult {
 }
 
 export interface ForgotPasswordResult {
+  // The only field the API returns. It is the same generic acknowledgement in every environment
+  // and whether or not the account exists — the reset token leaves the server solely inside the
+  // emailed link, never in this response.
   message: string;
-  // Only populated in the API's Development environment so the reset flow is testable
-  // without an email provider; null in every other environment.
-  resetToken: string | null;
 }
 
 export interface Series {
@@ -805,7 +805,7 @@ export const api = {
     });
   },
 
-  /** POST /api/auth/forgot-password — request a password reset (dev echoes the token) */
+  /** POST /api/auth/forgot-password — request a password reset; the link is emailed */
   forgotPassword(email: string): Promise<ForgotPasswordResult> {
     return request('/api/auth/forgot-password', { method: 'POST', json: { email } });
   },

@@ -11,7 +11,7 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(AuthService auth, IWebHostEnvironment env) : ControllerBase
+public class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct) =>
@@ -103,15 +103,15 @@ public class AuthController(AuthService auth, IWebHostEnvironment env) : Control
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
-        var token = await auth.RequestPasswordResetAsync(request.Email, ct);
+        await auth.RequestPasswordResetAsync(request.Email, ct);
 
-        // In Development the token is also returned in the response body so the reset flow is
-        // testable end-to-end without inspecting an inbox; in every other environment it is
-        // withheld and the response is identical whether or not the account exists. The token
-        // is deliberately never logged — it is a single-use credential.
+        // The response is identical in every environment and whether or not the account exists —
+        // it carries no token. The reset token is a single-use credential and leaves the server
+        // only inside the emailed link; a Development stack reads it back from the mail drop
+        // directory (DEV_MAIL_DROP_PATH), which has no HTTP surface. Echoing it here made any
+        // reachable Development instance an account-takeover path (GHSA-qmqp-gxpr-867g).
         return Ok(new ForgotPasswordResponse(
-            "If an account exists for that email, a password reset link has been sent.",
-            env.IsDevelopment() ? token : null));
+            "If an account exists for that email, a password reset link has been sent."));
     }
 
     [HttpPost("reset-password")]
