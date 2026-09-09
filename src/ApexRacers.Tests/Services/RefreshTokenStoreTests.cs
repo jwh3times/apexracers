@@ -4,8 +4,11 @@ using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
+using ApexRacers.Tests.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -21,7 +24,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         await using var db = await postgres.CreateDbContextAsync(ct);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
         var userId = Guid.NewGuid();
         await SeedUsersAsync(db, ct, userId);
 
@@ -48,7 +51,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         db.RefreshTokens.Add(Token(
             userId, rawToken, Now.AddDays(-7), expiresAt: Now));
         await db.SaveChangesAsync(ct);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             store.RotateAsync(rawToken, ct));
@@ -64,7 +67,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         var probe = new SaveShapeProbe();
         await using var db = await postgres.CreateDbContextAsync(ct, probe);
         var clock = new TestTimeProvider(Now);
-        var store = new RefreshTokenStore(db, clock);
+        var store = new RefreshTokenStore(db, clock, NullLogger<RefreshTokenStore>.Instance);
         var userId = Guid.NewGuid();
         await SeedUsersAsync(db, ct, userId);
         var originalRaw = await store.IssueAsync(userId, ct);
@@ -97,7 +100,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         await using var db = new AppDbContext(options);
         var userId = Guid.NewGuid();
         await SeedUsersAsync(db, ct, userId);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
         var rawToken = await store.IssueAsync(userId, ct);
         var original = await db.RefreshTokens.SingleAsync(ct);
         collision.CollideWith(original.TokenHash);
@@ -161,7 +164,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
             .ToList();
         db.RefreshTokens.AddRange(tokens);
         await db.SaveChangesAsync(ct);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
 
         await store.IssueAsync(userId, ct);
 
@@ -178,7 +181,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         await using var db = await postgres.CreateDbContextAsync(ct);
         var clock = new TestTimeProvider(Now);
-        var store = new RefreshTokenStore(db, clock);
+        var store = new RefreshTokenStore(db, clock, NullLogger<RefreshTokenStore>.Instance);
         var userId = Guid.NewGuid();
         await SeedUsersAsync(db, ct, userId);
         var rawTokens = new List<string>();
@@ -215,7 +218,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
             otherUserId, "other-user", Now.AddDays(-1), Now.AddDays(1));
         db.RefreshTokens.AddRange(active, expired, revoked, otherUser);
         await db.SaveChangesAsync(ct);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
 
         await store.RevokeAllActiveAsync(userId, ct);
 
@@ -241,7 +244,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
             userId, expiredRaw, Now.AddDays(-8), Now.AddSeconds(-1));
         db.RefreshTokens.Add(expired);
         await db.SaveChangesAsync(ct);
-        var store = new RefreshTokenStore(db, clock);
+        var store = new RefreshTokenStore(db, clock, NullLogger<RefreshTokenStore>.Instance);
 
         await store.RevokeAsync("unknown-token", ct);
         Assert.Null(expired.RevokedAt);
@@ -269,7 +272,7 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
             userId, "within", Now.AddDays(-20), Now.AddDays(-10));
         db.RefreshTokens.AddRange(beyondRetention, atBoundary, withinRetention);
         await db.SaveChangesAsync(ct);
-        var store = new RefreshTokenStore(db, new TestTimeProvider(Now));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
 
         var removed = await store.PurgeExpiredAsync(TimeSpan.FromDays(30), ct);
 
@@ -281,6 +284,94 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         Assert.Contains(await db.RefreshTokens.ToListAsync(ct),
             token => token.Id == withinRetention.Id);
         Assert.Equal(0, await store.PurgeExpiredAsync(TimeSpan.FromDays(30), ct));
+    }
+
+    [Fact]
+    public async Task RotateAsync_ReplayedToken_DurablyRevokesAllUserSessionsAndLogsOnlyUserId()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = await postgres.CreateOptionsAsync(ct);
+        await using var db = new AppDbContext(options);
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId, otherUserId);
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), logger);
+        var original = await store.IssueAsync(userId, ct);
+        var sibling = await store.IssueAsync(userId, ct);
+        var otherUser = await store.IssueAsync(otherUserId, ct);
+        var replacement = await store.RotateAsync(original, ct);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => store.RotateAsync(original, ct));
+
+        Assert.Equal("Invalid or expired refresh token.", exception.Message);
+        await using var verification = new AppDbContext(options);
+        var rows = await verification.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        Assert.All(rows.Where(token => token.UserId == userId), token => Assert.Equal(Now, token.RevokedAt));
+        Assert.Null(Assert.Single(rows, token => token.UserId == otherUserId).RevokedAt);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal($"Refresh-token reuse detected for user {userId}.", entry.Message);
+        foreach (var raw in new[] { original, sibling, otherUser, replacement.RawToken })
+        {
+            Assert.DoesNotContain(raw, entry.Message);
+            Assert.DoesNotContain(Hash(raw), entry.Message);
+        }
+        var freshStore = new RefreshTokenStore(verification, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => freshStore.RotateAsync(replacement.RawToken, ct));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => freshStore.RotateAsync(sibling, ct));
+        await freshStore.RotateAsync(otherUser, ct);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RotateAsync_RevokedToken_TriggersReuseEvenIfExpired(bool expired)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = await postgres.CreateDbContextAsync(ct);
+        var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
+        var revoked = Token(userId, "revoked", Now.AddDays(-8), expired ? Now.AddDays(-1) : Now.AddDays(1), Now.AddDays(-2));
+        db.RefreshTokens.Add(revoked);
+        await db.SaveChangesAsync(ct);
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), logger);
+        await store.IssueAsync(userId, ct);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.RotateAsync("revoked", ct));
+
+        db.ChangeTracker.Clear();
+        Assert.Equal(Now, (await db.RefreshTokens.SingleAsync(token => token.Id != revoked.Id, ct)).RevokedAt);
+        Assert.Equal(Now.AddDays(-2), (await db.RefreshTokens.SingleAsync(token => token.Id == revoked.Id, ct)).RevokedAt);
+        Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+    }
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("expired")]
+    [InlineData("boundary")]
+    public async Task RotateAsync_UnknownOrUnrevokedExpiredToken_LeavesOtherSessionsActive(string presented)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = await postgres.CreateDbContextAsync(ct);
+        var userId = Guid.NewGuid();
+        await SeedUsersAsync(db, ct, userId);
+        db.RefreshTokens.AddRange(
+            Token(userId, "expired", Now.AddDays(-8), Now.AddSeconds(-1)),
+            Token(userId, "boundary", Now.AddDays(-7), Now));
+        await db.SaveChangesAsync(ct);
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), logger);
+        var sibling = await store.IssueAsync(userId, ct);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => store.RotateAsync(presented, ct));
+
+        Assert.Equal("Invalid or expired refresh token.", exception.Message);
+        db.ChangeTracker.Clear();
+        Assert.All(await db.RefreshTokens.ToListAsync(ct), token => Assert.Null(token.RevokedAt));
+        Assert.Empty(logger.Entries);
+        await store.RotateAsync(sibling, ct);
     }
 
     private static RefreshToken Token(

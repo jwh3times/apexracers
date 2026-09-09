@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -60,7 +61,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // Bound the same way production binds it, so the tests exercise the real defaults rather
         // than a second set invented here.
         var jwt = JwtSettings.FromConfiguration(config);
-        var refreshTokens = new RefreshTokenStore(db, TimeProvider.System);
+        var refreshTokens = new RefreshTokenStore(db, TimeProvider.System, NullLogger<RefreshTokenStore>.Instance);
         return new AuthService(
             userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender());
     }

@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- Rejecting reuse of an already-revoked refresh token now revokes the account's active refresh tokens
+  and records a credential-free warning. Existing access tokens retain their normal expiry.
 
 ## [8.0.10] - 2026-09-08
 
