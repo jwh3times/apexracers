@@ -403,7 +403,9 @@ as server faults (an E2E run logged 15).
 (outermost — one structured log line per request: method, path, status code, elapsed ms, client IP;
 level scales with status; skips `/healthz` and `/ready`) → `ExceptionHandlingMiddleware`
 → `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
-referrer/permissions policy, `frame-ancestors` CSP, HSTS over HTTPS — full CSP deferred). Rate limiting: a
+referrer/permissions policy, full same-origin SPA CSP, HSTS over HTTPS). For asset or API-reference
+changes, read `docs/content-security-policy.md` for the built-bundle audit and Development-only Scalar
+exceptions; verify with `web/e2e/csp.spec.ts` against the built SPA, not Vite. Rate limiting: a
 global per-IP safety net, configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 300**; CI/E2E
 raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit is configurable via
 `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one

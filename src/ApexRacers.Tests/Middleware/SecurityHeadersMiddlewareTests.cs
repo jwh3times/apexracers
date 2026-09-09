@@ -6,10 +6,11 @@ namespace ApexRacers.Tests.Middleware;
 
 public class SecurityHeadersMiddlewareTests
 {
-    private static async Task<DefaultHttpContext> InvokeAsync(bool https = false)
+    private static async Task<DefaultHttpContext> InvokeAsync(bool https = false, string path = "/")
     {
         var context = new DefaultHttpContext();
         context.Request.IsHttps = https;
+        context.Request.Path = path;
 
         var nextCalled = false;
         RequestDelegate next = _ =>
@@ -34,7 +35,38 @@ public class SecurityHeadersMiddlewareTests
         Assert.Equal("DENY", headers["X-Frame-Options"].ToString());
         Assert.Equal("strict-origin-when-cross-origin", headers["Referrer-Policy"].ToString());
         Assert.Equal("camera=(), geolocation=(), microphone=()", headers["Permissions-Policy"].ToString());
-        Assert.Equal("frame-ancestors 'none'", headers["Content-Security-Policy"].ToString());
+        Assert.Equal(ContentSecurityPolicy.Spa, headers["Content-Security-Policy"].ToString());
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/assets/app.js")]
+    [InlineData("/api/auth/login")]
+    [InlineData("/openapi/v1.json")]
+    [InlineData("/scalar/v1")]
+    [InlineData("/scalar/not-a-real/route")]
+    public async Task EveryPathGetsStrictSpaPolicy(string path)
+    {
+        var context = await InvokeAsync(path: path);
+        var policy = context.Response.Headers.ContentSecurityPolicy.ToString();
+
+        Assert.Equal("default-src 'self'; script-src 'self'; style-src 'self'; " +
+            "img-src 'self' data: https://images-static.iracing.com; font-src 'self'; connect-src 'self'; " +
+            "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'", policy);
+        Assert.DoesNotContain("unsafe-", policy);
+        Assert.DoesNotContain("nonce-", policy);
+    }
+
+    [Fact]
+    public void ScalarPolicyAllowsInlineStylesButRequiresNonceForInlineScripts()
+    {
+        var policy = ContentSecurityPolicy.ForScalar("test-nonce");
+
+        Assert.Equal("default-src 'self'; script-src 'self' 'nonce-test-nonce'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; " +
+            "base-uri 'self'; form-action 'self'; frame-ancestors 'none'", policy);
+        Assert.NotEqual(policy, ContentSecurityPolicy.ForScalar("another-nonce"));
     }
 
     [Fact]

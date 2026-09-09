@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- Enforce a full Content-Security-Policy on the built SPA, with same-origin scripts, styles,
+  fonts, and API connections. Development API documentation uses a separate scoped policy.
+- Self-host UI fonts, replace externally hosted login decorations with CSS backgrounds, and
+  externalize theme initialization so the SPA needs no inline script allowance.
 
 ## [8.0.9] - 2026-09-08
 
