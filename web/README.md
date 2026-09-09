@@ -83,6 +83,11 @@ failure output).
 `admin.spec.ts` (provisions an Admin, then axe-audits `/admin`), and `gating.spec.ts` (feature-flag
 gating — gated routes render synthetic demo content when `iracing-demo` is on, ComingSoon when off).
 
+**Content Security Policy:** `csp.spec.ts` checks the built SPA with enforcement enabled, including
+local font loading, theme initialization, authenticated navigation, blocked injections, and the
+Development-only Scalar reference. Run it against the API serving `dist/`, not Vite or `npm run preview`.
+See the [CSP audit and maintenance guide](../docs/content-security-policy.md) before changing resource dependencies.
+
 **Visual regression:** `web/e2e/visual.spec.ts` captures full-page screenshot baselines for the
 stable public pages (`/`, `/login`, `/terms`, `/privacy`). It is **CI-only**
 (`test.skip(!process.env.CI)`) — the committed baselines under `e2e/visual.spec.ts-snapshots/` are
@@ -104,10 +109,14 @@ e2e/
   a11y.spec.ts        ← WCAG 2.1 A/AA audits: 5 public + 7 authed pages (axe-core)
   admin.spec.ts       ← provisions an Admin and axe-audits /admin
   auth.spec.ts        ← logout + password-reset auth flows
+  csp.spec.ts         ← built-SPA resource policy and Development Scalar checks
   gating.spec.ts      ← feature-flag gating (demo content vs ComingSoon)
   smoke.spec.ts       ← register → dashboard smoke test
   telemetry.spec.ts   ← .ibt upload → My Laps
   visual.spec.ts      ← CI-only visual regression (baselines in visual.spec.ts-snapshots/)
+public/
+  theme-bootstrap.js  ← synchronous same-origin theme initialization before React
+  licenses/           ← bundled font licenses and provenance
 src/
   features/           ← feature-grouped pages, each with a colocated *.test.tsx sibling
     auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
@@ -191,6 +200,10 @@ All sizing scales continuously with viewport width via `clamp()`. Use the utilit
 **Primary accent is cyan** — use `text-primary-container` / `bg-primary-container` / `border-primary-container`. The old green tokens (`text-primary-fixed-dim`, `#00FF88`) are removed.
 
 **Typography:** `text-page-title`, `text-section-head`, `text-eyebrow`, `text-body-fluid`, `text-small-fluid`, `text-th`, `text-kpi-value`, `text-mono-fluid`
+
+Inter, JetBrains Mono, Sora, and Material Symbols Outlined are self-hosted through the Fontsource
+imports in `src/main.tsx`. Font license provenance and upgrade instructions live in
+[`public/licenses/README.md`](public/licenses/README.md).
 
 **Gold accent** — `text-gold` / `bg-gold` / `border-gold` / `shadow-gold` are the only sanctioned gold tokens, reserved for the ELITE/premium tier accent on badges and trophies. Never hardcode `#FFD700`.
 

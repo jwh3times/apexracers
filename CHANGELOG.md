@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.0.10] - 2026-09-08
+
 ### Security
 
 - Enforce a full Content-Security-Policy on the built SPA, with same-origin scripts, styles,
@@ -995,7 +999,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.10...HEAD
+[8.0.10]: https://github.com/jwh3times/apexracers/compare/v8.0.9...v8.0.10
 [8.0.9]: https://github.com/jwh3times/apexracers/compare/v8.0.8...v8.0.9
 [8.0.8]: https://github.com/jwh3times/apexracers/compare/v8.0.7...v8.0.8
 [8.0.7]: https://github.com/jwh3times/apexracers/compare/v8.0.6...v8.0.7
