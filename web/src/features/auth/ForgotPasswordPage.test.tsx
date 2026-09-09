@@ -32,7 +32,6 @@ describe('ForgotPasswordPage', () => {
   it('calls api.forgotPassword and shows the acknowledgement on submit', async () => {
     vi.mocked(api.forgotPassword).mockResolvedValue({
       message: 'If an account exists, a reset link was sent.',
-      resetToken: null,
     });
     const user = userEvent.setup();
     renderPage();
@@ -44,30 +43,18 @@ describe('ForgotPasswordPage', () => {
     });
   });
 
-  it('shows a dev reset link when the response includes a reset token', async () => {
-    vi.mocked(api.forgotPassword).mockResolvedValue({
-      message: 'Sent.',
-      resetToken: 'dev-token-xyz',
-    });
-    const user = userEvent.setup();
-    renderPage();
-    await user.type(screen.getByLabelText(/email address/i), 'driver@example.com');
-    await user.click(screen.getByRole('button', { name: /send reset link/i }));
-    await waitFor(() => {
-      const link = screen.getByRole('link', { name: /continue to reset/i });
-      expect(link).toHaveAttribute('href', expect.stringContaining('token=dev-token-xyz'));
-      expect(link).toHaveAttribute('href', expect.stringContaining('email=driver%40example.com'));
-    });
-  });
-
-  it('does not show a reset link when no token is returned', async () => {
-    vi.mocked(api.forgotPassword).mockResolvedValue({ message: 'Sent.', resetToken: null });
+  it('never offers an in-app reset link — the token only ever arrives by email', async () => {
+    // The page used to render a "Continue to reset" link from a token the API echoed in
+    // Development. That echo was an account-takeover path (GHSA-qmqp-gxpr-867g) and is gone;
+    // the acknowledgement is now the terminal state in every environment.
+    vi.mocked(api.forgotPassword).mockResolvedValue({ message: 'Sent.' });
     const user = userEvent.setup();
     renderPage();
     await user.type(screen.getByLabelText(/email address/i), 'driver@example.com');
     await user.click(screen.getByRole('button', { name: /send reset link/i }));
     await waitFor(() => expect(screen.getByText('Sent.')).toBeInTheDocument());
     expect(screen.queryByRole('link', { name: /continue to reset/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /reset/i })).not.toBeInTheDocument();
   });
 
   it('shows an error message when the request fails', async () => {

@@ -21,10 +21,6 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  const resetHref = result?.resetToken
-    ? `/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(result.resetToken)}`
-    : null;
-
   return (
     <div className="bg-background text-on-background antialiased min-h-screen flex items-center justify-center p-4">
       <main className="relative z-10 w-full max-w-md bg-surface border border-line-2 rounded-xl shadow-2xl p-8 md:p-10">
@@ -37,18 +33,8 @@ export default function ForgotPasswordPage() {
         </p>
 
         {result ? (
-          <div className="space-y-5">
-            <div className="p-4 bg-surface-container-high border border-line rounded-lg font-body-sm text-body-sm text-on-surface">
-              {result.message}
-            </div>
-            {resetHref && (
-              <Link
-                to={resetHref}
-                className="block text-center w-full bg-primary-fixed-dim text-on-primary-fixed font-headline-sm text-headline-sm py-3 rounded-lg hover:bg-primary-fixed transition-all"
-              >
-                Continue to reset
-              </Link>
-            )}
+          <div className="p-4 bg-surface-container-high border border-line rounded-lg font-body-sm text-body-sm text-on-surface">
+            {result.message}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">

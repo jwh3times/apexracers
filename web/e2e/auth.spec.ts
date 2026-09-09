@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { registerNewUser, logout, login, TEST_PASSWORD } from './helpers/users';
+import { waitForEmailedToken } from './helpers/mail';
 
 test.describe('auth flows', () => {
   test('logout ends the session and protects authed routes', async ({ page }) => {
@@ -9,7 +10,7 @@ test.describe('auth flows', () => {
     await expect(page).toHaveURL(/\/login$/); // RequireAuth bounced us
   });
 
-  test('password reset via the Development token echo', async ({ page }) => {
+  test('password reset via the emailed link', async ({ page }) => {
     const email = await registerNewUser(page);
     await logout(page);
 
@@ -18,21 +19,21 @@ test.describe('auth flows', () => {
     await page.getByLabel('Email Address').fill(email);
     await page.getByRole('button', { name: 'Send Reset Link' }).click();
     const body: unknown = await (await respPromise).json();
-    if (
-      typeof body !== 'object' ||
-      body === null ||
-      !('resetToken' in body) ||
-      typeof body.resetToken !== 'string'
-    ) {
-      throw new Error('Password-reset response did not contain a reset token.');
-    }
-    // Development-only token echo (AuthController.cs:104-106); ForgotPasswordResult's
-    // property is `resetToken`, not `token` (ForgotPasswordPage.tsx:24-26).
-    expect(body.resetToken, 'Development-only token echo (AuthController.cs:104-106)').toBeTruthy();
+
+    // The response carries the generic acknowledgement and nothing else. It must never carry the
+    // token again: echoing it made any reachable Development instance an account-takeover path
+    // (GHSA-qmqp-gxpr-867g).
+    expect(body).toEqual({
+      message: 'If an account exists for that email, a password reset link has been sent.',
+    });
+
+    // The token reaches us the way it reaches a real driver — out of the delivered email, read
+    // here from the API's Development mail drop.
+    const token = await waitForEmailedToken(email, /reset your apexracers password/i);
 
     const newPassword = 'ApexRacer456';
     await page.goto(
-      `/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(body.resetToken)}`
+      `/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`
     );
     await page.getByLabel('New Password').fill(newPassword);
     await page.getByLabel('Confirm Password').fill(newPassword);

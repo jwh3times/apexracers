@@ -206,14 +206,25 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AdminSeedService>();
 
 var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
-if (!string.IsNullOrWhiteSpace(acsConnectionString))
+var mailDropPath = builder.Configuration["DEV_MAIL_DROP_PATH"];
+// EmailDelivery.Select throws when the Development-only file drop is configured anywhere else,
+// which fails startup rather than quietly writing live reset links to disk in a deployed
+// environment. See Services/Email/FileDropEmailSender.cs for why the drop exists at all.
+switch (EmailDelivery.Select(mailDropPath, acsConnectionString, builder.Environment.IsDevelopment(), builder.Environment.EnvironmentName))
 {
-    builder.Services.AddSingleton(new EmailClient(acsConnectionString));
-    builder.Services.AddScoped<IEmailSender, AcsEmailSender>();
-}
-else
-{
-    builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
+    case EmailDeliveryMode.FileDrop:
+        builder.Services.AddScoped<IEmailSender>(sp => new FileDropEmailSender(
+            mailDropPath!,
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<FileDropEmailSender>>()));
+        break;
+    case EmailDeliveryMode.Acs:
+        builder.Services.AddSingleton(new EmailClient(acsConnectionString!));
+        builder.Services.AddScoped<IEmailSender, AcsEmailSender>();
+        break;
+    default:
+        builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
+        break;
 }
 
 builder.Services.AddScoped<TelemetryUploadService>();

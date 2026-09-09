@@ -57,8 +57,15 @@ Four services:
 
 All three published host ports (`postgres`, `pgadmin`, `api`) are bound to `127.0.0.1` in
 `docker-compose.yml` (`127.0.0.1:${PORT}:...`), not all interfaces — this stack ships with default dev
-credentials and (in Development) an echoed password-reset token, so it must not be reachable from the
-network. Preserve this binding when editing the compose file.
+credentials, Development-only conveniences, and no TLS, so it must not be reachable from the network.
+Preserve this binding when editing the compose file.
+
+The `api` service bind-mounts `./TestResults/mail` at `/app/mail` and sets `DEV_MAIL_DROP_PATH` to it.
+The API writes each outbound account email there as JSON instead of delivering it, so the local E2E
+loop can read the password-reset link the way a recipient would. Keep both the mount and the variable
+when editing the compose file: without them the reset E2E has no way to obtain a token. Never set
+`DEV_MAIL_DROP_PATH` in a deployed environment — the files hold live reset links in cleartext, and the
+API deliberately refuses to start outside Development when it is set.
 
 All services that depend on postgres use `condition: service_healthy` — the healthcheck must pass before they start.
 

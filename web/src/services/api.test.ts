@@ -386,7 +386,7 @@ describe('api', () => {
 
   describe('forgotPassword', () => {
     it('calls POST /api/auth/forgot-password with email and returns the acknowledgement', async () => {
-      mockFetchOk({ message: 'If an account exists, a link was sent.', resetToken: 'tok-123' });
+      mockFetchOk({ message: 'If an account exists, a link was sent.' });
       const result = await api.forgotPassword('driver@example.com');
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/forgot-password',
@@ -395,7 +395,7 @@ describe('api', () => {
           body: JSON.stringify({ email: 'driver@example.com' }),
         })
       );
-      expect(result.resetToken).toBe('tok-123');
+      expect(result.message).toBe('If an account exists, a link was sent.');
     });
   });
 

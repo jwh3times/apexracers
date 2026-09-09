@@ -939,28 +939,18 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     // ── Password reset (T4) ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task RequestPasswordResetAsync_ExistingUser_ReturnsNonEmptyToken()
+    public async Task RequestPasswordResetAsync_ExistingUser_EmailsAUsableToken()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
 
         await svc.RegisterAsync(new RegisterRequest("forgot@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var token = await svc.RequestPasswordResetAsync("forgot@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("forgot@example.com", TestContext.Current.CancellationToken);
 
-        Assert.False(string.IsNullOrEmpty(token));
-    }
-
-    [Fact]
-    public async Task RequestPasswordResetAsync_UnknownEmail_ReturnsNull()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-
-        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
-
-        Assert.Null(token);
+        // The emailed link is the only place the token appears — the method returns nothing.
+        Assert.False(string.IsNullOrEmpty(EmailLinks.TokenFrom(emails.Last!)));
     }
 
     [Fact]
@@ -972,25 +962,23 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider, emails);
         await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
 
-        Assert.NotNull(token);
         Assert.NotNull(emails.Last);
         Assert.Equal("reset@example.com", emails.Last!.To);
         Assert.Contains("https://test.apexracers.gg/reset-password", emails.Last.HtmlBody);
-        Assert.Contains(Uri.EscapeDataString(token!), emails.Last.HtmlBody);
+        Assert.Contains(Uri.EscapeDataString(EmailLinks.TokenFrom(emails.Last)), emails.Last.HtmlBody);
     }
 
     [Fact]
-    public async Task RequestPasswordResetAsync_UnknownUser_ReturnsNullAndSendsNothing()
+    public async Task RequestPasswordResetAsync_UnknownUser_SendsNothing()
     {
         await using var provider = BuildProvider();
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
 
-        var token = await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("nobody@example.com", TestContext.Current.CancellationToken);
 
-        Assert.Null(token);
         Assert.Empty(emails.Sent);
     }
 
@@ -999,12 +987,14 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
 
         await svc.RegisterAsync(new RegisterRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken);
-        var token = await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
+        var token = EmailLinks.TokenFrom(emails.Last!);
 
-        await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
+        await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token, "NewPass99"), TestContext.Current.CancellationToken);
 
         Assert.NotNull((await svc.LoginAsync(new LoginRequest("reset@example.com", "NewPass99"), TestContext.Current.CancellationToken)).Auth);
         Assert.Null((await svc.LoginAsync(new LoginRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken)).Auth);
@@ -1039,14 +1029,16 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
 
         await svc.RegisterAsync(new RegisterRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
 
-        var token = await svc.RequestPasswordResetAsync("revoke@example.com", TestContext.Current.CancellationToken);
-        await svc.ResetPasswordAsync(new ResetPasswordRequest("revoke@example.com", token!, "NewPass99"), TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("revoke@example.com", TestContext.Current.CancellationToken);
+        var token = EmailLinks.TokenFrom(emails.Last!);
+        await svc.ResetPasswordAsync(new ResetPasswordRequest("revoke@example.com", token, "NewPass99"), TestContext.Current.CancellationToken);
 
         // Every refresh token issued before the reset is now revoked, so it can't be exchanged.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
