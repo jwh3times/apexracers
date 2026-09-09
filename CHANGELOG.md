@@ -7,20 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.0.12] - 2026-09-09
+
 ### Security
 
 - The forgot-password response no longer returns the password-reset token in the Development
   environment. The token now leaves the server only inside the emailed link, so a Development
-  instance that is reachable over the network can no longer be used to take over an account from
-  nothing but an email address. The response is byte-identical in every environment and whether or
-  not the account exists.
+  instance reachable over the network can no longer be used to take over an account from nothing
+  but an email address. The response is identical in every environment and whether or not the
+  account exists.
 
 ### Added
 
 - `DEV_MAIL_DROP_PATH` writes each outbound account email to a local directory as JSON instead of
   delivering it, so password-reset and email-change flows stay testable without an email provider.
-  The API refuses to start with it set outside Development. `docker compose up` enables it against
-  `TestResults/mail/`.
+  It is Development-only: the API refuses to start with it set in any other environment, because
+  the files hold live account links. `docker compose up` enables it against `TestResults/mail/`.
+
+### Removed
+
+- The `resetToken` field is gone from the forgot-password response. It was populated only in the
+  Development environment and was always null in deployed ones.
 
 ## [8.0.11] - 2026-09-09
 
@@ -1019,7 +1028,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.11...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.12...HEAD
+[8.0.12]: https://github.com/jwh3times/apexracers/compare/v8.0.11...v8.0.12
 [8.0.11]: https://github.com/jwh3times/apexracers/compare/v8.0.10...v8.0.11
 [8.0.10]: https://github.com/jwh3times/apexracers/compare/v8.0.9...v8.0.10
 [8.0.9]: https://github.com/jwh3times/apexracers/compare/v8.0.8...v8.0.9
