@@ -51,6 +51,14 @@ jobs:
       E2E_DATABASE_URL: postgresql://apexracers:postgres@localhost:5432/apexracers
       # Tells a11y-gated.spec.ts the demo surface is seeded and enabled.
       E2E_DEMO: "1"
+      # Development mail drop. The API writes outbound emails here instead of delivering them;
+      # auth.spec.ts reads the password-reset link back out (helpers/mail.ts). The API runs on
+      # this runner rather than in a container, so both sides point at one real directory.
+      # Absolute, because `dotnet run --project` starts the API with the project directory as its
+      # working directory, not the repo root. The API refuses to start with DEV_MAIL_DROP_PATH
+      # set outside Development.
+      DEV_MAIL_DROP_PATH: ${{ github.workspace }}/TestResults/mail
+      E2E_MAIL_DIR: ${{ github.workspace }}/TestResults/mail
       # The Playwright suite is single-IP and serial (all specs share the runner's
       # loopback address); raise the auth policy well above prod's default of 10/min
       # so retries across specs don't exhaust it and cascade into unrelated failures.

@@ -78,7 +78,9 @@ pages and 7 authenticated pages and asserts zero violations. The shared helper
 `wcag2a`/`wcag2aa` tagset) and `formatViolations(violations)` (human-readable summary for test
 failure output).
 
-**Functional specs:** `auth.spec.ts` (logout; password reset via the Development token echo),
+**Functional specs:** `auth.spec.ts` (logout; password reset, reading the emailed link back out of
+the Development mail drop via `e2e/helpers/mail.ts` — set `E2E_MAIL_DIR` if the API's
+`DEV_MAIL_DROP_PATH` is not the compose default),
 `telemetry.spec.ts` (`.ibt` upload → My Laps, from the committed `e2e/fixtures/demo-session.ibt`),
 `admin.spec.ts` (provisions an Admin, then axe-audits `/admin`), and `gating.spec.ts` (feature-flag
 gating — gated routes render synthetic demo content when `iracing-demo` is on, ComingSoon when off).

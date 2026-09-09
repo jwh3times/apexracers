@@ -191,19 +191,25 @@ public class AuthService(
     }
 
     /// <summary>
-    /// Generates a single-use reset token for the account and emails the reset link. Returns the token
-    /// (for Development-only echoing) or null when no account exists for the email.
+    /// Generates a single-use reset token for the account and emails the reset link. Silently does
+    /// nothing when no account exists for the email, so the caller cannot tell the two apart.
     /// </summary>
-    public async Task<string?> RequestPasswordResetAsync(string email, CancellationToken ct = default)
+    /// <remarks>
+    /// Deliberately returns nothing. This once returned the token so the controller could echo it
+    /// in the Development response body, which handed a live credential to any unauthenticated
+    /// caller who knew an email address (GHSA-qmqp-gxpr-867g). The token now leaves this method
+    /// only inside the emailed link; a Development stack reads it back through the file drop
+    /// configured by DEV_MAIL_DROP_PATH.
+    /// </remarks>
+    public async Task RequestPasswordResetAsync(string email, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
-            return null;
+            return;
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         var url = $"{BaseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
         await emailSender.SendAsync(AccountEmailTemplates.PasswordReset(email, url), ct);
-        return token;
     }
 
     /// <summary>

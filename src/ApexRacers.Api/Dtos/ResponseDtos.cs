@@ -90,12 +90,11 @@ public record CarRecommendationDto(
 public record AuthResultDto(string Token, Guid UserId, string DisplayName, string? RefreshToken = null);
 
 /// <summary>
-/// Acknowledgement for a forgot-password request. <see cref="Message"/> is always a
-/// generic confirmation (it never reveals whether the account exists); <see cref="ResetToken"/>
-/// is populated only in the Development environment so the reset flow can be exercised
-/// without an email provider, and is null everywhere else.
+/// Acknowledgement for a forgot-password request. <see cref="Message"/> is always the same generic
+/// confirmation: it reveals neither whether the account exists nor anything about the reset token,
+/// which leaves the server only inside the emailed link.
 /// </summary>
-public record ForgotPasswordResponse(string Message, string? ResetToken);
+public record ForgotPasswordResponse(string Message);
 
 public record MessageResponse(string Message);
 
