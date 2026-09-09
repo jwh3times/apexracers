@@ -78,7 +78,8 @@ pages and 7 authenticated pages and asserts zero violations. The shared helper
 `wcag2a`/`wcag2aa` tagset) and `formatViolations(violations)` (human-readable summary for test
 failure output).
 
-**Functional specs:** `auth.spec.ts` (logout; password reset, reading the emailed link back out of
+**Functional specs:** `auth.spec.ts` (logout; registration-enumeration and unconfirmed-account
+lockout coverage for GHSA-72v6-mw4c-q96r; password reset — reading the emailed link back out of
 the Development mail drop via `e2e/helpers/mail.ts` — set `E2E_MAIL_DIR` if the API's
 `DEV_MAIL_DROP_PATH` is not the compose default),
 `telemetry.spec.ts` (`.ibt` upload → My Laps, from the committed `e2e/fixtures/demo-session.ibt`),
@@ -107,10 +108,10 @@ e2e/
     a11y.ts           ← auditA11y() / formatViolations() — shared axe-core helper
     admin.ts          ← promoteToAdmin() — swaps a test user to the Admin role
     db.ts             ← runSql() — psql / docker-compose SQL runner
-    users.ts          ← registerNewUser(), login(), logout() test-user helpers
+    users.ts          ← registerNewUser(), confirmEmail(), login(), logout() test-user helpers
   a11y.spec.ts        ← WCAG 2.1 A/AA audits: 5 public + 7 authed pages (axe-core)
   admin.spec.ts       ← provisions an Admin and axe-audits /admin
-  auth.spec.ts        ← logout + password-reset auth flows
+  auth.spec.ts        ← logout, registration/confirm-email, and password-reset auth flows
   csp.spec.ts         ← built-SPA resource policy and Development Scalar checks
   gating.spec.ts      ← feature-flag gating (demo content vs ComingSoon)
   smoke.spec.ts       ← register → dashboard smoke test

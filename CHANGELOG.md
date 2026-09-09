@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.0] - 2026-09-09
+
 ### Security
 
 - Registration no longer reveals whether an email address already has an account. It used to answer
@@ -1057,7 +1061,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.12...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.0...HEAD
+[9.0.0]: https://github.com/jwh3times/apexracers/compare/v8.0.13...v9.0.0
 [8.0.12]: https://github.com/jwh3times/apexracers/compare/v8.0.11...v8.0.12
 [8.0.11]: https://github.com/jwh3times/apexracers/compare/v8.0.10...v8.0.11
 [8.0.10]: https://github.com/jwh3times/apexracers/compare/v8.0.9...v8.0.10
