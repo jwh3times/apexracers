@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [8.0.9] - 2026-09-08
+
+### Changed
+
+- Clarified that Beta and Alpha are self-selected preview tiers available to any signed-in user;
+  an Alpha feature flag does not create an invitation-only rollout audience.
+
 ## [8.0.8] - 2026-09-08
 
 ### Fixed
@@ -983,7 +990,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.8...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v8.0.9...HEAD
+[8.0.9]: https://github.com/jwh3times/apexracers/compare/v8.0.8...v8.0.9
 [8.0.8]: https://github.com/jwh3times/apexracers/compare/v8.0.7...v8.0.8
 [8.0.7]: https://github.com/jwh3times/apexracers/compare/v8.0.6...v8.0.7
 [8.0.2]: https://github.com/jwh3times/apexracers/compare/v8.0.1...v8.0.2
