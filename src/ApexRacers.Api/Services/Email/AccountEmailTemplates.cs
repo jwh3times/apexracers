@@ -21,6 +21,50 @@ public static class AccountEmailTemplates
         return new OutboundEmail(toEmail, null, subject, html, text);
     }
 
+    /// <summary>
+    /// Sent when an account is created. The link is what makes the account usable — registration
+    /// deliberately hands the caller nothing, so this email is the only way in.
+    /// </summary>
+    public static OutboundEmail EmailConfirmation(string toEmail, string confirmUrl)
+    {
+        const string subject = "Confirm your ApexRacers email";
+        var html = Layout(
+            "Confirm your email",
+            "Welcome to ApexRacers. Confirm this address with the button below and you can sign in. " +
+            "Until you do, the account stays inactive.",
+            "Confirm email", confirmUrl,
+            "If you didn't create this account, you can safely ignore this email — nothing will be activated.");
+        var text =
+            $"Confirm your {BrandName} email\n\n" +
+            $"Welcome to {BrandName}. Open this link to confirm this address and sign in:\n{confirmUrl}\n\n" +
+            "Until you do, the account stays inactive. If you didn't create it, ignore this email.";
+        return new OutboundEmail(toEmail, null, subject, html, text);
+    }
+
+    /// <summary>
+    /// Sent to the owner of an address someone just tried to register, when that account already
+    /// exists and is confirmed. Registration itself stays silent about the address being taken, so
+    /// this email is where that fact is disclosed — to the mailbox, which is the only place it belongs.
+    /// </summary>
+    public static OutboundEmail DuplicateRegistration(string toEmail, string resetUrl)
+    {
+        const string subject = "Someone tried to create an ApexRacers account with your email";
+        var html = Layout(
+            "You already have an account",
+            "Someone just tried to sign up for ApexRacers with this address, which already has an account. " +
+            "No second account was created and nothing has changed. If it was you, sign in as usual — " +
+            "and if you've forgotten your password, reset it below.",
+            "Reset your password", resetUrl,
+            "If this wasn't you, no action is needed; whoever tried was not told that this address is registered.");
+        var text =
+            $"You already have a {BrandName} account\n\n" +
+            "Someone just tried to sign up with this address, which already has an account. No second " +
+            "account was created and nothing has changed.\n\n" +
+            $"If it was you, sign in as usual. Forgotten your password? Reset it here:\n{resetUrl}\n\n" +
+            "If this wasn't you, no action is needed.";
+        return new OutboundEmail(toEmail, null, subject, html, text);
+    }
+
     public static OutboundEmail EmailChangeVerification(string toEmail, string verifyUrl)
     {
         const string subject = "Confirm your new ApexRacers email";

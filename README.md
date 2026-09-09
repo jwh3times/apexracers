@@ -68,10 +68,10 @@ The API starts on `http://localhost:5000`. In Development, the Scalar API refere
 `http://localhost:5000/openapi/v1.json`.
 
 Startup admin seeding uses `ADMIN_SEED_EMAILS`, a comma-separated list of addresses. A matching
-account must already have a confirmed email before it can be promoted. Registration alone does
-not confirm email; an operator must verify ownership of both the mailbox and the account before
-confirming a bootstrap account. Existing Admin memberships are preserved. Maintainer bootstrap
-steps live in the private companion's deployment runbook.
+account must already have a confirmed email before it can be promoted — which now happens as part
+of ordinary sign-up, since registration emails a confirmation link and the account cannot sign in
+until it is followed. Existing Admin memberships are preserved. Maintainer bootstrap steps live in
+the private companion's deployment runbook.
 
 ### 5. Run the frontend
 
@@ -84,6 +84,13 @@ npm run dev
 The dev server starts on `http://localhost:5173`. All `/api` requests are proxied to the API automatically.
 
 `http://localhost:5173/` serves the public marketing landing page (no login required). The authenticated app starts at `/dashboard` — register or log in to access it.
+
+Registering does not sign you in: the API emails a confirmation link and the account stays inactive
+until it is followed. Locally the email lands in the mail drop described under
+[Transactional email](#transactional-email) rather than a real inbox — open the `verify-email` link
+from the JSON file there, then sign in. Registration answers the same way whether or not the address
+already has an account, so a stale acknowledgement is not a sign anything went wrong; if you never
+receive the link for an address you own, request a password reset instead, which also confirms it.
 
 ### 6. Seed the database (optional)
 
@@ -174,18 +181,18 @@ iRacing does not have a self-service developer portal. To obtain OAuth 2.0 crede
 
 ## Transactional email
 
-Password-reset and email-change-verification emails are sent through the configured
-email provider when `ACS_CONNECTION_STRING` is set. The API also reads
+Account-confirmation, password-reset, and email-change-verification emails are sent through the
+configured email provider when `ACS_CONNECTION_STRING` is set. The API also reads
 `ACS_SENDER_ADDRESS` and `APP_BASE_URL` to build account links. When
 `ACS_CONNECTION_STRING` is not set, the API logs the subject only and delivers nothing —
 account links are never logged, because they carry single-use credentials.
 
-To follow a reset link locally, set `DEV_MAIL_DROP_PATH` to a directory and the API writes
-each outbound email there as JSON instead of sending it. `docker compose up` does this
-already, dropping mail into `TestResults/mail/` in the repo root; the E2E suite reads the
-reset link back out of the same directory. The drop is Development-only — the API refuses to
-start with `DEV_MAIL_DROP_PATH` set in any other environment, because the files hold live
-reset links in cleartext.
+To follow a reset or confirmation link locally, set `DEV_MAIL_DROP_PATH` to a directory and the
+API writes each outbound email there as JSON instead of sending it. `docker compose up` does this
+already, dropping mail into `TestResults/mail/` in the repo root; the E2E suite reads both links
+back out of the same directory. The drop is Development-only — the API refuses to start with
+`DEV_MAIL_DROP_PATH` set in any other environment, because the files hold live account links in
+cleartext.
 
 ## Contributing & support
 

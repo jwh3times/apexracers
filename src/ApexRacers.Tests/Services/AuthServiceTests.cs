@@ -73,64 +73,149 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             await roleManager.CreateAsync(new IdentityRole<Guid>(role));
     }
 
+    /// <summary>
+    /// Registers, confirms the address, and signs in — the whole path an account now takes to become
+    /// usable. Tests that only need an established user call this instead of reading a token straight
+    /// out of <c>RegisterAsync</c>, which no longer returns one.
+    /// </summary>
+    private static async Task<AuthResultDto> RegisterAndSignInAsync(
+        ServiceProvider provider, AuthService svc, string email, string password, CancellationToken ct)
+    {
+        await svc.RegisterAsync(new RegisterRequest(email, password), ct);
+        await ConfirmRegisteredEmailAsync(provider, svc, email, ct);
+
+        var login = await svc.LoginAsync(new LoginRequest(email, password), ct);
+        return login.Auth
+            ?? throw new InvalidOperationException($"Sign-in failed for {email} after confirmation.");
+    }
+
+    /// <summary>
+    /// Follows the confirmation link the way a recipient would, by minting the same token the email
+    /// carries. Reading it out of the <see cref="FakeEmailSender"/> would tie every caller to the
+    /// template's link format for no added coverage.
+    /// </summary>
+    private static async Task ConfirmRegisteredEmailAsync(
+        ServiceProvider provider, AuthService svc, string email, CancellationToken ct)
+    {
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync(email)
+            ?? throw new InvalidOperationException($"Registration did not create an account for {email}.");
+        var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        await svc.ConfirmEmailAsync(user.Id, token, ct);
+    }
+
     // ── RegisterAsync ─────────────────────────────────────────────────────────
+    //
+    // Registration is enumeration-safe (GHSA-72v6-mw4c-q96r): every reachable outcome has to look
+    // the same to the caller. Two things carry that, and both are asserted below — the call returns
+    // nothing whether the address was free or taken, and the account it creates cannot sign in until
+    // the emailed link is followed, so a follow-up sign-in does not leak the answer either.
 
     [Fact]
-    public async Task RegisterAsync_NewUser_ReturnsTokenAndSetsDisplayNameFromEmail()
+    public async Task RegisterAsync_NewAddress_CreatesUnconfirmedAccountAndEmailsTheConfirmationLink()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        Assert.NotEmpty(result.Token);
-        Assert.Equal("jerry", result.DisplayName);
-        Assert.NotEqual(Guid.Empty, result.UserId);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync("jerry@example.com");
+        Assert.NotNull(user);
+        Assert.Equal("jerry", user.DisplayName);
+        Assert.False(user.EmailConfirmed);
+
+        var sent = Assert.Single(emails.Sent);
+        Assert.Equal("jerry@example.com", sent.To);
+        Assert.Contains("Confirm your ApexRacers email", sent.Subject);
+        Assert.Contains("/verify-email?userId=", sent.TextBody);
     }
 
     [Fact]
-    public async Task RegisterAsync_DuplicateEmail_ThrowsInvalidOperationException()
+    public async Task RegisterAsync_NewAddress_IssuesNoSession()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.RegisterAsync(new RegisterRequest("jerry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.RegisterAsync(new RegisterRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        // The method returns nothing, so the only way a session could still leak out is a refresh
+        // token left behind in the store. There must be none: the account is not usable yet.
+        var db = provider.GetRequiredService<AppDbContext>();
+        Assert.Empty(await db.RefreshTokens.ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task RegisterAsync_Token_ContainsEmailAndNameClaims()
+    public async Task RegisterAsync_TakenAddress_DoesNotThrowAndCreatesNoSecondAccount()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "dup@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(result.Token);
+        // The whole point: indistinguishable from the free-address path. This used to throw with
+        // Identity's "Email 'dup@example.com' is already taken."
+        await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Different9"), TestContext.Current.CancellationToken);
 
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Sub   && Guid.TryParse(c.Value, out _));
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "driver@example.com");
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name  && c.Value == "driver");
+        var db = provider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Users.CountAsync(u => u.Email == "dup@example.com", TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task RegisterAsync_Token_ContainsStandardRoleClaim()
+    public async Task RegisterAsync_TakenAddress_LeavesTheExistingPasswordIntact()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "dup@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        await svc.RegisterAsync(new RegisterRequest("dup@example.com", "Attacker9"), TestContext.Current.CancellationToken);
 
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(result.Token);
-        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
+        // Silence must not mean "quietly took the new password" — that would trade a disclosed
+        // error for account takeover.
+        Assert.NotNull((await svc.LoginAsync(new LoginRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken)).Auth);
+        Assert.Null((await svc.LoginAsync(new LoginRequest("dup@example.com", "Attacker9"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_TakenConfirmedAddress_NotifiesTheOwnerInstead()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+
+        await RegisterAndSignInAsync(provider, svc, "owner@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        emails.Clear();
+
+        await svc.RegisterAsync(new RegisterRequest("owner@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        var sent = Assert.Single(emails.Sent);
+        Assert.Equal("owner@example.com", sent.To);
+        Assert.Contains("Someone tried to create an ApexRacers account", sent.Subject);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_TakenUnconfirmedAddress_ResendsTheConfirmationLink()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+
+        await svc.RegisterAsync(new RegisterRequest("retry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        emails.Clear();
+
+        // Almost always the same person retrying because the first email never arrived. Telling
+        // them to reset a password they already know would be useless.
+        await svc.RegisterAsync(new RegisterRequest("retry@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        var sent = Assert.Single(emails.Sent);
+        Assert.Contains("Confirm your ApexRacers email", sent.Subject);
     }
 
     [Fact]
@@ -148,6 +233,100 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         Assert.Contains("least", ex.Message);
     }
 
+    [Fact]
+    public async Task RegisterAsync_WeakPassword_FailsIdenticallyForATakenAndAFreeAddress()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await RegisterAndSignInAsync(provider, svc, "taken@example.com", "Pass1234", TestContext.Current.CancellationToken);
+
+        // Password errors still surface, so they must not become the oracle the duplicate message
+        // used to be: rejecting a weak password has to read the same either way.
+        var onTaken = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RegisterAsync(new RegisterRequest("taken@example.com", "ab"), TestContext.Current.CancellationToken));
+        var onFree = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.RegisterAsync(new RegisterRequest("free@example.com", "ab"), TestContext.Current.CancellationToken));
+
+        Assert.Equal(onFree.Message, onTaken.Message);
+        Assert.DoesNotContain("taken@example.com", onTaken.Message);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_SignedInToken_ContainsEmailNameAndRoleClaims()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        var result = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Sub   && Guid.TryParse(c.Value, out _));
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "driver@example.com");
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name  && c.Value == "driver");
+        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
+    }
+
+    // ── ConfirmEmailAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmEmailAsync_ValidToken_EnablesSignIn()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        Assert.Null((await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken)).Auth);
+
+        await ConfirmRegisteredEmailAsync(provider, svc, "new@example.com", TestContext.Current.CancellationToken);
+
+        Assert.NotNull((await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_AlreadyConfirmed_SucceedsWithoutThrowing()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await RegisterAndSignInAsync(provider, svc, "twice@example.com", "Pass1234", TestContext.Current.CancellationToken);
+
+        // A second click on the same link — a mail client prefetching it is enough — is not an error.
+        await ConfirmRegisteredEmailAsync(provider, svc, "twice@example.com", TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_InvalidToken_ThrowsWithoutConfirming()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("bad@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync("bad@example.com");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ConfirmEmailAsync(user!.Id, "not-a-real-token", TestContext.Current.CancellationToken));
+
+        Assert.Null((await svc.LoginAsync(new LoginRequest("bad@example.com", "Pass1234"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_UnknownUser_Throws()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ConfirmEmailAsync(Guid.NewGuid(), "any-token", TestContext.Current.CancellationToken));
+    }
+
     // ── LoginAsync ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -157,7 +336,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "user@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
@@ -173,7 +352,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "user@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var result = await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
 
@@ -200,7 +379,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("locked@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         // MaxFailedAccessAttempts = 3 in the test provider.
         for (var i = 0; i < 3; i++)
@@ -220,7 +399,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "reset@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         // Two failures (below the threshold of 3), then a success that resets the counter.
         await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
@@ -233,6 +412,48 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var second = await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), TestContext.Current.CancellationToken);
 
         Assert.False(second.LockedOut);
+    }
+
+    [Fact]
+    public async Task LoginAsync_UnconfirmedAccount_IsIndistinguishableFromAnUnknownEmail()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // This is what actually closes the registration oracle. If the credentials an attacker just
+        // submitted worked here, success would tell them the address had been free and failure would
+        // tell them it was taken — exactly the answer registration withholds.
+        var unconfirmed = await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var unknown = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(unknown, unconfirmed);
+        Assert.Null(unconfirmed.Auth);
+        Assert.False(unconfirmed.LockedOut);
+    }
+
+    [Fact]
+    public async Task LoginAsync_UnconfirmedAccount_CannotBeLockedOutByAStranger()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+
+        await svc.RegisterAsync(new RegisterRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+
+        // The confirmation check runs ahead of the failure counter, so hammering an address that has
+        // not been confirmed cannot burn its lockout budget — otherwise a stranger could keep the
+        // real owner locked out from the moment they signed up.
+        for (var i = 0; i < 5; i++)
+            await svc.LoginAsync(new LoginRequest("pending@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
+
+        await ConfirmRegisteredEmailAsync(provider, svc, "pending@example.com", TestContext.Current.CancellationToken);
+
+        var result = await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        Assert.NotNull(result.Auth);
+        Assert.False(result.LockedOut);
     }
 
     // ── UpdateProfileAsync ────────────────────────────────────────────────────
@@ -251,7 +472,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "profile@example.com", "Pass1234", ct);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
         user.IRacingCustomerId = existingCustomerId;
@@ -281,7 +502,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "profile@example.com", "Pass1234", ct);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
         user.IRacingCustomerId = existingCustomerId;
@@ -305,7 +526,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("profile@example.com", "Pass1234"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "profile@example.com", "Pass1234", ct);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
         user.IRacingCustomerId = 100L;
@@ -327,7 +548,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("New Name"), TestContext.Current.CancellationToken);
 
         Assert.Equal("New Name", result.DisplayName);
@@ -340,7 +561,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 123456789L, CurrentPassword: "Pass1234"), TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
@@ -355,12 +576,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var first = await svc.RegisterAsync(
-            new RegisterRequest("first@example.com", "Pass1234"),
-            TestContext.Current.CancellationToken);
-        var second = await svc.RegisterAsync(
-            new RegisterRequest("second@example.com", "Pass1234"),
-            TestContext.Current.CancellationToken);
+        var first = await RegisterAndSignInAsync(provider, svc, "first@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        var second = await RegisterAndSignInAsync(provider, svc, "second@example.com", "Pass1234", TestContext.Current.CancellationToken);
         await svc.UpdateProfileAsync(
             first.UserId,
             new UpdateProfileRequest("First Driver", 123456L, CurrentPassword: "Pass1234"),
@@ -388,12 +605,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         {
             await SeedRolesAsync(setupProvider);
             var setupService = BuildService(setupProvider);
-            firstUserId = (await setupService.RegisterAsync(
-                new RegisterRequest("first@example.com", "Pass1234"),
-                TestContext.Current.CancellationToken)).UserId;
-            secondUserId = (await setupService.RegisterAsync(
-                new RegisterRequest("second@example.com", "Pass1234"),
-                TestContext.Current.CancellationToken)).UserId;
+            firstUserId = (await RegisterAndSignInAsync(setupProvider, setupService, "first@example.com", "Pass1234", TestContext.Current.CancellationToken)).UserId;
+            secondUserId = (await RegisterAndSignInAsync(setupProvider, setupService, "second@example.com", "Pass1234", TestContext.Current.CancellationToken)).UserId;
         }
 
         await using var firstProvider = BuildProvider(options);
@@ -429,7 +642,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("   "), TestContext.Current.CancellationToken));
@@ -453,7 +666,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", ThemePreference: "dark"), TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
@@ -467,7 +680,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         // "neon" is not a valid theme — the second condition is false, so the default "auto" is preserved.
         var result = await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", ThemePreference: "neon"), TestContext.Current.CancellationToken);
 
@@ -482,7 +695,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         await svc.UpdateProfileAsync(reg.UserId, new UpdateProfileRequest("Name", 100042L, CurrentPassword: "Pass1234"), TestContext.Current.CancellationToken);
 
         // Second update without IRacingCustomerId — should not clear the first one
@@ -500,7 +713,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(result.Token);
@@ -516,7 +729,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.UpdateRoleAsync(reg.UserId, "Beta", TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
@@ -530,7 +743,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         await svc.UpdateRoleAsync(reg.UserId, "Alpha", TestContext.Current.CancellationToken);
         var result = await svc.UpdateRoleAsync(reg.UserId, "Standard", TestContext.Current.CancellationToken);
 
@@ -545,7 +758,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.UpdateRoleAsync(reg.UserId, "Admin", TestContext.Current.CancellationToken));
@@ -559,7 +772,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("admin@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "admin@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         // Promote to Admin via UserManager directly (as the startup seed would)
         var user = await userManager.FindByIdAsync(reg.UserId.ToString());
@@ -591,7 +804,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.UpdateRoleAsync(reg.UserId, "Superuser", TestContext.Current.CancellationToken));
@@ -609,7 +822,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.UpdateThemeAsync(reg.UserId, theme, TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
@@ -623,7 +836,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("u@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "u@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.UpdateThemeAsync(reg.UserId, "neon", TestContext.Current.CancellationToken));
@@ -662,7 +875,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var result = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.RefreshToken);
         Assert.NotEmpty(result.RefreshToken!);
@@ -675,7 +888,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.Auth);
@@ -690,7 +903,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg     = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var originalRefresh = reg.RefreshToken!;
 
         var refreshed = await svc.RefreshAsync(originalRefresh, TestContext.Current.CancellationToken);
@@ -710,7 +923,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg     = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var oldRefresh = reg.RefreshToken!;
 
         // Rotate once — this revokes oldRefresh
@@ -739,13 +952,10 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var login   = await svc.LoginAsync(
-            (await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken) is { }
-                ? new LoginRequest("driver@example.com", "Pass1234")
-                : throw new InvalidOperationException()),
-            TestContext.Current.CancellationToken);
+        var login = await RegisterAndSignInAsync(
+            provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
-        var refreshToken = login.Auth!.RefreshToken!;
+        var refreshToken = login.RefreshToken!;
 
         await svc.RevokeAsync(refreshToken, TestContext.Current.CancellationToken);
 
@@ -760,8 +970,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(
-            new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(
             new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
@@ -784,7 +993,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var db  = provider.GetRequiredService<AppDbContext>();
 
-        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         // Age the issued token so it expired 40 days ago (> 30-day retention).
         var token = db.RefreshTokens.Single();
@@ -805,7 +1014,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var db  = provider.GetRequiredService<AppDbContext>();
 
-        await svc.RegisterAsync(new RegisterRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         // Expired 10 days ago — within the 30-day retention window, so it stays.
         var token = db.RefreshTokens.Single();
@@ -839,10 +1048,10 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("change@example.com", "OldPass1"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "change@example.com", "OldPass1", ct);
         var firstLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
         var secondLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
-        var otherUser = await svc.RegisterAsync(new RegisterRequest("other@example.com", "OtherPass1"), ct);
+        var otherUser = await RegisterAndSignInAsync(provider, svc, "other@example.com", "OtherPass1", ct);
         var priorTokens = new[] { reg.RefreshToken!, firstLogin.Auth!.RefreshToken!, secondLogin.Auth!.RefreshToken! };
 
         await svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "NewPass2"), ct);
@@ -868,7 +1077,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("unchanged@example.com", "OldPass1"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "unchanged@example.com", "OldPass1", ct);
         var login = await svc.LoginAsync(new LoginRequest("unchanged@example.com", "OldPass1"), ct);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -889,7 +1098,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("chg@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "chg@example.com", "OldPass1", TestContext.Current.CancellationToken);
         await svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "NewPass2"), TestContext.Current.CancellationToken);
 
         Assert.NotNull((await svc.LoginAsync(new LoginRequest("chg@example.com", "NewPass2"), TestContext.Current.CancellationToken)).Auth);
@@ -903,7 +1112,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("chg2@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "chg2@example.com", "OldPass1", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("WrongOld", "NewPass2"), TestContext.Current.CancellationToken));
@@ -916,7 +1125,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg = await svc.RegisterAsync(new RegisterRequest("chg3@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "chg3@example.com", "OldPass1", TestContext.Current.CancellationToken);
 
         // "ab" is shorter than the configured RequiredLength of 4.
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -946,7 +1155,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
 
-        await svc.RegisterAsync(new RegisterRequest("forgot@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "forgot@example.com", "Pass1234", TestContext.Current.CancellationToken);
         await svc.RequestPasswordResetAsync("forgot@example.com", TestContext.Current.CancellationToken);
 
         // The emailed link is the only place the token appears — the method returns nothing.
@@ -960,7 +1169,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
-        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "reset@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
 
@@ -990,7 +1199,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
 
-        await svc.RegisterAsync(new RegisterRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "reset@example.com", "OldPass1", TestContext.Current.CancellationToken);
         await svc.RequestPasswordResetAsync("reset@example.com", TestContext.Current.CancellationToken);
         var token = EmailLinks.TokenFrom(emails.Last!);
 
@@ -1001,13 +1210,34 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
+    public async Task ResetPasswordAsync_ValidToken_ConfirmsAnUnconfirmedAddress()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var emails = new FakeEmailSender();
+        var svc = BuildService(provider, emails);
+
+        // Registered but never confirmed — the confirmation email went astray.
+        await svc.RegisterAsync(new RegisterRequest("lost@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        await svc.RequestPasswordResetAsync("lost@example.com", TestContext.Current.CancellationToken);
+        var token = EmailLinks.TokenFrom(emails.Last!);
+
+        await svc.ResetPasswordAsync(new ResetPasswordRequest("lost@example.com", token, "NewPass99"), TestContext.Current.CancellationToken);
+
+        // Following the reset link proves control of the mailbox just as the confirmation link does,
+        // so it has to leave the account usable. Without this, a reset would succeed and sign-in
+        // would still be refused, with no self-service way out.
+        Assert.NotNull((await svc.LoginAsync(new LoginRequest("lost@example.com", "NewPass99"), TestContext.Current.CancellationToken)).Auth);
+    }
+
+    [Fact]
     public async Task ResetPasswordAsync_InvalidToken_ThrowsInvalidOperationException()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        await svc.RegisterAsync(new RegisterRequest("badtoken@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "badtoken@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ResetPasswordAsync(new ResetPasswordRequest("badtoken@example.com", "not-a-real-token", "NewPass99"), TestContext.Current.CancellationToken));
@@ -1032,7 +1262,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
 
-        await svc.RegisterAsync(new RegisterRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "revoke@example.com", "OldPass1", TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
 
@@ -1062,8 +1292,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
         var ct = TestContext.Current.CancellationToken;
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), ct);
-        await svc.RegisterAsync(new RegisterRequest("taken@example.com", "Pass1234"), ct);
+        var reg = await RegisterAndSignInAsync(provider, svc, "old@example.com", "Pass1234", ct);
+        await RegisterAndSignInAsync(provider, svc, "taken@example.com", "Pass1234", ct);
+        // Registration emails a confirmation link, so drop the setup traffic before asserting
+        // on what this call sends.
+        emails.Clear();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.RequestEmailChangeAsync(reg.UserId, newEmail, currentPassword, ct));
@@ -1083,7 +1316,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "old@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
@@ -1108,7 +1341,10 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "old@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        // Registration emails a confirmation link, so drop the setup traffic before asserting
+        // on what this call sends.
+        emails.Clear();
 
         await svc.RequestEmailChangeAsync(reg.UserId, "new@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
@@ -1124,8 +1360,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
-        await svc.RegisterAsync(new RegisterRequest("taken@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var reg = await svc.RegisterAsync(new RegisterRequest("me@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "taken@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "me@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        // Registration emails a confirmation link, so drop the setup traffic before asserting
+        // on what this call sends.
+        emails.Clear();
 
         await svc.RequestEmailChangeAsync(reg.UserId, "taken@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
@@ -1141,7 +1380,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var emails = new FakeEmailSender();
         var svc = BuildService(provider, emails);
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "old@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByIdAsync(reg.UserId.ToString());
         var token = await userManager.GenerateChangeEmailTokenAsync(user!, "new@example.com");
@@ -1159,7 +1398,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var reg = await svc.RegisterAsync(new RegisterRequest("old@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "old@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ConfirmEmailChangeAsync(reg.UserId, "new@example.com", "not-a-real-token", TestContext.Current.CancellationToken));
@@ -1173,7 +1412,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var db  = provider.GetRequiredService<AppDbContext>();
 
-        await svc.RegisterAsync(new RegisterRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "revoke-email@example.com", "OldPass1", TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
         var refreshToken = login.Auth!.RefreshToken!;
 
@@ -1242,7 +1481,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         // Register issues one token; six more logins is seven issuances total,
         // two past the cap of five.
-        await svc.RegisterAsync(new RegisterRequest("capped@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "capped@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 6; i++)
             await svc.LoginAsync(new LoginRequest("capped@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
@@ -1260,7 +1499,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var db  = provider.GetRequiredService<AppDbContext>();
 
         // One register + three logins = four active tokens, one under the cap.
-        await svc.RegisterAsync(new RegisterRequest("under@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "under@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 3; i++)
             await svc.LoginAsync(new LoginRequest("under@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 
@@ -1277,7 +1516,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var db  = provider.GetRequiredService<AppDbContext>();
 
         // Get to exactly the cap (five active tokens).
-        await svc.RegisterAsync(new RegisterRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "oldest@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 4; i++)
             await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
 

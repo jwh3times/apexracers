@@ -24,24 +24,43 @@ interface DroppedEmail {
   droppedAt: string;
 }
 
+/**
+ * Every email the drop currently holds, oldest first.
+ *
+ * Unreadable entries are skipped rather than thrown on. The directory is shared by all Playwright
+ * workers and the API writes into it while they read: a file listed by `readdirSync` can still be
+ * mid-write (truncated JSON) or already gone. Since registration emails a confirmation link, most
+ * tests drop mail now, so that window is hit regularly — and every caller is inside a polling loop
+ * that will see the finished file on its next pass anyway.
+ */
 function readAll(): DroppedEmail[] {
   if (!existsSync(MAIL_DIR)) return [];
-  return readdirSync(MAIL_DIR)
-    .filter(name => name.endsWith('.json'))
-    .map(name => JSON.parse(readFileSync(join(MAIL_DIR, name), 'utf8')) as DroppedEmail)
-    .sort((a, b) => a.droppedAt.localeCompare(b.droppedAt));
+  const emails: DroppedEmail[] = [];
+  for (const name of readdirSync(MAIL_DIR)) {
+    if (!name.endsWith('.json')) continue;
+    try {
+      emails.push(JSON.parse(readFileSync(join(MAIL_DIR, name), 'utf8')) as DroppedEmail);
+    } catch {
+      continue;
+    }
+  }
+  return emails.sort((a, b) => a.droppedAt.localeCompare(b.droppedAt));
 }
 
 /**
  * Polls the drop directory for the newest email to `recipient` whose subject matches, then returns
- * the `token` query value from the link in its text body. Polls because delivery is a file write
- * that races the HTTP response the test just observed.
+ * the link from its text body as a parsed URL. Polls because delivery is a file write that races
+ * the HTTP response the test just observed.
+ *
+ * The returned URL is built from APP_BASE_URL, which is the production host rather than the stack
+ * under test — so callers navigate with its `searchParams` against their own origin rather than
+ * following the href.
  */
-export async function waitForEmailedToken(
+export async function waitForEmailedLink(
   recipient: string,
   subjectPattern: RegExp,
   timeoutMs = 15_000
-): Promise<string> {
+): Promise<URL> {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
@@ -52,9 +71,7 @@ export async function waitForEmailedToken(
     if (match) {
       const link = /https?:\/\/\S+?\?[^\s"'<>]+/.exec(match.textBody);
       if (!link) throw new Error(`Email "${match.subject}" carried no link with a query string.`);
-      const token = new URL(link[0]).searchParams.get('token');
-      if (!token) throw new Error(`Email link carried no token: ${link[0]}`);
-      return token;
+      return new URL(link[0]);
     }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
@@ -64,4 +81,16 @@ export async function waitForEmailedToken(
       `${subjectPattern} in ${MAIL_DIR}. Is DEV_MAIL_DROP_PATH set on the API, and does ` +
       `E2E_MAIL_DIR point at the same directory from the host?`
   );
+}
+
+/** The `token` query value from the emailed link — see {@link waitForEmailedLink}. */
+export async function waitForEmailedToken(
+  recipient: string,
+  subjectPattern: RegExp,
+  timeoutMs = 15_000
+): Promise<string> {
+  const link = await waitForEmailedLink(recipient, subjectPattern, timeoutMs);
+  const token = link.searchParams.get('token');
+  if (!token) throw new Error(`Email link carried no token: ${link.href}`);
+  return token;
 }

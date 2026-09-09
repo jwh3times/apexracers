@@ -150,8 +150,8 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 ### Account credentials never leave through a response
 
-Password-reset and email-change tokens are single-use credentials. They leave the server **only**
-inside the link `AccountEmailTemplates` builds, and they are never returned in a response body,
+Account-confirmation, password-reset, and email-change tokens are single-use credentials. They leave
+the server **only** inside the link `AccountEmailTemplates` builds, and they are never returned in a response body,
 never written to a log, and never surfaced by any endpoint — not even behind an
 `IWebHostEnvironment.IsDevelopment()` check. `AuthService.RequestPasswordResetAsync` deliberately
 returns `Task`, not the token, so no controller can echo it; do not "helpfully" restore a return
@@ -165,6 +165,39 @@ To exercise a link-bearing flow without an email provider, set `DEV_MAIL_DROP_PA
 `FileDropEmailSender` output — `EmailDelivery.Select` throws on startup if that variable is set
 outside Development. Service tests read tokens the same way, out of `FakeEmailSender` via
 `EmailLinks.TokenFrom`, rather than from a return value.
+
+### Account existence never leaks out of the auth surface
+
+No endpoint tells an unauthenticated caller whether an address has an account. Login, forgot-password
+and email-change already held that line; registration is the one that had to be rebuilt for it
+(GHSA-72v6-mw4c-q96r), and the rules it now runs under are the ones to keep:
+
+- `AuthService.RegisterAsync` returns `Task`, not an `AuthResultDto`. The controller answers with a
+  fixed `MessageResponse` in every case — free address, taken address, and a race between them all
+  reach the same body. Do not restore a return value, and do not add a status code that varies with
+  the outcome.
+- A duplicate is disclosed **only to the mailbox**: `NotifyAddressAlreadyRegisteredAsync` resends the
+  confirmation link to an unconfirmed account and sends the security notice to a confirmed one. That
+  branch must stay invisible to the caller: it changes what is sent and to whom, never what the
+  response says. (Both paths send exactly one email, but the free path also writes a user row, so
+  the two are not claimed to be indistinguishable by timing — only by what they return.)
+- Identity errors are filtered by code, not by message text. `IsDuplicateAccount` withholds
+  `DuplicateUserName`/`DuplicateEmail`; everything else describes the values the caller submitted and
+  still surfaces. `UserManager.CreateAsync` validates the password before it touches the store, so a
+  weak password is rejected identically for a taken and a free address — don't reorder that by
+  checking existence first, which would make the password error the new oracle.
+- `LoginAsync` refuses an unconfirmed account with `LoginResult.Invalid`, the same value an unknown
+  address gets, **before** the lockout check and `AccessFailedAsync`. This is the half that actually
+  closes the oracle: a generic registration response alone would still let an attacker register a
+  victim's address and read the answer off whether their chosen password then works. Checking ahead
+  of the failure counter also stops a stranger locking out an account from the moment it signs up.
+- Confirmation is what makes an account usable, so anything that proves control of the mailbox must
+  grant it. `ResetPasswordAsync` sets `EmailConfirmed`; without that, a user whose confirmation email
+  went astray could reset a password and still be refused, with no self-service route back.
+
+Sign-in is gated on `EmailConfirmed`, so any environment that creates accounts outside registration
+(seeders, fixtures, an operator bootstrapping an Admin) must set it. Accounts predating the
+requirement were grandfathered by the `ConfirmPreExistingAccountEmails` migration.
 
 ### Refresh token rotation
 

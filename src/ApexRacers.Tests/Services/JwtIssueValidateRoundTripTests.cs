@@ -80,10 +80,18 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
             refreshTokens,
             new FakeEmailSender());
 
-        var result = await service.RegisterAsync(
-            new RegisterRequest($"driver-{Guid.NewGuid():N}@example.com", "Pass1234"), Ct);
+        // Registration hands back nothing now — an account is unusable until its address is
+        // confirmed — so the token this test round-trips comes from the sign-in that follows.
+        var email = $"driver-{Guid.NewGuid():N}@example.com";
+        await service.RegisterAsync(new RegisterRequest(email, "Pass1234"), Ct);
 
-        return result.Token;
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync(email);
+        await service.ConfirmEmailAsync(
+            user!.Id, await userManager.GenerateEmailConfirmationTokenAsync(user), Ct);
+
+        var login = await service.LoginAsync(new LoginRequest(email, "Pass1234"), Ct);
+        return login.Auth!.Token;
     }
 
     /// <summary>The exact parameters Program.cs builds, from the same settings object.</summary>

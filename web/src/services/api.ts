@@ -10,6 +10,11 @@ export interface AuthResult {
   refreshToken?: string;
 }
 
+/** Generic acknowledgement from an endpoint that must not reveal whether an account exists. */
+export interface MessageResult {
+  message: string;
+}
+
 export interface ForgotPasswordResult {
   // The only field the API returns. It is the same generic acknowledgement in every environment
   // and whether or not the account exists — the reset token leaves the server solely inside the
@@ -774,9 +779,19 @@ export const api = {
     return request('/api/auth/login', { method: 'POST', json: { email, password } });
   },
 
-  /** POST /api/auth/register — create account, returns JWT */
-  register(email: string, password: string): Promise<AuthResult> {
+  /**
+   * POST /api/auth/register — create an account. Returns only a generic acknowledgement, never a
+   * token: the response is identical whether or not the address was already registered, so it
+   * cannot be used to test who has an account. The confirmation link arrives by email, and the
+   * account cannot sign in until `confirmEmail` has run.
+   */
+  register(email: string, password: string): Promise<MessageResult> {
     return request('/api/auth/register', { method: 'POST', json: { email, password } });
+  },
+
+  /** POST /api/auth/confirm-email — activate a new account from the emailed link */
+  confirmEmail(userId: string, token: string): Promise<void> {
+    return request('/api/auth/confirm-email', { method: 'POST', json: { userId, token } });
   },
 
   /** PUT /api/auth/profile — update display name and optional iRacing customer ID, returns fresh JWT */

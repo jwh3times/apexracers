@@ -13,12 +13,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   function switchTab(next: Tab) {
     setTab(next);
     setError(null);
+    setNotice(null);
     setEmail('');
     setPassword('');
     setConfirmPassword('');
@@ -27,14 +29,26 @@ export default function LoginPage() {
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     if (tab === 'register' && password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
     setLoading(true);
     try {
-      const result =
-        tab === 'signin' ? await api.login(email, password) : await api.register(email, password);
+      if (tab === 'register') {
+        // Registration never signs anyone in — it returns the same acknowledgement whether or not
+        // the address was already taken, and the account only becomes usable once the emailed
+        // confirmation link is followed. Keep the email filled in so the pending sign-in is a
+        // password away once they come back.
+        const { message } = await api.register(email, password);
+        setTab('signin');
+        setPassword('');
+        setConfirmPassword('');
+        setNotice(message);
+        return;
+      }
+      const result = await api.login(email, password);
       await login(result, email);
       void navigate('/dashboard');
     } catch (err) {
@@ -131,7 +145,23 @@ export default function LoginPage() {
             {error && (
               <div className="mb-5 p-3 bg-error-container rounded-lg font-body-sm text-body-sm text-on-error-container">
                 {error}
+                {tab === 'signin' && (
+                  // Shown on every failed sign-in, never only for an unconfirmed account: an
+                  // account-specific hint here would give back exactly the answer the generic
+                  // response withholds.
+                  <span className="block mt-1 opacity-80">
+                    Just signed up? Follow the confirmation link in your email first — an
+                    unconfirmed account can&apos;t sign in.
+                  </span>
+                )}
               </div>
+            )}
+
+            {/* Registration acknowledgement */}
+            {notice && (
+              <output className="block mb-5 p-3 bg-surface-container-high border border-line rounded-lg font-body-sm text-body-sm text-on-surface">
+                {notice}
+              </output>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">

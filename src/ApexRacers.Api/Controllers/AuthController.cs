@@ -14,8 +14,26 @@ namespace ApexRacers.Api.Controllers;
 public class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct) =>
-        Ok(await auth.RegisterAsync(request, ct));
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
+    {
+        await auth.RegisterAsync(request, ct);
+
+        // Byte-identical whether the address was free or already taken, and it carries no token —
+        // registration used to answer "Email '…' is already taken." verbatim, which let anyone test
+        // who has an account (GHSA-72v6-mw4c-q96r). The confirmation link leaves the server only
+        // inside the email, and the account cannot sign in until it is followed, so neither this
+        // response nor a follow-up sign-in attempt distinguishes the two cases.
+        return Ok(new MessageResponse(
+            "If that address can be registered, a confirmation link has been sent to it. " +
+            "Confirm your email to sign in."));
+    }
+
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmailAsync([FromBody] ConfirmEmailRequest request, CancellationToken ct)
+    {
+        await auth.ConfirmEmailAsync(request.UserId, request.Token, ct);
+        return NoContent();
+    }
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)

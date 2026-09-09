@@ -7,7 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- Registration no longer reveals whether an email address already has an account. It used to answer
+  a duplicate with ASP.NET Identity's `Email '…' is already taken.`, which let anyone test an
+  address against the user list. It now returns the same acknowledgement in every case and carries
+  no token, and password-policy errors — which do not depend on who is registered — still surface
+  unchanged.
+- Signing in is refused until the account's email address is confirmed, and the refusal is the same
+  generic `401` an unknown address gets. This is what closes the enumeration path rather than merely
+  narrowing it: without it, an attacker could register a victim's address and read the answer off
+  whether the credentials they just chose worked. The confirmation check runs ahead of the failure
+  counter, so an unconfirmed account also cannot be locked out by a stranger.
+
+### Added
+
+- Registration emails a confirmation link, and `POST /api/auth/confirm-email` activates the account
+  from it. The existing `/verify-email` page serves both this link and the email-change link.
+- An address that someone tries to re-register is told about it by email: an unconfirmed account has
+  its confirmation link resent, and a confirmed one receives a security notice pointing at password
+  reset. The mailbox owner learns what the HTTP response withholds.
+- Completing a password reset now also confirms the address, so anyone whose confirmation email went
+  astray has a self-service way back in.
+
+### Changed
+
+- **Breaking (API):** `POST /api/auth/register` returns `{ message }` instead of a JWT and refresh
+  token, and no longer signs the caller in. Clients must send the user to sign-in after the
+  confirmation link is followed. The web app already does this.
+- Accounts that existed before this release are grandfathered as confirmed by a data migration, so
+  no established user is locked out.
 
 ## [8.0.12] - 2026-09-09
 
