@@ -96,6 +96,13 @@ updates:
           - "patch"
 
   # ── GitHub Actions ───────────────────────────────────────────────────────────
+  # Every `uses:` in .github/workflows/ is pinned to a full commit SHA with the
+  # release as a trailing `# vX.Y.Z` comment (GHSA-j6j2-8f7p-qv9r). A tag is
+  # mutable and can be repointed at new code; two of the deploy job's actions run
+  # with `id-token: write` and exchange it for an Azure session that can push
+  # images and update App Service. Dependabot reads that trailing comment to
+  # decide major/minor/patch and rewrites both the SHA and the comment, so pinning
+  # costs no freshness — it just moves the update behind a reviewable PR.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
