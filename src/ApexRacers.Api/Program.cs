@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
@@ -115,6 +116,15 @@ var globalPermitLimit =
     int.TryParse(builder.Configuration["GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE"], out var gpl) && gpl > 0
         ? gpl
         : 300;
+// Driver search is the one iRacing-backed route whose input is free text, so distinct terms —
+// each a distinct cache key and a distinct upstream fetch — are unbounded even after the length
+// cap. Bounding the *term* stops the cache bypass; only a limiter bounds how much of the shared
+// iRacing service-account quota one caller can spend (GHSA-jv96-89xc-98h2). Partitioned per user
+// rather than per IP because the route is authenticated and an IP can carry many users.
+var searchPermitLimit =
+    int.TryParse(builder.Configuration["SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE"], out var spl) && spl > 0
+        ? spl
+        : 30;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -141,6 +151,22 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = authPermitLimit,
+                Window      = TimeSpan.FromMinutes(1),
+                QueueLimit  = 0,
+            }));
+
+    // Per-*user* window for driver search. The subject claim is the partition; an unauthenticated
+    // caller cannot reach the route (it is [Authorize]) but the partition still has to be total,
+    // so it falls back to the IP. 30/min is far above type-ahead use — the frontend debounces —
+    // and far below what it takes to walk the name space. Config-driven like the two above.
+    options.AddPolicy("iracing-search", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = searchPermitLimit,
                 Window      = TimeSpan.FromMinutes(1),
                 QueueLimit  = 0,
             }));

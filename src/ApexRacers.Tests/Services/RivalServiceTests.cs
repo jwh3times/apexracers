@@ -197,6 +197,42 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
+    public async Task SearchDriversAsync_OverLongTerm_ThrowsWithoutCallingApi()
+    {
+        // Refused rather than answered empty, and refused *before* the upstream call. An
+        // over-long term composes a cache key past the column length, which cannot be stored —
+        // so it would not degrade to an uncached search but to a live iRacing fetch on every
+        // request, unmetered except by the per-IP limiter (GHSA-jv96-89xc-98h2).
+        await using var db = DbContextFactory.Create();
+        var client = ClientReturningSearch((1, "X"));
+        var service = Build(db, client);
+        var term = new string('a', IRacingCacheKeys.MaxDriverSearchLength + 1);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.SearchDriversAsync(term, Ct));
+
+        await client.DidNotReceive().SearchDriversAsync(
+            Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        Assert.Empty(db.ExternalDataCaches);
+    }
+
+    [Fact]
+    public async Task SearchDriversAsync_TermAtTheMaximum_IsStillSearched()
+    {
+        // The boundary in the accepting direction — a cap that rejected its own maximum would
+        // pass the test above and still be wrong.
+        await using var db = DbContextFactory.Create();
+        var client = ClientReturningSearch((7, "Edge Case"));
+        var service = Build(db, client);
+        var term = new string('a', IRacingCacheKeys.MaxDriverSearchLength);
+
+        var result = await service.SearchDriversAsync(term, Ct);
+
+        Assert.Single(result);
+        await client.Received(1).SearchDriversAsync(
+            Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SearchDriversAsync_SameTermTwice_CachesAndFetchesOnce()
     {
         await using var db = DbContextFactory.Create();

@@ -152,4 +152,45 @@ public class CachedIRacingClientTests
         await using var verify = shared.NewContext();
         Assert.Single(verify.ExternalDataCaches);
     }
+
+    // ── Over-long keys (GHSA-jv96-89xc-98h2) ─────────────────────────────────
+
+    [Fact]
+    public async Task GetOrFetchAsync_KeyLongerThanTheColumn_ThrowsWithoutFetching()
+    {
+        // The failure this prevents is a quiet one: without the guard the insert throws, the
+        // cold-start-race catch above swallows it, the caller still gets a value, and every
+        // later request for that key silently repeats the live fetch. Nothing looks broken.
+        await using var db = DbContextFactory.Create();
+        var sut = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var oversized = new CacheSpec(
+            new string('k', ExternalDataCache.CacheKeyMaxLength + 1), TimeSpan.FromHours(1));
+        var fetchCount = 0;
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => sut.GetOrFetchAsync<Sample>(
+                oversized,
+                _ => { fetchCount++; return Task.FromResult(new Sample(1, "x")); }, Ct));
+
+        // Refused before the upstream call, which is the point — the quota is the resource
+        // being protected, not the cache table.
+        Assert.Equal(0, fetchCount);
+        Assert.Empty(db.ExternalDataCaches);
+        Assert.Contains(ExternalDataCache.CacheKeyMaxLength.ToString(), ex.Message);
+    }
+
+    [Fact]
+    public async Task GetOrFetchAsync_KeyExactlyAtTheColumnLimit_IsAccepted()
+    {
+        await using var db = DbContextFactory.Create();
+        var sut = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var atLimit = new CacheSpec(
+            new string('k', ExternalDataCache.CacheKeyMaxLength), TimeSpan.FromHours(1));
+
+        var result = await sut.GetOrFetchAsync<Sample>(
+            atLimit, _ => Task.FromResult(new Sample(9, "edge")), Ct);
+
+        Assert.Equal(new Sample(9, "edge"), result);
+        Assert.Single(db.ExternalDataCaches);
+    }
 }

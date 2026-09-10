@@ -58,8 +58,18 @@ public class RivalService(AppDbContext db, CachedIRacingClient cached)
     /// <summary>Name search via iRacing, cached per normalized term. Short terms skip the API.</summary>
     public async Task<IReadOnlyList<DriverSearchResultDto>> SearchDriversAsync(string term, CancellationToken ct)
     {
-        // The key module owns the normalization (trim + lowercase) and the minimum length, so the
+        // The key module owns the normalization (trim + lowercase) and both length bounds, so the
         // demo seeder's curated terms cannot drift out of step with what this writes.
+        //
+        // Too long is refused rather than answered with an empty list: the term is the only
+        // unbounded caller input that reaches a cache key, and a key past the column length cannot
+        // be stored, which turns into a live iRacing fetch on every request rather than a cache
+        // miss (GHSA-jv96-89xc-98h2). Saying so is also more honest than pretending we searched.
+        if (IRacingCacheKeys.TermIsTooLong(term))
+            throw new ArgumentException(
+                $"Search term must be {IRacingCacheKeys.MaxDriverSearchLength} characters or fewer.",
+                nameof(term));
+
         if (IRacingCacheKeys.DriverSearch(term) is not { } spec) return [];
         var normalized = (term ?? string.Empty).Trim();
 

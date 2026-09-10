@@ -12,7 +12,7 @@ public class ExternalDataCacheConfiguration : IEntityTypeConfiguration<ExternalD
 
         builder.HasIndex(c => c.CacheKey).IsUnique();
 
-        builder.Property(c => c.CacheKey).HasMaxLength(200);
+        builder.Property(c => c.CacheKey).HasMaxLength(ExternalDataCache.CacheKeyMaxLength);
 
         // Payload keeps the default string mapping (text on PostgreSQL) so arbitrarily
         // large serialized JSON fits and EF InMemory tests need no provider-specific

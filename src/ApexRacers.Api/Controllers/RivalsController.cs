@@ -4,6 +4,7 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ApexRacers.Api.Controllers;
 
@@ -40,6 +41,9 @@ public class RivalsController(
         return NoContent();
     }
 
+    // Per-user window: this is the only iRacing-backed route taking free text, so distinct terms
+    // are unbounded upstream fetches even with the length cap (GHSA-jv96-89xc-98h2).
+    [EnableRateLimiting("iracing-search")]
     [HttpGet("search")]
     public async Task<IActionResult> SearchAsync([FromQuery] string term, CancellationToken ct)
     {
