@@ -80,7 +80,7 @@ docker compose up -d                        # postgres + pgadmin + api only
 
 Copy `.env.example` to `.env` at repo root before first run. Required:
 
-- `JWT_SIGNING_KEY` — must be set; no default
+- `JWT_SIGNING_KEY` — must be set, no default, and must be at least 32 UTF-8 bytes (`JwtSettings.MinimumSigningKeyBytes`) or the API refuses to start; generate one with `openssl rand -base64 48`
 - `DATABASE_CONNECTION_STRING` — pre-filled for Docker network: `Host=postgres;Database=apexracers;Username=apexracers;Password=devpassword`
 - `POSTGRES_PASSWORD` — defaults to `devpassword`
 - `ADMIN_SEED_EMAILS` — optional comma-separated list for admin bootstrap
