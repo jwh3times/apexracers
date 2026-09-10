@@ -5,7 +5,6 @@ using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
 namespace ApexRacers.Api.Services;
@@ -484,7 +483,7 @@ public class AuthService(
 
     internal async Task<string> GenerateJwtAsync(ApplicationUser user)
     {
-        var creds = new SigningCredentials(jwt.SecurityKey(), SecurityAlgorithms.HmacSha256);
+        var creds = jwt.IssuingCredentials();
 
         var roles = await userManager.GetRolesAsync(user);
         var role  = roles.FirstOrDefault() ?? "Standard";

@@ -39,7 +39,9 @@ cp .env.example .env
 ```
 
 Open `.env` and fill in local values before running the API. `JWT_SIGNING_KEY` is
-required; live iRacing and email credentials are optional for most local development.
+required and must be **at least 32 bytes** — generate one with
+`openssl rand -base64 48`. Live iRacing and email credentials are optional for most
+local development.
 
 ### 2. Start the database
 

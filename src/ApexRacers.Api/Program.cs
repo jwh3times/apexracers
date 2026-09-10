@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -151,16 +150,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = jwt.SecurityKey(),
-            ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
-            ValidateAudience = true,
-            ValidAudience = jwt.Audience,
-            ClockSkew = TimeSpan.Zero,
-        };
+        options.TokenValidationParameters = jwt.ValidationParameters();
     });
 
 builder.Services.AddAuthorization(options =>
