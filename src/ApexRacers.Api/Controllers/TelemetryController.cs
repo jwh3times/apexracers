@@ -25,13 +25,21 @@ public class TelemetryController(
         return Guid.TryParse(raw, out var id) ? id : null;
     }
 
+    // Both transport bounds are the *request* bound, not the file bound — see TelemetryUpload for
+    // why they differ and why the gap between them is load-bearing.
     [HttpPost("upload")]
-    [RequestSizeLimit(524_288_000)] // 500 MB
-    [RequestFormLimits(MultipartBodyLengthLimit = 524_288_000)]
+    [RequestSizeLimit(TelemetryUpload.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = TelemetryUpload.MaxRequestBytes)]
     public async Task<IActionResult> UploadAsync(IFormFile file, CancellationToken ct)
     {
         if (file is null || file.Length == 0)
             return BadRequest("No file provided.");
+
+        // Enforces the limit the upload page advertises. This runs after model binding has already
+        // buffered the body, so it saves no I/O — the transport bounds above are what cap that.
+        // What it buys is a 413 naming the limit, rather than the framework's form-read failure.
+        if (file.Length > TelemetryUpload.MaxFileSizeBytes)
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, TelemetryUpload.TooLargeMessage);
 
         if (!file.FileName.EndsWith(".ibt", StringComparison.OrdinalIgnoreCase))
             return BadRequest("File must be an iRacing .ibt telemetry file.");

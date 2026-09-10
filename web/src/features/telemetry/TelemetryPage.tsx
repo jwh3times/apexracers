@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type UploadedBest, type TelemetryUploadResult } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
+import { MAX_UPLOAD_MEGABYTES, tooLargeMessage } from './uploadLimits';
 
 type FileStatus = {
   file: File;
@@ -141,10 +142,17 @@ export default function TelemetryPage() {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
 
-    const initial: FileStatus[] = files.map(file => ({ file, status: 'pending' }));
+    // Oversized files are settled up front rather than one at a time: the whole selection shows its
+    // verdict immediately, and the bytes are never sent. The API enforces the same bound anyway.
+    const initial: FileStatus[] = files.map(file => {
+      const tooLarge = tooLargeMessage(file.size);
+      return tooLarge ? { file, status: 'error', error: tooLarge } : { file, status: 'pending' };
+    });
     setQueue(initial);
 
     for (let i = 0; i < files.length; i++) {
+      if (initial[i].status === 'error') continue;
+
       setQueue(q => q.map((item, idx) => (idx === i ? { ...item, status: 'uploading' } : item)));
 
       try {
@@ -245,7 +253,7 @@ export default function TelemetryPage() {
                 </p>
                 <div className="mt-8">
                   <span className="px-3 py-1 bg-surface-container-lowest border border-line-2 rounded font-data-md text-data-md text-on-surface-variant">
-                    MAX 250 MB per file
+                    MAX {MAX_UPLOAD_MEGABYTES} MB per file
                   </span>
                 </div>
               </>
