@@ -5,7 +5,7 @@ namespace ApexRacers.Api.Middleware;
 /// The built SPA loads scripts, styles, fonts, and API requests from its own origin.
 /// HSTS is only meaningful over HTTPS; behind
 /// the App Service front end, Request.IsHttps reflects the client scheme once
-/// ASPNETCORE_FORWARDEDHEADERS_ENABLED is set (see deployTODO.md).
+/// the forwarded-headers middleware rewrote the scheme (see ForwardedHeadersPolicy).
 /// </summary>
 public class SecurityHeadersMiddleware(RequestDelegate next)
 {

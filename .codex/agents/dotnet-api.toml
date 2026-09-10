@@ -277,6 +277,22 @@ advisory stays open until it lands.
 
 `AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in AGENTS.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup (`JWT_SIGNING_KEY`'s check lives in `JwtSettings.FromConfiguration`, called once in `Program.cs`).
 
+## Forwarded headers — never call `app.UseForwardedHeaders()`
+
+`ForwardedHeadersPolicy.Configure` (`src/ApexRacers.Api/Services/ForwardedHeadersPolicy.cs`) is the
+single place the forwarded-header trust decision is expressed — which headers, `ForwardLimit`, and
+that `KnownNetworks`/`KnownProxies` are cleared (GHSA-fq5w-frqr-6px2). `Program.cs` only binds it via
+`Configure<ForwardedHeadersOptions>`; it never calls `app.UseForwardedHeaders()`. Do not add that
+call. The host (App Service) registers the middleware itself, gated on the
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED` app setting — adding the call here as well would register the
+middleware **twice**, consuming two `X-Forwarded-For` entries instead of one and resolving a caller's
+own forged left-hand entry as if it were the real client, which is the exact spoofing hole the
+advisory is about. Registering it unconditionally (bypassing the app setting) is equally wrong in the
+other direction: it would process forwarded headers in environments with no front end (local Compose,
+CI) and, with `KnownProxies` cleared, hand any caller the address the rate limiter partitions on.
+`ForwardedHeadersPolicy.IsEnabledByHost` only logs a startup warning when the setting is absent — it
+never changes what gets registered.
+
 ## Tests
 
 xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
