@@ -47,6 +47,17 @@ app-wide `session` singleton built with `createSession(deps)`, behind `restore()
   replacing the first.
 - **Never read the JWT or decode claims outside of `session.ts`.** Never store either token in
   `localStorage` or component state.
+- **The token store is shared across every tab on the origin; the single-flight guard above is not.**
+  `inFlight` is a variable in this module instance, so it dedupes concurrent refresh calls only inside
+  one tab — it does nothing to stop two tabs from refreshing the same stored token at the same moment.
+  The server accepts exactly one of those two attempts (refresh tokens are single-use — see
+  `dotnet-api`'s `RotateAsync` rule), and the loser's rejection is indistinguishable from a genuinely
+  dead session. `refresh()` therefore never wipes on a bare rejection: `adoptTabRotationOrWipe` first
+  re-reads the store, and if it now holds a different, still-usable pair, this tab adopts the winning
+  tab's result instead of clearing the shared session out from under it. Only a store still holding the
+  very credential this attempt spent means the session is actually over. Don't reintroduce an
+  unconditional `wipe()` on refresh failure — that is what previously turned an honest two-tab refresh
+  into a sign-out of both tabs.
 
 ### 401 interceptor
 

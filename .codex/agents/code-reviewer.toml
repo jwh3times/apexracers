@@ -120,6 +120,19 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   race-safe source of truth. The application may translate only a PostgreSQL unique violation naming
   `IX_Users_IRacingCustomerId` to `ClaimedIdentityConflictException` → non-disclosing 409; flag a
   read-before-write replacement or a catch broad enough to relabel unrelated database failures.
+- Flag `RefreshTokenStore.RotateAsync` going back to a plain read (`FirstOrDefaultAsync`) followed by
+  setting `RevokedAt` on the tracked entity and `SaveChangesAsync` — that is the read-then-write
+  double-consume GHSA-87m2-6r5g-9q47 fixed; consumption must be the conditional
+  `ExecuteUpdateAsync(... Where(t => t.Id == id && t.RevokedAt == null))` whose affected-row count
+  decides the winner. Flag a losing race (`0` rows affected) being escalated to
+  `RevokeAllActiveAsync` — that is reuse handling applied to an honest multi-tab refresh, not to
+  replay; only a *retained already-revoked* token presented again should trigger family-wide
+  revocation.
+- Flag `RefreshTokenStore.RevokeAllActiveAsync` sweeping the user's active tokens only once
+  (a single `Where(ActiveAt(now)).ToListAsync()`/`ExecuteUpdateAsync` pass with no re-check) — a
+  rotation that commits between the read and the write mints a successor the single pass never sees,
+  and nothing else revisits it. It must loop (`ExecuteUpdateAsync` per pass) until a pass revokes zero
+  rows.
 
 **Tests**
 
@@ -139,6 +152,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag any component or page that reads the JWT directly from IndexedDB, localStorage, or by calling `decodeJwt` outside of `src/services/session.ts` — the session module is the sole owner of the token pair and its claims; `AuthContext`/`AuthProvider` only bind to it.
 - Flag any access control decision (hiding UI, redirecting) based on decoded JWT claims read outside of `useAuth()`.
 - Flag the JWT being stored in `localStorage` — it belongs in IndexedDB via `dbSet`/`dbGet`.
+- Flag `session.ts`'s `refresh()` reverting to an unconditional `wipe()` on a failed/rejected refresh
+  transport call instead of `adoptTabRotationOrWipe` — the token store is shared across tabs while the
+  in-flight guard is per tab, so a bare `wipe()` on the losing side of an honest two-tab refresh signs
+  both tabs out.
 
 **State management**
 

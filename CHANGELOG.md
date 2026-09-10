@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.8] - 2026-09-10
+
 ### Security
 
 - Refreshing a session is now single-use under concurrency. Two requests presenting the same refresh
@@ -1225,7 +1229,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.7...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.8...HEAD
+[9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
 [9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7
 [9.0.6]: https://github.com/jwh3times/apexracers/compare/v9.0.5...v9.0.6
 [9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5

@@ -263,11 +263,36 @@ advisory stays open until it lands.
 - `RotateAsync(rawToken)`: looks up the hash including revoked rows. Presenting a retained revoked
   token revokes that user's active refresh tokens before rejecting the request, even if the presented
   token has also expired. Unknown tokens and unrevoked expired tokens only reject. Successful rotation
-  revokes the old token and inserts its replacement in one `SaveChangesAsync`; it is cap-exempt.
+  consumes the old token and inserts its replacement inside one explicit transaction; it is cap-exempt.
   Reuse warnings contain the User ID, never raw credentials or their hashes. This is account-wide
   revocation, not a persisted per-device token-family model; issued access tokens keep their expiry.
 - `RevokeAsync(rawToken)`: best-effort; unknown and already-revoked credentials are no-ops. A specifically presented expired credential may still be stamped revoked.
 - Issuance caps active tokens per user at 5 by revoking the oldest before adding the new token; `RevokeAllActiveAsync` touches only canonically active rows.
+- **The initial read in `RotateAsync` decides whether a token *looks* usable, never who wins a race
+  (GHSA-87m2-6r5g-9q47).** Two requests can present the same refresh token concurrently and both read
+  it while `RevokedAt` is still null; consumption is a conditional update
+  (`ExecuteUpdateAsync` with `Where(t => t.Id == id && t.RevokedAt == null)`), so the database — not
+  the earlier read — picks exactly one winner. `0` rows affected means the caller lost the race; throw
+  the same `InvalidTokenMessage` a losing caller would already get for an unknown or expired token.
+  Do not go back to setting `RevokedAt` on the tracked entity and calling `SaveChangesAsync` — that
+  reopens the double-read window the advisory is about. Because the conditional consume is its own
+  statement, the revoke and the replacement insert no longer share one `SaveChangesAsync`; wrap both
+  in an explicit `Database.BeginTransactionAsync`/`CommitAsync` so a failed insert still leaves the
+  credential spendable (there is a test for that rollback).
+- **Losing a rotation race is never reuse, and must never trigger `RevokeAllActiveAsync`.** Browser
+  tabs share one refresh credential through the client's storage while the single-flight guard against
+  a duplicate in-tab refresh is a per-tab module variable (see `react-frontend`), so honest clients
+  rotate the same token concurrently as a matter of course. Escalating a lost race to family-wide
+  revocation would sign a user out of every tab for the ordinary act of refreshing twice at once.
+  Sequential replay of an already-spent (retained, `RevokedAt` already set) credential is unchanged and
+  still revokes the whole family — only the race-losing branch is exempt.
+- `RevokeAllActiveAsync` sweeps in a loop (`MaxRevocationPasses`), not once: a rotation that commits
+  while revocation sits between reading the user's active tokens and writing them mints a successor the
+  first sweep never saw, and nothing would revisit it under a single-pass sweep. Each pass is its own
+  `ExecuteUpdateAsync` over the canonical active predicate and stops as soon as a pass revokes zero
+  rows. Reaching the pass cap without converging logs a warning rather than throwing — callers run this
+  as cleanup on a path already about to reject the request, and a thrown exception there would change
+  what the caller reports back.
 - Successful password changes, password resets, and email changes revoke the account's active
   refresh tokens through the store. Password change issues no replacement token pair; existing access
   tokens retain their normal expiry, including on the requesting device.

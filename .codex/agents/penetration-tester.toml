@@ -76,6 +76,12 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 - `POST /api/auth/refresh` — no `[Authorize]`; accepts `{ refreshToken }`, returns new JWT + new refresh token. Raw token is never stored; the DB holds its SHA-256 hash.
 - `POST /api/auth/logout` — no `[Authorize]`; revokes the refresh token (best-effort, always returns 204).
 - Test sequential reuse: after a successful refresh, send the old refresh token again — should return 401, and both the replacement and another active token for that User should then fail. Another User's token must still work.
+- Test concurrent rotation (GHSA-87m2-6r5g-9q47, fixed): fire two `refresh` requests with the **same**
+  still-active token at the same time — exactly one must succeed with a new pair, the other must
+  return 401, and only one live successor should exist afterward (confirm the loser did not also mint
+  a token). The loser must **not** cause the winner's session, or any other active token for that
+  User, to be revoked — losing the race is a generic rejection, not reuse. This is distinct from the
+  sequential-reuse case above, which legitimately does revoke the whole family.
 - Test: send a syntactically valid but unknown token — should return 401, not 500, without revoking other sessions.
 - Test: send a retained already-revoked token, including one also past `ExpiresAt` — should return 401 and revoke that User's active refresh tokens. Check that the warning includes only the User ID, not the raw token or its hash.
 - Test: send an expired token that was never revoked — should return 401 without revoking other sessions. Existing JWTs remain valid until their normal expiry after refresh-token revocation.
