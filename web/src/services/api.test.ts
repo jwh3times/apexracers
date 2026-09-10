@@ -321,7 +321,7 @@ describe('api', () => {
 
   describe('register', () => {
     it('calls POST /api/auth/register with JSON body', async () => {
-      mockFetchOk({ token: 'newjwt', userId: 'u2', displayName: 'New' });
+      mockFetchOk({ message: 'If that address can be registered, a link has been sent.' });
       await api.register('new@example.com', 'secret');
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/register',
@@ -332,10 +332,17 @@ describe('api', () => {
       );
     });
 
+    it('returns the generic acknowledgement and no token', async () => {
+      mockFetchOk({ message: 'If that address can be registered, a link has been sent.' });
+      const result = await api.register('new@example.com', 'secret');
+      expect(result.message).toMatch(/link has been sent/i);
+      expect(result).not.toHaveProperty('token');
+    });
+
     it('throws with server error body on failure', async () => {
-      mockFetchError({ body: 'Email already registered.' });
-      await expect(api.register('dup@example.com', 'pass')).rejects.toThrow(
-        'Email already registered.'
+      mockFetchError({ body: 'Passwords must have at least one digit.' });
+      await expect(api.register('weak@example.com', 'pass')).rejects.toThrow(
+        'Passwords must have at least one digit.'
       );
     });
 
@@ -346,11 +353,40 @@ describe('api', () => {
         body: JSON.stringify({
           status: 400,
           title: 'Bad Request',
-          detail: 'Email already registered.',
+          detail: 'Passwords must have at least one digit.',
         }),
       });
-      await expect(api.register('dup@example.com', 'pass')).rejects.toThrow(
-        'Email already registered.'
+      await expect(api.register('weak@example.com', 'pass')).rejects.toThrow(
+        'Passwords must have at least one digit.'
+      );
+    });
+  });
+
+  // ── confirmEmail ────────────────────────────────────────────────────────────
+
+  describe('confirmEmail', () => {
+    it('calls POST /api/auth/confirm-email with the userId and token from the link', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        json: () => Promise.resolve(null),
+        text: () => Promise.resolve(''),
+      } as Response);
+      await api.confirmEmail('u2', 'tok-123');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/auth/confirm-email',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ userId: 'u2', token: 'tok-123' }),
+        })
+      );
+    });
+
+    it('throws when the link is stale', async () => {
+      mockFetchError({ body: 'Invalid or expired email confirmation link.' });
+      await expect(api.confirmEmail('u2', 'stale')).rejects.toThrow(
+        'Invalid or expired email confirmation link.'
       );
     });
   });

@@ -23,34 +23,85 @@ public class AuthService(
 
     private string BaseUrl => config["APP_BASE_URL"]?.TrimEnd('/') ?? "https://apexracers.gg";
 
-    public async Task<AuthResultDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
+    /// <summary>
+    /// Creates an account and emails a confirmation link. Deliberately returns nothing: the caller is
+    /// never told whether the address was free, so registration cannot be used to test who has an
+    /// account (GHSA-72v6-mw4c-q96r). The account is unusable until <see cref="ConfirmEmailAsync"/>
+    /// runs, which is what closes the oracle — see the remarks.
+    /// </summary>
+    /// <remarks>
+    /// A generic response alone would not have been enough. If registering a free address produced a
+    /// usable account while registering a taken one did not, an attacker could simply sign in with the
+    /// password they just submitted and read the answer off that. Requiring confirmation before sign-in
+    /// makes both outcomes indistinguishable end to end: unknown, taken, and just-created addresses all
+    /// return this same acknowledgement and all fail to sign in.
+    /// </remarks>
+    public async Task RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
+        var email = request.Email?.Trim() ?? string.Empty;
         var user = new ApplicationUser
         {
             Id          = Guid.NewGuid(),
-            UserName    = request.Email,
-            Email       = request.Email,
-            DisplayName = request.Email.Split('@')[0],
+            UserName    = email,
+            Email       = email,
+            DisplayName = email.Split('@')[0],
         };
 
         var result = await userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-            // Identity's error descriptions are user-facing by design (e.g. "Passwords must
-            // have at least one digit."); surface them so the caller knows what to fix.
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(user, "Standard");
+            await SendEmailConfirmationAsync(user, ct);
+            return;
+        }
+
+        // UserManager.CreateAsync validates the password before it touches the store and returns on
+        // the first failure, so a policy rejection is reached identically for a free and for a taken
+        // address. Those descriptions are user-facing by design ("Passwords must have at least one
+        // digit.") and reveal nothing about who is registered, so they still surface.
+        var disclosable = result.Errors.Where(e => !IsDuplicateAccount(e.Code)).ToList();
+        if (disclosable.Count > 0)
             throw new InvalidOperationException(
-                string.Join(" ", result.Errors.Select(e => e.Description)));
+                string.Join(" ", disclosable.Select(e => e.Description)));
 
-        await userManager.AddToRoleAsync(user, "Standard");
+        // Only duplicate-account errors are left, so the address is taken. Say nothing to the caller
+        // and tell the mailbox owner instead — they are the one entitled to know.
+        await NotifyAddressAlreadyRegisteredAsync(email, ct);
+    }
 
-        var jwt     = await GenerateJwtAsync(user);
-        var refresh = await refreshTokens.IssueAsync(user.Id, ct);
-        return new AuthResultDto(jwt, user.Id, user.DisplayName, refresh);
+    /// <summary>
+    /// Confirms a newly registered account from the emailed link, making sign-in possible. Idempotent:
+    /// a second click on the same link succeeds rather than reporting a failure.
+    /// </summary>
+    public async Task ConfirmEmailAsync(Guid userId, string token, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("Invalid or expired email confirmation link.");
+
+        if (await userManager.IsEmailConfirmedAsync(user))
+            return;
+
+        var result = await userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+            // Identity's descriptions here ("Invalid token.") add nothing the user can act on, and
+            // the failure modes are not worth distinguishing to an unauthenticated caller.
+            throw new InvalidOperationException("Invalid or expired email confirmation link.");
     }
 
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
+            return LoginResult.Invalid;
+
+        // An account whose address was never confirmed has to be indistinguishable from one that does
+        // not exist, or registration is still an enumeration oracle: an attacker who registers a
+        // victim's address could read the answer off whether the credentials they just chose work
+        // (GHSA-72v6-mw4c-q96r). Checked ahead of both the lockout state and the password so an
+        // unconfirmed account can be neither probed nor locked out by a stranger.
+        if (!await userManager.IsEmailConfirmedAsync(user))
             return LoginResult.Invalid;
 
         // A locked-out account is denied before the password is even checked, so a
@@ -259,6 +310,16 @@ public class AuthService(
             throw new InvalidOperationException(
                 string.Join(" ", result.Errors.Select(e => e.Description)));
 
+        // Following the emailed link proves control of the mailbox just as the confirmation link does,
+        // so a reset also confirms the address. Without this, anyone whose confirmation email went
+        // astray would have no self-service route back in — a reset would succeed and sign-in would
+        // still be refused.
+        if (!user.EmailConfirmed)
+        {
+            user.EmailConfirmed = true;
+            await userManager.UpdateAsync(user);
+        }
+
         await refreshTokens.RevokeAllActiveAsync(user.Id, ct);
     }
 
@@ -288,6 +349,44 @@ public class AuthService(
         => throw new NotImplementedException();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Identity's codes for "this account already exists". They are the only <see cref="RegisterAsync"/>
+    /// failures that describe the store rather than the submitted values, so they are the only ones
+    /// withheld from the caller.
+    /// </summary>
+    private static bool IsDuplicateAccount(string code) =>
+        code is "DuplicateUserName" or "DuplicateEmail";
+
+    /// <summary>
+    /// Tells the owner of an already-registered address that someone tried to register it. An
+    /// unconfirmed account gets its confirmation link resent — that caller is almost always the same
+    /// person retrying because the first email never arrived, and telling them to reset a password
+    /// they already know would be useless. A confirmed account gets a security notice instead.
+    /// </summary>
+    private async Task NotifyAddressAlreadyRegisteredAsync(string email, CancellationToken ct)
+    {
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing is null)
+            return;
+
+        if (await userManager.IsEmailConfirmedAsync(existing))
+            await emailSender.SendAsync(
+                AccountEmailTemplates.DuplicateRegistration(email, $"{BaseUrl}/forgot-password"), ct);
+        else
+            await SendEmailConfirmationAsync(existing, ct);
+    }
+
+    /// <summary>
+    /// Emails the confirmation link. Like every account link, the token is a single-use credential that
+    /// leaves the server only inside the email — never a response body and never a log.
+    /// </summary>
+    private async Task SendEmailConfirmationAsync(ApplicationUser user, CancellationToken ct)
+    {
+        var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        var url   = $"{BaseUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+        await emailSender.SendAsync(AccountEmailTemplates.EmailConfirmation(user.Email!, url), ct);
+    }
 
     private async Task RequireCurrentPasswordAsync(ApplicationUser user, string? currentPassword)
     {

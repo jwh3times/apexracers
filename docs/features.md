@@ -64,6 +64,10 @@ Presenting a retained, already-revoked refresh token also revokes the account's 
 possible credential-reuse signal. Devices must sign in again when their current access tokens expire;
 an unknown token or an expired token that was never revoked does not affect other sessions.
 
+A new account must confirm its email address by following the emailed confirmation link before it
+can sign in. Registration answers with the same generic acknowledgement whether or not the address
+is already registered, so the response never reveals who has an account.
+
 The application uses local account authentication with JWT access tokens and rotating
 refresh tokens. Users have one role at a time: `Standard`, `Beta`, `Alpha`, or `Admin`.
 Non-Admin users can choose Standard, Beta, or Alpha in Settings. Beta and Alpha are self-selected

@@ -21,6 +21,28 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 - Test: are tokens from one environment (dev key) rejected by another?
 - Test: is a token with the correct signature but a wrong `iss` or `aud` claim rejected (`ValidateIssuer`/`ValidateAudience` are both on)?
 
+**Registration & account enumeration (GHSA-72v6-mw4c-q96r)**
+
+- `POST /api/auth/register` — no `[Authorize]`; always returns the same `200` `{ message }` body
+  regardless of whether the address is free or already registered, and never returns a token. A new
+  account cannot sign in until it follows the emailed confirmation link (`POST /api/auth/confirm-email`,
+  also no `[Authorize]`, taking `{ userId, token }`).
+- `POST /api/auth/login` — an unconfirmed account gets the same generic invalid-credentials result as
+  an unknown address or a wrong password, checked *before* the lockout counter and `AccessFailedAsync`
+  run, so a stranger can neither probe nor lock out an account by attempting sign-in against it.
+- Test: register the same address twice (or register a known-taken address) — response status and
+  body must be byte-identical to registering a fresh address, and must not contain any Identity error
+  text (`DuplicateUserName`/`DuplicateEmail`); a weak-password rejection must still surface for both.
+- Test: register a fresh address, then attempt to sign in with a guessed password before confirming —
+  must return 401 indistinguishable from an unknown address, not a "confirm your email" or
+  account-exists-specific message.
+- Test: confirm the same `{ userId, token }` pair twice — should be idempotent, not error on replay.
+- Test: submit a forged or expired confirmation token — should be rejected without revealing whether
+  the `userId` corresponds to a real, already-confirmed, or nonexistent account.
+- Test: time the free-address vs. taken-address registration paths — a duplicate additionally sends a
+  notification email (resend confirmation, or a security notice) but must not measurably differ in
+  response latency or shape from the account-creation path in a way a network observer could use.
+
 **Refresh token endpoints**
 
 - `POST /api/auth/refresh` — no `[Authorize]`; accepts `{ refreshToken }`, returns new JWT + new refresh token. Raw token is never stored; the DB holds its SHA-256 hash.

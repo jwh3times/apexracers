@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { registerNewUser, logout, login, TEST_PASSWORD } from './helpers/users';
+import {
+  registerNewUser,
+  confirmEmail,
+  logout,
+  login,
+  uniqueEmail,
+  TEST_PASSWORD,
+} from './helpers/users';
 import { waitForEmailedToken } from './helpers/mail';
 
 test.describe('auth flows', () => {
@@ -8,6 +15,57 @@ test.describe('auth flows', () => {
     await logout(page);
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/login$/); // RequireAuth bounced us
+  });
+
+  test('registration never reveals whether an address is already registered', async ({ page }) => {
+    const taken = await registerNewUser(page);
+    await logout(page);
+
+    const free = uniqueEmail();
+    const attackerPassword = 'Guessed789';
+
+    const onFree = await page.request.post('/api/auth/register', {
+      data: { email: free, password: attackerPassword },
+    });
+    const onTaken = await page.request.post('/api/auth/register', {
+      data: { email: taken, password: attackerPassword },
+    });
+
+    // Same status and byte-identical body. Registration used to answer the taken case with
+    // Identity's "Email '…' is already taken." (GHSA-72v6-mw4c-q96r).
+    expect(onTaken.status()).toBe(onFree.status());
+    expect(await onTaken.json()).toEqual(await onFree.json());
+
+    // The follow-up sign-in must not leak it either. Both addresses now hold an account the
+    // attacker cannot use: the free one is unconfirmed, and the taken one kept its own password.
+    for (const email of [free, taken]) {
+      const attempt = await page.request.post('/api/auth/login', {
+        data: { email, password: attackerPassword },
+      });
+      expect(attempt.status()).toBe(401);
+    }
+  });
+
+  test('a registered account cannot sign in until the emailed link is followed', async ({
+    page,
+  }) => {
+    const email = uniqueEmail();
+
+    await page.goto('/login');
+    await page.getByRole('tab', { name: 'Create Account' }).click();
+    await page.getByLabel('Email Address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(TEST_PASSWORD);
+    await page.getByLabel('Confirm Password').fill(TEST_PASSWORD);
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await expect(page.getByRole('status')).toContainText(/confirmation link/i);
+
+    const beforeConfirming = await page.request.post('/api/auth/login', {
+      data: { email, password: TEST_PASSWORD },
+    });
+    expect(beforeConfirming.status()).toBe(401);
+
+    await confirmEmail(page, email);
+    await login(page, email, TEST_PASSWORD);
   });
 
   test('password reset via the emailed link', async ({ page }) => {

@@ -135,12 +135,10 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /please wait/i })).toBeInTheDocument();
   });
 
-  it('calls auth.login and navigates to dashboard on successful registration', async () => {
+  it('shows the acknowledgement and returns to sign in after registering, without signing in', async () => {
     const user = userEvent.setup();
     vi.mocked(api.register).mockResolvedValue({
-      token: 'jwt-xyz',
-      userId: 'u2',
-      displayName: 'New User',
+      message: 'If that address can be registered, a confirmation link has been sent to it.',
     });
     renderPage();
     await user.click(screen.getByRole('tab', { name: 'Create Account' }));
@@ -148,14 +146,31 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/^password$/i), 'secret123');
     await user.type(screen.getByLabelText(/confirm password/i), 'secret123');
     await user.click(screen.getByRole('button', { name: /^create account$/i }));
-    await waitFor(() => {
-      expect(vi.mocked(api.register)).toHaveBeenCalledWith('new@example.com', 'secret123');
-      expect(mockLogin).toHaveBeenCalledWith(
-        { token: 'jwt-xyz', userId: 'u2', displayName: 'New User' },
-        'new@example.com'
-      );
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
-    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(/confirmation link has been sent/i)
+    );
+    expect(vi.mocked(api.register)).toHaveBeenCalledWith('new@example.com', 'secret123');
+    // Registration hands back no token, so nothing can sign in here — the account is not usable
+    // until the emailed link is followed.
+    expect(mockLogin).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: 'Sign In' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keeps the email filled in after registering so sign in is one password away', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.register).mockResolvedValue({ message: 'Check your email.' });
+    renderPage();
+    await user.click(screen.getByRole('tab', { name: 'Create Account' }));
+    await user.type(screen.getByLabelText(/email address/i), 'new@example.com');
+    await user.type(screen.getByLabelText(/^password$/i), 'secret123');
+    await user.type(screen.getByLabelText(/confirm password/i), 'secret123');
+    await user.click(screen.getByRole('button', { name: /^create account$/i }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+    expect(screen.getByLabelText(/email address/i)).toHaveValue('new@example.com');
+    expect(screen.getByLabelText(/^password$/i)).toHaveValue('');
   });
 
   it('shows password mismatch error without calling api.register', async () => {
@@ -172,14 +187,31 @@ describe('LoginPage', () => {
 
   it('shows error message on failed registration', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.register).mockRejectedValue(new Error('Email already taken'));
+    vi.mocked(api.register).mockRejectedValue(new Error('Passwords must have at least one digit.'));
     renderPage();
     await user.click(screen.getByRole('tab', { name: 'Create Account' }));
     await user.type(screen.getByLabelText(/email address/i), 'dup@example.com');
     await user.type(screen.getByLabelText(/^password$/i), 'secret');
     await user.type(screen.getByLabelText(/confirm password/i), 'secret');
     await user.click(screen.getByRole('button', { name: /^create account$/i }));
-    await waitFor(() => expect(screen.getByText(/email already taken/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/must have at least one digit/i)).toBeInTheDocument()
+    );
+  });
+
+  it('hints about email confirmation on a failed sign in, for every account alike', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockRejectedValue(new Error('Invalid email or password.'));
+    renderPage();
+    await user.type(screen.getByLabelText(/email address/i), 'a@b.com');
+    await user.type(screen.getByLabelText(/^password$/i), 'nope');
+    await user.click(screen.getByRole('button', { name: /access telemetry/i }));
+
+    // Unconditional: a hint shown only for an unconfirmed account would hand back exactly the
+    // answer the generic failure withholds.
+    await waitFor(() =>
+      expect(screen.getByText(/unconfirmed account can't sign in/i)).toBeInTheDocument()
+    );
   });
 
   it('shows loading state while registration is in progress', async () => {
