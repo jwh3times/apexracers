@@ -161,3 +161,11 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag endpoints that return other users' data without checking the authenticated user's identity.
 - Flag file upload handlers that don't validate file type or size (telemetry upload should only accept `.ibt` content).
 - Flag `HandleCallbackAsync` being implemented without CSRF state validation — the TODO comment documents the required nonce check.
+- Flag removal of `USER $APP_UID` (or any change that puts the final stage back on root) from
+  `Dockerfile` or `ingestion.Dockerfile` — GHSA-4whp-7hv6-jvv6. Nothing in either image needs root:
+  the API listens on unprivileged 8080 and the worker listens on nothing.
+- Flag any `.dockerignore` change that narrows or removes the `.env`/`.env.*`/`**/.env*`,
+  `private/`, or `TestResults/` entries — GHSA-4whp-7hv6-jvv6. These keep local secrets and
+  maintainer-only material out of the build context; neither Dockerfile currently copies these
+  paths, but a broad `COPY` (e.g. the frontend stage's `COPY web/ ./`) can only pull in what the
+  context still contains, and no test catches a context leak like this.

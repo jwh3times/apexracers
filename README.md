@@ -196,6 +196,11 @@ back out of the same directory. The drop is Development-only — the API refuses
 `DEV_MAIL_DROP_PATH` set in any other environment, because the files hold live account links in
 cleartext.
 
+The API container runs as a non-root user; on a Linux Docker Engine host (see Prerequisites) the
+bind-mounted `TestResults/mail/` keeps the host directory's ownership, so the container's write can
+fail silently there and the drop simply stays empty. See the comment on that mount in
+`docker-compose.yml` for the fix. Docker Desktop is unaffected.
+
 ## Contributing & support
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and quality

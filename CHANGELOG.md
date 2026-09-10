@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.3] - 2026-09-09
+
 ### Security
 
 - The API and ingestion containers now run as the non-root `app` user (UID 1654) that the .NET base
@@ -1133,7 +1137,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.3...HEAD
+[9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
 [9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2
 [9.0.1]: https://github.com/jwh3times/apexracers/compare/v9.0.0...v9.0.1
 [9.0.0]: https://github.com/jwh3times/apexracers/compare/v8.0.13...v9.0.0
