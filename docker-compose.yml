@@ -52,6 +52,16 @@ services:
       # way a recipient would. This replaced the reset token the forgot-password response used
       # to echo in Development, which was an account-takeover path on any reachable instance
       # (GHSA-qmqp-gxpr-867g). TestResults/ is gitignored.
+      #
+      # The image runs as the non-root `app` user (UID 1654) since GHSA-4whp-7hv6-jvv6, and a
+      # bind mount keeps the HOST directory's ownership — the image cannot chown its way around
+      # that. Verified working on Docker Desktop (Windows/macOS), whose file sharing presents
+      # the mount as writable whatever the container UID is. On a LINUX host it will not be:
+      # ./TestResults/mail belongs to you, or to root when Docker creates it, and UID 1654 gets
+      # EACCES. The API logs the failure and carries on, so the visible symptom is the
+      # password-reset E2E finding no message. Fix it on that host by running this local-only
+      # service as yourself — `user: "${UID}:${GID}"` here, with both exported — rather than by
+      # putting the image back on root.
       - ./TestResults/mail:/app/mail
     environment:
       ASPNETCORE_ENVIRONMENT: Development

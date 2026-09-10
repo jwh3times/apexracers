@@ -28,7 +28,7 @@ Three stages:
 3. **Runtime** (`mcr.microsoft.com/dotnet/aspnet:10.0`):
    - Copy `/publish` from api-build stage
    - Copy `/app/dist` from frontend stage → `./wwwroot`
-   - `EXPOSE 8080`, `ENTRYPOINT ["dotnet", "ApexRacers.Api.dll"]`
+   - `EXPOSE 8080`, `USER $APP_UID`, `ENTRYPOINT ["dotnet", "ApexRacers.Api.dll"]`
 
 The React SPA is served from `wwwroot` in production — same origin as the API, no CORS needed.
 
@@ -42,7 +42,7 @@ Two stages:
    - `dotnet publish ApexRacers.Ingestion.csproj -c Release -o /publish --no-self-contained`
 
 2. **Runtime** (`mcr.microsoft.com/dotnet/runtime:10.0`) — **runtime only, not aspnet** (no HTTP server needed):
-   - `ENTRYPOINT ["dotnet", "ApexRacers.Ingestion.dll"]`
+   - `USER $APP_UID`, `ENTRYPOINT ["dotnet", "ApexRacers.Ingestion.dll"]`
 
 ## Docker Compose (`docker-compose.yml`)
 
@@ -89,6 +89,52 @@ Ingestion-only vars (only needed with `--profile ingestion`):
 
 - `IRACING_USERNAME`, `IRACING_PASSWORD`, `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`
 - `INGESTION_INTERVAL_MINUTES` — defaults to 60
+
+## Both runtime images run as non-root — keep it that way
+
+`USER $APP_UID` (UID 1654, the `app` user the .NET images ship but do not switch to) is the last
+line before each `ENTRYPOINT`, added for GHSA-4whp-7hv6-jvv6. Root in a container turns any future
+RCE into a container-escape problem and every image scanner flags it. Nothing in either image needs
+root: the API listens on 8080, which is unprivileged, and the worker listens on nothing.
+
+Two consequences to respect when editing:
+
+- **Anything the app writes at runtime must be writable by UID 1654.** Today that is
+  `/home/app/.aspnet/DataProtection-Keys` (the image gives `app` a home, so this works) and the
+  Compose mail drop. A new write path under `/app` will fail — the publish output is copied as
+  root — so write under the user's home or a mount, not next to the DLLs.
+- **A bind mount keeps the HOST directory's ownership.** `docker-compose.yml` mounts
+  `./TestResults/mail` at `/app/mail`; Docker Desktop presents that as writable to any UID, but a
+  Linux host does not, and UID 1654 gets EACCES. The compose file carries the fix (run that
+  local-only service as the invoking user). Do not "fix" it by returning the image to root.
+
+Verify a change to either runtime stage the way the fix was verified, not by reading it:
+
+```bash
+docker compose build api && docker compose up -d
+docker compose exec -T api id                     # expect uid=1654(app)
+docker compose exec -T api sh -c 'touch /app/mail/.probe && rm /app/mail/.probe'
+```
+
+## `.dockerignore` excludes local secrets, not just build noise
+
+Beyond build output and `.git/`, it excludes `.env`, `.env.*`, `**/.env*`, `private/`, and
+`TestResults/`. Neither Dockerfile copies any of them, but the context is sent to the daemon
+**whole** — an excluded file cannot be pulled into an intermediate layer by a later broad `COPY`
+(the frontend stage's `COPY web/ ./` is exactly that shape) and cannot sit in the daemon's context
+cache. `TestResults/` matters because the Compose mail drop writes outbound account emails there as
+JSON, carrying live password-reset links in cleartext.
+
+To prove an exclusion actually holds, ask the builder rather than re-reading the file — a probe
+build that tries to copy the path fails with `"/<path>": not found` when it is excluded:
+
+```bash
+printf 'FROM busybox\\nCOPY .env /probe\\n' > /tmp/probe.Dockerfile
+docker build -f /tmp/probe.Dockerfile .          # expect: "/.env": not found
+```
+
+Pair it with a control that copies a path you know is in context, or a probe that fails for an
+unrelated reason reads as a passing exclusion.
 
 ## Layer caching — key ordering rules
 

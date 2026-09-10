@@ -53,6 +53,24 @@ API app and ingestion worker; it is not a Key Vault secret itself.
 Authentication to Key Vault uses `DefaultAzureCredential`. The API app and ingestion
 worker must have managed identities with permission to read secrets from the vault.
 
+## The container runs as UID 1654, and `/home` must stay ephemeral
+
+Both runtime images run as the non-root `app` user (UID 1654) since GHSA-4whp-7hv6-jvv6, which moves
+`$HOME` from `/root` to `/home/app`. ASP.NET Core Data Protection persists its key ring under
+`$HOME/.aspnet/DataProtection-Keys` — the API sets no explicit `PersistKeysTo`.
+
+That is harmless **only because `WEBSITES_ENABLE_APP_SERVICE_STORAGE` is `false`** on the API app
+(explicitly set, not merely defaulted). With it false, `/home` lives in the container's writable
+layer and the key ring is per-instance and per-restart, exactly as it was under `/root`. Setting it
+to `true` mounts `/home` from a platform-managed Azure Files share instead, which changes two things
+at once: the key ring starts surviving restarts, and its writability by UID 1654 becomes a live
+question the share's ACLs were never set up to answer. A local Compose stack cannot reproduce
+either, because Compose mounts nothing at `/home`.
+
+If that setting ever needs to be `true`, give Data Protection an explicit key store first
+(`PersistKeysTo` plus a protector) rather than letting it inherit a path whose semantics just
+changed underneath it.
+
 ## App Service deployment (API + React SPA)
 
 The API Docker image bundles the React frontend in `wwwroot`. Build and push:

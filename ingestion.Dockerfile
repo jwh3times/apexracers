@@ -13,4 +13,7 @@ FROM mcr.microsoft.com/dotnet/runtime:10.0
 WORKDIR /app
 COPY --from=build /publish ./
 ENV DOTNET_ENVIRONMENT=Production
+# Same as the API image: the runtime image ships a non-root `app` user (UID 1654 via
+# APP_UID) without switching to it. The worker listens on nothing at all.
+USER $APP_UID
 ENTRYPOINT ["dotnet", "ApexRacers.Ingestion.dll"]
