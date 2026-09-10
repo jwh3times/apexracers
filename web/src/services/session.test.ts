@@ -284,6 +284,61 @@ describe('refresh', () => {
     await expect(session.refresh()).resolves.toBe(false);
     expect(session.accessToken).toBeNull();
   });
+
+  // ── losing a cross-tab rotation race ────────────────────────────────────────
+  //
+  // The store is shared by every tab on the origin; the single-flight guard is per tab. Two tabs
+  // can spend the same refresh token at once and the server issues exactly one successor, so the
+  // loser's rejection looks identical to a dead session. Wiping on it would delete the winner's
+  // freshly written pair and sign the user out everywhere for refreshing twice at once.
+
+  it('adopts the winning tab pair instead of wiping when the store moved on', async () => {
+    const winnerAccess = jwt({ ...CLAIMS, exp: FUTURE });
+    const { session, store } = build({}, () => Promise.resolve(null));
+    await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt-shared' });
+    // The other tab wins the race while this attempt is in flight.
+    store.data.set(ACCESS_TOKEN_KEY, winnerAccess);
+    store.data.set(REFRESH_TOKEN_KEY, 'rt-winner');
+
+    await expect(session.refresh()).resolves.toBe(true);
+    expect(session.accessToken).toBe(winnerAccess);
+    expect(session.refreshToken).toBe('rt-winner');
+    expect(store.data.get(REFRESH_TOKEN_KEY)).toBe('rt-winner');
+  });
+
+  it('adopts the winning tab pair when the transport throws mid-race', async () => {
+    const winnerAccess = jwt({ ...CLAIMS, exp: FUTURE });
+    const { session, store } = build({}, () => Promise.reject(new Error('network down')));
+    await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt-shared' });
+    store.data.set(ACCESS_TOKEN_KEY, winnerAccess);
+    store.data.set(REFRESH_TOKEN_KEY, 'rt-winner');
+
+    // A thrown transport is the same situation as a rejected one: the tab lost, it did not end.
+    await expect(session.refresh()).resolves.toBe(true);
+    expect(session.accessToken).toBe(winnerAccess);
+    expect(session.refreshToken).toBe('rt-winner');
+  });
+
+  it('still wipes when the store holds the very credential this attempt spent', async () => {
+    const { session, store } = build({}, () => Promise.resolve(null));
+    await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt-shared' });
+
+    // Nothing else rotated: this really is the end of the session.
+    await expect(session.refresh()).resolves.toBe(false);
+    expect(session.accessToken).toBeNull();
+    expect(store.data.size).toBe(0);
+  });
+
+  it('still wipes when the other tab pair is itself expired', async () => {
+    const { session, store } = build({}, () => Promise.resolve(null));
+    await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt-shared' });
+    store.data.set(ACCESS_TOKEN_KEY, jwt({ ...CLAIMS, exp: PAST }));
+    store.data.set(REFRESH_TOKEN_KEY, 'rt-stale');
+
+    await expect(session.refresh()).resolves.toBe(false);
+    expect(session.accessToken).toBeNull();
+    expect(store.data.size).toBe(0);
+  });
 });
 
 // ── subscribe ─────────────────────────────────────────────────────────────────

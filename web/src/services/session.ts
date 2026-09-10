@@ -123,6 +123,46 @@ export function createSession({ store, refreshTransport, now = Date.now }: Sessi
     }
   }
 
+  /**
+   * Salvages a refresh that came back rejected, when the reason is another tab rather than an ended
+   * session.
+   *
+   * The store is shared by every tab on the origin; the single-flight guard above is not, because
+   * it is a variable in this module instance. Two tabs can therefore spend the same refresh token
+   * at once, and the server issues exactly one successor — by design, since a rotated credential is
+   * single-use. The loser's rejection is indistinguishable from a dead session, so wiping on it
+   * would delete the *winner's* freshly stored pair and sign the user out of every tab for the
+   * ordinary act of refreshing twice at once.
+   *
+   * So before wiping, re-read the store: if it now holds a different, still-usable pair, another tab
+   * won the race and this tab simply adopts its result. Only a store that still carries the very
+   * credential this attempt spent means the session is genuinely over.
+   */
+  async function adoptTabRotationOrWipe(attempted: string): Promise<boolean> {
+    const [storedAccess, storedRefresh] = await Promise.all([
+      store.get<string>(ACCESS_TOKEN_KEY),
+      store.get<string>(REFRESH_TOKEN_KEY),
+    ]).catch(() => [undefined, undefined] as const);
+
+    const rotatedElsewhere =
+      !!storedRefresh &&
+      storedRefresh !== attempted &&
+      !!storedAccess &&
+      !isTokenExpired(storedAccess, now());
+
+    if (rotatedElsewhere) {
+      accessToken = storedAccess;
+      refreshToken = storedRefresh;
+      claims = decodeJwt(storedAccess);
+      notify();
+      return true;
+    }
+
+    await wipe();
+    notify();
+    return false;
+  }
+
   async function wipe(): Promise<void> {
     accessToken = null;
     refreshToken = null;
@@ -177,20 +217,19 @@ export function createSession({ store, refreshTransport, now = Date.now }: Sessi
       if (inFlight) return inFlight;
 
       inFlight = (async (): Promise<boolean> => {
+        // The credential this attempt spends. Captured because another tab may replace the stored
+        // one while the request is in flight.
+        const attempted = refreshToken;
         try {
-          const tokens = await refreshTransport(refreshToken);
-          if (!tokens) {
-            await wipe();
+          const tokens = await refreshTransport(attempted);
+          if (tokens) {
+            await write(tokens);
             notify();
-            return false;
+            return true;
           }
-          await write(tokens);
-          notify();
-          return true;
+          return await adoptTabRotationOrWipe(attempted);
         } catch {
-          await wipe();
-          notify();
-          return false;
+          return await adoptTabRotationOrWipe(attempted);
         } finally {
           inFlight = null;
         }

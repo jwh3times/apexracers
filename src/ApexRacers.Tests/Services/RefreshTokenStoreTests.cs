@@ -60,33 +60,45 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         Assert.Null((await db.RefreshTokens.SingleAsync(ct)).RevokedAt);
     }
 
+    /// <summary>
+    /// The persisted outcome of a rotation: the presented credential is spent, its successor is
+    /// stored only as a hash, and the successor carries a fresh lifetime. The revocation is applied
+    /// by a conditional update rather than a tracked edit — that is what makes it single-use — so
+    /// this reads the committed rows instead of inspecting change-tracker state.
+    /// </summary>
     [Fact]
-    public async Task RotateAsync_RevokesAndInsertsInOneSaveAndDoesNotPersistTheRawReplacement()
+    public async Task RotateAsync_SpendsTheCredentialAndPersistsOnlyTheReplacementHash()
     {
         var ct = TestContext.Current.CancellationToken;
         var probe = new SaveShapeProbe();
-        await using var db = await postgres.CreateDbContextAsync(ct, probe);
+        var options = await postgres.CreateOptionsAsync(ct, probe);
+        await using var db = new AppDbContext(options);
         var clock = new TestTimeProvider(Now);
         var store = new RefreshTokenStore(db, clock, NullLogger<RefreshTokenStore>.Instance);
         var userId = Guid.NewGuid();
         await SeedUsersAsync(db, ct, userId);
         var originalRaw = await store.IssueAsync(userId, ct);
-        var original = await db.RefreshTokens.SingleAsync(ct);
+        var originalId = (await db.RefreshTokens.AsNoTracking().SingleAsync(ct)).Id;
         probe.Snapshots.Clear();
         clock.SetUtcNow(Now.AddHours(1));
 
         var rotation = await store.RotateAsync(originalRaw, ct);
 
+        // The only tracked write left in a rotation is the replacement insert; the revocation
+        // travels as its own conditional statement inside the same transaction.
         var snapshot = Assert.Single(probe.Snapshots);
         Assert.Equal(1, snapshot.Added);
-        Assert.Equal(1, snapshot.Modified);
+        Assert.Equal(0, snapshot.Modified);
         Assert.Equal(userId, rotation.UserId);
         Assert.NotEqual(originalRaw, rotation.RawToken);
-        Assert.Equal(clock.GetUtcNow(), original.RevokedAt);
-        var replacement = await db.RefreshTokens.SingleAsync(
-            token => token.Id != original.Id, ct);
+
+        await using var verification = new AppDbContext(options);
+        var rows = await verification.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        Assert.Equal(clock.GetUtcNow(), Assert.Single(rows, token => token.Id == originalId).RevokedAt);
+        var replacement = Assert.Single(rows, token => token.Id != originalId);
         Assert.Equal(Hash(rotation.RawToken), replacement.TokenHash);
         Assert.NotEqual(rotation.RawToken, replacement.TokenHash);
+        Assert.Null(replacement.RevokedAt);
         Assert.Equal(clock.GetUtcNow(), replacement.CreatedAt);
         Assert.Equal(clock.GetUtcNow().AddDays(7), replacement.ExpiresAt);
     }
@@ -222,13 +234,21 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
 
         await store.RevokeAllActiveAsync(userId, ct);
 
-        Assert.Equal(Now, active.RevokedAt);
-        Assert.Null(expired.RevokedAt);
-        Assert.Equal(previouslyRevokedAt, revoked.RevokedAt);
-        Assert.Null(otherUser.RevokedAt);
+        // Revocation is a set-based statement, so the committed rows are the record of what it did;
+        // the tracked instances above are deliberately not consulted.
+        db.ChangeTracker.Clear();
+        var afterFirst = await db.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        Assert.Equal(Now, Assert.Single(afterFirst, token => token.Id == active.Id).RevokedAt);
+        Assert.Null(Assert.Single(afterFirst, token => token.Id == expired.Id).RevokedAt);
+        Assert.Equal(previouslyRevokedAt, Assert.Single(afterFirst, token => token.Id == revoked.Id).RevokedAt);
+        Assert.Null(Assert.Single(afterFirst, token => token.Id == otherUser.Id).RevokedAt);
 
+        // Idempotent: a second call finds nothing active and leaves the first stamp alone.
         await store.RevokeAllActiveAsync(userId, ct);
-        Assert.Equal(Now, active.RevokedAt);
+        db.ChangeTracker.Clear();
+        Assert.Equal(
+            Now,
+            (await db.RefreshTokens.AsNoTracking().SingleAsync(token => token.Id == active.Id, ct)).RevokedAt);
     }
 
     [Fact]
@@ -372,6 +392,279 @@ public class RefreshTokenStoreTests(PostgreSqlFixture postgres)
         Assert.All(await db.RefreshTokens.ToListAsync(ct), token => Assert.Null(token.RevokedAt));
         Assert.Empty(logger.Entries);
         await store.RotateAsync(sibling, ct);
+    }
+
+    /// <summary>
+    /// Two requests present the same refresh token at once, each on its own context, with both
+    /// reads forced to complete before either acts. Exactly one may end up holding a usable
+    /// successor: rotation exists to make a credential single-use, and a race that mints two of
+    /// them leaves a second valid session nobody asked for.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_ConcurrentRotationsOfOneToken_IssueExactlyOneSuccessor()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var barrier = new RefreshTokenReadBarrier();
+        var options = await postgres.CreateOptionsAsync(ct, barrier);
+        var userId = Guid.NewGuid();
+        string originalRaw;
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            var setupStore = new RefreshTokenStore(setup, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+            originalRaw = await setupStore.IssueAsync(userId, ct);
+        }
+
+        await using var firstDb = new AppDbContext(options);
+        await using var secondDb = new AppDbContext(options);
+        var firstStore = new RefreshTokenStore(firstDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+        var secondStore = new RefreshTokenStore(secondDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+        barrier.Arm();
+
+        var outcomes = await Task.WhenAll(
+            RotationOutcomeAsync(firstStore, originalRaw, ct),
+            RotationOutcomeAsync(secondStore, originalRaw, ct));
+
+        // The gate held both racers: this test really did force the interleaving.
+        Assert.Equal(2, barrier.Arrivals);
+        var winners = outcomes.OfType<RefreshTokenRotation>().ToList();
+        var loser = Assert.Single(outcomes.OfType<Exception>());
+        Assert.Single(winners);
+        // The loser learns nothing it could distinguish from an ordinary bad token.
+        Assert.IsType<InvalidOperationException>(loser);
+        Assert.Equal("Invalid or expired refresh token.", loser.Message);
+
+        await using var verification = new AppDbContext(options);
+        var rows = await verification.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        var active = rows.Where(token => token.RevokedAt is null).ToList();
+        Assert.Equal(Hash(winners[0].RawToken), Assert.Single(active).TokenHash);
+        // The credential is spent exactly once, and no orphan successor was left behind.
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(Now.AddHours(1), Assert.Single(rows, token => token.TokenHash == Hash(originalRaw)).RevokedAt);
+    }
+
+    /// <summary>
+    /// The losing racer must not be treated as a replay. Two tabs share one refresh token through
+    /// the client's store while its single-flight guard is per tab, so simultaneous rotation is an
+    /// ordinary thing for an honest client to do; answering it with family-wide revocation would
+    /// sign that user out everywhere for refreshing twice at once.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_ConcurrentRotationsOfOneToken_DoNotRevokeTheUsersOtherSessions()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var barrier = new RefreshTokenReadBarrier();
+        var options = await postgres.CreateOptionsAsync(ct, barrier);
+        var userId = Guid.NewGuid();
+        string contestedRaw;
+        string bystanderRaw;
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            var setupStore = new RefreshTokenStore(setup, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+            contestedRaw = await setupStore.IssueAsync(userId, ct);
+            bystanderRaw = await setupStore.IssueAsync(userId, ct);
+        }
+
+        await using var firstDb = new AppDbContext(options);
+        await using var secondDb = new AppDbContext(options);
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var firstStore = new RefreshTokenStore(firstDb, new TestTimeProvider(Now.AddHours(1)), logger);
+        var secondStore = new RefreshTokenStore(secondDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+        barrier.Arm();
+
+        await Task.WhenAll(
+            RotationOutcomeAsync(firstStore, contestedRaw, ct),
+            RotationOutcomeAsync(secondStore, contestedRaw, ct));
+
+        Assert.Equal(2, barrier.Arrivals);
+        // An unrelated session of the same user survives, and losing is not logged as reuse.
+        await using var verification = new AppDbContext(options);
+        var bystander = await verification.RefreshTokens.AsNoTracking()
+            .SingleAsync(token => token.TokenHash == Hash(bystanderRaw), ct);
+        Assert.Null(bystander.RevokedAt);
+        Assert.Empty(logger.Entries);
+
+        var freshStore = new RefreshTokenStore(verification, new TestTimeProvider(Now.AddHours(2)), NullLogger<RefreshTokenStore>.Instance);
+        await freshStore.RotateAsync(bystanderRaw, ct);
+    }
+
+    /// <summary>
+    /// Replay detection must keep working after the race is closed: presenting an already-consumed
+    /// credential later is still reuse, and still takes the whole family down.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_LosingRacerReplaysItsSpentToken_StillTriggersReuseRevocation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var barrier = new RefreshTokenReadBarrier();
+        var options = await postgres.CreateOptionsAsync(ct, barrier);
+        var userId = Guid.NewGuid();
+        string contestedRaw;
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            var setupStore = new RefreshTokenStore(setup, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+            contestedRaw = await setupStore.IssueAsync(userId, ct);
+        }
+
+        await using (var firstDb = new AppDbContext(options))
+        await using (var secondDb = new AppDbContext(options))
+        {
+            var firstStore = new RefreshTokenStore(firstDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+            var secondStore = new RefreshTokenStore(secondDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+            barrier.Arm();
+            await Task.WhenAll(
+                RotationOutcomeAsync(firstStore, contestedRaw, ct),
+                RotationOutcomeAsync(secondStore, contestedRaw, ct));
+        }
+
+        Assert.Equal(2, barrier.Arrivals);
+
+        await using var replayDb = new AppDbContext(options);
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var replayStore = new RefreshTokenStore(replayDb, new TestTimeProvider(Now.AddHours(2)), logger);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => replayStore.RotateAsync(contestedRaw, ct));
+
+        Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+        replayDb.ChangeTracker.Clear();
+        Assert.All(
+            await replayDb.RefreshTokens.AsNoTracking().ToListAsync(ct),
+            token => Assert.NotNull(token.RevokedAt));
+    }
+
+    /// <summary>
+    /// A rotation that read its credential while it was still active must not mint a successor
+    /// after reuse revocation has taken the family down. Once replay is detected, no new credential
+    /// may escape the revocation boundary.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_ReuseRevocationLandsMidRotation_RefusesToMintASuccessor()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hold = new RefreshTokenReadHold();
+        var options = await postgres.CreateOptionsAsync(ct, hold);
+        var userId = Guid.NewGuid();
+        string activeRaw;
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            var setupStore = new RefreshTokenStore(setup, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+            activeRaw = await setupStore.IssueAsync(userId, ct);
+            // A credential that has already been spent, so presenting it counts as replay.
+            setup.RefreshTokens.Add(Token(userId, "already-spent", Now.AddDays(-1), Now.AddDays(1), Now.AddHours(-1)));
+            await setup.SaveChangesAsync(ct);
+        }
+
+        await using var rotatingDb = new AppDbContext(options);
+        await using var replayingDb = new AppDbContext(options);
+        var rotatingStore = new RefreshTokenStore(rotatingDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+        var replayingStore = new RefreshTokenStore(replayingDb, new TestTimeProvider(Now.AddHours(1)), NullLogger<RefreshTokenStore>.Instance);
+
+        hold.Arm();
+        var rotating = RotationOutcomeAsync(rotatingStore, activeRaw, ct);
+        // The rotation is parked having read a live credential, not yet knowing it is doomed.
+        await hold.ArrivedAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => replayingStore.RotateAsync("already-spent", ct));
+        hold.Release();
+
+        var refusal = Assert.IsType<InvalidOperationException>(await rotating);
+        Assert.Equal("Invalid or expired refresh token.", refusal.Message);
+
+        await using var verification = new AppDbContext(options);
+        var rows = await verification.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        // Nothing survives the revocation, and no successor was created to outlive it.
+        Assert.All(rows, token => Assert.NotNull(token.RevokedAt));
+        Assert.Equal(2, rows.Count);
+    }
+
+    /// <summary>
+    /// A credential that appears behind revocation's first sweep must still be revoked. The
+    /// interleaving that creates one is a rotation committing inside that statement's execution
+    /// window: the successor is not in its snapshot, so a single sweep would leave it active and
+    /// nothing would ever revisit it — it would outlive the revocation meant to end it.
+    /// </summary>
+    [Fact]
+    public async Task RevokeAllActiveAsync_CredentialAppearsBehindTheFirstSweep_StillRevokesIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = await postgres.CreateOptionsAsync(ct);
+        var userId = Guid.NewGuid();
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            setup.RefreshTokens.Add(Token(userId, "present-at-the-sweep", Now.AddDays(-1), Now.AddDays(1)));
+            await setup.SaveChangesAsync(ct);
+        }
+
+        // The injector writes through plain options; the store runs on the same database with the
+        // injector attached, so its own first sweep is what triggers the extra credential.
+        var injector = new TokenInjectedBetweenSweeps(
+            options, userId, Hash("committed-behind-the-sweep"), Now.AddDays(1));
+        await using var db = new AppDbContext(postgres.WithInterceptors(options, injector));
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), NullLogger<RefreshTokenStore>.Instance);
+
+        await store.RevokeAllActiveAsync(userId, ct);
+
+        await using var verification = new AppDbContext(options);
+        var rows = await verification.RefreshTokens.AsNoTracking().ToListAsync(ct);
+        Assert.Equal(2, rows.Count);
+        // Both the credential the sweep saw and the one that landed behind it are spent.
+        Assert.All(rows, token => Assert.NotNull(token.RevokedAt));
+    }
+
+    /// <summary>
+    /// Revocation gives up rather than spinning when credentials keep appearing behind every sweep.
+    /// No ordinary client can cause this — minting a successor means spending the credential it
+    /// replaces, and those are already revoked — so it warns and returns instead of throwing:
+    /// callers run this as cleanup on a path that is itself about to reject the request, and a
+    /// different exception escaping here would change what that caller reports.
+    /// </summary>
+    [Fact]
+    public async Task RevokeAllActiveAsync_CredentialsKeepAppearing_WarnsInsteadOfSpinning()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = await postgres.CreateOptionsAsync(ct);
+        var userId = Guid.NewGuid();
+        await using (var setup = new AppDbContext(options))
+        {
+            await SeedUsersAsync(setup, ct, userId);
+            setup.RefreshTokens.Add(Token(userId, "present-at-the-sweep", Now.AddDays(-1), Now.AddDays(1)));
+            await setup.SaveChangesAsync(ct);
+        }
+
+        // More injections than the store will ever sweep, so every pass finds something new.
+        var injector = new TokenInjectedBetweenSweeps(
+            options, userId, Hash("relentless"), Now.AddDays(1), injections: 25);
+        await using var db = new AppDbContext(postgres.WithInterceptors(options, injector));
+        var logger = new FakeLogger<RefreshTokenStore>();
+        var store = new RefreshTokenStore(db, new TestTimeProvider(Now), logger);
+
+        await store.RevokeAllActiveAsync(userId, ct);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains("did not converge", entry.Message);
+        // The user id is safe to log; no credential material may appear alongside it.
+        Assert.Contains(userId.ToString(), entry.Message);
+        Assert.DoesNotContain(Hash("relentless"), entry.Message);
+    }
+
+    private static async Task<object> RotationOutcomeAsync(
+        RefreshTokenStore store,
+        string rawToken,
+        CancellationToken ct)
+    {
+        try
+        {
+            return await store.RotateAsync(rawToken, ct);
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
     }
 
     private static RefreshToken Token(

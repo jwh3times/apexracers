@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.8] - 2026-09-10
+
+### Security
+
+- Refreshing a session is now single-use under concurrency. Two requests presenting the same refresh
+  token could each read it while it was still valid and each be issued a successor, leaving a second
+  live session nobody asked for; the credential is now consumed by a conditional update, so the
+  database picks exactly one winner and the other request is refused. Replay of an already-spent
+  token still revokes every session the user holds, unchanged.
+- Revoking a user's sessions now repeats until nothing active remains. A rotation that committed
+  while the revocation was between reading the user's tokens and writing them produced a successor
+  the sweep never saw — and nothing revisited it, so that credential outlived the revocation meant
+  to end it.
+
+### Fixed
+
+- Losing a refresh race no longer signs a user out. Browser tabs share one stored credential while
+  the guard against refreshing twice at once is per tab, so two tabs can legitimately refresh
+  together; the tab that loses now adopts the credential the winning tab stored instead of clearing
+  the shared session for both.
+
 ## [9.0.7] - 2026-09-10
 
 ### Fixed
@@ -1208,7 +1229,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.7...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.8...HEAD
+[9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
 [9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7
 [9.0.6]: https://github.com/jwh3times/apexracers/compare/v9.0.5...v9.0.6
 [9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5
