@@ -93,6 +93,24 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   password policy) between a free and an already-registered address — that oracle is GHSA-72v6-mw4c-q96r.
   Flag a `LoginAsync` change that distinguishes an unconfirmed account's failure from an unknown
   address's, or that reorders the confirmation check to run after the lockout counter.
+- Flag any `LoginAsync`/`AuthController` change that reintroduces a status, body, or return shape
+  that varies with *why* a sign-in failed (a `LoginResult`-shaped type, a distinct lockout status
+  code, or any field beyond the single `AuthResultDto?`) — that pairing is GHSA-28pc-cx5w-g6jp: only
+  a real account can be locked, so a status unique to lockout enumerates the user list.
+- Flag a lockout ever reported in the sign-in response itself, including on a *correct* password —
+  that turns the lockout window into a password oracle. The lockout may only be disclosed by email
+  (`AccountEmailTemplates.AccountLocked`), sent once per lockout, never once per attempt.
+- Flag `AccessFailedAsync` called from the already-locked-out branch — Identity restarts the lockout
+  window on every recorded failure, so counting attempts made during a lockout lets a stranger hold
+  an account shut indefinitely.
+- Flag any `LoginAsync` refusal path that returns without going through `RefuseWithoutDisclosing` (or
+  an equivalent password-hash verification against a stand-in) — a refusal that skips the hash pays a
+  measurably smaller cost than an accepted attempt, which is what GHSA-28pc-cx5w-g6jp read account
+  existence off of.
+- Flag a `ResetPasswordAsync` change that lets an unknown address's message differ from an
+  `InvalidToken` result's, or that collapses a genuine password-policy error (any `result.Errors`
+  code besides `InvalidToken`) into that same generic wording — the latter would strand a real user,
+  who already holds a valid token, with no idea why their new password was refused.
 - Flag any path that creates a usable account (seeder, fixture, admin bootstrap) without setting
   `EmailConfirmed` — sign-in is gated on it, so an account created without it can never sign in.
 - For Claimed Identity updates, require the filtered `IRacingCustomerId` unique index to remain the

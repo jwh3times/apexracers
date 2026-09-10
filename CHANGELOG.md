@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.1] - 2026-09-09
+
 ### Security
 
 - A locked account is no longer distinguishable from an unregistered one. Sign-in used to answer
@@ -32,9 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking (API):** `POST /api/auth/login` no longer returns `423 Locked`. A locked account returns
-  the same `401` with "Invalid email or password." that every other failed sign-in returns. Clients
-  that special-cased `423` should drop that branch; no client action is required to keep working.
+- `POST /api/auth/login` no longer returns `423 Locked`. A locked account returns the same `401` with
+  "Invalid email or password." that every other failed sign-in returns. A client that special-cased
+  `423` to show a lockout message will now show the generic one instead and should drop that branch;
+  nothing has to change for a client to keep working.
 
 ## [9.0.0] - 2026-09-09
 
@@ -1088,7 +1093,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.1...HEAD
+[9.0.1]: https://github.com/jwh3times/apexracers/compare/v9.0.0...v9.0.1
 [9.0.0]: https://github.com/jwh3times/apexracers/compare/v8.0.13...v9.0.0
 [8.0.12]: https://github.com/jwh3times/apexracers/compare/v8.0.11...v8.0.12
 [8.0.11]: https://github.com/jwh3times/apexracers/compare/v8.0.10...v8.0.11
