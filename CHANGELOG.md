@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.2] - 2026-09-09
+
+### Security
+
+- The API now refuses to start when `JWT_SIGNING_KEY` is shorter than 32 bytes (256 bits). Any
+  non-empty value used to be accepted, so a short or low-entropy key set by an operator would boot
+  normally and then be brute-forceable offline from a single captured access token — HMAC-SHA256's
+  security is bounded by its key, and a key shorter than the digest is the weakest link. The startup
+  error names the variable and the measured length. The deployed key is well above the minimum, so
+  no environment needs a new one; `openssl rand -base64 48` generates a suitable value.
+- Bearer tokens are now accepted only when signed with HMAC-SHA256, the algorithm this API has
+  always issued. Validation previously left the accepted algorithm unset, so any HMAC variant the
+  library supports for a symmetric key would also have validated. This is defence in depth — an
+  attacker still needs the signing key either way — but it keeps the accepted set from widening as
+  the library's defaults change.
+
+### Changed
+
+- The signing credentials and the token-validation parameters are now built by `JwtSettings`, which
+  already owned the signing key, issuer, and audience. Each side used to construct its own, which is
+  how the algorithm came to be pinned on the issuing side and left open on the validating one; the
+  round-trip tests restated the validation parameters by hand for the same reason and now call the
+  same method `Program.cs` does.
+
 ## [9.0.1] - 2026-09-09
 
 ### Security
@@ -1093,7 +1117,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.2...HEAD
+[9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2
 [9.0.1]: https://github.com/jwh3times/apexracers/compare/v9.0.0...v9.0.1
 [9.0.0]: https://github.com/jwh3times/apexracers/compare/v8.0.13...v9.0.0
 [8.0.12]: https://github.com/jwh3times/apexracers/compare/v8.0.11...v8.0.12

@@ -94,17 +94,14 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
         return login!.Token;
     }
 
-    /// <summary>The exact parameters Program.cs builds, from the same settings object.</summary>
-    private static TokenValidationParameters ValidationFrom(JwtSettings jwt) => new()
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = jwt.SecurityKey(),
-        ValidateIssuer = true,
-        ValidIssuer = jwt.Issuer,
-        ValidateAudience = true,
-        ValidAudience = jwt.Audience,
-        ClockSkew = TimeSpan.Zero,
-    };
+    /// <summary>
+    /// The exact parameters Program.cs builds — the same call, not a copy of it. This used to
+    /// restate the parameter list by hand, which made it a second place the contract could drift
+    /// from the one Program.cs actually uses; <see cref="JwtSettings.ValidationParameters"/> now
+    /// owns it for both.
+    /// </summary>
+    private static TokenValidationParameters ValidationFrom(JwtSettings jwt) =>
+        jwt.ValidationParameters();
 
     [Fact]
     public async Task ATokenIssuedUnderCustomSettingsValidatesUnderTheSameSettings()

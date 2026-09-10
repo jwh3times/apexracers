@@ -86,6 +86,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag use of `[Authorize(Roles = "...")]` — this project uses claim-based policies (`RequireClaim("role", ...)`), not role-based authorization.
 - Flag any hardcoded JWT key, password, or secret in source code.
 - Flag any direct `config["JWT_SIGNING_KEY"]`/`config["JWT_ISSUER"]`/`config["JWT_AUDIENCE"]` read outside `JwtSettings` — the issuing and validating sides must derive the identical key/issuer/audience from one binding (`JwtSettings.FromConfiguration`, bound once in `Program.cs`), and a second, independent read is exactly how the two sides silently drift.
+- Flag any hand-built `SigningCredentials` or `TokenValidationParameters` instead of `JwtSettings.IssuingCredentials()` / `JwtSettings.ValidationParameters()` — that is how the validating side's algorithm pin (`ValidAlgorithms`) or the signing-key length floor (`JwtSettings.MinimumSigningKeyBytes`) would go missing on one side without the other noticing.
 - Flag self-assignable role changes that include `Admin` — self-service role changes must be limited to `Standard`, `Beta`, `Alpha`.
 - Flag any change that makes `AuthService.RegisterAsync` return a value again, or that makes
   `AuthController`'s register response vary (status code, body, or an Identity error message beyond

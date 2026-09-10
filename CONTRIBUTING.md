@@ -63,7 +63,7 @@ with review turnaround.
 ```bash
 git clone https://github.com/jwh3times/apexracers.git
 cd apexracers
-cp .env.example .env        # then fill in JWT_SIGNING_KEY
+cp .env.example .env        # then fill in JWT_SIGNING_KEY (>= 32 bytes: openssl rand -base64 48)
 
 docker compose up -d        # Postgres on :5432, pgAdmin on :5050
 

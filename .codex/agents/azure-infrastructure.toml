@@ -40,6 +40,13 @@ Secret names use **hyphens** in Key Vault. `HyphenToUnderscoreSecretManager` in 
 | `IRACING-CLIENT-ID`          | `IRACING_CLIENT_ID`          | Ingestion                  |
 | `IRACING-CLIENT-SECRET`      | `IRACING_CLIENT_SECRET`      | Ingestion                  |
 
+`JWT-SIGNING-KEY` must be **at least 32 bytes** (`JwtSettings.MinimumSigningKeyBytes`): the API
+signs with HMAC-SHA256 and refuses to start on a shorter key. Verify a vault's value before
+rolling out a release that enforces it — `az keyvault secret show --vault-name <vault> --name
+JWT-SIGNING-KEY --query "length(value)" -o tsv` reports the character count, which is a lower
+bound on the byte count. Generate a replacement with `openssl rand -base64 48`; rotating it
+invalidates every outstanding access token.
+
 `AZURE_KEY_VAULT_URL` env var triggers Key Vault config in both apps. Set this on the
 API app and ingestion worker; it is not a Key Vault secret itself.
 
