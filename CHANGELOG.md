@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.7] - 2026-09-10
+
+### Fixed
+
+- Telemetry uploads are now bounded at the 250 MB the upload page advertises, rather than the 500 MB
+  the API silently accepted. Both numbers now derive from one constant
+  (`ApexRacers.Core.TelemetryUpload`), so what is promised and what is enforced cannot drift apart
+  again. Every in-flight upload is buffered before it can be parsed, so the accepted size — not the
+  advertised one — was what set the per-request resource cost.
+- An oversized telemetry file is now refused with a `413` naming the limit, instead of the
+  framework's "One or more validation errors occurred." The upload page also checks a file's size
+  before sending it, so an oversized file is rejected immediately rather than after the whole upload
+  completes, and one oversized file in a multi-file selection no longer stops the rest from
+  uploading.
+
 ## [9.0.6] - 2026-09-10
 
 ### Changed
@@ -1193,7 +1208,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.6...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.7...HEAD
+[9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7
 [9.0.6]: https://github.com/jwh3times/apexracers/compare/v9.0.5...v9.0.6
 [9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5
 [9.0.4]: https://github.com/jwh3times/apexracers/compare/v9.0.3...v9.0.4

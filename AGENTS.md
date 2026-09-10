@@ -493,6 +493,16 @@ string before any `Track.ConfigName` persistence, while `NullIfAbsent` converts 
 `null` for every public response. Apply both at their respective boundaries; do not persist an
 upstream absence sentinel or expose the internal empty-string representation through the API.
 
+The Telemetry Upload size bound is a fifth shared boundary rule: `ApexRacers.Core.TelemetryUpload`
+owns `MaxFileSizeMegabytes`/`MaxFileSizeBytes` (250 MB — the number the upload page advertises and the
+number the API refuses a file for), `MaxRequestBytes` (the file bound plus 1 MB of multipart-framing
+headroom, enforced as the transport backstop `TelemetryController` reads for `[RequestSizeLimit]` /
+`[RequestFormLimits]`), and the derived `TooLargeMessage`. `web/src/features/telemetry/uploadLimits.ts`
+mirrors the megabyte bound in TypeScript so the upload page can refuse an oversized file before sending
+it; change the two together. `CONTEXT.md` does not define this bound — it is a transport/product limit,
+not a domain term — and the `dotnet-api` agent carries the call rule for why the request bound must stay
+strictly above the file bound.
+
 - `SeriesService`, `WeekCarStatsService` — series list (one card per series, on its Current Season); per-car week lap stats (median via `Core.FieldPercentile`). Current-season/current-week lookups across these two plus `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, and `CarRecommendationService` go through `SeasonQueries` (`src/ApexRacers.Api/Services/SeasonQueries.cs`) instead of a hand-written predicate. "Which season is current" is `Core.SeasonCalendar.CurrentSeasonId` — the season whose **first race week began most recently**, holding the slot through the inter-season gap until a later season's first race week start date arrives; iRacing flags the incoming season active before racing starts, so `Active` selects which _series_ appear, never which season backs them. A series with no season that has begun falls back to the newest active one. "Which week is the season in" is `Core.SeasonCalendar.CurrentRaceWeekIndex` (start date first, Race Week Index to break a tie), with the pre-season fallback left to the caller. Zero-based Race Week Indexes stay zero-based through persistence, APIs, route parameters, and frontend state; only upstream iRacing adapters retain `race_week_num` / `RaceWeekNum`, and only the display boundary converts an Index to a one-based Race Week Number. See `CONTEXT.md` for the canonical distinction.
 - `PercentileCalculationService` — compute + cache percentile (rank + median and presentability via `Core.FieldPercentile`; best lap + evidence via `Core.PersonalBest.Select`, with the Uploaded side bounded to the Race Week via `Core.RaceWeekWindow`); overlays world-record via `WorldRecordService`. Also reports the fastest Uploaded Lap the bound excluded (`UploadedBestOutsideWeekDto`) when it was faster than the Personal Best that got ranked.
   Cache writes require an existing caller whose `SubjectDriverContext` resolves to the requested
@@ -532,7 +542,8 @@ upstream absence sentinel or expose the internal empty-string representation thr
 - `TelemetryUploadService`, `UploadedLapService` — parse a Telemetry Upload into `UploadedLap` rows
   (one per timed lap); query the caller's Uploaded Bests. The upload is refused with a `400` when
   the file's recording Driver disagrees with the caller's Claimed Identity, **before** any row is
-  written — see `dotnet-api` for why the ordering is load-bearing.
+  written — see `dotnet-api` for why the ordering is load-bearing. `TelemetryController` refuses a
+  file over `Core.TelemetryUpload.MaxFileSizeBytes` (250 MB) with a `413` before either check runs.
 - `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
   Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility

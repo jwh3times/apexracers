@@ -194,7 +194,13 @@ Test cases:
 - Upload a 100-byte file — must be rejected (too small).
 - Upload a crafted binary with `sessionInfoOffset + sessionInfoLen > fileLen` — must be rejected without allocating the oversized buffer.
 - Upload a file with path traversal in the filename (`../../../etc/passwd`) — filename is not used for storage or execution; verify no path traversal occurs.
-- Test: upload an oversized file. Is there a request size limit enforced at the middleware layer (separate from IbtParser)?
+- Confirm the size bound is enforced twice, not once, and that the two bounds still disagree in the
+  right direction: a file over `TelemetryUpload.MaxFileSizeBytes` (250 MB) reaches the action and gets
+  a `413` naming the limit, while a request over `TelemetryUpload.MaxRequestBytes` (the file bound plus
+  1 MB of multipart headroom) is cut off during model binding — before the action runs — with a bare
+  `400` ("Failed to read the request form."). `MaxRequestBytes` must stay strictly above
+  `MaxFileSizeBytes`, or the `413` path is unreachable (GHSA-6hf4-vppr-mxpj — the upload page had
+  advertised 250 MB while the API's only enforced bound was a hardcoded 500 MB).
 
 ## Feature flags
 

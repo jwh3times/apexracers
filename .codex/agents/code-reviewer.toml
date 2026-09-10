@@ -163,6 +163,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag SQL injection risk from string interpolation in any query (EF Core LINQ is safe; raw SQL with user input is not).
 - Flag endpoints that return other users' data without checking the authenticated user's identity.
 - Flag file upload handlers that don't validate file type or size (telemetry upload should only accept `.ibt` content).
+- Flag a `[RequestSizeLimit]` / `[RequestFormLimits]` transport bound set less than or equal to a
+  service's own file-size check (`TelemetryUpload.MaxRequestBytes` must stay strictly above
+  `MaxFileSizeBytes`) — GHSA-6hf4-vppr-mxpj. Equal bounds make the in-action size check unreachable,
+  since a multipart request carrying a file at the bound is always larger than the file alone.
 - Flag `HandleCallbackAsync` being implemented without CSRF state validation — the TODO comment documents the required nonce check.
 - Flag any `uses:` in `.github/workflows/` that references a tag or branch instead of a full 40-hex
   commit SHA with a trailing `# vX.Y.Z` comment — GHSA-j6j2-8f7p-qv9r. A tag is mutable; the deploy
