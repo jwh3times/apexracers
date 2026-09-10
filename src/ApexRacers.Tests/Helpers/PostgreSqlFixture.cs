@@ -1,6 +1,7 @@
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Testcontainers.Xunit;
@@ -69,6 +70,28 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
         await using var context = new AppDbContext(options);
         await context.Database.EnsureCreatedAsync(ct);
         return options;
+    }
+
+    /// <summary>
+    /// Rebuilds options over the <em>same</em> database with different interceptors. Needed when a
+    /// test has to reach one database through two contexts that observe it differently — an
+    /// interceptor that writes through a plain context cannot be attached to the very options it
+    /// writes through, and <see cref="CreateOptionsAsync"/> would hand back a fresh database.
+    /// </summary>
+    public DbContextOptions<AppDbContext> WithInterceptors(
+        DbContextOptions<AppDbContext> options,
+        params IInterceptor[] interceptors)
+    {
+        // Scanned rather than looked up: FindExtension matches the exact type, and what is
+        // registered is the provider's own NpgsqlOptionsExtension, not the abstract relational base.
+        var connectionString = options.Extensions
+            .OfType<RelationalOptionsExtension>()
+            .Select(extension => extension.ConnectionString)
+            .First(value => value is not null)!;
+        return new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString)
+            .AddInterceptors(interceptors)
+            .Options;
     }
 
     private DbContextOptions<AppDbContext> BuildOptions(
