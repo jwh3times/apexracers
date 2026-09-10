@@ -186,6 +186,17 @@ Test cases:
   running container — verify it the way `docker-containers` does (a probe `COPY` build), not through
   request-based testing.
 
+**CI/CD supply chain (GHSA-j6j2-8f7p-qv9r)**
+
+- Every `uses:` across `.github/workflows/` is pinned to a full 40-hex commit SHA with a trailing
+  `# vX.Y.Z` comment; `deploy.yml`'s two deploy jobs additionally hold `id-token: write` and exchange
+  it for an Azure session that can push images and update App Service/Container Apps.
+- Test: grep `.github/workflows/*.yml` for a `uses:` line without a 40-hex SHA (a version tag or
+  branch name instead) — a hit reintroduces the finding this advisory closed.
+- This is a repository-configuration check against the workflow files, not something reachable from a
+  running container or the deployed app — report a finding here against the workflow YAML, not as an
+  app-level vulnerability.
+
 **Secret-name mapping collisions**
 
 - `HyphenToUnderscoreSecretManager` replaces hyphens with underscores. Check: could two configured secret names collide after transformation?

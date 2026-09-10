@@ -174,6 +174,25 @@ Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose ex
 - .NET SDK: `10.0`
 - .NET ASP.NET runtime: `10.0`
 - .NET runtime (ingestion): `10.0`
+
+### Base images stay on floating tags — deliberately, unlike the workflow actions
+
+Every `uses:` in `.github/workflows/` is pinned to a commit SHA (GHSA-j6j2-8f7p-qv9r). Base images
+are **not** pinned by digest, and that asymmetry is a decision, not an oversight — GHSA-4whp-7hv6-jvv6
+raised digest pinning and it was considered and declined:
+
+- These images come from first-party registries (`mcr.microsoft.com` and Docker Official Images), not
+  a community namespace where a retag is the realistic attack. The mutable-tag risk a SHA pin buys
+  off for a third-party action is much smaller here.
+- More importantly it cuts the other way. `mcr.microsoft.com/dotnet/*` and `node:*` are **rebuilt
+  frequently to carry OS-level CVE fixes under the same tag**. Floating `10.0` picks those up on the
+  next build; a digest pin freezes the image until a Dependabot PR is merged, so it trades automatic
+  CVE patching for immutability. For a base image that is exactly the wrong trade unless someone is
+  merging those bumps promptly.
+- A workflow action has no equivalent silent-rebuild channel, so pinning one costs nothing.
+
+If this is ever revisited, the thing that would change the answer is a commitment to merge base-image
+digest bumps on the same cadence they are published — not a general preference for pinning.
 - PostgreSQL: `18-alpine`
 
 When updating .NET base images, update both Dockerfiles together. The SDK version must match the `<TargetFramework>net10.0</TargetFramework>` in the `.csproj` files.

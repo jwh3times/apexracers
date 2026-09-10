@@ -204,6 +204,9 @@ Commit the generated migration files. Do **not** add `Version="..."` to
   `web/src/services/api.ts` (frontend).
 - `// TODO:` comments are acceptable as scaffolding stubs — always describe what
   needs implementing.
+- If your change adds or updates a step in `.github/workflows/`, pin its `uses:` to a full commit
+  SHA with a trailing `# vX.Y.Z` comment (not a mutable tag) — Dependabot's `github-actions`
+  ecosystem keeps the pin current from there.
 
 ## Commit messages
 

@@ -104,6 +104,22 @@ az containerapp update \
   --image "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
 ```
 
+## Deploy authentication and workflow supply chain
+
+`deploy.yml`'s API and ingestion deploy jobs hold `permissions: id-token: write` and exchange that
+token for an Azure session via OIDC — no stored client secret or registry password. Every `uses:`
+step across `.github/workflows/` is pinned to a full commit SHA with a trailing `# vX.Y.Z` comment
+rather than a mutable tag (GHSA-j6j2-8f7p-qv9r): a retagged or compromised third-party action would
+otherwise run inside the same job that mints that Azure token. `.github/dependabot.yml`'s
+`github-actions` ecosystem keeps the pins current; see the `code-reviewer` agent for the review rule.
+
+An OIDC federated credential is subject-matched to the ref (or, if the deploy jobs are later scoped to
+a GitHub `environment`, the environment) the workflow runs from. Moving to a scoped `environment`
+changes the subject the credential must accept, so a second subject has to be added to the credential
+*before* the workflow cuts over, not after, or the deploy jobs lose Azure authentication mid-migration.
+Exact federated-credential and subscription identifiers stay in
+`private/ops/azure-deployment-runbook.md`.
+
 ## CORS
 
 CORS is configured for Development only (`ViteDev` policy allowing `http://localhost:5173`). In production the React build is served from the same origin as the API (`wwwroot`), so no CORS headers are needed or set. Do not add CORS configuration for production.

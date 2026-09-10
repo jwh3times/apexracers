@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.4] - 2026-09-10
+
+### Security
+
+- Every GitHub Actions step is now pinned to a full commit SHA instead of a mutable tag. A tag can be
+  repointed at new code by whoever controls the action's repository, and two steps in the deploy job
+  run with `id-token: write` and exchange it for an Azure session that can push images and update
+  App Service and the Container App — so a retagged action would have executed inside the production
+  deployment path. The release each pin corresponds to is kept as a trailing comment, which is what
+  Dependabot reads to classify and rewrite the bump; pinning moves updates behind a reviewable PR
+  rather than delaying them.
+
 ## [9.0.3] - 2026-09-10
 
 ### Security
@@ -1137,7 +1149,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.4...HEAD
+[9.0.4]: https://github.com/jwh3times/apexracers/compare/v9.0.3...v9.0.4
 [9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
 [9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2
 [9.0.1]: https://github.com/jwh3times/apexracers/compare/v9.0.0...v9.0.1

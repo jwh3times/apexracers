@@ -704,6 +704,11 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
   (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
   in the `react-frontend` agent.
+- **Workflow supply chain:** every `uses:` step across `.github/workflows/` (including
+  `irongut/CodeCoverageSummary` above) is pinned to a full commit SHA with a trailing `# vX.Y.Z`
+  comment rather than a mutable tag — GHSA-j6j2-8f7p-qv9r; the deploy jobs hold `id-token: write`
+  against production. `.github/dependabot.yml`'s `github-actions` ecosystem reads that trailing
+  comment to keep pins current; see the `code-reviewer` agent for the review rule.
 - **Test DB providers:** `Helpers/DbContextFactory.Create()` gives the fast tests a fresh **in-memory
   SQLite** database. It validates relational SQL translation and column constraints; `Foreign Keys=False`
   deliberately permits minimal partial fixtures. SQLite does **not** validate production foreign keys,

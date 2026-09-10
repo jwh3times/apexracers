@@ -161,6 +161,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag endpoints that return other users' data without checking the authenticated user's identity.
 - Flag file upload handlers that don't validate file type or size (telemetry upload should only accept `.ibt` content).
 - Flag `HandleCallbackAsync` being implemented without CSRF state validation — the TODO comment documents the required nonce check.
+- Flag any `uses:` in `.github/workflows/` that references a tag or branch instead of a full 40-hex
+  commit SHA with a trailing `# vX.Y.Z` comment — GHSA-j6j2-8f7p-qv9r. A tag is mutable; the deploy
+  jobs run actions with `id-token: write` against production. Dependabot keeps the pins current, so
+  there is no reason to reintroduce a tag, and nothing fails if someone does.
 - Flag removal of `USER $APP_UID` (or any change that puts the final stage back on root) from
   `Dockerfile` or `ingestion.Dockerfile` — GHSA-4whp-7hv6-jvv6. Nothing in either image needs root:
   the API listens on unprivileged 8080 and the worker listens on nothing.

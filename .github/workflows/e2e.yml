@@ -69,17 +69,17 @@ jobs:
       GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE: "10000"
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "26"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "10.x"
 
@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report
           path: web/playwright-report/
@@ -122,7 +122,7 @@ jobs:
 
       - name: Upload refreshed visual baselines
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.update_snapshots == 'true' }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-baselines
           path: web/e2e/visual.spec.ts-snapshots/
