@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- A locked account is no longer distinguishable from an unregistered one. Sign-in used to answer
+  `423` once five wrong passwords locked an account, and only an account that exists can be locked,
+  so the status enumerated the user list. Every refusal — unknown address, unconfirmed address,
+  locked account, wrong password — is now the same generic `401`. The lockout is deliberately not
+  reported even for a correct password: doing so would let an attacker guessing through the lockout
+  window learn from the response that they had found it.
+- Password reset answers the same way for an address with no account and for a bad token. It used to
+  return "Invalid or expired password reset request." for the former and ASP.NET Identity's "Invalid
+  token." for the latter. Errors about the new password itself still surface, since they are only
+  reachable by someone who already followed a valid emailed link.
+- A refused sign-in now performs the same password hashing as an accepted one. An address with no
+  account previously answered before any hash was computed while a real one paid the full PBKDF2
+  cost, and the difference was wide enough to read account existence off the response time.
+- Repeated sign-in attempts made while an account is already locked no longer restart its lockout
+  window, so a stranger cannot extend a lockout by continuing to guess.
+
+### Added
+
+- The owner of an account that gets locked by repeated failed sign-ins is now told by email, which is
+  the only channel that reaches them rather than whoever is guessing. It is sent once per lockout.
+
+### Changed
+
+- **Breaking (API):** `POST /api/auth/login` no longer returns `423 Locked`. A locked account returns
+  the same `401` with "Invalid email or password." that every other failed sign-in returns. Clients
+  that special-cased `423` should drop that branch; no client action is required to keep working.
 
 ## [9.0.0] - 2026-09-09
 

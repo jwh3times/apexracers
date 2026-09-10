@@ -390,7 +390,10 @@ the deliberate format exception: middleware preserves the established exact JSON
 `{ code: "IRACING_NOT_LINKED", message: "…" }` instead of ProblemDetails. A claimed-identity conflict
 uses ordinary ProblemDetails with a non-disclosing `detail`. Services should just `throw`;
 don't catch to `BadRequest(string)`. Controllers still return explicit results for non-exception
-outcomes needing a specific code (e.g. AuthController's 423 lockout).
+outcomes needing a specific code (e.g. AuthController's `501` for the unimplemented OAuth callback).
+Sign-in is the deliberate counter-example: it has exactly two outcomes, `200` and a generic `401`.
+It used to answer `423` for a locked account, which only a real account can be, so the status
+enumerated the user list (GHSA-28pc-cx5w-g6jp) — see `dotnet-api` for the rule that keeps it closed.
 **Client disconnects are handled ahead of that mapping:** the pure `ClientDisconnectDetector` matches an
 `OperationCanceledException` or `BadHttpRequestException` raised while `HttpContext.RequestAborted` is
 signalled, and the middleware records it at Debug, sets **499** (nginx's "Client Closed Request"), and

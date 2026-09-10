@@ -48,19 +48,14 @@ function readAll(): DroppedEmail[] {
 }
 
 /**
- * Polls the drop directory for the newest email to `recipient` whose subject matches, then returns
- * the link from its text body as a parsed URL. Polls because delivery is a file write that races
- * the HTTP response the test just observed.
- *
- * The returned URL is built from APP_BASE_URL, which is the production host rather than the stack
- * under test — so callers navigate with its `searchParams` against their own origin rather than
- * following the href.
+ * Polls the drop directory for the newest email to `recipient` whose subject matches. Polls because
+ * delivery is a file write that races the HTTP response the test just observed.
  */
-export async function waitForEmailedLink(
+export async function waitForEmail(
   recipient: string,
   subjectPattern: RegExp,
   timeoutMs = 15_000
-): Promise<URL> {
+): Promise<DroppedEmail> {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
@@ -68,11 +63,7 @@ export async function waitForEmailedLink(
       .filter(e => e.to.toLowerCase() === recipient.toLowerCase() && subjectPattern.test(e.subject))
       .at(-1);
 
-    if (match) {
-      const link = /https?:\/\/\S+?\?[^\s"'<>]+/.exec(match.textBody);
-      if (!link) throw new Error(`Email "${match.subject}" carried no link with a query string.`);
-      return new URL(link[0]);
-    }
+    if (match) return match;
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 
@@ -81,6 +72,25 @@ export async function waitForEmailedLink(
       `${subjectPattern} in ${MAIL_DIR}. Is DEV_MAIL_DROP_PATH set on the API, and does ` +
       `E2E_MAIL_DIR point at the same directory from the host?`
   );
+}
+
+/**
+ * The credential-bearing link from a delivered email, as a parsed URL.
+ *
+ * Matches only a link that carries a query string, which is what every account link has and what
+ * distinguishes it from the plain `/forgot-password` address some notices also mention. The returned
+ * URL is built from APP_BASE_URL, the production host rather than the stack under test — so callers
+ * navigate with its `searchParams` against their own origin rather than following the href.
+ */
+export async function waitForEmailedLink(
+  recipient: string,
+  subjectPattern: RegExp,
+  timeoutMs = 15_000
+): Promise<URL> {
+  const email = await waitForEmail(recipient, subjectPattern, timeoutMs);
+  const link = /https?:\/\/\S+?\?[^\s"'<>]+/.exec(email.textBody);
+  if (!link) throw new Error(`Email "${email.subject}" carried no link with a query string.`);
+  return new URL(link[0]);
 }
 
 /** The `token` query value from the emailed link — see {@link waitForEmailedLink}. */

@@ -10,7 +10,7 @@ namespace ApexRacers.Api.Middleware;
 /// responses, with the status code chosen by <see cref="ExceptionStatusMapper"/>. The
 /// typed iRacing-not-linked failure retains its established <c>{ code, message }</c> JSON shape.
 /// Registered first in the pipeline so it wraps everything downstream. Controllers
-/// may still return explicit status results (e.g. 423 lockout, 404, 501) — those are
+/// may still return explicit status results (e.g. 404, 501) — those are
 /// ordinary results, not exceptions, and bypass this layer untouched.
 /// </summary>
 public class ExceptionHandlingMiddleware(

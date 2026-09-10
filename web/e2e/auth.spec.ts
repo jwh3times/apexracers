@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIResponse } from '@playwright/test';
 import {
   registerNewUser,
   confirmEmail,
@@ -7,7 +7,7 @@ import {
   uniqueEmail,
   TEST_PASSWORD,
 } from './helpers/users';
-import { waitForEmailedToken } from './helpers/mail';
+import { waitForEmail, waitForEmailedToken } from './helpers/mail';
 
 test.describe('auth flows', () => {
   test('logout ends the session and protects authed routes', async ({ page }) => {
@@ -66,6 +66,70 @@ test.describe('auth flows', () => {
 
     await confirmEmail(page, email);
     await login(page, email, TEST_PASSWORD);
+  });
+
+  test('a locked account is indistinguishable from an unregistered one', async ({ page }) => {
+    const email = await registerNewUser(page);
+    await logout(page);
+
+    // Program.cs locks after 5 consecutive failures.
+    for (let i = 0; i < 5; i++) {
+      await page.request.post('/api/auth/login', {
+        data: { email, password: 'DefinitelyWrong1' },
+      });
+    }
+
+    const lockedRightPassword = await page.request.post('/api/auth/login', {
+      data: { email, password: TEST_PASSWORD },
+    });
+    const lockedWrongPassword = await page.request.post('/api/auth/login', {
+      data: { email, password: 'DefinitelyWrong1' },
+    });
+    const unregistered = await page.request.post('/api/auth/login', {
+      data: { email: uniqueEmail(), password: TEST_PASSWORD },
+    });
+
+    // Only an account that exists can be locked, so a 423 named one — five wrong passwords against a
+    // registered address returned 423 while an unregistered one returned 401 forever
+    // (GHSA-28pc-cx5w-g6jp). The correct password matters most: answering it differently would let an
+    // attacker guessing through the lockout window learn they had found it.
+    expect(lockedRightPassword.status()).toBe(401);
+    expect(lockedWrongPassword.status()).toBe(401);
+    expect(unregistered.status()).toBe(401);
+
+    // traceId is per-request by design, so compare the fields that could carry the tell.
+    const shape = async (response: APIResponse) => {
+      const body = (await response.json()) as Record<string, unknown>;
+      return { title: body.title, status: body.status, detail: body.detail };
+    };
+    const baseline = await shape(unregistered);
+    expect(await shape(lockedRightPassword)).toEqual(baseline);
+    expect(await shape(lockedWrongPassword)).toEqual(baseline);
+
+    // The owner is told out of band instead — the one channel that reaches them and not the guesser.
+    const notice = await waitForEmail(email, /temporarily locked/i);
+    expect(notice.textBody).toMatch(/failed sign-in attempts/i);
+  });
+
+  test('reset-password answers the same for an unknown address and a bad token', async ({
+    page,
+  }) => {
+    const email = await registerNewUser(page);
+    await logout(page);
+
+    const onKnown = await page.request.post('/api/auth/reset-password', {
+      data: { email, token: 'not-a-real-token', newPassword: 'ApexRacer456' },
+    });
+    const onUnknown = await page.request.post('/api/auth/reset-password', {
+      data: { email: uniqueEmail(), token: 'not-a-real-token', newPassword: 'ApexRacer456' },
+    });
+
+    // This used to answer "Invalid or expired password reset request." for an address with no account
+    // and Identity's "Invalid token." for one that had.
+    expect(onKnown.status()).toBe(onUnknown.status());
+    const detailOf = async (response: APIResponse) =>
+      ((await response.json()) as Record<string, unknown>).detail;
+    expect(await detailOf(onKnown)).toBe(await detailOf(onUnknown));
   });
 
   test('password reset via the emailed link', async ({ page }) => {
