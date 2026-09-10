@@ -84,6 +84,14 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
             .Select(w => new { w.RaceWeekIndex, w.StartDate })
             .ToListAsync(ct);
         var availableRaceWeekIndices = weeks.Select(w => w.RaceWeekIndex).ToList();
+
+        // Same reasoning as the car class above: an arbitrary index is a distinct cache key and a
+        // distinct upstream fetch. Only a supplied value is checked — omitting it still falls back
+        // to the week in progress, because a standings page has to render some week.
+        if (raceWeekIndex is { } requestedWeek && !availableRaceWeekIndices.Contains(requestedWeek))
+            throw new KeyNotFoundException(
+                $"Race week index {requestedWeek} is not part of the current season of series {seriesId}.");
+
         var selectedRaceWeekIndex = raceWeekIndex
             ?? CurrentRaceWeekIndex(weeks.Select(w => (w.RaceWeekIndex, w.StartDate)));
 
@@ -144,6 +152,15 @@ public class StandingsService(AppDbContext db, CachedIRacingClient cached, IChun
             .OrderBy(cc => cc.Name)
             .Select(cc => new CarClassOptionDto(cc.Id, cc.Name))
             .ToListAsync(ct);
+
+        // A caller-supplied class has to be one this season actually races. Unvalidated, an
+        // arbitrary id produced an empty class name and, worse, a distinct cache key per value —
+        // so any caller could mint unbounded cache rows and unmetered upstream fetches
+        // (GHSA-jv96-89xc-98h2). Validating here covers all three standings endpoints at once,
+        // since each resolves through this method before touching the cache.
+        if (carClassId is { } requested && classes.All(c => c.CarClassId != requested))
+            throw new KeyNotFoundException(
+                $"Car class {requested} is not part of the current season of series {seriesId}.");
 
         var selectedClassId = carClassId ?? (classes.Count > 0 ? classes[0].CarClassId : (int?)null);
         if (selectedClassId is null)

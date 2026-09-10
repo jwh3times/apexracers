@@ -305,6 +305,40 @@ describe('ComparePage', () => {
     });
   });
 
+  it('caps the search box at the length the API accepts', async () => {
+    renderPage();
+    await screen.findByText('Max Power');
+
+    // The API answers 400 above 64 characters, and ComparePage's catch only distinguishes 503 —
+    // so without the cap a pasted long name would clear the results with no explanation at all.
+    expect(screen.getByPlaceholderText(/search drivers/i)).toHaveAttribute('maxLength', '64');
+  });
+
+  it('does not call the API for a term past the length the API accepts', async () => {
+    // maxLength stops typing and pasting, but it is a UI affordance, not a guarantee — the guard
+    // in the debounce is what keeps a request the API would refuse from being sent at all.
+    renderPage();
+    await screen.findByText('Max Power');
+
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), {
+      target: { value: 'a'.repeat(65) },
+    });
+
+    await waitFor(() => expect(mockSearch).not.toHaveBeenCalled());
+  });
+
+  it('still searches a term of exactly the maximum length', async () => {
+    // The boundary in the accepting direction — an off-by-one guard would pass the test above.
+    renderPage();
+    await screen.findByText('Max Power');
+
+    fireEvent.change(screen.getByPlaceholderText(/search drivers/i), {
+      target: { value: 'a'.repeat(64) },
+    });
+
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('a'.repeat(64)));
+  });
+
   it('marks an already-followed driver as Following in search results', async () => {
     mockSearch.mockResolvedValue([{ customerId: 200, driverName: 'Max Power' }]); // already a rival
     renderPage();

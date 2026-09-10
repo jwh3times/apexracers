@@ -34,6 +34,17 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client)
         Func<IDataClient, Task<T>> fetch,
         CancellationToken ct)
     {
+        // A key longer than the column is not a cache miss, it is a permanent cache *bypass*: the
+        // insert below throws, the catch treats that as a lost cold-start race, and every later
+        // request for the key repeats the live fetch. That is how unbounded user input reaching a
+        // key factory turned into unmetered iRacing traffic (GHSA-jv96-89xc-98h2). Key factories
+        // bound their inputs; this is the backstop that keeps a future one from failing silently.
+        if (spec.Key.Length > ExternalDataCache.CacheKeyMaxLength)
+            throw new ArgumentException(
+                $"Cache key exceeds the {ExternalDataCache.CacheKeyMaxLength}-character limit " +
+                $"({spec.Key.Length}); the key factory must bound its inputs.",
+                nameof(spec));
+
         var now = DateTimeOffset.UtcNow;
         var row = await db.ExternalDataCaches.FirstOrDefaultAsync(c => c.CacheKey == spec.Key, ct);
         if (row is not null && row.ExpiresAt > now)

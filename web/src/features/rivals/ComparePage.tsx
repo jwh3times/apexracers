@@ -290,6 +290,12 @@ function HeadToHead({ data }: { data: DriverComparison }) {
   );
 }
 
+// Mirrors the API's IRacingCacheKeys.MaxDriverSearchLength. The API is the enforcement — it
+// answers 400 above this — and duplicating the number here is what keeps a user who pastes a long
+// name from getting a silent "no results" instead of feedback. The search term is the only free
+// text that reaches an iRacing cache key (GHSA-jv96-89xc-98h2), which is why the API bounds it.
+const MaxSearchTermLength = 64;
+
 export default function ComparePage() {
   const demoFlag = useFeatureFlag('iracing-demo');
   const [rivalVersion, setRivalVersion] = useState(0);
@@ -319,7 +325,7 @@ export default function ComparePage() {
     // so a search already in flight would still land its result after unmount.
     let active = true;
     const id = setTimeout(() => {
-      if (q.length < 2) {
+      if (q.length < 2 || q.length > MaxSearchTermLength) {
         setResults([]);
         setSearchUnavailable(false);
         return;
@@ -405,6 +411,7 @@ export default function ComparePage() {
               value={term}
               onChange={e => setTerm(e.target.value)}
               placeholder="Search drivers by name…"
+              maxLength={MaxSearchTermLength}
               className="w-full btn-fluid-sm rounded-[7px] border border-line-2 bg-surface-container text-on-surface px-3"
               aria-label="Search drivers"
             />

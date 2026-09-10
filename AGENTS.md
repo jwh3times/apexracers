@@ -412,10 +412,16 @@ exceptions; verify with `web/e2e/csp.spec.ts` against the built SPA, not Vite. R
 global per-IP safety net, configurable via `GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 300**; CI/E2E
 raises it), plus a stricter per-IP `auth` policy on `AuthController` whose limit is configurable via
 `AUTH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 10**; CI/E2E raises it since the serial suite shares one
-runner IP). Those are the **API** defaults — `docker-compose.yml` raises both for the local stack too
+runner IP), plus a per-user `iracing-search` policy on `RivalsController`'s driver-search endpoint
+(partitioned by the `sub` claim, falling back to IP so the partition is total) whose limit is
+configurable via `SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE` (**default 30**) — driver search is the one
+iRacing-backed route taking free text, where each distinct term is its own cache key and its own
+upstream fetch against the shared service-account quota (GHSA-jv96-89xc-98h2), so bounding the term
+length alone doesn't bound how many distinct terms one caller can mint per minute. Those are the
+**API** defaults — `docker-compose.yml` raises both original limits for the local stack too
 (1000 / 10000), because the documented local E2E loop drives it in parallel from one loopback IP and at
 the API defaults the limiter starts returning 429 mid-run, which reads as unrelated test failures rather
-than as throttling. Set either var in `.env` to exercise the limiter locally. Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
+than as throttling. Set any of the three vars in `.env` to exercise the limiter locally. Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
 dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
 limiting needs forwarded headers enabled in deployed reverse-proxy environments. The hosted API uses
 platform telemetry for requests, dependencies, exceptions, and `ILogger` traces; `RequestLoggingMiddleware`
@@ -445,9 +451,9 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `SubsessionController`                | classified field for one subsession, with unrepresented-entry counts (**public**); per-lap pace trace (Authorize)                                                                         |
 | `ScheduleController`                  | active-season schedule + weather + BoP + caller's Uploaded Lap presence by Track (**public**)                                                                                             |
 | `LeaderboardController`               | global top-200 by iRating for a category                                                                                                                                                  |
-| `StandingsController`                 | championship / TT / qualifying standings per car class (**public**)                                                                                                                       |
+| `StandingsController`                 | championship / TT / qualifying standings per car class (**public**); a supplied car class or race week index not in the season's current data is a typed `404`                            |
 | `RaceGuideController`                 | official sessions starting in the next ~3 h (**public**)                                                                                                                                  |
-| `RivalsController`                    | rivals a user follows — list/add (idempotent)/remove, search, suggestions                                                                                                                 |
+| `RivalsController`                    | rivals a user follows — list/add (idempotent)/remove, search (`400` over `IRacingCacheKeys.MaxDriverSearchLength`; rate-limited per user), suggestions                                    |
 | `CompareController`                   | head-to-head between caller and a rival                                                                                                                                                   |
 | `CarsController` / `TracksController` | browsable car/track catalog + detail (**public**; Uploaded Best overlay; `404`)                                                                                                           |
 
@@ -505,9 +511,9 @@ upstream absence sentinel or expose the internal empty-string representation thr
 - `ScheduleService` — active-season schedule (Race Weeks + Track + weather/BoP) + caller's Uploaded Lap presence by Track.
 - `WorldRecordService` — fastest car+track lap (24 h); null when iRacing unconfigured.
 - `LeaderboardService` (+ pure `LeaderboardCsvParser`) — category global top-200 (24 h).
-- `StandingsService` (+ pure `QualifyResultsParser`, `IChunkDownloader`) — driver/TT/qualifying standings (24 h). Qualifying is special-cased: the SDK omits the qual lap time, so it downloads + parses the chunk files itself.
+- `StandingsService` (+ pure `QualifyResultsParser`, `IChunkDownloader`) — driver/TT/qualifying standings (24 h). Qualifying is special-cased: the SDK omits the qual lap time, so it downloads + parses the chunk files itself. A caller-supplied `carClassId` or `raceWeekIndex` is validated against the season's own `SeasonCarClasses`/weeks before it reaches a cache key or an upstream fetch, throwing `KeyNotFoundException` (→ 404) for a value that isn't one of them; an omitted value still falls back to the week in progress (GHSA-jv96-89xc-98h2).
 - `RaceGuideService` — "race now" board (60 s).
-- `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows).
+- `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows). A search term over `IRacingCacheKeys.MaxDriverSearchLength` (64) throws `ArgumentException` (→ 400) rather than searching, since the term is the only unbounded caller input reaching a cache key (GHSA-jv96-89xc-98h2); the endpoint is also rate-limited per user (see Rate limiting above).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
 - `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + Uploaded Best overlay; no creds at read time. Lists omit retired entries, while ID-based detail keeps them reachable with their class relationships and historical Uploaded Bests.
 - `UploadedBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
@@ -528,7 +534,7 @@ upstream absence sentinel or expose the internal empty-string representation thr
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
   (`MinimumRole` level ≤ user level), shared by `AdminService` and `SubjectDriverContext`. Unknown or role-less
   users receive Standard eligibility; an unknown `MinimumRole` fails closed.
-- `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent.
+- `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent. Also throws `ArgumentException` (→ 400) before ever fetching when `spec.Key` exceeds `ExternalDataCache.CacheKeyMaxLength` — an unstorable key isn't a cache miss, it's a permanent bypass, since the insert failure it would otherwise cause is indistinguishable from the cold-start uniqueness race `GetOrFetchAsync` already swallows (GHSA-jv96-89xc-98h2). This is the backstop; the actual bound belongs on the `IRacingCacheKeys` factory that built the key.
 - `SubjectDriverContext` — resolves the caller's Subject Driver, i.e. their Claimed Identity's Customer ID:
   optional callers use `GetSubjectDriverCustIdAsync` and receive null when the caller has no Claimed
   Identity; required callers use
@@ -599,7 +605,14 @@ into a default-valued (zeroed) object with no exception.
 Every cache key and its TTL is authored once, as a `CacheSpec` factory on
 `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the single
 source of truth for key format and freshness window, not this prose; a new cache-backed read path adds
-a factory there rather than interpolating a key at the call site. Eviction is TTL-only (lazy);
+a factory there rather than interpolating a key at the call site. **A factory that embeds unbounded
+caller input must bound it before composing the key** (e.g. `MaxDriverSearchLength` on the driver-search
+term) — `ExternalDataCache.CacheKeyMaxLength` (200) is a hard column limit, not a soft guideline, and
+`CachedIRacingClient.GetOrFetchAsync` only refuses an already-over-length key as a backstop
+(GHSA-jv96-89xc-98h2); a query-parameter value used as (or folded into) a key without its own bound —
+a car class id, a race week index, a free-text term — is validated by the service against the data it
+actually indexes (throwing `KeyNotFoundException`/`ArgumentException` as appropriate) before it ever
+reaches `IRacingCacheKeys`. Eviction is TTL-only (lazy);
 `ExternalDataCacheCleanupService` purges long-expired rows below the inclusive demo sentinel range and
 explicitly preserves that range even if the cleanup cutoff reaches it.
 

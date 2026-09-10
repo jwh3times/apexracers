@@ -1,4 +1,5 @@
 using ApexRacers.Api.Services;
+using ApexRacers.Core.Models;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -88,6 +89,48 @@ public class IRacingCacheKeysTests
     {
         // Null rather than a key, so a caller cannot accidentally cache a search it should refuse.
         Assert.Null(IRacingCacheKeys.DriverSearch(raw));
+    }
+
+    // ── Driver search upper bound (GHSA-jv96-89xc-98h2) ──────────────────────
+
+    [Fact]
+    public void TermIsTooLong_AcceptsExactlyTheMaximumAndRejectsOneMore()
+    {
+        Assert.False(IRacingCacheKeys.TermIsTooLong(
+            new string('a', IRacingCacheKeys.MaxDriverSearchLength)));
+        Assert.True(IRacingCacheKeys.TermIsTooLong(
+            new string('a', IRacingCacheKeys.MaxDriverSearchLength + 1)));
+    }
+
+    [Fact]
+    public void TermIsTooLong_MeasuresAfterTrimming()
+    {
+        // Surrounding whitespace is stripped before the key is built, so it must not count
+        // toward the bound either — otherwise a padded but legitimate term would be refused.
+        var padded = "  " + new string('a', IRacingCacheKeys.MaxDriverSearchLength) + "  ";
+
+        Assert.False(IRacingCacheKeys.TermIsTooLong(padded));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("jerry")]
+    public void TermIsTooLong_IsFalseForAbsentAndOrdinaryTerms(string? raw)
+    {
+        Assert.False(IRacingCacheKeys.TermIsTooLong(raw));
+    }
+
+    [Fact]
+    public void ATermAtTheMaximumStillFitsTheCacheKeyColumn()
+    {
+        // The bound exists to keep the composed key storable. Asserting the bound alone would
+        // not catch a future prefix change making the longest allowed term overflow anyway.
+        var longest = new string('a', IRacingCacheKeys.MaxDriverSearchLength);
+
+        var key = IRacingCacheKeys.DriverSearch(longest)!.Value.Key;
+
+        Assert.True(key.Length <= ExternalDataCache.CacheKeyMaxLength);
     }
 
     [Fact]

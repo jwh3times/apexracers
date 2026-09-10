@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.5] - 2026-09-10
+
+### Security
+
+- Driver search now refuses a term longer than 64 characters with a `400` instead of passing it
+  through. The term was the only free-text caller input that reached a cache key, and a key past the
+  200-character column could not be stored at all — which did not degrade to an uncached search but
+  to a live iRacing fetch on *every* request for that term, forever, against the shared service
+  account.
+- The standings, Time Trial standings, and qualifying-results endpoints now reject a car class that
+  is not in the season, and a race week index that is not one of the season's weeks, with a `404`
+  before any upstream call. Each distinct value was previously a distinct cache row and a distinct
+  fetch, on endpoints that need no authentication.
+- Driver search is additionally limited per signed-in user, defaulting to 30 requests a minute and
+  configurable via `SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE`. The length cap bounds any single key; only
+  a limiter bounds how many distinct terms one caller can spend the shared quota on. It is
+  partitioned by user rather than by IP because the route is authenticated and one address can carry
+  many users.
+
+### Changed
+
+- The cache client now refuses a key longer than the column can store, rather than attempting the
+  write and treating the failure as a lost cold-start race. That fallback is right for a duplicate
+  key and silently wrong for an over-long one, which is what turned unbounded input into unmetered
+  upstream traffic. Existing callers are unaffected — every key factory but driver search is built
+  from numeric identifiers.
+- The rival search box on Compare now stops at 64 characters and does not send a term past it. The
+  page only ever distinguished "search unavailable" from "no matches", so without this a pasted long
+  name would have come back as a silent empty result once the API started refusing it.
+
 ## [9.0.4] - 2026-09-10
 
 ### Security
@@ -1149,7 +1179,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.5...HEAD
+[9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5
 [9.0.4]: https://github.com/jwh3times/apexracers/compare/v9.0.3...v9.0.4
 [9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
 [9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2

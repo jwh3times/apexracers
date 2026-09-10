@@ -1,3 +1,4 @@
+using ApexRacers.Core.Models;
 using Aydsko.iRacingData.Member;
 
 namespace ApexRacers.Api.Services;
@@ -38,6 +39,16 @@ public static class IRacingCacheKeys
 
     /// <summary>Shortest term a driver search is cached under; below this the search is refused.</summary>
     public const int MinDriverSearchLength = 2;
+
+    /// <summary>
+    /// Longest term a driver search accepts. The term is the only unbounded caller input that
+    /// reaches a cache key, and an over-long key cannot be stored at all — which does not degrade
+    /// to "uncached", it degrades to "live iRacing fetch on every request, forever"
+    /// (GHSA-jv96-89xc-98h2). 64 characters is far beyond any real iRacing display name while
+    /// leaving the composed key comfortably inside
+    /// <see cref="ExternalDataCache.CacheKeyMaxLength"/>.
+    /// </summary>
+    public const int MaxDriverSearchLength = 64;
 
     // ── Member (6 h) ──────────────────────────────────────────────────────────
 
@@ -103,10 +114,22 @@ public static class IRacingCacheKeys
     /// <c>RivalService</c> as code and in the demo seed data as a doc-comment asking the author to
     /// hand-lowercase every dictionary key, with nothing enforcing that they matched.
     /// </summary>
+    /// <summary>
+    /// The cache spec for a driver search, or <c>null</c> when the term is too short to search on.
+    /// Too short returns null rather than throwing because a caller mid-keystroke is not making a
+    /// mistake; <see cref="TermIsTooLong"/> is the separate, rejectable case.
+    /// </summary>
     public static CacheSpec? DriverSearch(string rawTerm)
     {
         var normalized = (rawTerm ?? string.Empty).Trim();
         if (normalized.Length < MinDriverSearchLength) return null;
         return new CacheSpec($"driversearch:{normalized.ToLowerInvariant()}", DriverSearchTtl);
     }
+
+    /// <summary>
+    /// Whether a raw search term is past <see cref="MaxDriverSearchLength"/> once trimmed. Lives
+    /// here, beside the factory, so the bound and the key it protects cannot drift apart.
+    /// </summary>
+    public static bool TermIsTooLong(string? rawTerm) =>
+        (rawTerm ?? string.Empty).Trim().Length > MaxDriverSearchLength;
 }

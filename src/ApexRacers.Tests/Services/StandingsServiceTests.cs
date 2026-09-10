@@ -307,4 +307,83 @@ public class StandingsServiceTests
         await h.Downloader.DidNotReceive().DownloadAsync(
             Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>());
     }
+
+    // ── Unbounded inputs (GHSA-jv96-89xc-98h2) ───────────────────────────────
+    //
+    // Every one of these endpoints keys its cache on the caller's class and week, so an
+    // unvalidated value is not merely a wrong answer — it is a fresh cache row and a fresh
+    // upstream fetch per distinct value, on public endpoints. The assertions therefore check
+    // that nothing reached the client, not just that an exception came back.
+
+    [Fact]
+    public async Task GetDriverStandingsAsync_CarClassNotInTheSeason_ThrowsWithoutCallingUpstream()
+    {
+        var h = Build();
+        await using var _db = h.Db;
+
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => h.Service.GetDriverStandingsAsync(SeriesId, carClassId: 999999, Ct));
+
+        Assert.Contains("999999", ex.Message);
+        await h.Client.DidNotReceiveWithAnyArgs().GetSeasonDriverStandingsAsync(
+            default, default, default, default, default);
+        Assert.Empty(h.Db.ExternalDataCaches);
+    }
+
+    [Fact]
+    public async Task GetTimeTrialStandingsAsync_CarClassNotInTheSeason_ThrowsWithoutCallingUpstream()
+    {
+        var h = Build();
+        await using var _db = h.Db;
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => h.Service.GetTimeTrialStandingsAsync(SeriesId, carClassId: 999999, Ct));
+
+        await h.Client.DidNotReceiveWithAnyArgs().GetSeasonTimeTrialStandingsAsync(
+            default, default, default, default, default);
+        Assert.Empty(h.Db.ExternalDataCaches);
+    }
+
+    [Fact]
+    public async Task GetQualifyResultsAsync_RaceWeekIndexNotInTheSeason_ThrowsWithoutCallingUpstream()
+    {
+        // The harness seeds race week indexes 0..2.
+        var h = Build();
+        await using var _db = h.Db;
+
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => h.Service.GetQualifyResultsAsync(SeriesId, carClassId: null, raceWeekIndex: 51, Ct));
+
+        Assert.Contains("51", ex.Message);
+        await h.Client.DidNotReceiveWithAnyArgs().GetSeasonQualifyResultsAsync(
+            default, default, default, default, default);
+        Assert.Empty(h.Db.ExternalDataCaches);
+    }
+
+    [Fact]
+    public async Task GetQualifyResultsAsync_RaceWeekIndexZero_IsAcceptedNotTreatedAsAbsent()
+    {
+        // Race Week Index is zero-based, so index 0 is a real week. A validation written against
+        // a falsy value rather than a null one would reject the season's first week.
+        var h = Build();
+        await using var _db = h.Db;
+
+        var result = await h.Service.GetQualifyResultsAsync(
+            SeriesId, carClassId: null, raceWeekIndex: 0, Ct);
+
+        Assert.Equal(0, result.RaceWeekIndex);
+    }
+
+    [Fact]
+    public async Task GetDriverStandingsAsync_CarClassInTheSeason_IsStillAccepted()
+    {
+        // Guards against a validation that rejects everything.
+        var h = Build(standings: [Standing(1, 11, "A", 500, 3)]);
+        await using var _db = h.Db;
+
+        var result = await h.Service.GetDriverStandingsAsync(SeriesId, carClassId: 2000, Ct);
+
+        Assert.Equal(2000, result.CarClassId);
+        Assert.Single(result.Standings);
+    }
 }
