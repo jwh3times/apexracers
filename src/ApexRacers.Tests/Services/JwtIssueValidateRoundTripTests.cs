@@ -91,7 +91,7 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
             user!.Id, await userManager.GenerateEmailConfirmationTokenAsync(user), Ct);
 
         var login = await service.LoginAsync(new LoginRequest(email, "Pass1234"), Ct);
-        return login.Auth!.Token;
+        return login!.Token;
     }
 
     /// <summary>The exact parameters Program.cs builds, from the same settings object.</summary>

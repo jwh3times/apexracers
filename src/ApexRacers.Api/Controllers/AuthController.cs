@@ -38,19 +38,21 @@ public class AuthController(AuthService auth) : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
-        var result = await auth.LoginAsync(request, ct);
-        if (result.LockedOut)
-            return StatusCode(StatusCodes.Status423Locked,
-                "Account temporarily locked due to repeated failed sign-in attempts. Try again later.");
+        var auth401 = await auth.LoginAsync(request, ct);
+
+        // One refusal for every way a sign-in can fail. This used to answer 423 for a locked account,
+        // which only a real one can be — five wrong passwords against a registered address returned
+        // 423 while an unregistered one returned 401 forever, so the pair enumerated accounts
+        // (GHSA-28pc-cx5w-g6jp). The lockout now reaches its owner by email instead.
+        //
         // Carries an explicit Detail rather than a bare Unauthorized(): the client renders
-        // ProblemDetails.detail, and an automatic ProblemDetails has none. Deliberately
-        // ambiguous about which half was wrong, so this cannot be used to enumerate accounts.
-        return result.Auth is null
+        // ProblemDetails.detail, and an automatic ProblemDetails has none.
+        return auth401 is null
             ? Problem(
                 detail: "Invalid email or password.",
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Unauthorized")
-            : Ok(result.Auth);
+            : Ok(auth401);
     }
 
     [HttpPut("profile")]

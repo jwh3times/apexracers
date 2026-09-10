@@ -65,6 +65,31 @@ public static class AccountEmailTemplates
         return new OutboundEmail(toEmail, null, subject, html, text);
     }
 
+    /// <summary>
+    /// Sent the moment repeated failed sign-ins lock an account. The sign-in response itself stays
+    /// generic — saying "locked" there would tell whoever is guessing that they had found the
+    /// password — so this email is the only place the lockout is disclosed, and it goes to the one
+    /// party entitled to know.
+    /// </summary>
+    public static OutboundEmail AccountLocked(string toEmail, string resetUrl)
+    {
+        const string subject = "Your ApexRacers account was temporarily locked";
+        var html = Layout(
+            "Account temporarily locked",
+            "Too many failed sign-in attempts locked your ApexRacers account for a short period. It "
+            + "unlocks on its own shortly, and nothing about the account has changed. If this was you, "
+            + "wait a few minutes and try again — or reset your password below if you have forgotten it.",
+            "Reset your password", resetUrl,
+            "If this wasn't you, someone may be guessing your password. Resetting it now is the safest response.");
+        var text =
+            $"Your {BrandName} account was temporarily locked\n\n" +
+            "Too many failed sign-in attempts locked your account for a short period. It unlocks on " +
+            "its own shortly, and nothing about the account has changed.\n\n" +
+            $"If this was you, wait a few minutes and try again, or reset your password here:\n{resetUrl}\n\n" +
+            "If this wasn't you, someone may be guessing your password. Resetting it now is safest.";
+        return new OutboundEmail(toEmail, null, subject, html, text);
+    }
+
     public static OutboundEmail EmailChangeVerification(string toEmail, string verifyUrl)
     {
         const string subject = "Confirm your new ApexRacers email";

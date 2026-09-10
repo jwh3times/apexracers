@@ -18,7 +18,7 @@ The project guide `AGENTS.md` (already loaded into this session) already covers:
 
 ## Controllers — the .NET specifics
 
-AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. When that User's Subject Driver is needed, resolve it through `SubjectDriverContext` and name the resulting local `subjectDriverCustId`; a Customer ID supplied for an arbitrary Driver lookup is already the Subject Driver and does not go through that context. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. AuthController's 423 lockout, a `404`/`501`).
+AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. When that User's Subject Driver is needed, resolve it through `SubjectDriverContext` and name the resulting local `subjectDriverCustId`; a Customer ID supplied for an arbitrary Driver lookup is already the Subject Driver and does not go through that context. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. a `404`/`501`). Note sign-in is not one of these: it has exactly two outcomes, `200` and a generic `401` — see "Account existence never leaks out of the auth surface".
 
 ## Services — the .NET specifics
 
@@ -186,7 +186,7 @@ and email-change already held that line; registration is the one that had to be 
   still surfaces. `UserManager.CreateAsync` validates the password before it touches the store, so a
   weak password is rejected identically for a taken and a free address — don't reorder that by
   checking existence first, which would make the password error the new oracle.
-- `LoginAsync` refuses an unconfirmed account with `LoginResult.Invalid`, the same value an unknown
+- `LoginAsync` refuses an unconfirmed account with the same null an unknown
   address gets, **before** the lockout check and `AccessFailedAsync`. This is the half that actually
   closes the oracle: a generic registration response alone would still let an attacker register a
   victim's address and read the answer off whether their chosen password then works. Checking ahead
@@ -198,6 +198,35 @@ and email-change already held that line; registration is the one that had to be 
 Sign-in is gated on `EmailConfirmed`, so any environment that creates accounts outside registration
 (seeders, fixtures, an operator bootstrapping an Admin) must set it. Accounts predating the
 requirement were grandfathered by the `ConfirmPreExistingAccountEmails` migration.
+
+Sign-in and password reset carry the rest of it (GHSA-28pc-cx5w-g6jp):
+
+- `LoginAsync` returns `AuthResultDto?`, and **every** refusal is the same null. The return type has
+  nowhere to put a reason on purpose — it used to be a `LoginResult` record whose `LockedOut` flag
+  became a `423`, and only a real account can be locked, so five wrong passwords against a registered
+  address returned `423` while an unregistered one returned `401` forever. Do not reintroduce a type,
+  status, or body that varies with why the sign-in failed.
+- **Never report the lockout on a correct password**, tempting as it sounds. Doing so turns the
+  lockout window into a password oracle: an attacker guessing through it would learn from the
+  differing response that they had found the password, which is the one thing the lockout exists to
+  stop. The owner is told by email (`AccountEmailTemplates.AccountLocked`) at the moment it locks.
+- The lockout branch **must not** call `AccessFailedAsync`. Identity restarts the window on every
+  failure it records, so counting attempts made during a lockout lets a stranger hold an account shut
+  for as long as they keep asking.
+- Every refusal path goes through `RefuseWithoutDisclosing`, which verifies the submitted password
+  against a cached stand-in hash before returning. Without it an unknown address answers before any
+  hash is computed while a real one pays the full PBKDF2 cost, and that gap is readable on the clock.
+  It equalises the dominant cost, not the whole request — describe it as closing the measurable gap,
+  not as constant time.
+- `ResetPasswordAsync` answers `InvalidResetRequest` for both an unknown address and an `InvalidToken`
+  result. Identity verifies the token before it validates the new password and returns on the first
+  failure, so password-policy errors are only reachable once a valid token has been presented — by
+  someone who already controls the mailbox — and those still surface, because collapsing them would
+  strand a real user with no idea why their new password was refused.
+
+Still open on this surface: a stranger can lock any confirmed account for the lockout window and
+repeat it indefinitely. That denial of service is tracked separately on the project board; the
+advisory stays open until it lands.
 
 ### Refresh token rotation
 

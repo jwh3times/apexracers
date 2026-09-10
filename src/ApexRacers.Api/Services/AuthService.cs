@@ -90,11 +90,24 @@ public class AuthService(
             throw new InvalidOperationException("Invalid or expired email confirmation link.");
     }
 
-    public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    /// <summary>
+    /// Signs a caller in, or returns null. **Every** refusal is the same null — unknown address,
+    /// unconfirmed address, locked account, and wrong password are indistinguishable to the caller
+    /// (GHSA-28pc-cx5w-g6jp, GHSA-72v6-mw4c-q96r). The return type carries no reason on purpose;
+    /// there is nowhere to put one, so a future change cannot reopen the channel by accident.
+    /// </summary>
+    /// <remarks>
+    /// The lockout is deliberately silent here rather than reported once the right password arrives.
+    /// Reporting it on a correct password would turn the lockout window into a password oracle: an
+    /// attacker who kept guessing through it would learn they had found the password from the
+    /// lockout response alone, which is precisely what the lockout exists to prevent. The account's
+    /// owner is told by email instead, at the moment it locks.
+    /// </remarks>
+    public async Task<AuthResultDto?> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
-            return LoginResult.Invalid;
+            return RefuseWithoutDisclosing(request.Password);
 
         // An account whose address was never confirmed has to be indistinguishable from one that does
         // not exist, or registration is still an enumeration oracle: an attacker who registers a
@@ -102,12 +115,14 @@ public class AuthService(
         // (GHSA-72v6-mw4c-q96r). Checked ahead of both the lockout state and the password so an
         // unconfirmed account can be neither probed nor locked out by a stranger.
         if (!await userManager.IsEmailConfirmedAsync(user))
-            return LoginResult.Invalid;
+            return RefuseWithoutDisclosing(request.Password);
 
-        // A locked-out account is denied before the password is even checked, so a
-        // correct guess during the lockout window still fails.
+        // A locked-out account is denied before the password is even checked, so a correct guess
+        // during the lockout window still fails. The counter is deliberately NOT incremented here:
+        // Identity restarts the lockout window on every AccessFailedAsync, so counting attempts made
+        // during a lockout would let a stranger hold an account shut indefinitely.
         if (await userManager.IsLockedOutAsync(user))
-            return LoginResult.Locked;
+            return RefuseWithoutDisclosing(request.Password);
 
         if (!await userManager.CheckPasswordAsync(user, request.Password))
         {
@@ -115,14 +130,21 @@ public class AuthService(
             // does, so increment the counter manually; it locks the account once the
             // configured MaxFailedAccessAttempts threshold is reached.
             await userManager.AccessFailedAsync(user);
-            return await userManager.IsLockedOutAsync(user) ? LoginResult.Locked : LoginResult.Invalid;
+
+            // Crossing the threshold is the one moment the owner can be told, and email is the only
+            // channel that reaches them rather than whoever is guessing. Identity zeroes the counter
+            // when it locks, so this fires once per lockout, not once per attempt.
+            if (await userManager.IsLockedOutAsync(user))
+                await SendLockoutNoticeAsync(user, ct);
+
+            return null;
         }
 
         await userManager.ResetAccessFailedCountAsync(user);
 
         var jwt     = await GenerateJwtAsync(user);
         var refresh = await refreshTokens.IssueAsync(user.Id, ct);
-        return LoginResult.Success(new AuthResultDto(jwt, user.Id, user.DisplayName, refresh));
+        return new AuthResultDto(jwt, user.Id, user.DisplayName, refresh);
     }
 
     public async Task<AuthResultDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
@@ -303,12 +325,24 @@ public class AuthService(
     public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email)
-            ?? throw new InvalidOperationException("Invalid or expired password reset request.");
+            ?? throw new InvalidOperationException(InvalidResetRequest);
 
         var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
         if (!result.Succeeded)
+        {
+            // An unknown address and a bad token must read identically, or the wording is an
+            // enumeration oracle: this used to answer "Invalid or expired password reset request."
+            // for an address with no account and Identity's "Invalid token." for one that had
+            // (GHSA-28pc-cx5w-g6jp). Identity verifies the token before it validates the new
+            // password and returns on the first failure, so an InvalidToken result is exactly that
+            // case. Password-policy errors are only reachable once a valid token has been
+            // presented — by someone who already controls the mailbox — so those still surface.
+            if (result.Errors.Any(e => e.Code == "InvalidToken"))
+                throw new InvalidOperationException(InvalidResetRequest);
+
             throw new InvalidOperationException(
                 string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
 
         // Following the emailed link proves control of the mailbox just as the confirmation link does,
         // so a reset also confirms the address. Without this, anyone whose confirmation email went
@@ -349,6 +383,60 @@ public class AuthService(
         => throw new NotImplementedException();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The single wording every password-reset failure that is not about the submitted password uses.
+    /// </summary>
+    private const string InvalidResetRequest = "Invalid or expired password reset request.";
+
+    /// <summary>
+    /// A real hash of a value no account uses, held for the life of the process. Cached because
+    /// producing it costs the same as verifying it, and paying that twice on a refused request would
+    /// overshoot the very cost this is meant to match.
+    /// </summary>
+    private static string? _dummyPasswordHash;
+
+    /// <summary>
+    /// Stand-in passed to the hasher on the refusal path. <see cref="PasswordHasher{TUser}"/> ignores
+    /// the user, but the parameter is not optional and <see cref="ApplicationUser"/> has required
+    /// members, so one throwaway instance serves every call.
+    /// </summary>
+    private static readonly ApplicationUser HashStandIn = new() { DisplayName = string.Empty };
+
+    /// <summary>
+    /// Refuses a sign-in after doing the password work the accepted path would have done.
+    /// </summary>
+    /// <remarks>
+    /// Without this, an address with no account answers before any hash is computed while a real one
+    /// pays the full PBKDF2 cost, and the gap is wide enough to read account existence off the clock
+    /// (GHSA-28pc-cx5w-g6jp). Verifying against a stand-in hash puts the same dominant cost on both
+    /// paths. It equalises that cost, not the whole request — the surrounding database work still
+    /// differs slightly — so treat it as closing the measurable gap rather than as constant time.
+    /// </remarks>
+    private AuthResultDto? RefuseWithoutDisclosing(string? password)
+    {
+        // Built from the injected hasher rather than a fresh one, so it keeps matching the configured
+        // work factor if that is ever tuned. A race here is harmless: both racers compute an equally
+        // valid hash and the cost is identical either way.
+        _dummyPasswordHash ??= userManager.PasswordHasher.HashPassword(HashStandIn, "not-a-real-password");
+        userManager.PasswordHasher.VerifyHashedPassword(
+            HashStandIn, _dummyPasswordHash, password ?? string.Empty);
+        return null;
+    }
+
+    /// <summary>
+    /// Tells the account's owner it has been locked, which is the only disclosure of the lockout that
+    /// reaches them rather than whoever is guessing. See <see cref="LoginAsync"/> for why the HTTP
+    /// response cannot carry it.
+    /// </summary>
+    private async Task SendLockoutNoticeAsync(ApplicationUser user, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(user.Email))
+            return;
+
+        await emailSender.SendAsync(
+            AccountEmailTemplates.AccountLocked(user.Email, $"{BaseUrl}/forgot-password"), ct);
+    }
 
     /// <summary>
     /// Identity's codes for "this account already exists". They are the only <see cref="RegisterAsync"/>
@@ -423,13 +511,3 @@ public class AuthService(
     }
 }
 
-/// <summary>
-/// Outcome of a login attempt. <see cref="Auth"/> is non-null only on success;
-/// <see cref="LockedOut"/> distinguishes a throttled account from bad credentials.
-/// </summary>
-public record LoginResult(AuthResultDto? Auth, bool LockedOut)
-{
-    public static LoginResult Success(AuthResultDto auth) => new(auth, false);
-    public static readonly LoginResult Invalid = new(null, false);
-    public static readonly LoginResult Locked  = new(null, true);
-}

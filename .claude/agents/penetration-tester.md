@@ -42,6 +42,33 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   notification email (resend confirmation, or a security notice) but must not measurably differ in
   response latency or shape from the account-creation path in a way a network observer could use.
 
+**Sign-in & password-reset enumeration (GHSA-28pc-cx5w-g6jp)**
+
+- `POST /api/auth/login` — every refusal (unknown address, unconfirmed address, locked account, wrong
+  password) returns the identical generic `401` body `{ detail: "Invalid email or password." }`.
+  There is no `423` or any other status that fires only for an account that exists — that used to be
+  the oracle: five wrong passwords against a registered address returned `423` while an unregistered
+  one returned `401` forever.
+- Test: register + confirm an account, fail its password 5 times (`MaxFailedAccessAttempts`) to lock
+  it, then sign in with the *correct* password — the response must be byte-identical to signing in
+  against an address with no account at all. This is the core finding to re-verify.
+- Test: while an account is locked, keep sending wrong passwords — `LockoutEnd` must not move forward
+  (Identity would otherwise restart the window on every recorded failure), and exactly one lockout
+  notification email is sent for the whole episode, not one per attempt.
+- Test: time an unknown-address attempt against a real-address wrong-password attempt, including a
+  locked account — all three must pay the same dominant password-hashing cost (the service verifies
+  every refusal against a cached stand-in hash). A measurable gap here is the same class of oracle as
+  the registration-timing test above.
+- `POST /api/auth/reset-password` — an unknown address and an expired/invalid token must produce
+  byte-identical `400` bodies (`"Invalid or expired password reset request."`). A weak new password
+  submitted against a *valid* token still surfaces its own policy message — that path is reachable
+  only by someone who already controls the mailbox, so it is not part of this oracle; don't flag it.
+- **Known open gap, tracked separately (issue #300; the advisory stays open until it lands):** the
+  tests above close the *enumeration*, not the underlying denial-of-service — five wrong passwords
+  against any known email still lock that account for the 15-minute window, and an unauthenticated
+  caller can repeat that indefinitely within the shared per-IP `auth` rate-limit policy (default 10
+  req/min). Confirm it still reproduces; don't report it as a new finding.
+
 **Refresh token endpoints**
 
 - `POST /api/auth/refresh` — no `[Authorize]`; accepts `{ refreshToken }`, returns new JWT + new refresh token. Raw token is never stored; the DB holds its SHA-256 hash.

@@ -119,12 +119,14 @@ describe('api', () => {
     });
 
     it('unwraps a JSON-encoded string body without leaving quotes in the message', async () => {
-      // AuthController returns the 423 lockout as a bare string; if it is serialized as
-      // JSON rather than text/plain, the raw body carries surrounding quotes.
+      // Some endpoints return a bare string rather than ProblemDetails — AuthController's OAuth
+      // callback is one. If that string is serialized as JSON rather than text/plain, the raw body
+      // carries surrounding quotes. (The 423 lockout used to be the example here; sign-in no longer
+      // has an outcome other than 200 and 401 — see GHSA-28pc-cx5w-g6jp.)
       mockFetchError({
-        status: 423,
-        statusText: 'Locked',
-        body: JSON.stringify('Account temporarily locked. Try again later.'),
+        status: 501,
+        statusText: 'Not Implemented',
+        body: JSON.stringify('iRacing OAuth linking is not yet available.'),
       });
 
       let caught: unknown;
@@ -134,7 +136,7 @@ describe('api', () => {
         caught = err;
       }
 
-      expect((caught as ApiError).message).toBe('Account temporarily locked. Try again later.');
+      expect((caught as ApiError).message).toBe('iRacing OAuth linking is not yet available.');
     });
 
     it('still surfaces a plain-text (non-JSON) error body as-is', async () => {
