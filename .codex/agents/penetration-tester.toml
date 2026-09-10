@@ -131,6 +131,42 @@ Policies in `Program.cs`:
 - `GET /api/users/me/analytics` — `/me/` in path should return only the authenticated user's data. Verify the service resolves user from JWT `sub` claim, not from a query parameter.
 - `GET /api/telemetry/laps` — verify data is scoped to the authenticated user.
 
+## Unbounded query inputs and cache-key bypass (GHSA-jv96-89xc-98h2)
+
+An iRacing-backed read path that folds caller-controlled input into an `ExternalDataCache` key without
+its own bound turns into unmetered live iRacing traffic rather than a cache miss: a key over
+`ExternalDataCache.CacheKeyMaxLength` (200) fails to insert, and `CachedIRacingClient.GetOrFetchAsync`'s
+race-tolerant `catch (DbUpdateException) when (row is null)` (meant for a legitimate cold-start
+uniqueness race) can't tell that failure apart from the length violation — so the caller's fetch goes
+live to iRacing on *every* request for that key, forever, with nothing in the response distinguishing
+it from a normal cache miss.
+
+- `GET /api/users/me/rivals/search?term=<...>` — the one iRacing-backed route taking free text. `term` is
+  capped at `IRacingCacheKeys.MaxDriverSearchLength` (64) and refused with `400` above it; below
+  `IRacingCacheKeys.MinDriverSearchLength` (2) it returns an empty list rather than erroring (a caller
+  mid-keystroke). It also sits behind the per-user `iracing-search` rate-limit policy
+  (`SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE`, default 30/min, partitioned by the `sub` claim).
+  - Test: send a term at exactly 64 chars (accepted), 65 chars (400), and just under 2 chars (empty
+    list, not an error).
+  - Test: send 65+ chars via URL-encoding, repeated whitespace, or a term that only exceeds the bound
+    after trimming — confirm the check runs on the trimmed value, matching what the key factory hashes.
+  - Test: issue 31+ distinct valid search terms from one authenticated user inside a minute — expect
+    `429` once the `iracing-search` policy's limit is hit, independent of the global and `auth`
+    policies.
+  - Test: confirm the response for an over-length term never reaches the cache or iRacing (no delay
+    consistent with a live upstream call).
+- `GET /api/series/:id/standings` (and the TT/qualifying variants) — a caller-supplied `carClassId` or
+  `raceWeekIndex` not present in the resolved season is refused `404` before any cache lookup.
+  - Test: supply a `carClassId`/`raceWeekIndex` far outside any real season's range (e.g. `-1`,
+    `999999`) — expect `404`, not a cache row keyed on the arbitrary value.
+  - Test: supply `raceWeekIndex=0` for a season that has a week at index 0 — must succeed (zero is a
+    real Race Week Index, not "missing"); don't mistake a `404` here for correct behavior.
+  - Test: omit `carClassId`/`raceWeekIndex` entirely — must still resolve to the season's first class /
+    week in progress, confirming the validation only rejects a *supplied* bad value.
+- General probe for any other iRacing-backed endpoint taking a query parameter: does an extreme-length
+  or arbitrary-ID value produce a distinctly slower response consistent with an uncached live fetch on
+  repeat requests? That timing signature is how this class of bug was found.
+
 ## iRacing OAuth callback (incomplete)
 
 `POST /api/auth/callback?code=&state=` — currently throws `NotImplementedException`.

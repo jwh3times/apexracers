@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.5] - 2026-09-10
+
 ### Security
 
 - Driver search now refuses a term longer than 64 characters with a `400` instead of passing it
@@ -31,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   key and silently wrong for an over-long one, which is what turned unbounded input into unmetered
   upstream traffic. Existing callers are unaffected — every key factory but driver search is built
   from numeric identifiers.
+- The rival search box on Compare now stops at 64 characters and does not send a term past it. The
+  page only ever distinguished "search unavailable" from "no matches", so without this a pasted long
+  name would have come back as a silent empty result once the API started refusing it.
 
 ## [9.0.4] - 2026-09-10
 
@@ -1172,7 +1179,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.5...HEAD
+[9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5
 [9.0.4]: https://github.com/jwh3times/apexracers/compare/v9.0.3...v9.0.4
 [9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
 [9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2

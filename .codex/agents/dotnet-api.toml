@@ -105,6 +105,28 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 `CachedIRacingClient(AppDbContext db, IDataClient? client)` — `GetOrFetchAsync<T>(CacheSpec spec, Func<IDataClient, Task<T>> fetch, CancellationToken ct)`. `CacheSpec` (`Key` + `Ttl`) always comes from a factory on `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the sole author of every key string and its TTL; adding a cache-backed read path means adding a factory there, never interpolating a key at the call site. `client` is nullable rather than resolved from an `IServiceProvider`: it's registered in `Program.cs` via an explicit factory lambda (`sp.GetService<IDataClient>()`) because the SDK client itself is only registered when all four `IRACING_*` credentials are present; a null `client` on a cache miss throws `IRacingNotConfiguredException`. There is no `IsConfigured` property — check for a 503 by attempting the call, not by probing state first.
 
+**Bound unbounded caller input before it reaches a key, not after (GHSA-jv96-89xc-98h2).** A key
+factory on `IRacingCacheKeys` that folds in free-text or ID-shaped caller input owns its own length
+bound beside the factory — `MaxDriverSearchLength` next to `DriverSearch(...)`, checked via the paired
+`TermIsTooLong(...)` at the call site (`RivalService.SearchDriversAsync`) before the factory is even
+called. `GetOrFetchAsync` also throws `ArgumentException` when `spec.Key` exceeds
+`ExternalDataCache.CacheKeyMaxLength` (200), but treat that as a backstop, not the control: a key that
+reaches this check has already failed to persist once, and the existing
+`catch (DbUpdateException) when (row is null)` a few lines below — written for the legitimate
+cold-start uniqueness race — cannot tell that failure apart from a real one without the explicit length
+check, which is exactly how an over-long key used to degrade into a live iRacing fetch on every
+request instead of an error. A caller-supplied value that indexes something the service already
+knows the valid set of (a car class id, a race week index) isn't a key-length problem at all — validate
+it against that set (`StandingsService.ResolveAsync`/`GetQualifyResultsAsync` throw
+`KeyNotFoundException` for a `carClassId`/`raceWeekIndex` not in the current season) before it ever
+composes a key, the same way a service-level check guards the free-text case.
+
+Driver search additionally sits behind its own rate-limit policy (`"iracing-search"` in `Program.cs`,
+config `SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE`, default 30/min, partitioned by the `sub` claim) —
+alongside the project guide's `auth` policy — because the length bound caps one key's size but not how
+many distinct valid terms one caller can mint per minute, each its own cache row and its own upstream
+fetch.
+
 ## DTOs
 
 `record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)

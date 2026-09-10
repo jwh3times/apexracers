@@ -79,6 +79,8 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 **iRacing cache keys**
 
 - Flag any `ExternalDataCache` key built by interpolating a string at the call site (in a service, in `DemoCacheSeeder`, or in `DemoSeedVerifier`) instead of calling a factory on `IRacingCacheKeys`. That module is the sole author of every key and its paired TTL — a call site should never construct its own `CacheSpec`.
+- Flag a new `IRacingCacheKeys` factory that folds in caller-controlled free text or an ID-shaped value with no length/membership bound of its own (GHSA-jv96-89xc-98h2) — an unbounded input reaching a key isn't merely an oversized row, it's a permanent cache bypass: `CachedIRacingClient.GetOrFetchAsync`'s `catch (DbUpdateException) when (row is null)` (written for the legitimate cold-start uniqueness race) cannot distinguish that race from a length-violation insert failure, so every later request for the same over-long key goes live to iRacing. A caller-supplied ID that indexes a known set (a car class id, a race week index) should be validated against that set before it reaches a key at all, not just length-capped.
+- Flag any change to `ExternalDataCache.CacheKeyMaxLength`, the `HasMaxLength` in `ExternalDataCacheConfiguration`, or `GetOrFetchAsync`'s pre-fetch length check that leaves the three out of sync — they're one bound enforced in three places (constant, EF config, runtime guard) and drift between them reopens the bypass above silently.
 
 **Auth and RBAC**
 
