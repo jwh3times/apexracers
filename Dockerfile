@@ -25,4 +25,8 @@ COPY --from=api-build /publish     ./
 COPY --from=frontend  /app/dist    ./wwwroot
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
+# The aspnet image ships a non-root `app` user (UID 1654 via APP_UID) but does not
+# switch to it. Root in the container turns any future RCE into a container-escape
+# problem, and 8080 is unprivileged, so nothing here needs it.
+USER $APP_UID
 ENTRYPOINT ["dotnet", "ApexRacers.Api.dll"]

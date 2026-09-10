@@ -7,3 +7,16 @@ tools/
 .vs/
 .idea/
 *.md
+
+# Local secrets and maintainer-only material must never reach the daemon as build
+# context. Nothing below is copied by either Dockerfile, but context is sent whole:
+# an excluded file cannot be copied into an intermediate layer by a later `COPY`,
+# and cannot sit in the daemon's context cache.
+.env
+.env.*
+**/.env*
+private/
+
+# Holds coverage output and, from the Compose mail drop, outbound account emails
+# as JSON — those carry live password-reset links in cleartext.
+TestResults/

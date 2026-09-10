@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.3] - 2026-09-10
+
+### Security
+
+- The API and ingestion containers now run as the non-root `app` user (UID 1654) that the .NET base
+  images ship but do not switch to. Both ran as root, which turns any future remote-code-execution
+  bug into a container-escape problem and is flagged by most image scanners. Nothing in either image
+  needed root — the API listens on 8080, which is unprivileged, and the worker listens on nothing.
+- The Docker build context no longer includes `.env`, any `.env.*`, `private/`, or `TestResults/`.
+  Neither Dockerfile copies them, but the context is sent to the daemon whole, so a local build on a
+  maintainer's workstation put real credentials within reach of a broad `COPY` and left them in the
+  daemon's context cache. `TestResults/` matters because the Compose mail drop writes outbound
+  account emails there as JSON, carrying live password-reset links in cleartext.
+
+### Changed
+
+- `docker-compose.yml` records what the non-root image means for the Development mail drop: a bind
+  mount keeps the host directory's ownership, so on a Linux host the mount needs to run as the
+  invoking user. Docker Desktop is unaffected.
+
 ## [9.0.2] - 2026-09-09
 
 ### Security
@@ -1117,7 +1137,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.3...HEAD
+[9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
 [9.0.2]: https://github.com/jwh3times/apexracers/compare/v9.0.1...v9.0.2
 [9.0.1]: https://github.com/jwh3times/apexracers/compare/v9.0.0...v9.0.1
 [9.0.0]: https://github.com/jwh3times/apexracers/compare/v8.0.13...v9.0.0

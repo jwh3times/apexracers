@@ -171,6 +171,21 @@ Test cases:
 
 ## Infrastructure and configuration
 
+**Container privilege (GHSA-4whp-7hv6-jvv6)**
+
+- Both runtime images (`Dockerfile`, `ingestion.Dockerfile`) run as the non-root `app` user
+  (`USER $APP_UID`, UID 1654) rather than root.
+- Test: `docker compose exec -T api id` (and the ingestion container, with `--profile ingestion`)
+  must report `uid=1654(app)`, not `uid=0(root)`. A finding here (root reappearing) is a
+  container-escape severity multiplier on any future RCE, not a standalone bug.
+- Test: from inside the API container, attempt a write outside the app's home/mount (e.g. under
+  `/app` next to the published DLLs, or elsewhere in `/`) — should fail with a permission error;
+  only the Data Protection key ring path and the mounted mail drop should be writable.
+- Not in scope to re-probe here: whether the `.dockerignore` entries for `.env*`/`private/` actually
+  keep those paths out of the build context is a build-time property, not something reachable from a
+  running container — verify it the way `docker-containers` does (a probe `COPY` build), not through
+  request-based testing.
+
 **Secret-name mapping collisions**
 
 - `HyphenToUnderscoreSecretManager` replaces hyphens with underscores. Check: could two configured secret names collide after transformation?
