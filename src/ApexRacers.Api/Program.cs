@@ -12,6 +12,7 @@ using ApexRacers.Data;
 using Aydsko.iRacingData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -133,8 +134,9 @@ builder.Services.AddRateLimiter(options =>
     // hits it (a page load fires <10 API calls), but bounds scripted abuse on the
     // otherwise-unthrottled endpoints. Health endpoints opt out via DisableRateLimiting().
     // Config-driven via GLOBAL_RATE_LIMIT_PERMIT_PER_MINUTE (default 300); CI/E2E raises it.
-    // NOTE: behind the App Service front end, RemoteIpAddress is only the real client
-    // once ASPNETCORE_FORWARDEDHEADERS_ENABLED=true is set (deployTODO.md §6).
+    // NOTE: behind a reverse proxy, RemoteIpAddress is the real client only because the
+    // forwarded-headers middleware rewrote it — see ForwardedHeadersPolicy for the trust rules
+    // and for why only the rightmost X-Forwarded-For entry is believed.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -171,6 +173,11 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit  = 0,
             }));
 });
+
+// The forwarded-header trust decision, in code and reviewable rather than implied by an app
+// setting (GHSA-fq5w-frqr-6px2). Configuring the options is safe regardless of who registers the
+// middleware — see ForwardedHeadersPolicy for why registering it ourselves is not.
+builder.Services.Configure<ForwardedHeadersOptions>(ForwardedHeadersPolicy.Configure);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -283,6 +290,20 @@ using (var scope = app.Services.CreateScope())
     // grow without bound (revoked/expired rows are otherwise never deleted).
     var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
     await authService.PurgeExpiredRefreshTokensAsync(TimeSpan.FromDays(30));
+}
+
+// Forwarded-header processing is registered by the host, not here - see ForwardedHeadersPolicy for
+// why adding app.UseForwardedHeaders() alongside it would consume two entries and hand a caller the
+// address the rate limiter partitions on. Log which state we are in, so a dropped app setting shows
+// up at startup rather than as an unexplained rate-limit anomaly later.
+if (!ForwardedHeadersPolicy.IsEnabledByHost(
+        builder.Configuration[ForwardedHeadersPolicy.EnabledVariable]))
+{
+    app.Logger.LogWarning(
+        "{Variable} is not set: X-Forwarded-For and X-Forwarded-Proto are ignored, so per-IP rate "
+        + "limiting partitions on the immediate peer. Expected with no reverse proxy in front of "
+        + "this instance; behind one, per-IP limits and HSTS will not see real clients.",
+        ForwardedHeadersPolicy.EnabledVariable);
 }
 
 // Outermost middleware so it times the whole request and observes the final response

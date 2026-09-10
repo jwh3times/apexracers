@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Which forwarded headers the API believes, and how many entries of them, is now stated in code
+  (`ForwardedHeadersPolicy`) instead of being implied by an app setting with nothing in the
+  repository to review. Behaviour is unchanged: only the rightmost `X-Forwarded-For` entry is read,
+  which is what keeps a caller from choosing the address per-IP rate limiting partitions on. Two
+  code comments pointing at a retired planning document were replaced with pointers to it.
+- Startup now warns when forwarded-header processing is off, naming what that means for per-IP rate
+  limiting and HSTS. Dropping that setting is safe — every caller then shares the front end's
+  address rather than being able to forge one — but it was previously invisible until a rate-limit
+  anomaly surfaced it.
 
 ## [9.0.5] - 2026-09-10
 
