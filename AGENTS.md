@@ -422,8 +422,12 @@ length alone doesn't bound how many distinct terms one caller can mint per minut
 (1000 / 10000), because the documented local E2E loop drives it in parallel from one loopback IP and at
 the API defaults the limiter starts returning 429 mid-run, which reads as unrelated test failures rather
 than as throttling. Set any of the three vars in `.env` to exercise the limiter locally. Health probes (anonymous, rate-limit-exempt): `GET /healthz` (liveness, no
-dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Behind App Service, per-IP
-limiting needs forwarded headers enabled in deployed reverse-proxy environments. The hosted API uses
+dependency checks) and `GET /ready` (DB readiness via `AddDbContextCheck`). Per-IP limiting (and
+HSTS's `Request.IsHttps` check) are correct behind a reverse proxy only once forwarded headers are
+processed; `ApexRacers.Api.Services.ForwardedHeadersPolicy` is the single place that trust decision is
+expressed (`Configure(ForwardedHeadersOptions)`; the host registers the middleware from it, gated on
+an app setting — see `dotnet-api` for the call rule and `azure-infrastructure` for the deployed
+value). The hosted API uses
 platform telemetry for requests, dependencies, exceptions, and `ILogger` traces; `RequestLoggingMiddleware`
 adds one structured per-request log line that flows into that telemetry pipeline and the console.
 

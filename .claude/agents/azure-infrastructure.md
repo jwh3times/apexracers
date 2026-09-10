@@ -120,6 +120,22 @@ changes the subject the credential must accept, so a second subject has to be ad
 Exact federated-credential and subscription identifiers stay in
 `private/ops/azure-deployment-runbook.md`.
 
+## Forwarded-header trust (`ASPNETCORE_FORWARDEDHEADERS_ENABLED`)
+
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED` is a live App Service app setting on the API app (currently
+`true`) — not a Key Vault secret, so it isn't in the table above. It is what registers ASP.NET Core's
+forwarded-headers middleware at all; the trust settings it then applies (which headers, `ForwardLimit
+= 1`, cleared `KnownNetworks`/`KnownProxies`) are owned in code by `ForwardedHeadersPolicy` (see the
+`dotnet-api` agent — never add `app.UseForwardedHeaders()` alongside this setting). With it `true`,
+per-IP rate limiting and HSTS's HTTPS check see the real client behind the platform front end.
+
+Removing or unsetting it is **safe but degrading, never spoofable**: forwarded headers stop being
+processed, `Connection.RemoteIpAddress` reverts to the front end's own address for every request, so
+per-IP rate limiting collapses onto one shared partition (over-restrictive) rather than opening any
+enumeration or bypass. The API logs a `LogWarning` at startup identifying exactly this state, so a
+dropped setting is diagnosable from the first restart's logs rather than from a rate-limit anomaly
+days later.
+
 ## CORS
 
 CORS is configured for Development only (`ViteDev` policy allowing `http://localhost:5173`). In production the React build is served from the same origin as the API (`wwwroot`), so no CORS headers are needed or set. Do not add CORS configuration for production.

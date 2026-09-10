@@ -232,6 +232,21 @@ Test cases:
   running container or the deployed app — report a finding here against the workflow YAML, not as an
   app-level vulnerability.
 
+**Forwarded-header trust (GHSA-fq5w-frqr-6px2)**
+
+- `ForwardedHeadersPolicy` owns the trust decision (`ForwardLimit = 1`, cleared
+  `KnownNetworks`/`KnownProxies`); the host registers the middleware only via
+  `ASPNETCORE_FORWARDEDHEADERS_ENABLED`.
+- Test: send a request with a forged `X-Forwarded-For` header (e.g.
+  `X-Forwarded-For: 203.0.113.77`) against a deployed instance and confirm the logged client address
+  is the real one, not the forged value — `RequestLoggingMiddleware`'s line in the Application
+  Insights `traces` table reads `HTTP GET <path> responded <status> in <ms> from <ip>`; the forged
+  value must appear nowhere in it. Locally (no reverse proxy, setting unset), confirm the same forged
+  header is ignored and the real peer is used.
+- Test: send `X-Forwarded-For: <forged>, <realish>` (two entries) — only the rightmost entry may be
+  believed (`ForwardLimit = 1`); confirm the forged left-hand entry never becomes the effective
+  client address.
+
 **Secret-name mapping collisions**
 
 - `HyphenToUnderscoreSecretManager` replaces hyphens with underscores. Check: could two configured secret names collide after transformation?

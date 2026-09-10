@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.6] - 2026-09-10
+
 ### Changed
 
 - Which forwarded headers the API believes, and how many entries of them, is now stated in code
@@ -1189,7 +1193,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.5...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.6...HEAD
+[9.0.6]: https://github.com/jwh3times/apexracers/compare/v9.0.5...v9.0.6
 [9.0.5]: https://github.com/jwh3times/apexracers/compare/v9.0.4...v9.0.5
 [9.0.4]: https://github.com/jwh3times/apexracers/compare/v9.0.3...v9.0.4
 [9.0.3]: https://github.com/jwh3times/apexracers/compare/v9.0.2...v9.0.3
