@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.11] - 2026-09-11
+
+### Changed
+
+- Failed sign-ins are now counted against the machine they came from rather than against the account.
+  Five wrong passwords used to lock an account for everyone, so anyone who knew a driver's email
+  address could keep that driver signed out indefinitely for the price of five requests a quarter
+  hour. A stranger guessing now uses up only their own attempts, and the driver signs in normally
+  from their own device.
+- A driver whose account is being guessed at is emailed once, rather than each time the guessing
+  trips the limit. The message no longer says the account is locked, because it no longer is, and it
+  no longer tells the driver to wait — they can sign in right away from their own device.
+
+### Security
+
+- Sign-in resists distributed guessing as well as the old account-wide counter did. Once an account
+  passes a much higher failure count across many machines, every machine's allowance shrinks — but a
+  machine that has not failed is still let in on the first correct password, so the protection cannot
+  itself be used to keep the owner out.
+- Guessing many passwords at once no longer gets more attempts than guessing them one at a time. The
+  limit is now applied as each attempt is counted rather than from a count read moments earlier, so a
+  burst of simultaneous attempts cannot slip through together.
+- A failed sign-in no longer takes measurably longer for an address that has an account than for one
+  that does not. The warning email is now sent after the response rather than during it, so neither
+  the time a sign-in takes nor a mail delivery problem can reveal whether an address is registered.
+- The sign-in limits are checked when the API starts. A misconfigured limit could previously refuse
+  every driver — including from their own device — with nothing to indicate why; the API now refuses
+  to start instead.
+
 ## [9.0.9] - 2026-09-10
 
 ### Security
@@ -1240,7 +1269,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.11...HEAD
+[9.0.11]: https://github.com/jwh3times/apexracers/compare/v9.0.10...v9.0.11
 [9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9
 [9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
 [9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7

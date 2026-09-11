@@ -155,7 +155,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 - JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
 - Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
-- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters.
+- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender, SignInThrottleStore signInThrottle, IOutboundEmailQueue emailQueue)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters. `SignInThrottleStore` likewise needs a `SignInThrottleOptions` (use `SignInThrottle.Defaults` in tests unless the test is specifically about tuning) and the same `TimeProvider`.
 - `JwtSettings` builds **both** sides of the contract, not just the key: `IssuingCredentials()` for `AuthService.GenerateJwtAsync` and `ValidationParameters()` for `Program.cs`'s `AddJwtBearer`. Don't hand-build a `SigningCredentials` or a `TokenValidationParameters` anywhere else, tests included — that is how `JwtSettings.Algorithm` (HS256) came to be pinned on the issuing side and left unset on the validating one, where any HMAC variant the library accepts for a symmetric key would have validated. A test that restates the validation parameters by hand is the same drift with a passing suite on top of it.
 - `FromConfiguration` rejects a `JWT_SIGNING_KEY` shorter than `JwtSettings.MinimumSigningKeyBytes` (32 bytes / 256 bits), measured as **UTF-8 bytes** because that is what reaches HMAC — not characters. This is a startup failure by design: a key weaker than the HMAC-SHA256 digest is brute-forceable offline from one captured token, and startup is the last moment an operator sees why. Don't relax it to a warning, and don't move the check to a use site — the single bind point is what makes it unavoidable.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
@@ -212,10 +212,10 @@ and email-change already held that line; registration is the one that had to be 
   weak password is rejected identically for a taken and a free address — don't reorder that by
   checking existence first, which would make the password error the new oracle.
 - `LoginAsync` refuses an unconfirmed account with the same null an unknown
-  address gets, **before** the lockout check and `AccessFailedAsync`. This is the half that actually
+  address gets, **before** the sign-in throttle claim. This is the half that actually
   closes the oracle: a generic registration response alone would still let an attacker register a
   victim's address and read the answer off whether their chosen password then works. Checking ahead
-  of the failure counter also stops a stranger locking out an account from the moment it signs up.
+  of the throttle also stops a stranger throttling an account from the moment it signs up.
 - Confirmation is what makes an account usable, so anything that proves control of the mailbox must
   grant it. `ResetPasswordAsync` sets `EmailConfirmed`; without that, a user whose confirmation email
   went astray could reset a password and still be refused, with no self-service route back.
@@ -231,27 +231,63 @@ Sign-in and password reset carry the rest of it (GHSA-28pc-cx5w-g6jp):
   became a `423`, and only a real account can be locked, so five wrong passwords against a registered
   address returned `423` while an unregistered one returned `401` forever. Do not reintroduce a type,
   status, or body that varies with why the sign-in failed.
-- **Never report the lockout on a correct password**, tempting as it sounds. Doing so turns the
-  lockout window into a password oracle: an attacker guessing through it would learn from the
-  differing response that they had found the password, which is the one thing the lockout exists to
-  stop. The owner is told by email (`AccountEmailTemplates.AccountLocked`) at the moment it locks.
-- The lockout branch **must not** call `AccessFailedAsync`. Identity restarts the window on every
-  failure it records, so counting attempts made during a lockout lets a stranger hold an account shut
-  for as long as they keep asking.
-- Every refusal path goes through `RefuseWithoutDisclosing`, which verifies the submitted password
-  against a cached stand-in hash before returning. Without it an unknown address answers before any
-  hash is computed while a real one pays the full PBKDF2 cost, and that gap is readable on the clock.
-  It equalises the dominant cost, not the whole request — describe it as closing the measurable gap,
-  not as constant time.
+
+### Sign-in brute-force protection is per (account, source address), not per account
+
+Issue #300 was the last open finding of GHSA-28pc-cx5w-g6jp: counting failures per account meant a
+stranger who merely knew a Driver's email could keep that Driver signed out indefinitely for five
+requests every fifteen minutes. `Program.cs` now sets `options.Lockout.AllowedForNewUsers = false`,
+and it must stay off — `ApplicationUser.AccessFailedCount`/`LockoutEnd` still exist as Identity
+columns but nothing reads them. Brute-force protection is `ApexRacers.Core.SignInThrottle` (decision)
++ `SignInThrottleStore` (persistence, `identity.SignInAddressFailures` / `SignInAccountFailures`),
+scoped to (account, source address):
+
+- **Never call `AccessFailedAsync`/`IsLockedOutAsync` on the sign-in path.** Those are Identity's own
+  lockout, counted per account regardless of who produced the failure — reintroducing either rebuilds
+  issue #300. The counters live in `SignInThrottleStore` now, not on the user.
+- `LoginAsync` claims the attempt via `SignInThrottleStore.ClaimAttemptAsync` **before** the password
+  is checked, and a refusal there records nothing — an attempt never checked carries no information,
+  and counting it would let a caller hold its own window open by continuing to knock. `ClaimAttemptAsync`
+  itself is a single atomic SQL upsert rather than a read-then-check-then-write, because the gap
+  between reading a counter and writing it back is wide enough (tens of milliseconds of PBKDF2) for a
+  concurrent burst to have every request read the same stale count and all pass the gate — exactly
+  where the design leans hardest, since the tightened allowance is 1.
+- The account-wide high-water mark (`SignInThrottleOptions.AccountHighWaterFailures`, default 50/hour)
+  **must never deny a sign-in by itself.** Crossing it only shrinks the per-address allowance (default
+  5 down to `TightenedPerAddressMaxFailures`, default 1); an address with no failures against it is
+  still admitted on the first correct password. `SignInThrottleOptions.Validated()` (called at
+  startup) throws if the tightened allowance or the high-water mark could be `0` — either would
+  silently refuse the account owner too, rebuilding the denial of service. Don't relax that check or
+  move it out of startup.
+- **Never report the throttle state on a correct password**, tempting as it sounds. Doing so turns
+  the throttle window into a password oracle: an attacker guessing through it would learn from a
+  differing response that they had found the password, which is the one thing the throttle exists to
+  stop. The owner is told by email (`AccountEmailTemplates.SuspiciousSignInAttempts`, paced by
+  `SignInThrottleStore.NoteFailureAsync`/`ClaimNoticeAsync` to one per account per
+  `SignInThrottleOptions.NoticeInterval`) instead.
+- That notice **must be queued (`IOutboundEmailQueue.Enqueue`), never sent inline from `LoginAsync`**.
+  It fires only for addresses that have an account, so an inline send would cost real accounts a mail
+  round trip that unknown addresses never pay — the account-existence oracle again, this time by
+  latency, or by a 500 when mail delivery fails. `OutboundEmailDispatcher` (a `BackgroundService`)
+  drains the queue outside any request.
+- A correct password clears only the winning address's row (`ClearAddressAsync`). The account-wide
+  counter is deliberately left alone — the owner signing in from their own machine is not evidence
+  that whoever is guessing elsewhere has stopped — and expires on its own once failures actually stop.
+- Every refusal path still goes through `RefuseWithoutDisclosing`, which verifies the submitted
+  password against a cached stand-in hash before returning. Without it an unknown address answers
+  before any hash is computed while a real one pays the full PBKDF2 cost, and that gap is readable on
+  the clock. It equalises the dominant cost, not the whole request — describe it as closing the
+  measurable gap, not as constant time.
+- **Known, accepted residual — not an omission to fix:** the throttle is scoped to source address, so
+  an attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN exit) can still
+  exhaust that address's allowance and deny the Driver from it. Closing that needs a second dimension
+  of identity — a device or session the Driver has already proved — not a better address rule; see the
+  remarks on `ApexRacers.Core.SignInThrottle` before treating this as new work.
 - `ResetPasswordAsync` answers `InvalidResetRequest` for both an unknown address and an `InvalidToken`
   result. Identity verifies the token before it validates the new password and returns on the first
   failure, so password-policy errors are only reachable once a valid token has been presented — by
   someone who already controls the mailbox — and those still surface, because collapsing them would
   strand a real user with no idea why their new password was refused.
-
-Still open on this surface: a stranger can lock any confirmed account for the lockout window and
-repeat it indefinitely. That denial of service is tracked separately on the project board; the
-advisory stays open until it lands.
 
 ### Refresh token rotation
 

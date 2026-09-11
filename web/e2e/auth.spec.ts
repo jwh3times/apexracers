@@ -68,11 +68,12 @@ test.describe('auth flows', () => {
     await login(page, email, TEST_PASSWORD);
   });
 
-  test('a locked account is indistinguishable from an unregistered one', async ({ page }) => {
+  test('a throttled account is indistinguishable from an unregistered one', async ({ page }) => {
     const email = await registerNewUser(page);
     await logout(page);
 
-    // Program.cs locks after 5 consecutive failures.
+    // Five failures exhausts this source address's allowance (SignInThrottle). The suite runs
+    // from one address, so the refusal is reached the same way a single guesser would reach it.
     for (let i = 0; i < 5; i++) {
       await page.request.post('/api/auth/login', {
         data: { email, password: 'DefinitelyWrong1' },
@@ -89,10 +90,10 @@ test.describe('auth flows', () => {
       data: { email: uniqueEmail(), password: TEST_PASSWORD },
     });
 
-    // Only an account that exists can be locked, so a 423 named one — five wrong passwords against a
-    // registered address returned 423 while an unregistered one returned 401 forever
-    // (GHSA-28pc-cx5w-g6jp). The correct password matters most: answering it differently would let an
-    // attacker guessing through the lockout window learn they had found it.
+    // Only an account that exists can be throttled, so any answer unique to that state names one. This
+    // used to be a 423: five wrong passwords against a registered address returned 423 while an
+    // unregistered one returned 401 for ever (GHSA-28pc-cx5w-g6jp). The correct password matters most —
+    // answering it differently would let a guesser learn from the response that they had found it.
     expect(lockedRightPassword.status()).toBe(401);
     expect(lockedWrongPassword.status()).toBe(401);
     expect(unregistered.status()).toBe(401);
@@ -107,8 +108,13 @@ test.describe('auth flows', () => {
     expect(await shape(lockedWrongPassword)).toEqual(baseline);
 
     // The owner is told out of band instead — the one channel that reaches them and not the guesser.
-    const notice = await waitForEmail(email, /temporarily locked/i);
-    expect(notice.textBody).toMatch(/failed sign-in attempts/i);
+    // Queued rather than sent inside the response, so that an account that exists cannot be told
+    // apart from one that does not by how long the refusal took; waitForEmail polls for the drain.
+    const notice = await waitForEmail(email, /failed sign-in attempts/i);
+    // It must not claim the account is locked: since issue #300 it is not, and telling the owner to
+    // wait would send them away from a door that is open for them.
+    expect(notice.subject).not.toMatch(/locked/i);
+    expect(notice.textBody).toMatch(/still sign in as usual from your own device/i);
   });
 
   test('reset-password answers the same for an unknown address and a bad token', async ({
