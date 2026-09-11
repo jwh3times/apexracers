@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- The deploy jobs now run in a `production` GitHub environment restricted to `main`, and the Azure
+  identity they use trusts only that environment. Deploy credentials were previously scoped to the
+  branch alone, which left no place to attach approval or wait rules before a release reaches
+  production; the environment is the hook those rules can now hang on.
 
 ## [9.0.8] - 2026-09-10
 

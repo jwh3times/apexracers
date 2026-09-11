@@ -113,10 +113,31 @@ rather than a mutable tag (GHSA-j6j2-8f7p-qv9r): a retagged or compromised third
 otherwise run inside the same job that mints that Azure token. `.github/dependabot.yml`'s
 `github-actions` ecosystem keeps the pins current; see the `code-reviewer` agent for the review rule.
 
-An OIDC federated credential is subject-matched to the ref (or, if the deploy jobs are later scoped to
-a GitHub `environment`, the environment) the workflow runs from. Moving to a scoped `environment`
-changes the subject the credential must accept, so a second subject has to be added to the credential
-*before* the workflow cuts over, not after, or the deploy jobs lose Azure authentication mid-migration.
+An OIDC federated credential is **subject-matched**. Both deploy jobs declare
+`environment: production`, so the subject GitHub presents is
+`repo:<owner>/<repo>:environment:production` — the environment, not the ref.
+
+Two rules govern that scoping, and neither is optional:
+
+- **The environment must carry a deployment branch policy allowlisting only `main`.** The credential
+  matches the environment name and ignores the ref, so an environment with no branch policy lets a
+  workflow job on *any* branch declare it and mint the Azure token. Scoping to an environment without
+  that policy widens the deploy surface instead of narrowing it. Note the policy must be an explicit
+  custom branch allowlist: this repository protects `main` with a **ruleset**, not classic branch
+  protection, so the environment's "protected branches" option has nothing to match on.
+- **Add the subject to the credential before the workflow names the environment**, never after, or the
+  deploy jobs lose Azure authentication mid-migration. Retire a superseded subject only once a deploy
+  on the new one has gone green; until then it is the rollback path, paired with dropping the
+  `environment:` lines from `deploy.yml`.
+
+Be precise about what the scoping buys. The ref-scoped subject it replaced was matched by *any* job in
+*any* workflow running with `id-token: write` on `main`, whether or not it had anything to do with
+deploying; a job must now deliberately declare the environment to attempt the match. It does **not**
+defend against someone who can already land a commit on `main` — they would add the `environment:` line
+too. Closing that gap needs a protection rule (required reviewers, or a wait timer) on the environment;
+none is configured, and enabling one is a maintainer decision because it makes every deploy block on a
+human.
+
 Exact federated-credential and subscription identifiers stay in
 `private/ops/azure-deployment-runbook.md`.
 
