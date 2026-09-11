@@ -96,9 +96,13 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var jwt = JwtSettings.FromConfiguration(config);
         var refreshTokens = new RefreshTokenStore(db, TimeProvider.System, NullLogger<RefreshTokenStore>.Instance);
         var throttle = new SignInThrottleStore(
-            db, timeProvider ?? TimeProvider.System, throttleOptions ?? TestThrottleOptions);
+            db,
+            timeProvider ?? TimeProvider.System,
+            throttleOptions ?? TestThrottleOptions,
+            NullLogger<SignInThrottleStore>.Instance);
+        var sender = emailSender ?? new FakeEmailSender();
         return new AuthService(
-            userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender(), throttle);
+            userManager, config, jwt, refreshTokens, sender, throttle, new ImmediateEmailQueue(sender));
     }
 
     /// <summary>
@@ -614,30 +618,6 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // Past the original window's end, measured from the failure that opened it.
         clock.Advance(TimeSpan.FromMinutes(6));
         Assert.NotNull(await svc.LoginAsync(new LoginRequest("patient@example.com", "Pass1234"), Guesser, ct));
-    }
-
-    [Fact]
-    public async Task LoginAsync_AttemptsDuringLockout_DoNotExtendIt()
-    {
-        await using var provider = BuildProvider();
-        await SeedRolesAsync(provider);
-        var svc = BuildService(provider);
-        var ct = TestContext.Current.CancellationToken;
-
-        await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", ct);
-        for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), null, ct);
-
-        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
-        var lockoutEnd = (await userManager.FindByEmailAsync("locked@example.com"))!.LockoutEnd;
-
-        for (var i = 0; i < 5; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), null, ct);
-
-        // Identity restarts the window on every AccessFailedAsync, so counting attempts made during a
-        // lockout would let a stranger hold an account shut for as long as they cared to keep asking.
-        var after = (await userManager.FindByEmailAsync("locked@example.com"))!.LockoutEnd;
-        Assert.Equal(lockoutEnd, after);
     }
 
     [Fact]

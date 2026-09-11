@@ -15,7 +15,8 @@ public class AuthService(
     JwtSettings jwt,
     RefreshTokenStore refreshTokens,
     IEmailSender emailSender,
-    SignInThrottleStore signInThrottle)
+    SignInThrottleStore signInThrottle,
+    IOutboundEmailQueue emailQueue)
 {
     private const int AccessTokenMinutes = 15;
 
@@ -112,6 +113,16 @@ public class AuthService(
     /// bypassing the throttle, which is why <see cref="SignInThrottleStore.NormaliseAddress"/> maps
     /// absence to a single stand-in rather than to a unique value.
     /// </para>
+    /// <para>
+    /// One residual, stated rather than glossed: the throttle read below happens only for an address
+    /// that has a confirmed account, so that path now does two indexed lookups the unknown and
+    /// unconfirmed paths do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant cost —
+    /// the password hash — and its own remarks already concede it closes the measurable gap rather
+    /// than making the whole request constant time; this widens the remainder slightly. Two primary
+    /// key/unique-index lookups against the surrounding PBKDF2 work is not a practical oracle, and
+    /// the alternative — reading throttle rows for accounts that do not exist — needs a user id there
+    /// is no way to have. Worth knowing before anyone adds more work to this branch.
+    /// </para>
     /// </remarks>
     public async Task<AuthResultDto?> LoginAsync(
         LoginRequest request,
@@ -141,7 +152,11 @@ public class AuthService(
         // issue #300. An account-wide counter meant five requests from a stranger locked the Driver
         // out of their own account for fifteen minutes, repeatable forever. Now a stranger exhausts
         // only their own address; the Driver's machine has a clean record and signs in normally.
-        var throttle = await signInThrottle.EvaluateAsync(user.Id, address, ct);
+        // Claimed, not merely read. The claim and the count the gate tests are one statement, so a
+        // burst of concurrent requests gets distinct counts instead of all reading zero and all
+        // getting their password checked — see ClaimAttemptAsync for why that gap is wide enough to
+        // drive through.
+        var throttle = await signInThrottle.ClaimAttemptAsync(user.Id, address, ct);
         if (throttle.Refused)
             return RefuseWithoutDisclosing(request.Password);
 
@@ -150,8 +165,14 @@ public class AuthService(
             // Returns true only for the one caller entitled to send the owner's notice; the store
             // paces that to one email per account per interval, because sign-in is unauthenticated
             // and an email per lockout would be an inbox a stranger could fill.
-            if (await signInThrottle.RecordFailureAsync(user.Id, address, ct))
-                await SendSuspiciousAttemptsNoticeAsync(user, ct);
+            //
+            // Queued rather than sent. Sending it here would put an outbound mail round trip inside
+            // the response for accounts that exist and nowhere else, which is an account oracle a
+            // single request can read off the clock — and a mail failure would surface as a 500 on
+            // exactly those accounts, which is the same oracle by status code that this endpoint's
+            // 423 once was (GHSA-28pc-cx5w-g6jp).
+            if (await signInThrottle.NoteFailureAsync(user.Id, address, ct))
+                QueueSuspiciousAttemptsNotice(user);
 
             return null;
         }
@@ -447,13 +468,20 @@ public class AuthService(
     /// reaches them rather than whoever is guessing. See <see cref="LoginAsync"/> for why the HTTP
     /// response cannot carry it, and the template for why it does not say "locked".
     /// </summary>
-    private async Task SendSuspiciousAttemptsNoticeAsync(ApplicationUser user, CancellationToken ct)
+    /// <remarks>
+    /// Queued rather than sent, and so returns nothing to await. This is the one account email whose
+    /// send must not happen inside the request: it fires only for addresses that have an account, so
+    /// an inline send would price sign-in differently for real and unknown addresses and hand back
+    /// the account oracle by latency, or by a 500 when the mail provider is unhappy. See
+    /// <see cref="IOutboundEmailQueue"/>.
+    /// </summary>
+    private void QueueSuspiciousAttemptsNotice(ApplicationUser user)
     {
         if (string.IsNullOrEmpty(user.Email))
             return;
 
-        await emailSender.SendAsync(
-            AccountEmailTemplates.SuspiciousSignInAttempts(user.Email, $"{BaseUrl}/forgot-password"), ct);
+        emailQueue.Enqueue(
+            AccountEmailTemplates.SuspiciousSignInAttempts(user.Email, $"{BaseUrl}/forgot-password"));
     }
 
     /// <summary>

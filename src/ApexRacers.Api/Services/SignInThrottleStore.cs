@@ -2,6 +2,7 @@ using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ApexRacers.Api.Services;
 
@@ -27,8 +28,12 @@ namespace ApexRacers.Api.Services;
 public sealed class SignInThrottleStore(
     AppDbContext db,
     TimeProvider timeProvider,
-    SignInThrottleOptions options)
+    SignInThrottleOptions options,
+    ILogger<SignInThrottleStore> logger)
 {
+    /// <summary>Primary key behind the one-row-per-account rule.</summary>
+    private const string AccountPrimaryKey = "PK_SignInAccountFailures";
+
     /// <summary>
     /// Stand-in address for a request that arrived with none. Grouping these together is
     /// deliberate: it is a single shared bucket, so an unattributable caller cannot mint
@@ -49,7 +54,91 @@ public sealed class SignInThrottleStore(
         return trimmed.Length > 56 ? UnknownAddress : trimmed;
     }
 
-    /// <summary>Decides whether one more attempt from <paramref name="address"/> is allowed.</summary>
+    /// <summary>
+    /// Claims one attempt for <paramref name="address"/> and says whether it may proceed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This exists because reading a counter, checking a password, and then writing the counter is
+    /// three steps with two gaps, and a caller does not have to be clever to get inside them — the
+    /// password check is tens of milliseconds of PBKDF2, which is an enormous window. Fire the whole
+    /// per-minute rate-limit budget at once and every request reads the same count, every request
+    /// passes the gate, and every password is checked. The allowance silently becomes
+    /// <c>max(allowance, requests in flight)</c>.
+    /// </para>
+    /// <para>
+    /// That matters most exactly where the design leans hardest: under attack the allowance is 1, so
+    /// a concurrent burst would buy ten guesses per address instead of one and the tightened state
+    /// would be worth a tenth of what it claims.
+    /// </para>
+    /// <para>
+    /// So the count the gate reads is the one this request just wrote. A single statement inserts,
+    /// increments, or reopens the window and returns the resulting value, so N concurrent callers get
+    /// N distinct numbers and only the first <c>allowance</c> of them proceed. It also means an
+    /// attempt is claimed <em>before</em> the password is checked rather than recorded after it
+    /// fails — a correct password clears the row immediately afterwards, so an honest caller is
+    /// unaffected unless they sign in many times concurrently, which is not a thing sign-in does.
+    /// </para>
+    /// <para>
+    /// Claiming before the check does not let anyone hold a window open: the statement preserves
+    /// <c>WindowStartedAt</c> whenever the window is still current and only resets it once the window
+    /// has actually run out, so the window always ends a fixed span after the attempt that opened it,
+    /// however many arrive in between.
+    /// </para>
+    /// </remarks>
+    public async Task<ThrottleDecision> ClaimAttemptAsync(Guid userId, string address, CancellationToken ct = default)
+    {
+        var now = timeProvider.GetUtcNow();
+        var windowFloor = now - options.PerAddressWindow;
+
+        // One statement: insert, or bump within the live window, or reopen an expired one — and hand
+        // back the count it settled on. EF has no upsert, and splitting this into read + write is the
+        // very race the remarks above describe, so it is written as SQL deliberately.
+        var claimedRows = await db.Database
+            .SqlQueryRaw<int>(
+                """
+                INSERT INTO identity."SignInAddressFailures"
+                    ("Id", "UserId", "IpAddress", "FailureCount", "WindowStartedAt", "LastFailureAt")
+                VALUES ({0}, {1}, {2}, 1, {3}, {3})
+                ON CONFLICT ("UserId", "IpAddress") DO UPDATE SET
+                    "FailureCount" = CASE
+                        WHEN "SignInAddressFailures"."WindowStartedAt" > {4}
+                        THEN "SignInAddressFailures"."FailureCount" + 1
+                        ELSE 1
+                    END,
+                    "WindowStartedAt" = CASE
+                        WHEN "SignInAddressFailures"."WindowStartedAt" > {4}
+                        THEN "SignInAddressFailures"."WindowStartedAt"
+                        ELSE {3}
+                    END,
+                    "LastFailureAt" = {3}
+                RETURNING "FailureCount" AS "Value"
+                """,
+                Guid.NewGuid(), userId, address, now, windowFloor)
+            // Enumerated, not composed. An INSERT ... RETURNING is not composable, so asking EF for
+            // Single() would have it wrap the statement in a subquery and the provider rejects it.
+            .ToListAsync(ct);
+        var claimed = claimedRows.Single();
+
+        var accountRow = await db.SignInAccountFailures
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.UserId == userId, ct);
+
+        var underAttack = SignInThrottle.LiveCount(
+            accountRow is null ? null : new FailureWindow(accountRow.FailureCount, accountRow.WindowStartedAt),
+            now,
+            options.AccountWindow) >= options.AccountHighWaterFailures;
+
+        var allowance = underAttack
+            ? options.TightenedPerAddressMaxFailures
+            : options.PerAddressMaxFailures;
+
+        // Strictly greater: this request's own claim is already counted, so a claim landing exactly on
+        // the allowance is the last one permitted.
+        return new ThrottleDecision(Refused: claimed > allowance, Allowance: allowance, UnderAttack: underAttack);
+    }
+
+    /// <summary>Reads the current decision without claiming an attempt. For tests and diagnostics.</summary>
     public async Task<ThrottleDecision> EvaluateAsync(Guid userId, string address, CancellationToken ct = default)
     {
         var now = timeProvider.GetUtcNow();
@@ -70,26 +159,30 @@ public sealed class SignInThrottleStore(
     }
 
     /// <summary>
-    /// Records one failed attempt and reports whether the account's owner should be told that
-    /// something is guessing at their account.
+    /// Notes that a claimed attempt turned out to be wrong, and reports whether the account's owner
+    /// should be told that something is guessing at their account.
     /// </summary>
     /// <remarks>
-    /// The notice fires when this failure exhausts a source address's allowance, or while the
-    /// account is over its high-water mark — the two states that mean "this is no longer someone
-    /// mistyping". At most one request per account per
-    /// <see cref="SignInThrottleOptions.NoticeInterval"/> ever gets a <c>true</c> back, however many
-    /// addresses are failing; see <see cref="ClaimNoticeAsync"/>.
+    /// <para>
+    /// The source address was already counted by <see cref="ClaimAttemptAsync"/> before the password
+    /// was checked; this adds the account-wide half, which is deliberately counted only for attempts
+    /// that actually failed. Counting claimed-but-correct attempts there would let ordinary sign-ins
+    /// push an account towards "under attack".
+    /// </para>
+    /// <para>
+    /// The notice fires when the address has exhausted its allowance, or while the account is over
+    /// its high-water mark — the two states that mean "this is no longer someone mistyping". At most
+    /// one request per account per <see cref="SignInThrottleOptions.NoticeInterval"/> ever gets a
+    /// <c>true</c> back, however many addresses are failing; see <see cref="ClaimNoticeAsync"/>.
+    /// </para>
     /// </remarks>
     /// <returns><c>true</c> for the one caller entitled to send the email.</returns>
-    public async Task<bool> RecordFailureAsync(Guid userId, string address, CancellationToken ct = default)
+    public async Task<bool> NoteFailureAsync(Guid userId, string address, CancellationToken ct = default)
     {
         var now = timeProvider.GetUtcNow();
 
-        await IncrementAddressAsync(userId, address, now, ct);
         await IncrementAccountAsync(userId, now, ct);
 
-        // Re-read rather than infer from the increments: they are separate statements and a
-        // concurrent failure may have moved either count. This is the failure path, not the hot one.
         var after = await EvaluateAsync(userId, address, ct);
         if (!after.Refused && !after.UnderAttack)
             return false;
@@ -131,57 +224,6 @@ public sealed class SignInThrottleStore(
         await db.SignInAddressFailures
             .Where(f => f.UserId == userId && f.IpAddress == address)
             .ExecuteDeleteAsync(ct);
-
-    private async Task IncrementAddressAsync(Guid userId, string address, DateTimeOffset now, CancellationToken ct)
-    {
-        var windowFloor = now - options.PerAddressWindow;
-
-        // Current window: count up, and leave WindowStartedAt exactly where it is. That is what stops
-        // a caller who keeps failing from holding their own window open indefinitely.
-        var bumped = await db.SignInAddressFailures
-            .Where(f => f.UserId == userId && f.IpAddress == address && f.WindowStartedAt > windowFloor)
-            .ExecuteUpdateAsync(
-                s => s.SetProperty(f => f.FailureCount, f => f.FailureCount + 1)
-                      .SetProperty(f => f.LastFailureAt, now),
-                ct);
-        if (bumped > 0)
-            return;
-
-        // Row exists but its window has run out: reopen it from now.
-        //
-        // The expiry test in the predicate is load-bearing, not a repeat of the check above. Without
-        // it this statement resets FailureCount to 1 for ANY existing row — so a request whose
-        // increment missed because no row existed yet could land this reset after a concurrent
-        // request inserted a live one, wiping every failure accumulated in between. A guesser racing
-        // their own requests could then sit at a count of 1 for ever and never be throttled.
-        var reopened = await db.SignInAddressFailures
-            .Where(f => f.UserId == userId && f.IpAddress == address && f.WindowStartedAt <= windowFloor)
-            .ExecuteUpdateAsync(
-                s => s.SetProperty(f => f.FailureCount, 1)
-                      .SetProperty(f => f.WindowStartedAt, now)
-                      .SetProperty(f => f.LastFailureAt, now),
-                ct);
-        if (reopened > 0)
-            return;
-
-        await InsertOrRetryAsync(
-            () => db.SignInAddressFailures.Add(new SignInAddressFailure
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                IpAddress = address,
-                FailureCount = 1,
-                WindowStartedAt = now,
-                LastFailureAt = now,
-            }),
-            retry: () => db.SignInAddressFailures
-                .Where(f => f.UserId == userId && f.IpAddress == address)
-                .ExecuteUpdateAsync(
-                    s => s.SetProperty(f => f.FailureCount, f => f.FailureCount + 1)
-                          .SetProperty(f => f.LastFailureAt, now),
-                    ct),
-            ct);
-    }
 
     private async Task IncrementAccountAsync(Guid userId, DateTimeOffset now, CancellationToken ct)
     {
@@ -227,6 +269,7 @@ public sealed class SignInThrottleStore(
                     s => s.SetProperty(f => f.FailureCount, f => f.FailureCount + 1)
                           .SetProperty(f => f.LastFailureAt, now),
                     ct),
+            AccountPrimaryKey,
             ct);
     }
 
@@ -234,23 +277,52 @@ public sealed class SignInThrottleStore(
     /// Inserts a first row, falling back to an increment when a concurrent request inserted it first.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Two requests can both find no row and both try to insert; the unique index lets exactly one
     /// through. The loser must not drop its failure on the floor — that would be a free attempt — so
     /// it re-applies itself as an increment against the row the winner created.
+    /// </para>
+    /// <para>
+    /// The catch is matched to a **unique violation on the expected constraint**, not to
+    /// <see cref="DbUpdateException"/> at large. Treating every save failure as a lost race would
+    /// mean a transient fault — the sort this store exists to survive, since concurrent failures
+    /// against one account are the attack rather than an edge case — got silently relabelled as
+    /// "someone else inserted it", followed by an update that matches nothing. The failure would
+    /// vanish with no row, no exception and no log: a free attempt for whoever caused the fault.
+    /// Anything else propagates. Mirrors the narrow catch in <c>AuthService</c>'s Claimed Identity
+    /// conflict.
+    /// </para>
     /// </remarks>
-    private async Task InsertOrRetryAsync(Action add, Func<Task<int>> retry, CancellationToken ct)
+    private async Task InsertOrRetryAsync(
+        Action add,
+        Func<Task<int>> retry,
+        string constraintName,
+        CancellationToken ct)
     {
         add();
         try
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (
+            ex.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+            } pg
+            && pg.ConstraintName == constraintName)
         {
             foreach (var entry in db.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList())
                 entry.State = EntityState.Detached;
 
-            await retry();
+            // Zero here would mean the row the violation proved existed has since gone — only a purge
+            // racing this exact window could do it, and the sweep stays a full grace period clear of
+            // live rows. Logged rather than thrown: this runs on a request that is about to be
+            // refused anyway, and throwing would answer a wrong password with a 500 for real accounts
+            // only, which is an account oracle.
+            if (await retry() == 0)
+                logger.LogWarning(
+                    "Sign-in failure was not recorded: {Constraint} reported a duplicate but no row remained.",
+                    constraintName);
         }
     }
 }

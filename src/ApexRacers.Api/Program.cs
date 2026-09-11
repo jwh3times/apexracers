@@ -244,8 +244,18 @@ builder.Services.AddSingleton(_ => new SignInThrottleOptions(
     AccountWindow: TimeSpan.FromMinutes(builder.Configuration.GetValue(
         "SIGNIN_ACCOUNT_WINDOW_MINUTES", SignInThrottle.DefaultAccountWindow.TotalMinutes)),
     NoticeInterval: TimeSpan.FromMinutes(builder.Configuration.GetValue(
-        "SIGNIN_NOTICE_INTERVAL_MINUTES", SignInThrottle.DefaultNoticeInterval.TotalMinutes))));
+        "SIGNIN_NOTICE_INTERVAL_MINUTES", SignInThrottle.DefaultNoticeInterval.TotalMinutes)))
+    // Startup failure, not a warning: a tightened allowance of 0 (or a high-water of 0) would refuse
+    // the account owner as readily as a guesser and would do it silently. Same reasoning as the
+    // minimum signing-key length above.
+    .Validated());
 builder.Services.AddScoped<SignInThrottleStore>();
+// The sign-in security notice is queued, never sent inside the request: it fires only for
+// addresses that have an account, so an inline send would price sign-in differently for real and
+// unknown addresses and give the account oracle back by latency (or by a 500 when mail fails).
+builder.Services.AddSingleton<OutboundEmailQueue>();
+builder.Services.AddSingleton<IOutboundEmailQueue>(sp => sp.GetRequiredService<OutboundEmailQueue>());
+builder.Services.AddHostedService<OutboundEmailDispatcher>();
 builder.Services.AddHostedService<SignInThrottleCleanupService>();
 
 builder.Services.AddScoped<AuthService>();

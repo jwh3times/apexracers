@@ -81,7 +81,11 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
             refreshTokens,
             new FakeEmailSender(),
             new SignInThrottleStore(
-                provider.GetRequiredService<AppDbContext>(), TimeProvider.System, SignInThrottle.Defaults));
+                provider.GetRequiredService<AppDbContext>(),
+                TimeProvider.System,
+                SignInThrottle.Defaults,
+                NullLogger<SignInThrottleStore>.Instance),
+            new ImmediateEmailQueue(new FakeEmailSender()));
 
         // Registration hands back nothing now — an account is unusable until its address is
         // confirmed — so the token this test round-trips comes from the sign-in that follows.

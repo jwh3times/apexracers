@@ -179,4 +179,63 @@ public sealed record SignInThrottleOptions(
     int AccountHighWaterFailures,
     TimeSpan PerAddressWindow,
     TimeSpan AccountWindow,
-    TimeSpan NoticeInterval);
+    TimeSpan NoticeInterval)
+{
+    /// <summary>
+    /// Rejects a policy that would deny sign-in rather than throttle it. Call at startup.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// These are configuration-driven, and two of them turn a single mistyped character into the
+    /// vulnerability this design removes:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// <see cref="TightenedPerAddressMaxFailures"/> of <c>0</c> refuses every caller of a tightened
+    /// account — including one with no failures at all, which is the account owner.
+    /// </description></item>
+    /// <item><description>
+    /// <see cref="AccountHighWaterFailures"/> of <c>0</c> reads as "under attack" for every account
+    /// in the system, permanently, so with the above it locks every Driver out of the product.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// Neither produces an error on its own — the app would boot and quietly deny everyone. A comment
+    /// in <c>.env.example</c> is not enough for an invariant whose whole point is "this must never
+    /// deny anyone", so it is checked here and fails the host the way a short signing key does.
+    /// </para>
+    /// </remarks>
+    public SignInThrottleOptions Validated()
+    {
+        if (TightenedPerAddressMaxFailures < 1)
+            throw new InvalidOperationException(
+                $"Sign-in throttle: the tightened per-address allowance must be at least 1, "
+                + $"but is {TightenedPerAddressMaxFailures}. Zero would refuse the account owner too, "
+                + "turning the throttle into the denial of service it exists to prevent.");
+
+        if (PerAddressMaxFailures < TightenedPerAddressMaxFailures)
+            throw new InvalidOperationException(
+                $"Sign-in throttle: the ordinary per-address allowance ({PerAddressMaxFailures}) must not "
+                + $"be below the tightened one ({TightenedPerAddressMaxFailures}); an account under attack "
+                + "would otherwise be more permissive than one that is not.");
+
+        if (AccountHighWaterFailures < 1)
+            throw new InvalidOperationException(
+                $"Sign-in throttle: the account high-water mark must be at least 1, but is "
+                + $"{AccountHighWaterFailures}. Zero reads as 'under attack' for every account, always.");
+
+        foreach (var (name, span) in new[]
+                 {
+                     (nameof(PerAddressWindow), PerAddressWindow),
+                     (nameof(AccountWindow), AccountWindow),
+                     (nameof(NoticeInterval), NoticeInterval),
+                 })
+        {
+            if (span <= TimeSpan.Zero)
+                throw new InvalidOperationException(
+                    $"Sign-in throttle: {name} must be greater than zero, but is {span}.");
+        }
+
+        return this;
+    }
+}

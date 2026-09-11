@@ -4,6 +4,7 @@ using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -51,6 +52,22 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     /// them all from a single options instance. Calling it per context instead gives each one its own
     /// empty database, and a concurrency test written that way passes while proving nothing.
     /// </remarks>
+    /// <summary>
+    /// One complete failed sign-in, as <c>AuthService</c> performs it: claim the attempt, then note
+    /// that it turned out wrong.
+    /// </summary>
+    /// <remarks>
+    /// The two are separate on purpose — the claim happens before the password is checked so the gate
+    /// and the counter are one atomic step, and only a genuine failure feeds the account-wide count.
+    /// Tests go through both so they exercise the real sequence rather than half of it.
+    /// </remarks>
+    private static async Task<bool> RecordFailureAsync(
+        SignInThrottleStore store, Guid userId, string address, CancellationToken ct)
+    {
+        await store.ClaimAttemptAsync(userId, address, ct);
+        return await store.NoteFailureAsync(userId, address, ct);
+    }
+
     private async Task<(AppDbContext Db, Guid UserId, DbContextOptions<AppDbContext> Options)> NewDbAsync(
         CancellationToken ct)
     {
@@ -73,7 +90,7 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
         var decision = await store.EvaluateAsync(userId, Guesser, ct);
 
@@ -86,10 +103,10 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
 
         Assert.True((await store.EvaluateAsync(userId, Guesser, ct)).Refused);
         // The property issue #300 is about.
@@ -102,11 +119,11 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
-        await store.RecordFailureAsync(userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Guesser, ct);
         clock.Advance(TimeSpan.FromMinutes(10));
-        await store.RecordFailureAsync(userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Guesser, ct);
 
         var row = await db.SignInAddressFailures.AsNoTracking()
             .SingleAsync(f => f.UserId == userId && f.IpAddress == Guesser, ct);
@@ -121,15 +138,15 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
 
         clock.Advance(TimeSpan.FromMinutes(15));
         Assert.False((await store.EvaluateAsync(userId, Guesser, ct)).Refused);
 
-        await store.RecordFailureAsync(userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Guesser, ct);
         var row = await db.SignInAddressFailures.AsNoTracking()
             .SingleAsync(f => f.UserId == userId && f.IpAddress == Guesser, ct);
 
@@ -142,13 +159,13 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
         // Six failures over three addresses: each stays under its own allowance of three.
         for (var i = 0; i < 3; i++)
         {
-            await store.RecordFailureAsync(userId, $"10.1.1.{i}", ct);
-            await store.RecordFailureAsync(userId, $"10.1.1.{i}", ct);
+            await RecordFailureAsync(store, userId, $"10.1.1.{i}", ct);
+            await RecordFailureAsync(store, userId, $"10.1.1.{i}", ct);
         }
 
         var fresh = await store.EvaluateAsync(userId, "10.9.9.9", ct);
@@ -163,11 +180,11 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
-        await store.RecordFailureAsync(userId, Owner, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Owner, ct);
 
         await store.ClearAddressAsync(userId, Owner, ct);
 
@@ -185,12 +202,12 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
         var notices = 0;
         for (var address = 0; address < 20; address++)
             for (var attempt = 0; attempt < 4; attempt++)
-                if (await store.RecordFailureAsync(userId, $"10.2.2.{address}", ct))
+                if (await RecordFailureAsync(store, userId, $"10.2.2.{address}", ct))
                     notices++;
 
         // An email per lockout would let a stranger flood the owner's inbox from fresh addresses.
@@ -203,11 +220,11 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
         var first = 0;
         for (var i = 0; i < 3; i++)
-            if (await store.RecordFailureAsync(userId, Guesser, ct))
+            if (await RecordFailureAsync(store, userId, Guesser, ct))
                 first++;
         Assert.Equal(1, first);
 
@@ -217,7 +234,7 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
 
         var second = 0;
         for (var i = 0; i < 3; i++)
-            if (await store.RecordFailureAsync(userId, Guesser, ct))
+            if (await RecordFailureAsync(store, userId, Guesser, ct))
                 second++;
 
         Assert.Equal(1, second);
@@ -233,17 +250,17 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
 
         // Past the account window but inside the notice interval.
         clock.Advance(TimeSpan.FromMinutes(50));
 
         var notices = 0;
         for (var i = 0; i < 3; i++)
-            if (await store.RecordFailureAsync(userId, "10.3.3.3", ct))
+            if (await RecordFailureAsync(store, userId, "10.3.3.3", ct))
                 notices++;
 
         Assert.Equal(0, notices);
@@ -273,11 +290,11 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var workers = Enumerable.Range(0, concurrent).Select(async _ =>
         {
             await using var db = new AppDbContext(options);
-            var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+            var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
             Interlocked.Increment(ref arrived);
             ready.Release();
             await go.Task;
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
         }).ToArray();
 
         for (var i = 0; i < concurrent; i++)
@@ -298,6 +315,52 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         // Exactly one row each — the unique index held — and nothing was lost to a race.
         Assert.Equal(concurrent, address.FailureCount);
         Assert.Equal(concurrent, account.FailureCount);
+    }
+
+    /// <summary>
+    /// The gate itself must hold under concurrency, not just the counter.
+    /// </summary>
+    /// <remarks>
+    /// Reading the count, checking a password, then writing the count leaves a gap tens of
+    /// milliseconds wide, and a caller can simply fire their whole rate-limit budget into it: every
+    /// request reads the same number, every request passes, every password gets checked. That turns
+    /// the allowance into <c>max(allowance, requests in flight)</c> — worst exactly where the design
+    /// leans hardest, since the tightened allowance of 1 would become 12 here. Claiming and deciding
+    /// in one statement is what makes the number each caller sees its own.
+    /// </remarks>
+    [Fact]
+    public async Task ClaimAttempt_ConcurrentBurst_AdmitsOnlyTheAllowance()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (seedDb, userId, options) = await NewDbAsync(ct);
+        await seedDb.DisposeAsync();
+
+        const int concurrent = 12;
+        var ready = new SemaphoreSlim(0, concurrent);
+        var go = new TaskCompletionSource();
+        var arrived = 0;
+
+        var claims = Enumerable.Range(0, concurrent).Select(async _ =>
+        {
+            await using var db = new AppDbContext(options);
+            var store = new SignInThrottleStore(
+                db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
+            Interlocked.Increment(ref arrived);
+            ready.Release();
+            await go.Task;
+            return await store.ClaimAttemptAsync(userId, Guesser, ct);
+        }).ToArray();
+
+        for (var i = 0; i < concurrent; i++)
+            await ready.WaitAsync(ct);
+        go.SetResult();
+        var decisions = await Task.WhenAll(claims);
+
+        Assert.Equal(concurrent, arrived);
+
+        // Exactly the allowance gets through, however many arrive together.
+        Assert.Equal(Options.PerAddressMaxFailures, decisions.Count(d => !d.Refused));
+        Assert.Equal(concurrent - Options.PerAddressMaxFailures, decisions.Count(d => d.Refused));
     }
 
     [Theory]
@@ -324,9 +387,9 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
-        await store.RecordFailureAsync(userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Guesser, ct);
 
         // Not yet eligible: the grace keeps the sweep clear of the decision path.
         var early = await SignInThrottleCleanupService.PurgeStaleAsync(
@@ -353,10 +416,10 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
         var clock = new MovableClock(Now);
-        var store = new SignInThrottleStore(db, clock, Options);
+        var store = new SignInThrottleStore(db, clock, Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
 
         // Past the account window + grace, but still inside the notice interval.
         var at = Now + TimeSpan.FromHours(1) + TimeSpan.FromMinutes(50);
@@ -371,10 +434,10 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
         for (var i = 0; i < 3; i++)
-            await store.RecordFailureAsync(userId, Guesser, ct);
+            await RecordFailureAsync(store, userId, Guesser, ct);
 
         await SignInThrottleCleanupService.PurgeStaleAsync(
             db, Options, Now + TimeSpan.FromMinutes(1), SignInThrottleCleanupService.Grace, ct);
@@ -388,9 +451,9 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     {
         var ct = TestContext.Current.CancellationToken;
         var (db, userId, _) = await NewDbAsync(ct);
-        var store = new SignInThrottleStore(db, new MovableClock(Now), Options);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
 
-        await store.RecordFailureAsync(userId, Guesser, ct);
+        await RecordFailureAsync(store, userId, Guesser, ct);
 
         await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync(ct);
 

@@ -173,6 +173,74 @@ public class SignInThrottleTests
         Assert.Equal(TimeSpan.FromHours(1), SignInThrottle.Defaults.NoticeInterval);
     }
 
+    [Fact]
+    public void Validated_AcceptsTheShippedDefaults() =>
+        Assert.Same(SignInThrottle.Defaults, SignInThrottle.Defaults.Validated());
+
+    /// <summary>
+    /// The two settings that turn a mistyped character into the denial of service this design
+    /// removes. Both must fail the host rather than boot and quietly refuse everyone.
+    /// </summary>
+    [Fact]
+    public void Validated_TightenedAllowanceOfZero_IsRefused()
+    {
+        var bad = SignInThrottle.Defaults with { TightenedPerAddressMaxFailures = 0 };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => bad.Validated());
+        Assert.Contains("at least 1", ex.Message);
+    }
+
+    [Fact]
+    public void Validated_AccountHighWaterOfZero_IsRefused()
+    {
+        var bad = SignInThrottle.Defaults with { AccountHighWaterFailures = 0 };
+
+        Assert.Throws<InvalidOperationException>(() => bad.Validated());
+    }
+
+    [Fact]
+    public void Validated_OrdinaryAllowanceBelowTheTightenedOne_IsRefused()
+    {
+        var bad = SignInThrottle.Defaults with
+        {
+            PerAddressMaxFailures = 1,
+            TightenedPerAddressMaxFailures = 5,
+        };
+
+        Assert.Throws<InvalidOperationException>(() => bad.Validated());
+    }
+
+    [Theory]
+    [InlineData("PerAddressWindow")]
+    [InlineData("AccountWindow")]
+    [InlineData("NoticeInterval")]
+    public void Validated_NonPositiveWindow_IsRefused(string which)
+    {
+        var bad = which switch
+        {
+            "PerAddressWindow" => SignInThrottle.Defaults with { PerAddressWindow = TimeSpan.Zero },
+            "AccountWindow" => SignInThrottle.Defaults with { AccountWindow = TimeSpan.Zero },
+            _ => SignInThrottle.Defaults with { NoticeInterval = TimeSpan.FromMinutes(-1) },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => bad.Validated());
+        Assert.Contains(which, ex.Message);
+    }
+
+    /// <summary>
+    /// Proof of what the validation above protects: with a tightened allowance of zero, a caller who
+    /// has never failed is refused, which is the account-wide denial of service rebuilt.
+    /// </summary>
+    [Fact]
+    public void Evaluate_TightenedAllowanceOfZero_WouldRefuseACleanAddress()
+    {
+        var unsafeOptions = Options with { TightenedPerAddressMaxFailures = 0 };
+
+        var decision = SignInThrottle.Evaluate(null, new FailureWindow(50, Now), Now, unsafeOptions);
+
+        Assert.True(decision.Refused);
+    }
+
     /// <summary>
     /// The tightened allowance must stay above zero. A zero here would silently turn the
     /// under-attack state back into the account-wide denial of service.
