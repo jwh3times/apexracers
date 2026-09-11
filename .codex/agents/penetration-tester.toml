@@ -102,6 +102,11 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 - Test: send a retained already-revoked token, including one also past `ExpiresAt` — should return 401 and revoke that User's active refresh tokens. Check that the warning includes only the User ID, not the raw token or its hash.
 - Test: send an expired token that was never revoked — should return 401 without revoking other sessions. Existing JWTs remain valid until their normal expiry after refresh-token revocation.
 - Test: can the refresh endpoint be used without any token at all? Should return 401.
+- Test that changing the password ends every other session (GHSA-8wfx-m356-gx29): sign in from two
+  clients, change the password from one, then try to refresh with the **other** client's still-held
+  refresh token — it must be rejected. A password change is how a Driver evicts someone who already
+  has their credentials, so a refresh token that outlives it defeats the whole remedy. Confirm the
+  revocation sweeps *every* active token for that User, not just the one presented.
 - Test: does logout return 204 for an unknown token (must not leak whether a token exists)?
 
 **JWT claims decoded client-side**
@@ -136,6 +141,11 @@ Policies in `Program.cs`:
 
 - `GET /api/admin/users` — requires `AdminOnly`. Test with no token, Standard token, Beta token.
 - `PUT /api/admin/users/:userId/role` — requires `AdminOnly`. Test with non-Admin tokens.
+  Then test the **target** role, not just the caller: an Admin sending `{ "role": "Admin" }` must be
+  refused. `AdminService.SetUserRoleAsync` rejects Admin as a target so the only route to Admin stays
+  `ADMIN_SEED_EMAILS` at startup (GHSA-2r4v-cc85-6g7w). Without that, one compromised Admin token
+  mints more Admins that survive the original account's removal. Check the lowercase and unknown-value
+  forms here too, as with `PUT /api/auth/role` above.
 - `GET /api/admin/feature-flags` — requires `AdminOnly`. Test with non-Admin tokens.
 - `POST /api/admin/feature-flags` — requires `AdminOnly`.
 - `PUT /api/admin/feature-flags/:id` — requires `AdminOnly`.
@@ -150,6 +160,12 @@ Policies in `Program.cs`:
 - `GET /api/series/:id/weeks/:num/cars/:id/percentile?customerId=<X>` — `customerId` is a query parameter, not derived from the JWT. Any authenticated user can query any driver's percentile by passing their iRacing customer ID.
 - Test: can an unauthenticated user query percentiles?
 - Assess: is exposing other drivers' percentile data a privacy concern, or is this public race data?
+- Test the **write**, not just the read (GHSA-cjjj-33vx-38g5): query that endpoint with a `customerId`
+  that is not the caller's Claimed Identity and confirm no `CarPercentileResult` row is cached against
+  the caller. Reading another Driver's percentile is acceptable — it is public race data — but a cache
+  write keyed on the caller while holding a *different* Driver's figures poisons that caller's own
+  "Your pct" overlay and recommendations with someone else's numbers. The eligible Demo Driver path
+  (`SubjectDriverContext` resolving to `DemoData.DriverCustId`) must remain able to write.
 - `GET /api/users/me/analytics` — `/me/` in path should return only the authenticated user's data. Verify the service resolves user from JWT `sub` claim, not from a query parameter.
 - `GET /api/telemetry/laps` — verify data is scoped to the authenticated user.
 
@@ -216,7 +232,18 @@ Test cases:
 - Upload a non-`.ibt` file (text, image, script) — must be rejected (version check fails even if extension matches).
 - Upload a 100-byte file — must be rejected (too small).
 - Upload a crafted binary with `sessionInfoOffset + sessionInfoLen > fileLen` — must be rejected without allocating the oversized buffer.
+- Upload a crafted binary whose **data-record** bounds are out of file: a negative or oversized `bufLen`
+  (header offset 36), or a `firstBufOffset` (offset 52) past the end of the file. `IbtParser.Parse()`
+  must reject before the `new byte[bufLen]` allocation and before the seek — a `bufLen` near
+  `int.MaxValue` is an allocation DoS, and an out-of-file `firstBufOffset` reads past the payload
+  (GHSA-c53f-fpw7-m35f). Note this is a **different** guard from the `sessionInfo*` case above;
+  verifying one does not cover the other.
 - Upload a file with path traversal in the filename (`../../../etc/passwd`) — filename is not used for storage or execution; verify no path traversal occurs.
+- Upload a recording naming a **car or track ID that is not in the catalog** — `TelemetryUploadService`
+  must refuse it, not create the row. The `.ibt` session YAML is attacker-controlled, so letting it
+  mint `Car`/`Track` rows would let any authenticated user write the *public* catalog that
+  `/cars` and `/tracks` serve (GHSA-6v3w-2j74-8424). Catalog ingestion and the Seeder are the only
+  writers. Confirm the refusal happens before any `UploadedLap` row is written.
 - Confirm the size bound is enforced twice, not once, and that the two bounds still disagree in the
   right direction: a file over `TelemetryUpload.MaxFileSizeBytes` (250 MB) reaches the action and gets
   a `413` naming the limit, while a request over `TelemetryUpload.MaxRequestBytes` (the file bound plus

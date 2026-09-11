@@ -70,7 +70,8 @@ docker compose up -d        # Postgres on :5432, pgAdmin on :5050
 # Apply migrations
 dotnet ef database update --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 
-# Run the API (http://localhost:5000, Swagger at /swagger)
+# Run the API (http://localhost:5000; API reference at /scalar/v1, OpenAPI
+# document at /openapi/v1.json — both Development-only)
 dotnet run --project src/ApexRacers.Api
 
 # In another terminal, run the frontend (http://localhost:5173)
