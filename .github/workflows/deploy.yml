@@ -48,10 +48,13 @@ env:
 #      and mint the Azure token — the change would widen the surface, not narrow it.
 #      It must be the custom branch allowlist rather than the "protected branches"
 #      option: `main` is protected here by a ruleset, which that option cannot see.
-#   2. Azure's federated credential must accept the new subject BEFORE this file names
-#      the environment. Reverse the order and the deploy jobs lose Azure authentication.
-#      Rollback is to drop the two `environment:` lines: the older `ref:refs/heads/main`
-#      subject is retired only once a deploy on the NEW subject has gone green.
+#   2. Azure's federated credential must accept a subject BEFORE this file names it.
+#      Reverse the order and the deploy jobs lose Azure authentication. The older
+#      `ref:refs/heads/main` subject was kept as the rollback path until a deploy on
+#      the new one went green (v9.0.9), and has since been RETIRED — so dropping the
+#      two `environment:` lines no longer restores deploys on its own. Rolling back now
+#      means recreating that federated credential first, then dropping the lines. The
+#      runbook records the credential definition.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Read-only by default. The two deploy jobs additionally request id-token: write,
