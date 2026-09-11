@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Setting up a local copy of the project works from the instructions alone. The example environment
+  file was missing the database connection the setup guide said it already contained, so following
+  the documented first run produced an API that stopped during startup and never answered at all.
+  The connection is now filled in for the Docker stack, and every other setting the API and the
+  ingestion worker read is listed alongside it — what each one does, what happens if it is left out,
+  and which ones belong only in a deployed environment.
+- The contributor setup guide points at the API reference that exists. It had directed people to a
+  documentation page that was replaced some time ago, so anyone following it found nothing there and
+  had no way to tell whether the reference was broken or simply moved.
+
+### Changed
+
+- Comments in the source that referred readers to planning documents now name documents that still
+  exist. The originals were retired and folded into other files, leaving anyone who followed them
+  with nothing to read.
+- The check that keeps the two sets of coding-assistant configuration files in step now runs on every
+  proposed change rather than only on changes that touch those files, and the project guide now
+  describes what it actually does — it reports a problem rather than preventing a merge on its own.
+
+### Removed
+
+- An OAuth redirect setting that nothing in the project read has been dropped from the example
+  environment file, along with the note describing how to keep it in sync. It will return with the
+  sign-in flow it belongs to.
 
 ## [9.0.11] - 2026-09-11
 

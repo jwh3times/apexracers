@@ -381,7 +381,8 @@ app.MapControllers();
 
 // Anonymous probe endpoints, exempt from the global rate limiter so aggressive
 // platform probes can't consume a client's budget (or get 429'd themselves).
-// App Service's Health check feature points at /healthz (deployTODO.md).
+// App Service's Health check feature points at /healthz (maintainer-only runbook:
+// private/ops/azure-deployment-runbook.md, "Verified Runtime State").
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .DisableRateLimiting();
 app.MapHealthChecks("/ready")

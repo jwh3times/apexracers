@@ -10,7 +10,8 @@ namespace ApexRacers.Seeder.Verification;
 public sealed record VerificationCheck(string Name, bool Passed, string Detail);
 
 /// <summary>
-/// Mechanical gate for the prod demo rollout (deployTODO.md §14) and the M2 teardown.
+/// Mechanical gate for the prod demo rollout (maintainer-only runbook:
+/// private/ops/iracing-rollout.md §1) and the M2 teardown.
 /// VerifyDemoAsync: every cache-key family + persisted gap the demo surface reads must
 /// exist with the far-future sentinel. VerifyTeardownAsync: none of it remains.
 /// Expected key formats are read from <see cref="DemoCacheSeeder"/>'s actual writes —

@@ -71,11 +71,17 @@ hit for real while building this generator:
 
 Regenerate with `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`; add `-- --check` /
 `--check` to verify without writing) and commit every side that changed; the **Agent Config Sync** CI
-check (`.github/workflows/agent-config-sync.yml`) fails a PR whose generated tree has drifted or that
-leaves an orphaned generated file behind. The generator copies prose **verbatim** — it never rewrites
-wording — so keep agent and skill bodies **tool-neutral**: don't name one tool's entry-point file
-where "the project guide" will do, and write repo-root-relative paths as plain text rather than
-relative Markdown links (a relative link resolves differently from the mirrored location).
+check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **reports a failure** on a
+generated tree that has drifted or that leaves an orphaned generated file behind. It is not in the
+ruleset's required-status-check list today — `Format`, `Test`, and `Verify changelog version` are —
+so it reports rather than hard-blocks; treat a red run as blocking anyway. (The workflow is
+deliberately not path-filtered: a path-filtered check never reports on an unrelated PR, so it could
+never be made required without stalling those merges.)
+
+The generator copies prose **verbatim** — it never rewrites wording — so keep agent and skill bodies
+**tool-neutral**: don't name one tool's entry-point file where "the project guide" will do, and write
+repo-root-relative paths as plain text rather than relative Markdown links (a relative link resolves
+differently from the mirrored location).
 
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
 becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model
