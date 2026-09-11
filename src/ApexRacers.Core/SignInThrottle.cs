@@ -35,6 +35,16 @@ namespace ApexRacers.Core;
 /// during an attack, not a steady-state rule, and the owner is emailed when it starts.
 /// </para>
 /// <para>
+/// <b>Residual, stated rather than glossed.</b> The scope is the source address, so an attacker who
+/// shares one with the Driver can still exhaust it for both of them — a carrier-grade NAT pool, an
+/// employer's egress, a shared VPN exit. Five requests a quarter hour against that address denies
+/// the Driver from it, which is issue #300's shape confined to one network rather than the whole
+/// internet. Holding an account in the tightened state is likewise cheap for a caller with a handful
+/// of addresses, and while tightened a Driver's own single mistyped password costs them the window.
+/// Closing that needs a second dimension of identity — a device or session the Driver has already
+/// proved — not a better address rule, so it is recorded here rather than half-solved.
+/// </para>
+/// <para>
 /// What this type deliberately does not decide is what the caller is <em>told</em>. Sign-in has
 /// exactly two outcomes, <c>200</c> and a generic <c>401</c>; a refusal here is indistinguishable
 /// from a wrong password, an unconfirmed address, and an address with no account at all
