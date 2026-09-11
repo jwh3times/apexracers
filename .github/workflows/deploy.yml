@@ -23,8 +23,35 @@ env:
 #   RESOURCE_GROUP          — Azure resource group containing both resources
 #
 # Azure auth is OIDC: the federated credential on the app registration trusts the
-# subject repo:jwh3times/apexracers:ref:refs/heads/main. No AZURE_CREDENTIALS, and
+# subject repo:jwh3times/apexracers:environment:production. No AZURE_CREDENTIALS, and
 # no registry password — the deploy identity pushes via `az acr login`.
+#
+# Both deploy jobs declare `environment: production`, which is what puts `environment`
+# (rather than `ref`) in the OIDC subject and lets GitHub environment protection rules
+# gate a deploy. This completes the third ("Consider") remediation bullet of
+# GHSA-j6j2-8f7p-qv9r, which was deferred out of the SHA-pinning PR (#304) and tracked
+# separately on the board; the advisory itself closed with that PR.
+#
+# What it buys: the old ref-scoped subject was matched by ANY job in ANY workflow that
+# ran with `id-token: write` on main, whether or not it had anything to do with
+# deploying. A job must now deliberately declare this environment to attempt the match.
+# What it does NOT buy: no reviewer or wait-timer rule is configured, so this does not
+# defend against someone who can already land a commit on main — they would simply
+# declare the environment too. Those rules are the gap-closer, and this makes them
+# available to enable.
+#
+# Two constraints hold the change together and must not be separated:
+#
+#   1. The `production` environment carries a deployment branch policy allowlisting only
+#      `main`. The federated credential matches on the environment, not the ref, so
+#      without that policy a workflow job on ANY branch could declare this environment
+#      and mint the Azure token — the change would widen the surface, not narrow it.
+#      It must be the custom branch allowlist rather than the "protected branches"
+#      option: `main` is protected here by a ruleset, which that option cannot see.
+#   2. Azure's federated credential must accept the new subject BEFORE this file names
+#      the environment. Reverse the order and the deploy jobs lose Azure authentication.
+#      Rollback is to drop the two `environment:` lines: the older `ref:refs/heads/main`
+#      subject is retired only once a deploy on the NEW subject has gone green.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Read-only by default. The two deploy jobs additionally request id-token: write,
@@ -141,6 +168,7 @@ jobs:
     name: Deploy API
     needs: [format, test]
     if: github.event_name == 'push'
+    environment: production
     permissions:
       contents: read
       id-token: write
@@ -182,6 +210,7 @@ jobs:
     name: Deploy Ingestion Worker
     needs: [format, test]
     if: github.event_name == 'push'
+    environment: production
     permissions:
       contents: read
       id-token: write

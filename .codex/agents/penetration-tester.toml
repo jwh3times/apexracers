@@ -244,6 +244,26 @@ Test cases:
 - This is a repository-configuration check against the workflow files, not something reachable from a
   running container or the deployed app — report a finding here against the workflow YAML, not as an
   app-level vulnerability.
+- Both deploy jobs declare `environment: production`, which is what puts `environment:production`
+  (not `ref:refs/heads/main`) in the subject the Azure federated credential matches — the third
+  remediation bullet of this advisory. That credential-side match can't be probed from the
+  workflow file; grep confirms only that the `environment:` line is present, not that GitHub's side
+  is actually restrictive. Testing it takes **two** calls (an authenticated `gh` session with
+  repo-admin read, not the local dev environment) — the first reports only which *kind* of policy is
+  set, never the branches:
+
+  ```bash
+  gh api repos/<owner>/<repo>/environments/production                            # expect custom_branch_policies: true
+  gh api repos/<owner>/<repo>/environments/production/deployment-branch-policies # expect exactly one entry: main
+  ```
+
+  An empty or absent allowlist is the finding that matters: the credential matches the environment
+  and ignores the ref, so a job on any branch could then declare the environment and mint the Azure
+  token. Relying on the "protected branches" option instead is also a finding, but it fails the other
+  way — this repository's `main` is protected by a **ruleset**, which that option cannot see, so it
+  would match no branch and block deploys rather than admit extra ones. A finding here is a
+  repository/cloud-configuration gap, not an app-level vulnerability; see the `azure-infrastructure`
+  agent for why both the environment declaration and its branch allowlist are required together.
 
 **Forwarded-header trust (GHSA-fq5w-frqr-6px2)**
 
