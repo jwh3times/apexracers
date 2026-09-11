@@ -108,8 +108,13 @@ test.describe('auth flows', () => {
     expect(await shape(lockedWrongPassword)).toEqual(baseline);
 
     // The owner is told out of band instead — the one channel that reaches them and not the guesser.
-    const notice = await waitForEmail(email, /temporarily locked/i);
-    expect(notice.textBody).toMatch(/failed sign-in attempts/i);
+    // Queued rather than sent inside the response, so that an account that exists cannot be told
+    // apart from one that does not by how long the refusal took; waitForEmail polls for the drain.
+    const notice = await waitForEmail(email, /failed sign-in attempts/i);
+    // It must not claim the account is locked: since issue #300 it is not, and telling the owner to
+    // wait would send them away from a door that is open for them.
+    expect(notice.subject).not.toMatch(/locked/i);
+    expect(notice.textBody).toMatch(/still sign in as usual from your own device/i);
   });
 
   test('reset-password answers the same for an unknown address and a bad token', async ({
