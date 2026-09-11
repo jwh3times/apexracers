@@ -70,11 +70,13 @@ can sign in. Registration answers with the same generic acknowledgement whether 
 is already registered, so the response never reveals who has an account.
 
 Sign-in answers the same way for every failure — an address with no account, one that has not been
-confirmed, a locked account, and a wrong password are indistinguishable. Repeated failed attempts
-still lock an account for a short period, but the lockout is reported by email to the account's owner
-rather than in the sign-in response, since anyone guessing a password would otherwise learn from it
-that the address is registered. Password reset behaves the same way: an unknown address and an
-expired link produce identical answers.
+confirmed, a throttled sign-in, and a wrong password are indistinguishable. Repeated failed sign-ins
+are counted against the machine they came from rather than against the account, so a stranger who
+knows a driver's email cannot keep that driver signed out — the driver can still sign in normally
+from their own device. The account's owner is emailed if something is guessing at their password,
+rather than being told in the sign-in response, since anyone guessing a password would otherwise
+learn from it that the address is registered. Password reset behaves the same way: an unknown address
+and an expired link produce identical answers.
 
 The application uses local account authentication with JWT access tokens and rotating
 refresh tokens. Users have one role at a time: `Standard`, `Beta`, `Alpha`, or `Admin`.

@@ -28,8 +28,8 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   account cannot sign in until it follows the emailed confirmation link (`POST /api/auth/confirm-email`,
   also no `[Authorize]`, taking `{ userId, token }`).
 - `POST /api/auth/login` — an unconfirmed account gets the same generic invalid-credentials result as
-  an unknown address or a wrong password, checked *before* the lockout counter and `AccessFailedAsync`
-  run, so a stranger can neither probe nor lock out an account by attempting sign-in against it.
+  an unknown address or a wrong password, checked *before* the sign-in throttle claim runs, so a
+  stranger can neither probe nor throttle an account by attempting sign-in against it.
 - Test: register the same address twice (or register a known-taken address) — response status and
   body must be byte-identical to registering a fresh address, and must not contain any Identity error
   text (`DuplicateUserName`/`DuplicateEmail`); a weak-password rejection must still surface for both.
@@ -43,32 +43,48 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   notification email (resend confirmation, or a security notice) but must not measurably differ in
   response latency or shape from the account-creation path in a way a network observer could use.
 
-**Sign-in & password-reset enumeration (GHSA-28pc-cx5w-g6jp)**
+**Sign-in & password-reset enumeration (GHSA-28pc-cx5w-g6jp) and sign-in throttling (issue #300, now fixed)**
 
-- `POST /api/auth/login` — every refusal (unknown address, unconfirmed address, locked account, wrong
-  password) returns the identical generic `401` body `{ detail: "Invalid email or password." }`.
+- `POST /api/auth/login` — every refusal (unknown address, unconfirmed account, throttled address,
+  wrong password) returns the identical generic `401` body `{ detail: "Invalid email or password." }`.
   There is no `423` or any other status that fires only for an account that exists — that used to be
   the oracle: five wrong passwords against a registered address returned `423` while an unregistered
   one returned `401` forever.
-- Test: register + confirm an account, fail its password 5 times (`MaxFailedAccessAttempts`) to lock
-  it, then sign in with the *correct* password — the response must be byte-identical to signing in
-  against an address with no account at all. This is the core finding to re-verify.
-- Test: while an account is locked, keep sending wrong passwords — `LockoutEnd` must not move forward
-  (Identity would otherwise restart the window on every recorded failure), and exactly one lockout
-  notification email is sent for the whole episode, not one per attempt.
+- Brute-force protection is now counted per (account, source address) — `SignInThrottleStore`, keyed
+  on `HttpContext.Connection.RemoteIpAddress` — rather than per account (Identity's own lockout is
+  off). Note the source address is only as trustworthy as forwarded-header processing makes it; see
+  "Forwarded-header trust" below for how to test spoofing that value.
+- Test: register + confirm an account, fail its password 5 times from one source address (the default
+  `SIGNIN_MAX_FAILURES_PER_ADDRESS`) to exhaust that address's allowance, then sign in with the
+  *correct* password from the same address — the response must be byte-identical to signing in
+  against an address with no account at all. This is the core enumeration finding to re-verify.
+- Test the fix for issue #300 directly: exhaust one address's allowance against a *known* account,
+  then sign in with the **correct** password from a **different** source address — it must succeed
+  immediately (200, not throttled). A stranger who knows the address can no longer keep the owner
+  signed out; if this fails, the denial of service has regressed.
+- Test: while one address's allowance is exhausted, keep sending wrong passwords from it — the
+  window's start must not move forward (the store would otherwise let a caller hold it open by
+  continuing to knock), and exactly one "someone is guessing" notification email is sent for the
+  whole episode (paced by `SIGNIN_NOTICE_INTERVAL_MINUTES`, default 60), not one per attempt.
+- Test the distributed-attack tightening, if forwarded-header spoofing is available (see below): drive
+  enough failures across enough distinct source addresses against one account to cross
+  `SIGNIN_ACCOUNT_HIGH_WATER_FAILURES` (default 50/hour), then confirm (a) a **fresh** address is
+  still admitted on its first correct-password attempt — the tightened state must never deny a caller
+  who has not personally failed — and (b) each address's *own* allowance has dropped from 5 to 1. Also
+  confirm the account-wide counter is not reset or reported anywhere in the sign-in response itself.
 - Test: time an unknown-address attempt against a real-address wrong-password attempt, including a
-  locked account — all three must pay the same dominant password-hashing cost (the service verifies
-  every refusal against a cached stand-in hash). A measurable gap here is the same class of oracle as
-  the registration-timing test above.
+  throttled address — all three must pay the same dominant password-hashing cost (the service
+  verifies every refusal against a cached stand-in hash). A measurable gap here is the same class of
+  oracle as the registration-timing test above.
 - `POST /api/auth/reset-password` — an unknown address and an expired/invalid token must produce
   byte-identical `400` bodies (`"Invalid or expired password reset request."`). A weak new password
   submitted against a *valid* token still surfaces its own policy message — that path is reachable
   only by someone who already controls the mailbox, so it is not part of this oracle; don't flag it.
-- **Known open gap, tracked separately (issue #300; the advisory stays open until it lands):** the
-  tests above close the *enumeration*, not the underlying denial-of-service — five wrong passwords
-  against any known email still lock that account for the 15-minute window, and an unauthenticated
-  caller can repeat that indefinitely within the shared per-IP `auth` rate-limit policy (default 10
-  req/min). Confirm it still reproduces; don't report it as a new finding.
+- **Known, accepted residual — not a finding:** the throttle is scoped to source address, so an
+  attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN exit) can still
+  exhaust that address's allowance and deny the Driver from it. This is documented in
+  `ApexRacers.Core.SignInThrottle`'s remarks as a stated limitation, not tracked as open work — don't
+  report it as a new finding without a concrete scenario beyond what's already acknowledged there.
 
 **Refresh token endpoints**
 
