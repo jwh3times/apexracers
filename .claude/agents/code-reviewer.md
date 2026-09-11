@@ -188,6 +188,13 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   commit SHA with a trailing `# vX.Y.Z` comment — GHSA-j6j2-8f7p-qv9r. A tag is mutable; the deploy
   jobs run actions with `id-token: write` against production. Dependabot keeps the pins current, so
   there is no reason to reintroduce a tag, and nothing fails if someone does.
+- Flag removal of `environment: production` from either `deploy.yml` deploy job, or a new job that
+  requests `id-token: write` without declaring that environment — GHSA-j6j2-8f7p-qv9r. The Azure
+  federated credential is subject-matched on `environment:production`; dropping the declaration (or
+  adding a sibling job without it) reopens the wider, ref-scoped match this hardening closed. The
+  environment's own branch-allowlist configuration lives in GitHub/Azure settings, not in this repo's
+  tracked files, so it isn't something a diff review can confirm — see the `azure-infrastructure`
+  agent for that invariant and the `penetration-tester` agent for verifying it live.
 - Flag removal of `USER $APP_UID` (or any change that puts the final stage back on root) from
   `Dockerfile` or `ingestion.Dockerfile` — GHSA-4whp-7hv6-jvv6. Nothing in either image needs root:
   the API listens on unprivileged 8080 and the worker listens on nothing.

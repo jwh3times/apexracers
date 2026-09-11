@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.9] - 2026-09-10
+
 ### Security
 
 - The deploy jobs now run in a `production` GitHub environment restricted to `main`, and the Azure
   identity they use trusts only that environment. Deploy credentials were previously scoped to the
-  branch alone, which left no place to attach approval or wait rules before a release reaches
-  production; the environment is the hook those rules can now hang on.
+  branch alone, so they were equally available to any unrelated job that happened to request an
+  identity token while running on `main`; reaching them now takes a deliberate declaration, and the
+  environment gives approval and wait rules somewhere to attach before a release reaches production.
+  No such rule is switched on yet — this change is what makes them possible.
 
 ## [9.0.8] - 2026-09-10
 
@@ -1234,7 +1240,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.8...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.9...HEAD
+[9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9
 [9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
 [9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7
 [9.0.6]: https://github.com/jwh3times/apexracers/compare/v9.0.5...v9.0.6
