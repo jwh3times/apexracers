@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.12] - 2026-09-11
+
 ### Fixed
 
 - Setting up a local copy of the project works from the instructions alone. The example environment
@@ -1294,7 +1298,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.11...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.12...HEAD
+[9.0.12]: https://github.com/jwh3times/apexracers/compare/v9.0.11...v9.0.12
 [9.0.11]: https://github.com/jwh3times/apexracers/compare/v9.0.10...v9.0.11
 [9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9
 [9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
