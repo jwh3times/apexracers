@@ -6,6 +6,7 @@ using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Communication.Email;
 using ApexRacers.Api.Middleware;
+using ApexRacers.Core;
 using ApexRacers.Api.Services;
 using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
@@ -91,12 +92,15 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = true;
 
-    // Brute-force protection: lock an account for 15 minutes after 5 consecutive
-    // failed sign-in attempts. AuthService.LoginAsync drives the counter manually
-    // because UserManager.CheckPasswordAsync (unlike SignInManager) does not.
-    options.Lockout.AllowedForNewUsers = true;
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    // Identity's own lockout is deliberately OFF, and must stay off. It counts failures per
+    // account regardless of who produced them, which is exactly the denial of service issue #300
+    // removed: five requests from a stranger locked a Driver out of their own account for fifteen
+    // minutes, repeatable indefinitely. Brute-force protection now lives in SignInThrottleStore,
+    // which counts per (account, source address) instead — see ApexRacers.Core.SignInThrottle.
+    //
+    // AccessFailedCount and LockoutEnd still exist on the user because they are Identity's columns;
+    // nothing reads them. Do not reintroduce AccessFailedAsync/IsLockedOutAsync on the sign-in path.
+    options.Lockout.AllowedForNewUsers = false;
 })
 .AddRoles<IdentityRole<Guid>>()
 .AddEntityFrameworkStores<AppDbContext>()
@@ -225,6 +229,25 @@ builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<RefreshTokenStore>();
+
+// Sign-in throttling (issue #300). Thresholds are config-driven for the same reason the rate limits
+// above are: CI and E2E drive sign-in far harder than a person does, from one address.
+builder.Services.AddSingleton(_ => new SignInThrottleOptions(
+    PerAddressMaxFailures: builder.Configuration.GetValue(
+        "SIGNIN_MAX_FAILURES_PER_ADDRESS", SignInThrottle.DefaultPerAddressMaxFailures),
+    TightenedPerAddressMaxFailures: builder.Configuration.GetValue(
+        "SIGNIN_MAX_FAILURES_PER_ADDRESS_UNDER_ATTACK", SignInThrottle.TightenedPerAddressMaxFailures),
+    AccountHighWaterFailures: builder.Configuration.GetValue(
+        "SIGNIN_ACCOUNT_HIGH_WATER_FAILURES", SignInThrottle.DefaultAccountHighWaterFailures),
+    PerAddressWindow: TimeSpan.FromMinutes(builder.Configuration.GetValue(
+        "SIGNIN_ADDRESS_WINDOW_MINUTES", SignInThrottle.DefaultPerAddressWindow.TotalMinutes)),
+    AccountWindow: TimeSpan.FromMinutes(builder.Configuration.GetValue(
+        "SIGNIN_ACCOUNT_WINDOW_MINUTES", SignInThrottle.DefaultAccountWindow.TotalMinutes)),
+    NoticeInterval: TimeSpan.FromMinutes(builder.Configuration.GetValue(
+        "SIGNIN_NOTICE_INTERVAL_MINUTES", SignInThrottle.DefaultNoticeInterval.TotalMinutes))));
+builder.Services.AddScoped<SignInThrottleStore>();
+builder.Services.AddHostedService<SignInThrottleCleanupService>();
+
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AdminSeedService>();
 

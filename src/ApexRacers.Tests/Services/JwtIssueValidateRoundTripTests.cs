@@ -3,6 +3,7 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using ApexRacers.Api.Services.Email;
 using ApexRacers.Core.Models;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.DataProtection;
@@ -78,7 +79,9 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
             config,
             jwt,
             refreshTokens,
-            new FakeEmailSender());
+            new FakeEmailSender(),
+            new SignInThrottleStore(
+                provider.GetRequiredService<AppDbContext>(), TimeProvider.System, SignInThrottle.Defaults));
 
         // Registration hands back nothing now — an account is unusable until its address is
         // confirmed — so the token this test round-trips comes from the sign-in that follows.
@@ -90,7 +93,7 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
         await service.ConfirmEmailAsync(
             user!.Id, await userManager.GenerateEmailConfirmationTokenAsync(user), Ct);
 
-        var login = await service.LoginAsync(new LoginRequest(email, "Pass1234"), Ct);
+        var login = await service.LoginAsync(new LoginRequest(email, "Pass1234"), null, Ct);
         return login!.Token;
     }
 

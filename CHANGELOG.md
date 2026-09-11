@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Failed sign-ins are now counted against the machine they came from rather than against the account.
+  Five wrong passwords used to lock an account for everyone, so anyone who knew a driver's email
+  address could keep that driver signed out indefinitely for the price of five requests a quarter
+  hour. A stranger guessing now uses up only their own attempts, and the driver signs in normally
+  from their own device.
+- A driver whose account is being guessed at is emailed once, rather than each time the guessing
+  trips the limit. The message no longer says the account is locked, because it no longer is.
+
+### Security
+
+- Sign-in resists distributed guessing as well as the old account-wide counter did. Once an account
+  passes a much higher failure count across many machines, every machine's allowance shrinks — but a
+  machine that has not failed is still let in on the first correct password, so the protection cannot
+  itself be used to keep the owner out.
 
 ## [9.0.9] - 2026-09-10
 

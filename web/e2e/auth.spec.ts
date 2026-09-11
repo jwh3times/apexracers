@@ -68,11 +68,12 @@ test.describe('auth flows', () => {
     await login(page, email, TEST_PASSWORD);
   });
 
-  test('a locked account is indistinguishable from an unregistered one', async ({ page }) => {
+  test('a throttled account is indistinguishable from an unregistered one', async ({ page }) => {
     const email = await registerNewUser(page);
     await logout(page);
 
-    // Program.cs locks after 5 consecutive failures.
+    // Five failures exhausts this source address's allowance (SignInThrottle). The suite runs
+    // from one address, so the refusal is reached the same way a single guesser would reach it.
     for (let i = 0; i < 5; i++) {
       await page.request.post('/api/auth/login', {
         data: { email, password: 'DefinitelyWrong1' },
@@ -89,10 +90,10 @@ test.describe('auth flows', () => {
       data: { email: uniqueEmail(), password: TEST_PASSWORD },
     });
 
-    // Only an account that exists can be locked, so a 423 named one — five wrong passwords against a
-    // registered address returned 423 while an unregistered one returned 401 forever
-    // (GHSA-28pc-cx5w-g6jp). The correct password matters most: answering it differently would let an
-    // attacker guessing through the lockout window learn they had found it.
+    // Only an account that exists can be throttled, so any answer unique to that state names one. This
+    // used to be a 423: five wrong passwords against a registered address returned 423 while an
+    // unregistered one returned 401 for ever (GHSA-28pc-cx5w-g6jp). The correct password matters most —
+    // answering it differently would let a guesser learn from the response that they had found it.
     expect(lockedRightPassword.status()).toBe(401);
     expect(lockedWrongPassword.status()).toBe(401);
     expect(unregistered.status()).toBe(401);

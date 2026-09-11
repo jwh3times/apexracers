@@ -3,6 +3,7 @@ using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
 using ApexRacers.Api.Services.Email;
+using ApexRacers.Core;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
@@ -39,9 +40,9 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             o.Password.RequireNonAlphanumeric = false;
             o.Password.RequireUppercase      = false;
             o.User.RequireUniqueEmail        = true;
-            o.Lockout.AllowedForNewUsers      = true;
-            o.Lockout.MaxFailedAccessAttempts = 3;
-            o.Lockout.DefaultLockoutTimeSpan  = TimeSpan.FromMinutes(15);
+            // Identity's account-wide lockout stays off here exactly as it is in Program.cs.
+            // Throttling is SignInThrottleStore's job now, and it counts per source address.
+            o.Lockout.AllowedForNewUsers      = false;
         })
         .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<AppDbContext>()
@@ -75,7 +76,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         }
     }
 
-    private static AuthService BuildService(ServiceProvider provider, IEmailSender? emailSender = null)
+    private static AuthService BuildService(
+        ServiceProvider provider,
+        IEmailSender? emailSender = null,
+        TimeProvider? timeProvider = null,
+        SignInThrottleOptions? throttleOptions = null)
     {
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var db          = provider.GetRequiredService<AppDbContext>();
@@ -90,8 +95,36 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // than a second set invented here.
         var jwt = JwtSettings.FromConfiguration(config);
         var refreshTokens = new RefreshTokenStore(db, TimeProvider.System, NullLogger<RefreshTokenStore>.Instance);
+        var throttle = new SignInThrottleStore(
+            db, timeProvider ?? TimeProvider.System, throttleOptions ?? TestThrottleOptions);
         return new AuthService(
-            userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender());
+            userManager, config, jwt, refreshTokens, emailSender ?? new FakeEmailSender(), throttle);
+    }
+
+    /// <summary>
+    /// The throttle policy the sign-in tests run under. Three failures per address rather than the
+    /// production five, so a test that needs an exhausted allowance stays short; every other number
+    /// is production's, because the rules under test are about which counter moves, not how far.
+    /// </summary>
+    private static readonly SignInThrottleOptions TestThrottleOptions =
+        SignInThrottle.Defaults with { PerAddressMaxFailures = 3 };
+
+    /// <summary>A stranger's address, and the account owner's. Distinct so a test can show that
+    /// exhausting one leaves the other untouched.</summary>
+    private const string Guesser = "203.0.113.7";
+    private const string Owner   = "198.51.100.20";
+
+    private static string FreshAddress(int i) => "10.0.0." + i;
+
+    private static string AttackAddress(int i) => "10.1.1." + i;
+
+    private sealed class MovableClock(DateTimeOffset utcNow) : TimeProvider
+    {
+        private DateTimeOffset _utcNow = utcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan by) => _utcNow += by;
     }
 
     private static async Task SeedRolesAsync(ServiceProvider provider)
@@ -112,7 +145,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await svc.RegisterAsync(new RegisterRequest(email, password), ct);
         await ConfirmRegisteredEmailAsync(provider, svc, email, ct);
 
-        return await svc.LoginAsync(new LoginRequest(email, password), ct)
+        return await svc.LoginAsync(new LoginRequest(email, password), null, ct)
             ?? throw new InvalidOperationException($"Sign-in failed for {email} after confirmation.");
     }
 
@@ -204,8 +237,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         // Silence must not mean "quietly took the new password" — that would trade a disclosed
         // error for account takeover.
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("dup@example.com", "Pass1234"), TestContext.Current.CancellationToken));
-        Assert.Null(await svc.LoginAsync(new LoginRequest("dup@example.com", "Attacker9"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("dup@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("dup@example.com", "Attacker9"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -306,11 +339,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
 
         await svc.RegisterAsync(new RegisterRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        Assert.Null(await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
 
         await ConfirmRegisteredEmailAsync(provider, svc, "new@example.com", TestContext.Current.CancellationToken);
 
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("new@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -340,7 +373,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ConfirmEmailAsync(user!.Id, "not-a-real-token", TestContext.Current.CancellationToken));
 
-        Assert.Null(await svc.LoginAsync(new LoginRequest("bad@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("bad@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -371,7 +404,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "user@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
-        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.LoginAsync(new LoginRequest("user@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.Token);
@@ -386,7 +419,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "user@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
-        Assert.Null(await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"), TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("user@example.com", "WrongPassword"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -395,27 +428,55 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         var svc = BuildService(provider);
 
-        Assert.Null(await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task LoginAsync_LockedAccount_IsRefusedEvenWithTheCorrectPassword()
+    public async Task LoginAsync_ExhaustedAddress_IsRefusedEvenWithTheCorrectPassword()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
 
-        await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", ct);
 
-        // MaxFailedAccessAttempts = 3 in the test provider.
+        // PerAddressMaxFailures = 3 in TestThrottleOptions.
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), Guesser, ct);
 
-        Assert.Null(await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        // Checked before the password, so finding it during the window still does not get in.
+        Assert.Null(await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), Guesser, ct));
+    }
+
+    /// <summary>
+    /// The whole of issue #300. An account-wide counter let five requests from a stranger lock a
+    /// Driver out of their own account; the allowance is now per source address, so exhausting one
+    /// says nothing about any other.
+    /// </summary>
+    [Fact]
+    public async Task LoginAsync_AddressExhaustedByAGuesser_DoesNotLockTheOwnerOut()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+
+        await RegisterAndSignInAsync(provider, svc, "victim@example.com", "Pass1234", ct);
+
+        // Far past the allowance, all from one stranger.
+        for (var i = 0; i < 10; i++)
+            await svc.LoginAsync(new LoginRequest("victim@example.com", "WrongPassword"), Guesser, ct);
+
+        // That address is spent...
+        Assert.Null(await svc.LoginAsync(new LoginRequest("victim@example.com", "Pass1234"), Guesser, ct));
+
+        // ...and the owner, on their own machine, is completely unaffected.
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("victim@example.com", "Pass1234"), Owner, ct));
     }
 
     [Fact]
-    public async Task LoginAsync_LockedAccount_IsIndistinguishableFromAnUnknownEmail()
+    public async Task LoginAsync_ExhaustedAddress_IsIndistinguishableFromAnUnknownEmail()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
@@ -424,22 +485,21 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", ct);
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), Guesser, ct);
 
-        // The finding itself: only a real account can be locked, so any answer unique to the locked
-        // state names one. Both the right and the wrong password must read like an address that was
-        // never registered — the right one especially, or an attacker guessing through the lockout
-        // window would learn from the response that they had found it.
-        var lockedRightPassword = await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), ct);
-        var lockedWrongPassword = await svc.LoginAsync(new LoginRequest("locked@example.com", "StillWrong"), ct);
-        var unknown = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), ct);
+        // Only a real account can be throttled, so any answer unique to that state names one. Both
+        // the right and the wrong password must read like an address that was never registered — the
+        // right one especially, or a guesser would learn from the response that they had found it.
+        var rightPassword = await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), Guesser, ct);
+        var wrongPassword = await svc.LoginAsync(new LoginRequest("locked@example.com", "StillWrong"), Guesser, ct);
+        var unknown = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), Guesser, ct);
 
-        Assert.Equal(unknown, lockedRightPassword);
-        Assert.Equal(unknown, lockedWrongPassword);
+        Assert.Equal(unknown, rightPassword);
+        Assert.Equal(unknown, wrongPassword);
     }
 
     [Fact]
-    public async Task LoginAsync_CrossingTheLockoutThreshold_EmailsTheOwnerOnce()
+    public async Task LoginAsync_RepeatedFailures_EmailTheOwnerOnlyOnce()
     {
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
@@ -451,20 +511,109 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         emails.Clear();
 
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), Guesser, ct);
 
         // Email is the only channel that reaches the owner rather than whoever is guessing, so it is
-        // the only place the lockout may be disclosed.
+        // the only place this may be disclosed.
         var sent = Assert.Single(emails.Sent);
         Assert.Equal("locked@example.com", sent.To);
-        Assert.Contains("temporarily locked", sent.Subject);
+        Assert.Contains("Failed sign-in attempts", sent.Subject);
+        // It must not claim the account is locked: since #300 it is not, and the owner can still
+        // sign in from their own machine.
+        Assert.DoesNotContain("locked", sent.Subject, StringComparison.OrdinalIgnoreCase);
 
-        // Further attempts return early on the lockout, so hammering cannot turn the notice into a
-        // mail flood aimed at the victim.
+        // Sign-in is unauthenticated, so an email per failure would be an inbox a stranger could
+        // fill. Keep hammering from the same address and from fresh ones; neither earns a second.
         for (var i = 0; i < 5; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), Guesser, ct);
+        for (var i = 0; i < 5; i++)
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), FreshAddress(i), ct);
 
         Assert.Single(emails.Sent);
+    }
+
+    [Fact]
+    public async Task LoginAsync_SuccessfulSignIn_ClearsOnlyItsOwnAddress()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+
+        await RegisterAndSignInAsync(provider, svc, "shared@example.com", "Pass1234", ct);
+
+        for (var i = 0; i < 3; i++)
+            await svc.LoginAsync(new LoginRequest("shared@example.com", "WrongPassword"), Guesser, ct);
+
+        // The owner signing in is not evidence the guesser stopped, so it must not hand them a
+        // fresh allowance.
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("shared@example.com", "Pass1234"), Owner, ct));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("shared@example.com", "Pass1234"), Guesser, ct));
+    }
+
+    /// <summary>
+    /// Crossing the account-wide high-water mark shrinks every address's allowance — but it must
+    /// never deny an address that has not itself failed, or the denial of service is back.
+    /// </summary>
+    [Fact]
+    public async Task LoginAsync_AccountUnderDistributedAttack_TightensOthersButStillAdmitsACleanAddress()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(
+            provider,
+            throttleOptions: SignInThrottle.Defaults with
+            {
+                PerAddressMaxFailures = 3,
+                AccountHighWaterFailures = 6,
+            });
+        var ct = TestContext.Current.CancellationToken;
+
+        await RegisterAndSignInAsync(provider, svc, "target@example.com", "Pass1234", ct);
+
+        // Six failures spread over three addresses: each stays under its own allowance of three,
+        // so the account-wide mark is what trips.
+        for (var i = 0; i < 3; i++)
+            for (var j = 0; j < 2; j++)
+                await svc.LoginAsync(new LoginRequest("target@example.com", "WrongPassword"), AttackAddress(i), ct);
+
+        // A fresh address now gets one failure instead of three...
+        Assert.Null(await svc.LoginAsync(new LoginRequest("target@example.com", "WrongPassword"), "10.9.9.9", ct));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("target@example.com", "Pass1234"), "10.9.9.9", ct));
+
+        // ...while the owner, who has failed nothing, still gets in. This is the property that keeps
+        // the tightened state from becoming a denial of service.
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("target@example.com", "Pass1234"), Owner, ct));
+    }
+
+    /// <summary>
+    /// A refused attempt is not recorded, so knocking on a closed door cannot hold it closed. This is
+    /// the property that stopped the old account-wide lockout from being extendable for ever.
+    /// </summary>
+    [Fact]
+    public async Task LoginAsync_AttemptsWhileRefused_DoNotExtendTheWindow()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var clock = new MovableClock(new DateTimeOffset(2026, 9, 11, 12, 0, 0, TimeSpan.Zero));
+        var svc = BuildService(provider, timeProvider: clock);
+        var ct = TestContext.Current.CancellationToken;
+
+        await RegisterAndSignInAsync(provider, svc, "patient@example.com", "Pass1234", ct);
+
+        for (var i = 0; i < 3; i++)
+            await svc.LoginAsync(new LoginRequest("patient@example.com", "WrongPassword"), Guesser, ct);
+
+        // Keep knocking throughout the window. None of these may push the window out.
+        for (var i = 0; i < 10; i++)
+        {
+            clock.Advance(TimeSpan.FromMinutes(1));
+            await svc.LoginAsync(new LoginRequest("patient@example.com", "WrongPassword"), Guesser, ct);
+        }
+
+        // Past the original window's end, measured from the failure that opened it.
+        clock.Advance(TimeSpan.FromMinutes(6));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("patient@example.com", "Pass1234"), Guesser, ct));
     }
 
     [Fact]
@@ -477,13 +626,13 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", ct);
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), null, ct);
 
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var lockoutEnd = (await userManager.FindByEmailAsync("locked@example.com"))!.LockoutEnd;
 
         for (var i = 0; i < 5; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), null, ct);
 
         // Identity restarts the window on every AccessFailedAsync, so counting attempts made during a
         // lockout would let a stranger hold an account shut for as long as they cared to keep asking.
@@ -502,16 +651,16 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await RegisterAndSignInAsync(provider, svc, "reset@example.com", "Pass1234", ct);
 
         // Two failures (below the threshold of 3), then a success that resets the counter.
-        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), ct);
-        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), ct);
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "Pass1234"), ct));
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), null, ct);
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), null, ct);
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "Pass1234"), null, ct));
 
         // Two more failures would have locked the account if the counter had not reset, so the
         // correct password must still work afterwards.
-        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), ct);
-        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), ct);
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), null, ct);
+        await svc.LoginAsync(new LoginRequest("reset@example.com", "nope"), null, ct);
 
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "Pass1234"), ct));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "Pass1234"), null, ct));
     }
 
     [Fact]
@@ -526,8 +675,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // This is what actually closes the registration oracle. If the credentials an attacker just
         // submitted worked here, success would tell them the address had been free and failure would
         // tell them it was taken — exactly the answer registration withholds.
-        var unconfirmed = await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken);
-        var unknown = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var unconfirmed = await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
+        var unknown = await svc.LoginAsync(new LoginRequest("nobody@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         Assert.Equal(unknown, unconfirmed);
         Assert.Null(unconfirmed);
@@ -546,11 +695,11 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // not been confirmed cannot burn its lockout budget — otherwise a stranger could keep the
         // real owner locked out from the moment they signed up.
         for (var i = 0; i < 5; i++)
-            await svc.LoginAsync(new LoginRequest("pending@example.com", "WrongPassword"), TestContext.Current.CancellationToken);
+            await svc.LoginAsync(new LoginRequest("pending@example.com", "WrongPassword"), null, TestContext.Current.CancellationToken);
 
         await ConfirmRegisteredEmailAsync(provider, svc, "pending@example.com", TestContext.Current.CancellationToken);
 
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("pending@example.com", "Pass1234"), null, TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -570,7 +719,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await svc.RegisterAsync(new RegisterRequest("pending@example.com", "Pass1234"), ct);
 
         var before = hasher.Verifications;
-        Assert.Null(await svc.LoginAsync(new LoginRequest(email, password), ct));
+        Assert.Null(await svc.LoginAsync(new LoginRequest(email, password), null, ct));
 
         // An address with no account used to answer before any hash was computed while a real one
         // paid the full PBKDF2 cost, and the gap was wide enough to read account existence off the
@@ -590,12 +739,12 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "locked@example.com", "Pass1234", ct);
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), ct);
+            await svc.LoginAsync(new LoginRequest("locked@example.com", "WrongPassword"), null, ct);
 
         // The lockout returns before the stored hash is consulted, so without the stand-in it would
         // be the fastest path of all — and a locked account is one that certainly exists.
         var before = hasher.Verifications;
-        Assert.Null(await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), ct));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("locked@example.com", "Pass1234"), null, ct));
 
         Assert.Equal(1, hasher.Verifications - before);
     }
@@ -1033,7 +1182,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
 
         await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
-        var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        var result = await svc.LoginAsync(new LoginRequest("driver@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotNull(result!.RefreshToken);
@@ -1116,7 +1265,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(
-            new LoginRequest("driver@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+            new LoginRequest("driver@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
         var refreshToken = login!.RefreshToken!;
 
         // Unknown tokens are silently ignored. Holding a live session across the call is
@@ -1193,8 +1342,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
         var reg = await RegisterAndSignInAsync(provider, svc, "change@example.com", "OldPass1", ct);
-        var firstLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
-        var secondLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), ct);
+        var firstLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), null, ct);
+        var secondLogin = await svc.LoginAsync(new LoginRequest("change@example.com", "OldPass1"), null, ct);
         var otherUser = await RegisterAndSignInAsync(provider, svc, "other@example.com", "OtherPass1", ct);
         var priorTokens = new[] { reg.RefreshToken!, firstLogin!.RefreshToken!, secondLogin!.RefreshToken! };
 
@@ -1222,7 +1371,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider);
         var ct = TestContext.Current.CancellationToken;
         var reg = await RegisterAndSignInAsync(provider, svc, "unchanged@example.com", "OldPass1", ct);
-        var login = await svc.LoginAsync(new LoginRequest("unchanged@example.com", "OldPass1"), ct);
+        var login = await svc.LoginAsync(new LoginRequest("unchanged@example.com", "OldPass1"), null, ct);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest(currentPassword, newPassword), ct));
@@ -1245,8 +1394,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var reg = await RegisterAndSignInAsync(provider, svc, "chg@example.com", "OldPass1", TestContext.Current.CancellationToken);
         await svc.ChangePasswordAsync(reg.UserId, new ChangePasswordRequest("OldPass1", "NewPass2"), TestContext.Current.CancellationToken);
 
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("chg@example.com", "NewPass2"), TestContext.Current.CancellationToken));
-        Assert.Null(await svc.LoginAsync(new LoginRequest("chg@example.com", "OldPass1"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("chg@example.com", "NewPass2"), null, TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("chg@example.com", "OldPass1"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1349,8 +1498,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
         await svc.ResetPasswordAsync(new ResetPasswordRequest("reset@example.com", token, "NewPass99"), TestContext.Current.CancellationToken);
 
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "NewPass99"), TestContext.Current.CancellationToken));
-        Assert.Null(await svc.LoginAsync(new LoginRequest("reset@example.com", "OldPass1"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("reset@example.com", "NewPass99"), null, TestContext.Current.CancellationToken));
+        Assert.Null(await svc.LoginAsync(new LoginRequest("reset@example.com", "OldPass1"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1371,7 +1520,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // Following the reset link proves control of the mailbox just as the confirmation link does,
         // so it has to leave the account usable. Without this, a reset would succeed and sign-in
         // would still be refused, with no self-service way out.
-        Assert.NotNull(await svc.LoginAsync(new LoginRequest("lost@example.com", "NewPass99"), TestContext.Current.CancellationToken));
+        Assert.NotNull(await svc.LoginAsync(new LoginRequest("lost@example.com", "NewPass99"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1451,7 +1600,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var svc = BuildService(provider, emails);
 
         await RegisterAndSignInAsync(provider, svc, "revoke@example.com", "OldPass1", TestContext.Current.CancellationToken);
-        var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(new LoginRequest("revoke@example.com", "OldPass1"), null, TestContext.Current.CancellationToken);
         var refreshToken = login!.RefreshToken!;
 
         await svc.RequestPasswordResetAsync("revoke@example.com", TestContext.Current.CancellationToken);
@@ -1601,7 +1750,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var db  = provider.GetRequiredService<AppDbContext>();
 
         await RegisterAndSignInAsync(provider, svc, "revoke-email@example.com", "OldPass1", TestContext.Current.CancellationToken);
-        var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), TestContext.Current.CancellationToken);
+        var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), null, TestContext.Current.CancellationToken);
         var refreshToken = login!.RefreshToken!;
 
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -1671,7 +1820,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // two past the cap of five.
         await RegisterAndSignInAsync(provider, svc, "capped@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 6; i++)
-            await svc.LoginAsync(new LoginRequest("capped@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+            await svc.LoginAsync(new LoginRequest("capped@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         // Active count is clamped to the cap; the surplus rows are revoked, not deleted.
         Assert.Equal(5, CountActiveTokens(db));
@@ -1689,7 +1838,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // One register + three logins = four active tokens, one under the cap.
         await RegisterAndSignInAsync(provider, svc, "under@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 3; i++)
-            await svc.LoginAsync(new LoginRequest("under@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+            await svc.LoginAsync(new LoginRequest("under@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         Assert.Equal(4, CountActiveTokens(db));
         Assert.All(db.RefreshTokens, t => Assert.Null(t.RevokedAt));
@@ -1706,7 +1855,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         // Get to exactly the cap (five active tokens).
         await RegisterAndSignInAsync(provider, svc, "oldest@example.com", "Pass1234", TestContext.Current.CancellationToken);
         for (var i = 0; i < 4; i++)
-            await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+            await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         // Give the five rows strictly increasing creation times so "oldest" is unambiguous.
         var rows = db.RefreshTokens.OrderBy(t => t.CreatedAt).ToList();
@@ -1718,7 +1867,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var oldestId = rows[0].Id;
 
         // The sixth issuance trips the cap and must revoke the oldest active token.
-        await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), TestContext.Current.CancellationToken);
+        await svc.LoginAsync(new LoginRequest("oldest@example.com", "Pass1234"), null, TestContext.Current.CancellationToken);
 
         var oldest = db.RefreshTokens.Single(t => t.Id == oldestId);
         Assert.NotNull(oldest.RevokedAt);

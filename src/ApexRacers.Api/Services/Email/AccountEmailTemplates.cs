@@ -66,27 +66,42 @@ public static class AccountEmailTemplates
     }
 
     /// <summary>
-    /// Sent the moment repeated failed sign-ins lock an account. The sign-in response itself stays
-    /// generic — saying "locked" there would tell whoever is guessing that they had found the
-    /// password — so this email is the only place the lockout is disclosed, and it goes to the one
-    /// party entitled to know.
+    /// Sent when repeated failed sign-ins against an account stop looking like a typo. The sign-in
+    /// response itself stays generic — saying anything there would tell whoever is guessing how far
+    /// they had got — so this email is the only place it is disclosed, and it goes to the one party
+    /// entitled to know.
     /// </summary>
-    public static OutboundEmail AccountLocked(string toEmail, string resetUrl)
+    /// <remarks>
+    /// <para>
+    /// The wording deliberately does not say the account is locked, because since issue #300 it is
+    /// not. Failures are held against the machine that produced them, so the owner can still sign in
+    /// normally from their own; telling them to "wait a few minutes" would send them away from a
+    /// door that is open. What they need to know is that someone is guessing, and that a password
+    /// worth guessing is worth changing.
+    /// </para>
+    /// <para>
+    /// Paced by <c>SignInAccountFailure.NoticeSentAt</c> to one message per account per interval.
+    /// Sign-in is unauthenticated, so an email per lockout would be an inbox a stranger could fill.
+    /// </para>
+    /// </remarks>
+    public static OutboundEmail SuspiciousSignInAttempts(string toEmail, string resetUrl)
     {
-        const string subject = "Your ApexRacers account was temporarily locked";
+        const string subject = "Failed sign-in attempts on your ApexRacers account";
         var html = Layout(
-            "Account temporarily locked",
-            "Too many failed sign-in attempts locked your ApexRacers account for a short period. It "
-            + "unlocks on its own shortly, and nothing about the account has changed. If this was you, "
-            + "wait a few minutes and try again — or reset your password below if you have forgotten it.",
+            "Someone is trying to sign in",
+            "We have blocked repeated failed sign-in attempts on your ApexRacers account. Nothing "
+            + "about the account has changed, and you can still sign in as usual from your own "
+            + "device — the attempts are blocked where they came from, not for you.",
             "Reset your password", resetUrl,
-            "If this wasn't you, someone may be guessing your password. Resetting it now is the safest response.");
+            "If this was you, no action is needed. If it wasn't, someone is guessing your password — "
+            + "changing it now is the safest response.");
         var text =
-            $"Your {BrandName} account was temporarily locked\n\n" +
-            "Too many failed sign-in attempts locked your account for a short period. It unlocks on " +
-            "its own shortly, and nothing about the account has changed.\n\n" +
-            $"If this was you, wait a few minutes and try again, or reset your password here:\n{resetUrl}\n\n" +
-            "If this wasn't you, someone may be guessing your password. Resetting it now is safest.";
+            $"Failed sign-in attempts on your {BrandName} account\n\n" +
+            "We have blocked repeated failed sign-in attempts on your account. Nothing about the " +
+            "account has changed, and you can still sign in as usual from your own device — the " +
+            "attempts are blocked where they came from, not for you.\n\n" +
+            $"If it wasn't you, someone is guessing your password. Change it here:\n{resetUrl}\n\n" +
+            "If this was you, no action is needed.";
         return new OutboundEmail(toEmail, null, subject, html, text);
     }
 

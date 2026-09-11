@@ -26,6 +26,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ExternalDataCache> ExternalDataCaches => Set<ExternalDataCache>();
     public DbSet<Rival> Rivals => Set<Rival>();
+    public DbSet<SignInAddressFailure> SignInAddressFailures => Set<SignInAddressFailure>();
+    public DbSet<SignInAccountFailure> SignInAccountFailures => Set<SignInAccountFailure>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,6 +67,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             b.HasOne<ApplicationUser>()
              .WithMany()
              .HasForeignKey(t => t.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Sign-in throttling state (issue #300). Both live in the identity schema beside the users
+        // they describe, and both cascade: a deleted account has no failures worth keeping.
+        modelBuilder.Entity<SignInAddressFailure>(b =>
+        {
+            b.ToTable("SignInAddressFailures", "identity");
+            // The lookup is always (account, address) and the pair must be unique — two rows for one
+            // pair would split a counter and silently double the allowance.
+            b.HasIndex(f => new { f.UserId, f.IpAddress }).IsUnique();
+            // Purge sweeps by age alone, across every account.
+            b.HasIndex(f => f.LastFailureAt);
+            // 45 covers an IPv6 address; 11 more for a "%<scope-id>" suffix.
+            b.Property(f => f.IpAddress).HasMaxLength(56).IsRequired();
+            b.HasOne<ApplicationUser>()
+             .WithMany()
+             .HasForeignKey(f => f.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SignInAccountFailure>(b =>
+        {
+            b.ToTable("SignInAccountFailures", "identity");
+            // One row per account, so the account is the key and the table cannot grow with traffic.
+            b.HasKey(f => f.UserId);
+            b.HasIndex(f => f.LastFailureAt);
+            b.HasOne<ApplicationUser>()
+             .WithMany()
+             .HasForeignKey(f => f.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
