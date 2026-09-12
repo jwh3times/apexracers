@@ -28,8 +28,8 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   account cannot sign in until it follows the emailed confirmation link (`POST /api/auth/confirm-email`,
   also no `[Authorize]`, taking `{ userId, token }`).
 - `POST /api/auth/login` — an unconfirmed account gets the same generic invalid-credentials result as
-  an unknown address or a wrong password, checked *before* the lockout counter and `AccessFailedAsync`
-  run, so a stranger can neither probe nor lock out an account by attempting sign-in against it.
+  an unknown address or a wrong password, checked *before* the sign-in throttle claim runs, so a
+  stranger can neither probe nor throttle an account by attempting sign-in against it.
 - Test: register the same address twice (or register a known-taken address) — response status and
   body must be byte-identical to registering a fresh address, and must not contain any Identity error
   text (`DuplicateUserName`/`DuplicateEmail`); a weak-password rejection must still surface for both.
@@ -43,32 +43,48 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   notification email (resend confirmation, or a security notice) but must not measurably differ in
   response latency or shape from the account-creation path in a way a network observer could use.
 
-**Sign-in & password-reset enumeration (GHSA-28pc-cx5w-g6jp)**
+**Sign-in & password-reset enumeration (GHSA-28pc-cx5w-g6jp) and sign-in throttling (issue #300, now fixed)**
 
-- `POST /api/auth/login` — every refusal (unknown address, unconfirmed address, locked account, wrong
-  password) returns the identical generic `401` body `{ detail: "Invalid email or password." }`.
+- `POST /api/auth/login` — every refusal (unknown address, unconfirmed account, throttled address,
+  wrong password) returns the identical generic `401` body `{ detail: "Invalid email or password." }`.
   There is no `423` or any other status that fires only for an account that exists — that used to be
   the oracle: five wrong passwords against a registered address returned `423` while an unregistered
   one returned `401` forever.
-- Test: register + confirm an account, fail its password 5 times (`MaxFailedAccessAttempts`) to lock
-  it, then sign in with the *correct* password — the response must be byte-identical to signing in
-  against an address with no account at all. This is the core finding to re-verify.
-- Test: while an account is locked, keep sending wrong passwords — `LockoutEnd` must not move forward
-  (Identity would otherwise restart the window on every recorded failure), and exactly one lockout
-  notification email is sent for the whole episode, not one per attempt.
+- Brute-force protection is now counted per (account, source address) — `SignInThrottleStore`, keyed
+  on `HttpContext.Connection.RemoteIpAddress` — rather than per account (Identity's own lockout is
+  off). Note the source address is only as trustworthy as forwarded-header processing makes it; see
+  "Forwarded-header trust" below for how to test spoofing that value.
+- Test: register + confirm an account, fail its password 5 times from one source address (the default
+  `SIGNIN_MAX_FAILURES_PER_ADDRESS`) to exhaust that address's allowance, then sign in with the
+  *correct* password from the same address — the response must be byte-identical to signing in
+  against an address with no account at all. This is the core enumeration finding to re-verify.
+- Test the fix for issue #300 directly: exhaust one address's allowance against a *known* account,
+  then sign in with the **correct** password from a **different** source address — it must succeed
+  immediately (200, not throttled). A stranger who knows the address can no longer keep the owner
+  signed out; if this fails, the denial of service has regressed.
+- Test: while one address's allowance is exhausted, keep sending wrong passwords from it — the
+  window's start must not move forward (the store would otherwise let a caller hold it open by
+  continuing to knock), and exactly one "someone is guessing" notification email is sent for the
+  whole episode (paced by `SIGNIN_NOTICE_INTERVAL_MINUTES`, default 60), not one per attempt.
+- Test the distributed-attack tightening, if forwarded-header spoofing is available (see below): drive
+  enough failures across enough distinct source addresses against one account to cross
+  `SIGNIN_ACCOUNT_HIGH_WATER_FAILURES` (default 50/hour), then confirm (a) a **fresh** address is
+  still admitted on its first correct-password attempt — the tightened state must never deny a caller
+  who has not personally failed — and (b) each address's *own* allowance has dropped from 5 to 1. Also
+  confirm the account-wide counter is not reset or reported anywhere in the sign-in response itself.
 - Test: time an unknown-address attempt against a real-address wrong-password attempt, including a
-  locked account — all three must pay the same dominant password-hashing cost (the service verifies
-  every refusal against a cached stand-in hash). A measurable gap here is the same class of oracle as
-  the registration-timing test above.
+  throttled address — all three must pay the same dominant password-hashing cost (the service
+  verifies every refusal against a cached stand-in hash). A measurable gap here is the same class of
+  oracle as the registration-timing test above.
 - `POST /api/auth/reset-password` — an unknown address and an expired/invalid token must produce
   byte-identical `400` bodies (`"Invalid or expired password reset request."`). A weak new password
   submitted against a *valid* token still surfaces its own policy message — that path is reachable
   only by someone who already controls the mailbox, so it is not part of this oracle; don't flag it.
-- **Known open gap, tracked separately (issue #300; the advisory stays open until it lands):** the
-  tests above close the *enumeration*, not the underlying denial-of-service — five wrong passwords
-  against any known email still lock that account for the 15-minute window, and an unauthenticated
-  caller can repeat that indefinitely within the shared per-IP `auth` rate-limit policy (default 10
-  req/min). Confirm it still reproduces; don't report it as a new finding.
+- **Known, accepted residual — not a finding:** the throttle is scoped to source address, so an
+  attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN exit) can still
+  exhaust that address's allowance and deny the Driver from it. This is documented in
+  `ApexRacers.Core.SignInThrottle`'s remarks as a stated limitation, not tracked as open work — don't
+  report it as a new finding without a concrete scenario beyond what's already acknowledged there.
 
 **Refresh token endpoints**
 
@@ -85,6 +101,11 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
 - Test: send a retained already-revoked token, including one also past `ExpiresAt` — should return 401 and revoke that User's active refresh tokens. Check that the warning includes only the User ID, not the raw token or its hash.
 - Test: send an expired token that was never revoked — should return 401 without revoking other sessions. Existing JWTs remain valid until their normal expiry after refresh-token revocation.
 - Test: can the refresh endpoint be used without any token at all? Should return 401.
+- Test that changing the password ends every other session (GHSA-8wfx-m356-gx29): sign in from two
+  clients, change the password from one, then try to refresh with the **other** client's still-held
+  refresh token — it must be rejected. A password change is how a Driver evicts someone who already
+  has their credentials, so a refresh token that outlives it defeats the whole remedy. Confirm the
+  revocation sweeps *every* active token for that User, not just the one presented.
 - Test: does logout return 204 for an unknown token (must not leak whether a token exists)?
 
 **JWT claims decoded client-side**
@@ -119,6 +140,11 @@ Policies in `Program.cs`:
 
 - `GET /api/admin/users` — requires `AdminOnly`. Test with no token, Standard token, Beta token.
 - `PUT /api/admin/users/:userId/role` — requires `AdminOnly`. Test with non-Admin tokens.
+  Then test the **target** role, not just the caller: an Admin sending `{ "role": "Admin" }` must be
+  refused. `AdminService.SetUserRoleAsync` rejects Admin as a target so the only route to Admin stays
+  `ADMIN_SEED_EMAILS` at startup (GHSA-2r4v-cc85-6g7w). Without that, one compromised Admin token
+  mints more Admins that survive the original account's removal. Check the lowercase and unknown-value
+  forms here too, as with `PUT /api/auth/role` above.
 - `GET /api/admin/feature-flags` — requires `AdminOnly`. Test with non-Admin tokens.
 - `POST /api/admin/feature-flags` — requires `AdminOnly`.
 - `PUT /api/admin/feature-flags/:id` — requires `AdminOnly`.
@@ -133,6 +159,12 @@ Policies in `Program.cs`:
 - `GET /api/series/:id/weeks/:num/cars/:id/percentile?customerId=<X>` — `customerId` is a query parameter, not derived from the JWT. Any authenticated user can query any driver's percentile by passing their iRacing customer ID.
 - Test: can an unauthenticated user query percentiles?
 - Assess: is exposing other drivers' percentile data a privacy concern, or is this public race data?
+- Test the **write**, not just the read (GHSA-cjjj-33vx-38g5): query that endpoint with a `customerId`
+  that is not the caller's Claimed Identity and confirm no `CarPercentileResult` row is cached against
+  the caller. Reading another Driver's percentile is acceptable — it is public race data — but a cache
+  write keyed on the caller while holding a *different* Driver's figures poisons that caller's own
+  "Your pct" overlay and recommendations with someone else's numbers. The eligible Demo Driver path
+  (`SubjectDriverContext` resolving to `DemoData.DriverCustId`) must remain able to write.
 - `GET /api/users/me/analytics` — `/me/` in path should return only the authenticated user's data. Verify the service resolves user from JWT `sub` claim, not from a query parameter.
 - `GET /api/telemetry/laps` — verify data is scoped to the authenticated user.
 
@@ -199,7 +231,18 @@ Test cases:
 - Upload a non-`.ibt` file (text, image, script) — must be rejected (version check fails even if extension matches).
 - Upload a 100-byte file — must be rejected (too small).
 - Upload a crafted binary with `sessionInfoOffset + sessionInfoLen > fileLen` — must be rejected without allocating the oversized buffer.
+- Upload a crafted binary whose **data-record** bounds are out of file: a negative or oversized `bufLen`
+  (header offset 36), or a `firstBufOffset` (offset 52) past the end of the file. `IbtParser.Parse()`
+  must reject before the `new byte[bufLen]` allocation and before the seek — a `bufLen` near
+  `int.MaxValue` is an allocation DoS, and an out-of-file `firstBufOffset` reads past the payload
+  (GHSA-c53f-fpw7-m35f). Note this is a **different** guard from the `sessionInfo*` case above;
+  verifying one does not cover the other.
 - Upload a file with path traversal in the filename (`../../../etc/passwd`) — filename is not used for storage or execution; verify no path traversal occurs.
+- Upload a recording naming a **car or track ID that is not in the catalog** — `TelemetryUploadService`
+  must refuse it, not create the row. The `.ibt` session YAML is attacker-controlled, so letting it
+  mint `Car`/`Track` rows would let any authenticated user write the *public* catalog that
+  `/cars` and `/tracks` serve (GHSA-6v3w-2j74-8424). Catalog ingestion and the Seeder are the only
+  writers. Confirm the refusal happens before any `UploadedLap` row is written.
 - Confirm the size bound is enforced twice, not once, and that the two bounds still disagree in the
   right direction: a file over `TelemetryUpload.MaxFileSizeBytes` (250 MB) reaches the action and gets
   a `413` naming the limit, while a request over `TelemetryUpload.MaxRequestBytes` (the file bound plus

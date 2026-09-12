@@ -14,7 +14,9 @@ public class AuthService(
     IConfiguration config,
     JwtSettings jwt,
     RefreshTokenStore refreshTokens,
-    IEmailSender emailSender)
+    IEmailSender emailSender,
+    SignInThrottleStore signInThrottle,
+    IOutboundEmailQueue emailQueue)
 {
     private const int AccessTokenMinutes = 15;
 
@@ -91,19 +93,44 @@ public class AuthService(
 
     /// <summary>
     /// Signs a caller in, or returns null. **Every** refusal is the same null — unknown address,
-    /// unconfirmed address, locked account, and wrong password are indistinguishable to the caller
+    /// unconfirmed address, throttled address, and wrong password are indistinguishable to the caller
     /// (GHSA-28pc-cx5w-g6jp, GHSA-72v6-mw4c-q96r). The return type carries no reason on purpose;
     /// there is nowhere to put one, so a future change cannot reopen the channel by accident.
     /// </summary>
     /// <remarks>
-    /// The lockout is deliberately silent here rather than reported once the right password arrives.
-    /// Reporting it on a correct password would turn the lockout window into a password oracle: an
-    /// attacker who kept guessing through it would learn they had found the password from the
-    /// lockout response alone, which is precisely what the lockout exists to prevent. The account's
-    /// owner is told by email instead, at the moment it locks.
+    /// <para>
+    /// The throttle is deliberately silent here rather than reported once the right password arrives.
+    /// Reporting it on a correct password would turn the throttle window into a password oracle: an
+    /// attacker who kept guessing through it would learn they had found the password from that
+    /// response alone, which is precisely what the throttle exists to prevent. The account's owner is
+    /// told by email instead.
+    /// </para>
+    /// <para>
+    /// <paramref name="sourceAddress"/> is what the throttle is scoped to, and it is only meaningful
+    /// because forwarded headers are processed at the edge (GHSA-fq5w-frqr-6px2) — a caller who could
+    /// forge it would hand themselves a fresh allowance per request. It is optional so that callers
+    /// with no request context (tests, tooling) still compile; those all share one bucket rather than
+    /// bypassing the throttle, which is why <see cref="SignInThrottleStore.NormaliseAddress"/> maps
+    /// absence to a single stand-in rather than to a unique value.
+    /// </para>
+    /// <para>
+    /// One residual, stated rather than glossed: the throttle read below happens only for an address
+    /// that has a confirmed account, so that path now does two indexed lookups the unknown and
+    /// unconfirmed paths do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant cost —
+    /// the password hash — and its own remarks already concede it closes the measurable gap rather
+    /// than making the whole request constant time; this widens the remainder slightly. Two primary
+    /// key/unique-index lookups against the surrounding PBKDF2 work is not a practical oracle, and
+    /// the alternative — reading throttle rows for accounts that do not exist — needs a user id there
+    /// is no way to have. Worth knowing before anyone adds more work to this branch.
+    /// </para>
     /// </remarks>
-    public async Task<AuthResultDto?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<AuthResultDto?> LoginAsync(
+        LoginRequest request,
+        string? sourceAddress = null,
+        CancellationToken ct = default)
     {
+        var address = SignInThrottleStore.NormaliseAddress(sourceAddress);
+
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
             return RefuseWithoutDisclosing(request.Password);
@@ -116,30 +143,43 @@ public class AuthService(
         if (!await userManager.IsEmailConfirmedAsync(user))
             return RefuseWithoutDisclosing(request.Password);
 
-        // A locked-out account is denied before the password is even checked, so a correct guess
-        // during the lockout window still fails. The counter is deliberately NOT incremented here:
-        // Identity restarts the lockout window on every AccessFailedAsync, so counting attempts made
-        // during a lockout would let a stranger hold an account shut indefinitely.
-        if (await userManager.IsLockedOutAsync(user))
+        // An address that has used up its allowance is refused before the password is even checked,
+        // so a correct guess from a machine that has already failed too often still fails. Nothing is
+        // recorded on this path: an attempt that was never checked carries no information, and
+        // counting it would let a caller hold their own window open by continuing to knock.
+        //
+        // The allowance is per (account, source address), NOT per account — that is the whole of
+        // issue #300. An account-wide counter meant five requests from a stranger locked the Driver
+        // out of their own account for fifteen minutes, repeatable forever. Now a stranger exhausts
+        // only their own address; the Driver's machine has a clean record and signs in normally.
+        // Claimed, not merely read. The claim and the count the gate tests are one statement, so a
+        // burst of concurrent requests gets distinct counts instead of all reading zero and all
+        // getting their password checked — see ClaimAttemptAsync for why that gap is wide enough to
+        // drive through.
+        var throttle = await signInThrottle.ClaimAttemptAsync(user.Id, address, ct);
+        if (throttle.Refused)
             return RefuseWithoutDisclosing(request.Password);
 
         if (!await userManager.CheckPasswordAsync(user, request.Password))
         {
-            // UserManager.CheckPasswordAsync does not track failures the way SignInManager
-            // does, so increment the counter manually; it locks the account once the
-            // configured MaxFailedAccessAttempts threshold is reached.
-            await userManager.AccessFailedAsync(user);
-
-            // Crossing the threshold is the one moment the owner can be told, and email is the only
-            // channel that reaches them rather than whoever is guessing. Identity zeroes the counter
-            // when it locks, so this fires once per lockout, not once per attempt.
-            if (await userManager.IsLockedOutAsync(user))
-                await SendLockoutNoticeAsync(user, ct);
+            // Returns true only for the one caller entitled to send the owner's notice; the store
+            // paces that to one email per account per interval, because sign-in is unauthenticated
+            // and an email per lockout would be an inbox a stranger could fill.
+            //
+            // Queued rather than sent. Sending it here would put an outbound mail round trip inside
+            // the response for accounts that exist and nowhere else, which is an account oracle a
+            // single request can read off the clock — and a mail failure would surface as a 500 on
+            // exactly those accounts, which is the same oracle by status code that this endpoint's
+            // 423 once was (GHSA-28pc-cx5w-g6jp).
+            if (await signInThrottle.NoteFailureAsync(user.Id, address, ct))
+                QueueSuspiciousAttemptsNotice(user);
 
             return null;
         }
 
-        await userManager.ResetAccessFailedCountAsync(user);
+        // Only this address is cleared. The account-wide counter is left to expire on its own — the
+        // owner signing in from their machine is not evidence that whoever is guessing has stopped.
+        await signInThrottle.ClearAddressAsync(user.Id, address, ct);
 
         var jwt     = await GenerateJwtAsync(user);
         var refresh = await refreshTokens.IssueAsync(user.Id, ct);
@@ -424,17 +464,24 @@ public class AuthService(
     }
 
     /// <summary>
-    /// Tells the account's owner it has been locked, which is the only disclosure of the lockout that
+    /// Tells the account's owner that something is guessing at it, which is the only disclosure that
     /// reaches them rather than whoever is guessing. See <see cref="LoginAsync"/> for why the HTTP
-    /// response cannot carry it.
+    /// response cannot carry it, and the template for why it does not say "locked".
     /// </summary>
-    private async Task SendLockoutNoticeAsync(ApplicationUser user, CancellationToken ct)
+    /// <remarks>
+    /// Queued rather than sent, and so returns nothing to await. This is the one account email whose
+    /// send must not happen inside the request: it fires only for addresses that have an account, so
+    /// an inline send would price sign-in differently for real and unknown addresses and hand back
+    /// the account oracle by latency, or by a 500 when the mail provider is unhappy. See
+    /// <see cref="IOutboundEmailQueue"/>.
+    /// </summary>
+    private void QueueSuspiciousAttemptsNotice(ApplicationUser user)
     {
         if (string.IsNullOrEmpty(user.Email))
             return;
 
-        await emailSender.SendAsync(
-            AccountEmailTemplates.AccountLocked(user.Email, $"{BaseUrl}/forgot-password"), ct);
+        emailQueue.Enqueue(
+            AccountEmailTemplates.SuspiciousSignInAttempts(user.Email, $"{BaseUrl}/forgot-password"));
     }
 
     /// <summary>

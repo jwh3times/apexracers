@@ -29,7 +29,7 @@ Closes #
 ## How was this tested?
 
 <!-- Describe the tests you ran and how a reviewer can reproduce them.
-     Note any manual verification (e.g. Swagger, the UI, a specific endpoint). -->
+     Note any manual verification (e.g. the API reference at /scalar/v1, the UI, a specific endpoint). -->
 
 ## Checklist
 

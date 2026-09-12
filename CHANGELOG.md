@@ -7,7 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- A proposed change that would leave the two sets of coding-assistant configuration files out of step
+  with each other can no longer be merged. The check that detects it already ran on every proposed
+  change and reported the problem, but nothing stopped someone merging past it; it now blocks. Those
+  files are instructions that coding assistants act on, so a silent mismatch between them is the kind
+  of difference that should never reach the main line unnoticed.
+
+## [9.0.12] - 2026-09-11
+
+### Fixed
+
+- Setting up a local copy of the project works from the instructions alone. The example environment
+  file was missing the database connection the setup guide said it already contained, so following
+  the documented first run produced an API that stopped during startup and never answered at all.
+  The connection is now filled in for the Docker stack, and every other setting the API and the
+  ingestion worker read is listed alongside it — what each one does, what happens if it is left out,
+  and which ones belong only in a deployed environment.
+- The contributor setup guide points at the API reference that exists. It had directed people to a
+  documentation page that was replaced some time ago, so anyone following it found nothing there and
+  had no way to tell whether the reference was broken or simply moved.
+
+### Changed
+
+- Comments in the source that referred readers to planning documents now name documents that still
+  exist. The originals were retired and folded into other files, leaving anyone who followed them
+  with nothing to read.
+- The check that keeps the two sets of coding-assistant configuration files in step now runs on every
+  proposed change rather than only on changes that touch those files, and the project guide now
+  describes what it actually does — it reports a problem rather than preventing a merge on its own.
+
+### Removed
+
+- An OAuth redirect setting that nothing in the project read has been dropped from the example
+  environment file, along with the note describing how to keep it in sync. It will return with the
+  sign-in flow it belongs to.
+
+## [9.0.11] - 2026-09-11
+
+### Changed
+
+- Failed sign-ins are now counted against the machine they came from rather than against the account.
+  Five wrong passwords used to lock an account for everyone, so anyone who knew a driver's email
+  address could keep that driver signed out indefinitely for the price of five requests a quarter
+  hour. A stranger guessing now uses up only their own attempts, and the driver signs in normally
+  from their own device.
+- A driver whose account is being guessed at is emailed once, rather than each time the guessing
+  trips the limit. The message no longer says the account is locked, because it no longer is, and it
+  no longer tells the driver to wait — they can sign in right away from their own device.
+
+### Security
+
+- Sign-in resists distributed guessing as well as the old account-wide counter did. Once an account
+  passes a much higher failure count across many machines, every machine's allowance shrinks — but a
+  machine that has not failed is still let in on the first correct password, so the protection cannot
+  itself be used to keep the owner out.
+- Guessing many passwords at once no longer gets more attempts than guessing them one at a time. The
+  limit is now applied as each attempt is counted rather than from a count read moments earlier, so a
+  burst of simultaneous attempts cannot slip through together.
+- A failed sign-in no longer takes measurably longer for an address that has an account than for one
+  that does not. The warning email is now sent after the response rather than during it, so neither
+  the time a sign-in takes nor a mail delivery problem can reveal whether an address is registered.
+- The sign-in limits are checked when the API starts. A misconfigured limit could previously refuse
+  every driver — including from their own device — with nothing to indicate why; the API now refuses
+  to start instead.
 
 ## [9.0.9] - 2026-09-10
 
@@ -1240,7 +1304,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.9...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.12...HEAD
+[9.0.12]: https://github.com/jwh3times/apexracers/compare/v9.0.11...v9.0.12
+[9.0.11]: https://github.com/jwh3times/apexracers/compare/v9.0.10...v9.0.11
 [9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9
 [9.0.8]: https://github.com/jwh3times/apexracers/compare/v9.0.7...v9.0.8
 [9.0.7]: https://github.com/jwh3times/apexracers/compare/v9.0.6...v9.0.7

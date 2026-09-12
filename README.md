@@ -152,7 +152,7 @@ All ports used across the project's config files (`docker-compose.yml`, `Dockerf
 | `5432` | PostgreSQL               | `docker-compose.yml` (`${POSTGRES_PORT:-5432}:5432`), `launchSettings.json`, `.env`                 | Host port; override with `POSTGRES_PORT`                                |
 | `5050` | pgAdmin (host)           | `docker-compose.yml` (`${PGADMIN_PORT:-5050}:80`)                                                   | Host port; override with `PGADMIN_PORT`                                 |
 | `8080` | API (Docker)             | `docker-compose.yml` (`${API_PORT:-8080}:8080`), `Dockerfile` (`EXPOSE`), `.env`, `web/.env.docker` | Host port; override with `API_PORT`. Container always listens on `8080` |
-| `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback), `.env.example`                            | Default when running the API directly                                   |
+| `5000` | API (local `dotnet run`) | `launchSettings.json`, `vite.config.ts` (proxy fallback)                                            | Default when running the API directly                                   |
 | `5173` | Vite dev server          | Vite default (not pinned in `vite.config.ts`)                                                       | Auto-increments if the port is taken                                    |
 | `443`  | API (cloud deployment)   | `web/.env.cloud`                                                                                    | Configure with the maintainer-provided cloud API base URL.              |
 
@@ -174,8 +174,6 @@ DOCKER  (npm run dev:docker)      :5173 ──/api──▶ :8080 (API container
                                                   pgAdmin → :5050 → (container :80)
 CLOUD   (npm run dev:cloud)       :5173 --/api--> :443  configured cloud API host
 ```
-
-> **Note:** The OAuth redirect URI differs by environment file — `.env` targets `:8080` (Docker) while `.env.example` targets `:5000` (local). It must match wherever the API is actually listening.
 
 ## iRacing OAuth credentials
 
