@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- The Privacy Policy now describes how ApexRacers actually handles personal data. It used to say
+  nothing was transferred to third parties; it now names each service provider and what it receives
+  (Microsoft Azure for hosting, request logs, and email, and iRacing — including the catalog images
+  your browser loads directly from iRacing), says request logs holding your IP address are kept for
+  90 days, covers uploaded telemetry and the other drivers' race results shown on public pages,
+  explains the browser storage the app uses alongside its one cookie, and spells out what deleting
+  your account removes and what it cannot: iRacing's published race results, briefly cached
+  lookups, request logs, and database backups kept for up to 7 days.
 
 ## [9.0.16] - 2026-09-12
 
