@@ -31,15 +31,15 @@ name: Agent Config Sync
 # Fix locally with:  node scripts/sync-agent-configs.mjs   (or: npm run sync:agents)
 #                    then commit the result
 
+# Deliberately NOT path-filtered on pull_request. A required status check that is
+# path-filtered never reports on a PR that touches none of those paths, and GitHub
+# holds the merge waiting for a check that will never arrive — so the filter and the
+# ruleset's required-check list are mutually exclusive. The job is a checkout, a Node
+# setup, and a dependency-free script, so running it on every PR is cheap enough that
+# always reporting is the better trade.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - '.claude/**'
-      - '.codex/**'
-      - '.agents/**'
-      - 'scripts/sync-agent-configs.mjs'
-      - '.github/workflows/agent-config-sync.yml'
   push:
     branches: [main]
   workflow_dispatch:

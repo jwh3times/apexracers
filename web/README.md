@@ -78,8 +78,8 @@ pages and 7 authenticated pages and asserts zero violations. The shared helper
 `wcag2a`/`wcag2aa` tagset) and `formatViolations(violations)` (human-readable summary for test
 failure output).
 
-**Functional specs:** `auth.spec.ts` (logout; registration-enumeration and unconfirmed-account
-lockout coverage for GHSA-72v6-mw4c-q96r; password reset — reading the emailed link back out of
+**Functional specs:** `auth.spec.ts` (logout; registration-enumeration, unconfirmed-account, and
+throttled-sign-in coverage for GHSA-72v6-mw4c-q96r and GHSA-28pc-cx5w-g6jp; password reset — reading the emailed link back out of
 the Development mail drop via `e2e/helpers/mail.ts` — set `E2E_MAIL_DIR` if the API's
 `DEV_MAIL_DROP_PATH` is not the compose default),
 `telemetry.spec.ts` (`.ibt` upload → My Laps, from the committed `e2e/fixtures/demo-session.ibt`),

@@ -38,7 +38,12 @@ public class AuthController(AuthService auth) : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
-        var auth401 = await auth.LoginAsync(request, ct);
+        // The throttle is scoped to (account, source address), so the address has to come from the
+        // request. It is the post-forwarded-headers value — trustworthy only because the edge
+        // rewrites it (GHSA-fq5w-frqr-6px2); a forgeable one would hand a guesser a fresh allowance
+        // per request.
+        var auth401 = await auth.LoginAsync(
+            request, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         // One refusal for every way a sign-in can fail. This used to answer 423 for a locked account,
         // which only a real one can be — five wrong passwords against a registered address returned

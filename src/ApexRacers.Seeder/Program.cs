@@ -35,8 +35,9 @@ Console.WriteLine("ApexRacers Seeder — connecting to database…");
 await db.Database.MigrateAsync();
 
 // Verify-only modes never seed — they're the mechanical pre-enable / post-purge gate for
-// the prod demo rollout (deployTODO.md §14). Run against the target DB after seeding
-// (--verify-demo) or after running the demo purge script (--verify-teardown).
+// the prod demo rollout (maintainer-only runbook: private/ops/iracing-rollout.md §1). Run
+// against the target DB after seeding (--verify-demo) or after running the demo purge
+// script (--verify-teardown).
 if (verifyDemo || verifyTeardown)
 {
     var checks = verifyDemo

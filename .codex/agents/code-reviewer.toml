@@ -95,17 +95,35 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   `AuthController`'s register response vary (status code, body, or an Identity error message beyond
   password policy) between a free and an already-registered address — that oracle is GHSA-72v6-mw4c-q96r.
   Flag a `LoginAsync` change that distinguishes an unconfirmed account's failure from an unknown
-  address's, or that reorders the confirmation check to run after the lockout counter.
+  address's, or that reorders the confirmation check to run after the sign-in throttle claim.
 - Flag any `LoginAsync`/`AuthController` change that reintroduces a status, body, or return shape
-  that varies with *why* a sign-in failed (a `LoginResult`-shaped type, a distinct lockout status
-  code, or any field beyond the single `AuthResultDto?`) — that pairing is GHSA-28pc-cx5w-g6jp: only
-  a real account can be locked, so a status unique to lockout enumerates the user list.
-- Flag a lockout ever reported in the sign-in response itself, including on a *correct* password —
-  that turns the lockout window into a password oracle. The lockout may only be disclosed by email
-  (`AccountEmailTemplates.AccountLocked`), sent once per lockout, never once per attempt.
-- Flag `AccessFailedAsync` called from the already-locked-out branch — Identity restarts the lockout
-  window on every recorded failure, so counting attempts made during a lockout lets a stranger hold
-  an account shut indefinitely.
+  that varies with *why* a sign-in failed (a `LoginResult`-shaped type, a distinct throttled/locked-out
+  status code, or any field beyond the single `AuthResultDto?`) — that pairing is GHSA-28pc-cx5w-g6jp:
+  only a real account can be throttled, so a status unique to it enumerates the user list.
+- Flag the throttle state ever reported in the sign-in response itself, including on a *correct*
+  password — that turns the throttle window into a password oracle. It may only be disclosed by email
+  (`AccountEmailTemplates.SuspiciousSignInAttempts`), paced to once per account per
+  `SignInThrottleOptions.NoticeInterval`, never once per attempt.
+- Flag any reintroduction of `options.Lockout.AllowedForNewUsers = true` (or a call to
+  `UserManager.AccessFailedAsync`/`IsLockedOutAsync`) on the sign-in path. Identity's own lockout
+  counts failures per account regardless of who produced them — that is issue #300, the denial of
+  service where five requests from a stranger locked a Driver out of their own account, repeatable
+  indefinitely. Brute-force protection now lives in `SignInThrottleStore`, counted per (account,
+  source address); `Program.cs` sets `AllowedForNewUsers = false` and it must stay off.
+- Flag a `SignInThrottleStore.ClaimAttemptAsync` call moved to *after* `CheckPasswordAsync`, or a
+  read-then-write replacing its single atomic upsert — either reopens the race the atomic claim exists
+  to close: a concurrent burst against one address would have every request read the same stale count
+  and all pass the gate, worth the most exactly where the design leans hardest (the tightened
+  allowance is 1).
+- Flag a `SignInThrottleOptions` value (`TightenedPerAddressMaxFailures`, `AccountHighWaterFailures`)
+  that could reach `0` without going through `Validated()`, and flag `Validated()`'s startup call ever
+  removed or downgraded to a warning — either threshold at `0` silently denies the account owner too,
+  rebuilding the denial of service the throttle exists to prevent. Likewise flag the account-wide
+  high-water mark used to deny a sign-in directly instead of only tightening the per-address allowance.
+- Flag `AccountEmailTemplates.SuspiciousSignInAttempts` (or any future sign-in-path email) sent via
+  `IEmailSender.SendAsync` directly from `AuthService.LoginAsync` instead of `IOutboundEmailQueue.Enqueue`
+  — an inline send there costs a mail round trip only on the branch where the account exists, which is
+  the account-existence oracle again, this time by latency or by a 500 on mail failure.
 - Flag any `LoginAsync` refusal path that returns without going through `RefuseWithoutDisclosing` (or
   an equivalent password-hash verification against a stand-in) — a refusal that skips the hash pays a
   measurably smaller cost than an accepted attempt, which is what GHSA-28pc-cx5w-g6jp read account

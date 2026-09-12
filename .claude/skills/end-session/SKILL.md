@@ -194,7 +194,7 @@ path, and confirm the list with the user first.
 Then check the two things a session commonly leaves inconsistent:
 
 ```bash
-npm run sync:agents -- --check   # agent/skill config drift — CI fails the PR otherwise
+npm run sync:agents -- --check   # agent/skill config drift — a required CI check fails the PR otherwise
 docker compose ps                # local stack still running?
 ```
 
