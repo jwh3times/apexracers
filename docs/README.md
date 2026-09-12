@@ -68,9 +68,9 @@ tool-specific: the Claude Code hook is not mirrored into `.codex/`, and the repo
 does not check in project-scoped Codex config or lifecycle-hook files. For the
 generated trees, `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`)
 is the one generator, and generated files must not be hand-edited — an **Agent
-Config Sync** CI check runs on every PR and reports a failure when the generated
-tree has drifted (it reports rather than hard-blocks; it is not one of the
-ruleset's required checks). Edit the authored side (`.claude/agents/` or
+Config Sync** CI check runs on every PR and fails it when the generated tree has
+drifted (it is one of the ruleset's required status checks, so a drifted PR
+cannot merge). Edit the authored side (`.claude/agents/` or
 `.agents/skills/`), re-run the script, and commit every side that changed. Never
 replace a generated directory with a symlink back to its source — see the **Agent
 config parity** section in `AGENTS.md` for why, and for the full mapping.
