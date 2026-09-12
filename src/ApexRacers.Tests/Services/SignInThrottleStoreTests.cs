@@ -65,8 +65,16 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         SignInThrottleStore store, Guid userId, string address, CancellationToken ct)
     {
         await store.ClaimAttemptAsync(userId, address, ct);
-        return await store.NoteFailureAsync(userId, address, ct);
+        return await store.NoteFailureAsync(userId, address, ct: ct);
     }
+
+    /// <summary>
+    /// One failed sign-in on the known-device path, where the device's own counter lives elsewhere
+    /// and its exhaustion is reported rather than read (issue #314).
+    /// </summary>
+    private static async Task<bool> RecordDeviceFailureAsync(
+        SignInThrottleStore store, Guid userId, bool deviceSpent, CancellationToken ct) =>
+        await store.NoteFailureAsync(userId, address: null, scopeSpent: deviceSpent, ct: ct);
 
     private async Task<(AppDbContext Db, Guid UserId, DbContextOptions<AppDbContext> Options)> NewDbAsync(
         CancellationToken ct)
@@ -381,6 +389,73 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         Assert.Equal(
             SignInThrottleStore.UnknownAddress,
             SignInThrottleStore.NormaliseAddress(new string('a', 57)));
+
+    // ── The known-device notice path (issue #314) ─────────────────────────────
+
+    /// <summary>
+    /// A device that has spent its allowance must reach the owner. The device's counter lives in
+    /// another table, so this store cannot read it and is told instead — and if it ignored that, the
+    /// notice would never fire on the device path at all: with the shipped numbers a device-scoped
+    /// caller tops out far below the account-wide high-water mark, so the only other trigger is
+    /// unreachable.
+    /// </summary>
+    [Fact]
+    public async Task NoteFailure_OnASpentDevice_NotifiesTheOwner()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (db, userId, _) = await NewDbAsync(ct);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
+
+        Assert.True(await RecordDeviceFailureAsync(store, userId, deviceSpent: true, ct));
+    }
+
+    [Fact]
+    public async Task NoteFailure_OnADeviceWithAllowanceLeft_StaysQuiet()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (db, userId, _) = await NewDbAsync(ct);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
+
+        // A Driver mistyping once on their own browser is not worth an email.
+        Assert.False(await RecordDeviceFailureAsync(store, userId, deviceSpent: false, ct));
+    }
+
+    /// <summary>
+    /// The account-wide signal still fires on the device path, independently of that device's own
+    /// allowance — that is the half which actually means a distributed attack.
+    /// </summary>
+    [Fact]
+    public async Task NoteFailure_OnADeviceWhileTheAccountIsUnderAttack_NotifiesTheOwner()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (db, userId, _) = await NewDbAsync(ct);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
+
+        db.SignInAccountFailures.Add(new SignInAccountFailure
+        {
+            UserId = userId,
+            FailureCount = Options.AccountHighWaterFailures,
+            WindowStartedAt = Now,
+            LastFailureAt = Now,
+        });
+        await db.SaveChangesAsync(ct);
+
+        Assert.True(await RecordDeviceFailureAsync(store, userId, deviceSpent: false, ct));
+    }
+
+    /// <summary>
+    /// Pacing is shared with the address path, so a device cannot be used to mint extra emails.
+    /// </summary>
+    [Fact]
+    public async Task NoteFailure_OnASpentDevice_StillPacesToOneNoticePerInterval()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (db, userId, _) = await NewDbAsync(ct);
+        var store = new SignInThrottleStore(db, new MovableClock(Now), Options, NullLogger<SignInThrottleStore>.Instance);
+
+        Assert.True(await RecordDeviceFailureAsync(store, userId, deviceSpent: true, ct));
+        Assert.False(await RecordDeviceFailureAsync(store, userId, deviceSpent: true, ct));
+    }
 
     [Fact]
     public async Task PurgeStale_RemovesRowsPastTheirWindowAndGrace()

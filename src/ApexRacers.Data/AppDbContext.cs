@@ -27,6 +27,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ExternalDataCache> ExternalDataCaches => Set<ExternalDataCache>();
     public DbSet<Rival> Rivals => Set<Rival>();
     public DbSet<SignInAddressFailure> SignInAddressFailures => Set<SignInAddressFailure>();
+
+    public DbSet<KnownDevice> KnownDevices => Set<KnownDevice>();
     public DbSet<SignInAccountFailure> SignInAccountFailures => Set<SignInAccountFailure>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -85,6 +87,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             b.HasOne<ApplicationUser>()
              .WithMany()
              .HasForeignKey(f => f.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Known devices (issue #314). Identity schema beside the users they describe, and cascading
+        // for the same reason: a deleted account has no devices worth remembering.
+        modelBuilder.Entity<KnownDevice>(b =>
+        {
+            b.ToTable("KnownDevices", "identity");
+            // Recognition looks the device up by this alone, never by account — see
+            // KnownDeviceStore's remarks on why keying it on the account would time an oracle.
+            b.HasIndex(d => d.TokenHash).IsUnique();
+            // The per-account cap reads this account's devices by last-seen order.
+            b.HasIndex(d => new { d.UserId, d.LastSeenAt });
+            // The purge sweeps by expiry alone, across every account.
+            b.HasIndex(d => d.ExpiresAt);
+            // SHA-256 as lowercase hex is always 64 characters.
+            b.Property(d => d.TokenHash).HasMaxLength(64).IsRequired();
+            b.HasOne<ApplicationUser>()
+             .WithMany()
+             .HasForeignKey(d => d.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 

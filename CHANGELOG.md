@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.16] - 2026-09-12
+
+### Security
+
+- Signing in from a network you share with someone else no longer lets them keep you out. Sign-in
+  attempts are limited per network address, so a stranger who repeatedly guesses at your password
+  uses up their own attempts and not yours — but on a shared connection, such as a mobile network, an
+  office, or a VPN, their address is also yours, and they could use up the attempts you needed. A
+  browser you have already signed in with successfully is now recognised on its own terms, and is
+  measured separately from whatever else is happening on that network. Someone guessing from the desk
+  next to you can no longer stop you signing in on your own machine.
+- A browser recognised this way also keeps its full set of attempts while an account is being guessed
+  at from many addresses at once. That situation tightens the limit for everyone else, which is what
+  makes a widespread guessing run expensive, and it previously cost the account's real owner their
+  attempts too.
+- Recognising a browser does not sign anyone in and does not grant any access on its own: the
+  password is still required and still checked exactly as before. A recognised browser only ever
+  gains attempts, and never loses the ones it would have had otherwise — so if someone copies the
+  marker out of your browser and uses up its attempts, you are still able to sign in from your own
+  machine. Sign-in continues to answer the same way in every failure case, so none of this reveals
+  whether an email address has an account.
+- Changing or resetting your password, or changing your email address, now makes this service forget
+  every browser it recognised for your account, alongside ending your signed-in sessions as it
+  already did. Changing your password is what you would do about a computer you no longer trust, so
+  it needs to end that computer's recognition too.
+- You are told when repeated failed sign-ins use up a recognised browser's attempts, just as you
+  already were for a network address, so a recognised browser is not a quiet way to keep guessing at
+  an account.
+
 ### Changed
 
 - A proposed change that would leave the two sets of coding-assistant configuration files out of step
@@ -1304,7 +1335,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.12...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.16...HEAD
+[9.0.16]: https://github.com/jwh3times/apexracers/compare/v9.0.15...v9.0.16
 [9.0.12]: https://github.com/jwh3times/apexracers/compare/v9.0.11...v9.0.12
 [9.0.11]: https://github.com/jwh3times/apexracers/compare/v9.0.10...v9.0.11
 [9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9

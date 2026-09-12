@@ -63,7 +63,15 @@ public class SignInThrottleCleanupService(
                         && (f.NoticeSentAt == null || f.NoticeSentAt < noticeCutoff))
             .ExecuteDeleteAsync(ct);
 
-        return addresses + accounts;
+        // Known devices age out on their own expiry rather than on a failure window (issue #314):
+        // the row's purpose is recognition, and it outlives any counter it happens to be carrying.
+        // No grace — recognition has genuinely lapsed at that instant, and a row kept past it would
+        // be read as a device the account can still be recognised by.
+        var devices = await db.KnownDevices
+            .Where(d => d.ExpiresAt <= now)
+            .ExecuteDeleteAsync(ct);
+
+        return addresses + accounts + devices;
     }
 
     [ExcludeFromCodeCoverage] // I/O orchestration shell; the purge logic is tested via PurgeStaleAsync

@@ -35,14 +35,23 @@ namespace ApexRacers.Core;
 /// during an attack, not a steady-state rule, and the owner is emailed when it starts.
 /// </para>
 /// <para>
-/// <b>Residual, stated rather than glossed.</b> The scope is the source address, so an attacker who
-/// shares one with the Driver can still exhaust it for both of them — a carrier-grade NAT pool, an
-/// employer's egress, a shared VPN exit. Five requests a quarter hour against that address denies
-/// the Driver from it, which is issue #300's shape confined to one network rather than the whole
-/// internet. Holding an account in the tightened state is likewise cheap for a caller with a handful
-/// of addresses, and while tightened a Driver's own single mistyped password costs them the window.
-/// Closing that needs a second dimension of identity — a device or session the Driver has already
-/// proved — not a better address rule, so it is recorded here rather than half-solved.
+/// <b>The shared-address residual, and what closed it.</b> The scope is the source address, so an
+/// attacker who shares one with the Driver could exhaust it for both of them — a carrier-grade NAT
+/// pool, an employer's egress, a shared VPN exit. Five requests a quarter hour against that address
+/// denied the Driver from it, which is issue #300's shape confined to one network rather than the
+/// whole internet. No address rule can fix that: every variant keys on something both parties hold.
+/// Issue #314 closed it with a second dimension of identity instead — a
+/// <see cref="ApexRacers.Core.Models.KnownDevice"/>, a browser that has already completed a
+/// successful sign-in to the account. A caller presenting one is throttled against that device's own
+/// counter and the address counter is not consulted for it, so the guesser next to the Driver on the
+/// same network exhausts an allowance the Driver does not share. A Driver on a new device still
+/// falls back to the address scope and can still be denied from a hostile network; that is the
+/// remaining edge, and it is bounded by the window rather than repeatable indefinitely.
+/// </para>
+/// <para>
+/// The tightened state keeps its second cost for unrecognised callers only: a Driver on a new device
+/// gets one attempt while their account is under attack. A recognised device keeps the full
+/// allowance — see <see cref="Evaluate"/> for why exempting it does not weaken the control.
 /// </para>
 /// <para>
 /// What this type deliberately does not decide is what the caller is <em>told</em>. Sign-in has
@@ -110,29 +119,74 @@ public static class SignInThrottle
         window is { } w && IsCurrent(w, now, length) ? w.Count : 0;
 
     /// <summary>
-    /// Decides whether one more attempt is allowed, and on what allowance.
+    /// Whether an account's own failures, across every address, put it over the high-water mark.
     /// </summary>
-    /// <param name="addressWindow">This source address's failures against this account, if any.</param>
-    /// <param name="accountWindow">The account's failures across every address, if any.</param>
-    /// <param name="now">Current time.</param>
-    /// <param name="options">The policy in force.</param>
-    public static ThrottleDecision Evaluate(
-        FailureWindow? addressWindow,
+    /// <remarks>
+    /// The single definition of "under attack". It is read by the address claim, the device claim,
+    /// and the owner's-notice decision, and those three drifting apart is exactly the kind of
+    /// inconsistency that would make the tightened state mean different things in different places.
+    /// </remarks>
+    public static bool IsUnderAttack(
         FailureWindow? accountWindow,
         DateTimeOffset now,
-        SignInThrottleOptions options)
-    {
-        var accountFailures = LiveCount(accountWindow, now, options.AccountWindow);
-        var underAttack = accountFailures >= options.AccountHighWaterFailures;
+        SignInThrottleOptions options) =>
+        LiveCount(accountWindow, now, options.AccountWindow) >= options.AccountHighWaterFailures;
 
-        var allowance = underAttack
+    /// <summary>
+    /// Failures the gating scope is permitted in its current window.
+    /// </summary>
+    /// <remarks>
+    /// The single definition of the tightening rule, including the known-device exemption. It lives
+    /// here rather than inside <see cref="Evaluate"/> because the device path cannot use
+    /// <c>Evaluate</c> — that tests a count read before the attempt with <c>&gt;=</c>, while an
+    /// atomic claim tests the count it just wrote with <c>&gt;</c>. Both still have to agree on how
+    /// large the allowance is, and stating it twice is how they would stop agreeing.
+    /// </remarks>
+    public static int AllowanceFor(bool underAttack, bool knownDevice, SignInThrottleOptions options) =>
+        underAttack && !knownDevice
             ? options.TightenedPerAddressMaxFailures
             : options.PerAddressMaxFailures;
 
-        var addressFailures = LiveCount(addressWindow, now, options.PerAddressWindow);
+    /// <summary>
+    /// Decides whether one more attempt is allowed, and on what allowance.
+    /// </summary>
+    /// <param name="scopeWindow">
+    /// Failures against this account from the scope being throttled — a source address ordinarily,
+    /// or a recognised device when <paramref name="knownDevice"/> is set.
+    /// </param>
+    /// <param name="accountWindow">The account's failures across every address, if any.</param>
+    /// <param name="now">Current time.</param>
+    /// <param name="options">The policy in force.</param>
+    /// <param name="knownDevice">
+    /// Whether the caller presented a device this account has already signed in from (issue #314).
+    /// Such a caller keeps the ordinary allowance while the account is under attack, instead of the
+    /// tightened one — see the remarks for why that is safe.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>A known device is never tightened.</b> Tightening exists to make a <em>distributed</em>
+    /// guessing run expensive, and its cost falls on Drivers who share an address with the guesser.
+    /// A device record cannot be minted without first supplying the right password, so it is not
+    /// something an attacker can bring more of — exempting it removes the collateral without
+    /// weakening the control it exists to be. The exemption is an allowance, never a bypass: a
+    /// recognised device is still refused once its own window is exhausted.
+    /// </para>
+    /// </remarks>
+    public static ThrottleDecision Evaluate(
+        FailureWindow? scopeWindow,
+        FailureWindow? accountWindow,
+        DateTimeOffset now,
+        SignInThrottleOptions options,
+        bool knownDevice = false)
+    {
+        var underAttack = IsUnderAttack(accountWindow, now, options);
+
+        var allowance = AllowanceFor(underAttack, knownDevice, options);
+
+        var scopeFailures = LiveCount(scopeWindow, now, options.PerAddressWindow);
 
         return new ThrottleDecision(
-            Refused: addressFailures >= allowance,
+            Refused: scopeFailures >= allowance,
             Allowance: allowance,
             UnderAttack: underAttack);
     }

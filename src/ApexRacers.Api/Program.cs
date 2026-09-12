@@ -250,6 +250,10 @@ builder.Services.AddSingleton(_ => new SignInThrottleOptions(
     // minimum signing-key length above.
     .Validated());
 builder.Services.AddScoped<SignInThrottleStore>();
+// Known-device recognition (issue #314) — the second dimension of identity that lets a Driver who
+// shares an egress with a guesser still sign in. Shares the throttle's options: a recognised device
+// gets the same allowance, just against its own counter.
+builder.Services.AddScoped<KnownDeviceStore>();
 // The sign-in security notice is queued, never sent inside the request: it fires only for
 // addresses that have an account, so an inline send would price sign-in differently for real and
 // unknown addresses and give the account oracle back by latency (or by a 500 when mail fails).
@@ -338,6 +342,16 @@ if (!ForwardedHeadersPolicy.IsEnabledByHost(
         + "this instance; behind one, per-IP limits and HSTS will not see real clients.",
         ForwardedHeadersPolicy.EnabledVariable);
 }
+
+// The known-device cookie's name and Secure flag follow the environment, so state which mode this
+// instance is in (issue #314). Outside Development it is issued as __Host- and Secure, which a
+// browser will silently drop over plain HTTP — the sign-in exemption would then simply never apply,
+// with nothing else reporting why. One line at startup is what makes that diagnosable.
+app.Logger.LogInformation(
+    "Known-device cookie: name {Name}, Secure {Secure} (from environment {Environment}).",
+    KnownDeviceCookie.NameFor(app.Environment),
+    KnownDeviceCookie.IsSecure(app.Environment),
+    app.Environment.EnvironmentName);
 
 // Outermost middleware so it times the whole request and observes the final response
 // status code (after ExceptionHandlingMiddleware's exception → problem+json mapping).

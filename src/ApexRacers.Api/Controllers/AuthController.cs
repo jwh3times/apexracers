@@ -11,7 +11,7 @@ namespace ApexRacers.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(AuthService auth) : ControllerBase
+public class AuthController(AuthService auth, IWebHostEnvironment env) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
@@ -42,8 +42,15 @@ public class AuthController(AuthService auth) : ControllerBase
         // request. It is the post-forwarded-headers value — trustworthy only because the edge
         // rewrites it (GHSA-fq5w-frqr-6px2); a forgeable one would hand a guesser a fresh allowance
         // per request.
-        var auth401 = await auth.LoginAsync(
-            request, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        // The known-device cookie is transport, like the address above: the controller reads it off
+        // the request and hands it in, and the service decides what it means (issue #314). It is
+        // never accepted from the body — a device the page's own script could name would be a device
+        // an injected script could mint, and the exemption would be worth nothing.
+        var outcome = await auth.SignInAsync(
+            request,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            KnownDeviceCookie.Read(Request, env),
+            ct);
 
         // One refusal for every way a sign-in can fail. This used to answer 423 for a locked account,
         // which only a real one can be — five wrong passwords against a registered address returned
@@ -52,12 +59,21 @@ public class AuthController(AuthService auth) : ControllerBase
         //
         // Carries an explicit Detail rather than a bare Unauthorized(): the client renders
         // ProblemDetails.detail, and an automatic ProblemDetails has none.
-        return auth401 is null
-            ? Problem(
+        if (outcome is null)
+            return Problem(
                 detail: "Invalid email or password.",
                 statusCode: StatusCodes.Status401Unauthorized,
-                title: "Unauthorized")
-            : Ok(auth401);
+                title: "Unauthorized");
+
+        // Only ever set on a sign-in that succeeded, which is what bounds the device table: a caller
+        // who cannot supply the password cannot cause a row to exist. Setting it on a refusal would
+        // hand an unauthenticated caller a write and mark a guesser's browser as known. The expiry
+        // comes from the service rather than being recomputed here, so the cookie and the row it
+        // names cannot disagree.
+        if (outcome.Device is { } issued)
+            KnownDeviceCookie.Write(Response, issued, env);
+
+        return Ok(outcome.Result);
     }
 
     [HttpPut("profile")]
