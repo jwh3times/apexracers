@@ -128,10 +128,10 @@ public sealed class SignInThrottleStore(
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.UserId == userId, ct);
 
-        var underAttack = SignInThrottle.LiveCount(
+        var underAttack = SignInThrottle.IsUnderAttack(
             accountRow is null ? null : new FailureWindow(accountRow.FailureCount, accountRow.WindowStartedAt),
             now,
-            options.AccountWindow) >= options.AccountHighWaterFailures;
+            options);
 
         var allowance = underAttack
             ? options.TightenedPerAddressMaxFailures
@@ -181,17 +181,53 @@ public sealed class SignInThrottleStore(
     /// </para>
     /// </remarks>
     /// <returns><c>true</c> for the one caller entitled to send the email.</returns>
-    public async Task<bool> NoteFailureAsync(Guid userId, string address, CancellationToken ct = default)
+    /// <param name="address">
+    /// The source address the attempt was throttled against, or <c>null</c> when it was throttled
+    /// against a recognised device instead (issue #314) — in which case exhaustion is reported by
+    /// <paramref name="scopeSpent"/>, since this store cannot see a device's counter.
+    /// </param>
+    /// <param name="scopeSpent">
+    /// For the device path, whether that device's allowance is now used up. Ignored when
+    /// <paramref name="address"/> is supplied, because the address's own counter answers it.
+    /// </param>
+    public async Task<bool> NoteFailureAsync(
+        Guid userId,
+        string? address,
+        bool scopeSpent = false,
+        CancellationToken ct = default)
     {
         var now = timeProvider.GetUtcNow();
 
         await IncrementAccountAsync(userId, now, ct);
 
-        var after = await EvaluateAsync(userId, address, ct);
-        if (!after.Refused && !after.UnderAttack)
-            return false;
+        if (address is null)
+        {
+            // The device's allowance is spent, or the account is under distributed attack. Either
+            // way this is no longer someone mistyping, which is the same bar the address path uses.
+            if (!scopeSpent && !await IsUnderAttackAsync(userId, now, ct))
+                return false;
+        }
+        else
+        {
+            var after = await EvaluateAsync(userId, address, ct);
+            if (!after.Refused && !after.UnderAttack)
+                return false;
+        }
 
         return await ClaimNoticeAsync(userId, now, ct);
+    }
+
+    /// <summary>Whether the account-wide high-water mark is currently crossed.</summary>
+    private async Task<bool> IsUnderAttackAsync(Guid userId, DateTimeOffset now, CancellationToken ct)
+    {
+        var accountRow = await db.SignInAccountFailures
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.UserId == userId, ct);
+
+        return SignInThrottle.IsUnderAttack(
+            accountRow is null ? null : new FailureWindow(accountRow.FailureCount, accountRow.WindowStartedAt),
+            now,
+            options);
     }
 
     /// <summary>

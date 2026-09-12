@@ -47,7 +47,22 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="font-headline-md text-headline-md mb-3">6. Contact</h2>
+        <h2 className="font-headline-md text-headline-md mb-3">6. Cookies</h2>
+        <p className="font-body-lg text-body-lg text-on-surface-variant">
+          We set one cookie, and only when you sign in successfully. It holds a random identifier
+          that means nothing outside this service — no name, no email address, and nothing about you
+          or your browsing — and it lets us recognise a browser you have signed in from before, so
+          that someone repeatedly guessing at your password from the same network cannot stop you
+          signing in. It does not sign you in by itself, and it is not used for advertising,
+          analytics, or tracking you across other sites. It lasts 90 days from your most recent
+          sign-in, and clearing your browser&apos;s cookies removes it — you will simply be treated
+          as a new browser the next time you sign in. Changing or resetting your password, or
+          changing your email address, makes us forget every browser recognised for your account.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="font-headline-md text-headline-md mb-3">7. Contact</h2>
         <p className="font-body-lg text-body-lg text-on-surface-variant">
           For any privacy-related questions or data deletion requests, please contact us at{' '}
           <a

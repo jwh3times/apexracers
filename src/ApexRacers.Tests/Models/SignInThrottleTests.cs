@@ -255,4 +255,51 @@ public class SignInThrottleTests
 
         Assert.False(decision.Refused);
     }
+
+    // ── Known devices (issue #314) ────────────────────────────────────────────
+
+    /// <summary>
+    /// The exemption: tightening exists to make a distributed run expensive, and a device record
+    /// cannot be minted without the password, so it is not something an attacker can bring more of.
+    /// </summary>
+    [Fact]
+    public void Evaluate_KnownDevice_KeepsTheOrdinaryAllowanceWhileUnderAttack()
+    {
+        var underAttack = new FailureWindow(Options.AccountHighWaterFailures, Now);
+
+        var stranger = SignInThrottle.Evaluate(null, underAttack, Now, Options);
+        var known = SignInThrottle.Evaluate(null, underAttack, Now, Options, knownDevice: true);
+
+        Assert.Equal(1, stranger.Allowance);
+        Assert.Equal(5, known.Allowance);
+        // Reported on both, because the owner's notice depends on it.
+        Assert.True(known.UnderAttack);
+    }
+
+    /// <summary>
+    /// An allowance, never a bypass. A stolen cookie must not buy unlimited guesses at a password it
+    /// still does not know.
+    /// </summary>
+    [Fact]
+    public void Evaluate_KnownDeviceThatExhaustsItsOwnWindow_IsStillRefused()
+    {
+        var spent = new FailureWindow(Options.PerAddressMaxFailures, Now);
+
+        var decision = SignInThrottle.Evaluate(spent, null, Now, Options, knownDevice: true);
+
+        Assert.True(decision.Refused);
+    }
+
+    /// <summary>
+    /// The exemption changes the allowance, not the window, so a known device's failures still
+    /// expire on the ordinary schedule.
+    /// </summary>
+    [Fact]
+    public void Evaluate_KnownDeviceAfterItsWindowElapses_IsAllowedAgain()
+    {
+        var spent = new FailureWindow(Options.PerAddressMaxFailures, Now);
+        var later = Now + Options.PerAddressWindow + TimeSpan.FromMinutes(1);
+
+        Assert.False(SignInThrottle.Evaluate(spent, null, later, Options, knownDevice: true).Refused);
+    }
 }
