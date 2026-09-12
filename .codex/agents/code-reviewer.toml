@@ -152,6 +152,50 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   and nothing else revisits it. It must loop (`ExecuteUpdateAsync` per pass) until a pass revokes zero
   rows.
 
+**Known-device exemption (issue #314)**
+
+- Flag `KnownDeviceStore.RecogniseAsync` (or any replacement) being called or reordered to run *after*
+  the account lookup (`userManager.FindByEmailAsync`), or resolving the device by anything other than
+  the presented token's hash — recognising by account would make the lookup's cost track whether the
+  named address has an account, reopening the enumeration oracle GHSA-72v6-mw4c-q96r and
+  GHSA-28pc-cx5w-g6jp closed.
+- Flag a device-scoped sign-in attempt that claims **only** `KnownDeviceStore.ClaimAttemptAsync` and
+  skips `SignInThrottleStore.ClaimAttemptAsync` (or vice versa) — both scopes must be charged together
+  so the exemption is the *larger* of the two windows, not their sum; charging only one lets a caller
+  spend it, drop the cookie, and spend the other for a strictly higher combined allowance.
+- Flag `KnownDeviceStore.ClaimAttemptAsync` returning `Refused: true` (or `null`) being treated as an
+  outright sign-in refusal instead of a fallback to the address scope's own verdict. A device may only
+  ever add allowance, never remove one — refusing here would let anyone who copied the cookie deny the
+  Driver, who presents the identical cookie, with the correct password from any network.
+- Flag `SignInThrottle.AllowanceFor`/`IsUnderAttack` being restated inline anywhere (the address path,
+  the device path, or a test) instead of called — they are the single definitions the tightened-state
+  rule and the known-device exemption both depend on; drift between two hand-written copies is exactly
+  how the exemption would silently stop matching the address path's rule.
+- Flag `SignInThrottleStore.NoteFailureAsync`'s owner notice being skipped on the device-scoped path
+  (e.g. only calling it when `address is not null`) — a device-scoped caller tops out below the
+  account-wide high-water mark with the shipped numbers, so skipping the notice there silences the
+  only detection signal for the adversary the exemption exists to bound (someone who stole the cookie
+  and is guessing unobserved).
+- Flag any successful sign-in that fails to call `KnownDeviceStore.ClearFailuresAsync` for the
+  account's own device, or that clears the address counter on a device-scoped success — the former
+  leaves a thief-pinned device counter spent through the Driver's own valid sign-in; the latter hands
+  a fresh address allowance to whoever the Driver shares the address with, on the strength of the
+  victim's own success.
+- Flag a device cookie value (or `IssuedDevice`) placed on `AuthResultDto` or any other response-body
+  DTO — it must reach the client only as the `HttpOnly` cookie `KnownDeviceCookie.Write` sets. Flag any
+  endpoint reading the device token from the request body instead of `KnownDeviceCookie.Read` — a
+  script-writable device name defeats the cookie's `HttpOnly` protection entirely.
+- Flag any `Request.Cookies`/`Response.Cookies` access for this cookie outside `KnownDeviceCookie`, a
+  cookie name change away from `KnownDeviceCookie.SecureName`/`DevelopmentName`, a `Secure` flag keyed
+  off `Request.IsHttps` instead of `KnownDeviceCookie.IsSecure(env)`, or a non-root `Path`/missing
+  `__Host-` prefix in a `Secure` environment — the prefix is what stops a same-registrable-domain
+  attacker (a compromised sibling subdomain, or a network attacker against any plain-HTTP host under
+  the same parent domain) from planting a same-named cookie that shadows the real one.
+- Flag `AuthService.ChangePasswordAsync`/`ResetPasswordAsync`/`ConfirmEmailChangeAsync` (or any future
+  credential-change flow) calling `RefreshTokenStore.RevokeAllActiveAsync` without also calling
+  `KnownDeviceStore.ForgetAllAsync` — a device record outliving a password change is a standing
+  guessing allowance against the *new* password for the rest of its 90-day lifetime.
+
 **Tests**
 
 - Flag backend service logic additions that have no corresponding xUnit test in `src/ApexRacers.Tests/Services/`.

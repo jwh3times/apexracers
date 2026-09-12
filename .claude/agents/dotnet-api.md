@@ -155,7 +155,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 - JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
 - Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
-- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender, SignInThrottleStore signInThrottle, IOutboundEmailQueue emailQueue)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters. `SignInThrottleStore` likewise needs a `SignInThrottleOptions` (use `SignInThrottle.Defaults` in tests unless the test is specifically about tuning) and the same `TimeProvider`.
+- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender, SignInThrottleStore signInThrottle, KnownDeviceStore knownDevices, IOutboundEmailQueue emailQueue, ILogger<AuthService> logger)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters. `SignInThrottleStore` and `KnownDeviceStore` likewise each need a `SignInThrottleOptions` (use `SignInThrottle.Defaults` in tests unless the test is specifically about tuning) and the same `TimeProvider` — `KnownDeviceStore` reads `SignInThrottleOptions.PerAddressWindow`/`AccountWindow`/`AccountHighWaterFailures` to keep a device's window and the under-attack test defined identically to the address path.
 - `JwtSettings` builds **both** sides of the contract, not just the key: `IssuingCredentials()` for `AuthService.GenerateJwtAsync` and `ValidationParameters()` for `Program.cs`'s `AddJwtBearer`. Don't hand-build a `SigningCredentials` or a `TokenValidationParameters` anywhere else, tests included — that is how `JwtSettings.Algorithm` (HS256) came to be pinned on the issuing side and left unset on the validating one, where any HMAC variant the library accepts for a symmetric key would have validated. A test that restates the validation parameters by hand is the same drift with a passing suite on top of it.
 - `FromConfiguration` rejects a `JWT_SIGNING_KEY` shorter than `JwtSettings.MinimumSigningKeyBytes` (32 bytes / 256 bits), measured as **UTF-8 bytes** because that is what reaches HMAC — not characters. This is a startup failure by design: a key weaker than the HMAC-SHA256 digest is brute-forceable offline from one captured token, and startup is the last moment an operator sees why. Don't relax it to a warning, and don't move the check to a use site — the single bind point is what makes it unavoidable.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
@@ -278,16 +278,93 @@ scoped to (account, source address):
   before any hash is computed while a real one pays the full PBKDF2 cost, and that gap is readable on
   the clock. It equalises the dominant cost, not the whole request — describe it as closing the
   measurable gap, not as constant time.
-- **Known, accepted residual — not an omission to fix:** the throttle is scoped to source address, so
-  an attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN exit) can still
-  exhaust that address's allowance and deny the Driver from it. Closing that needs a second dimension
-  of identity — a device or session the Driver has already proved — not a better address rule; see the
-  remarks on `ApexRacers.Core.SignInThrottle` before treating this as new work.
+- **The shared-address residual is closed for a known device, not eliminated.** The throttle is scoped
+  to source address, so an attacker sharing one with the Driver (CGNAT, a corporate egress, a shared
+  VPN exit) can still exhaust that address's allowance and deny the Driver from it — unless the Driver
+  is signing in from a browser that has already completed a successful sign-in to the account. See
+  "The known-device exemption (issue #314)" below for what closed it and the residual that remains
+  (a Driver on a genuinely new device, on a hostile network, is still bounded by the address window).
 - `ResetPasswordAsync` answers `InvalidResetRequest` for both an unknown address and an `InvalidToken`
   result. Identity verifies the token before it validates the new password and returns on the first
   failure, so password-policy errors are only reachable once a valid token has been presented — by
   someone who already controls the mailbox — and those still surface, because collapsing them would
   strand a real user with no idea why their new password was refused.
+
+### The known-device exemption (issue #314)
+
+`SignInAsync` (the internal method `LoginAsync` now wraps) resolves a caller-presented cookie to a
+`KnownDevice` via `KnownDeviceStore.RecogniseAsync` **before** the account is looked up, and keyed
+**only** on the presented token — never on the account named in the request. That ordering is the
+whole of what keeps the exemption from becoming a second account-existence oracle alongside the ones
+GHSA-72v6-mw4c-q96r and GHSA-28pc-cx5w-g6jp closed: the lookup runs for every caller who sends a
+cookie and for none who don't, so its cost tracks something the caller already knows, not whether the
+address they typed has an account.
+
+- **A recognised device is charged against both scopes, judged on its own verdict.** When the resolved
+  device belongs to the account being signed into, `SignInAsync` claims an attempt against **both**
+  `KnownDeviceStore.ClaimAttemptAsync` and `SignInThrottleStore.ClaimAttemptAsync`, and the address
+  claim's `Refused` is discarded while the device has room. Charging only the device would let a
+  caller spend its window, drop the cookie, and spend the address's window too — making the ceiling
+  the *sum* of the two; charging both makes it the *larger* of the two, so dropping the cookie
+  mid-attack buys nothing.
+- **A device may only ever add allowance, never remove one.** When `ClaimAttemptAsync` returns
+  `Refused: true` (or `null`, because the row vanished between recognition and the claim), the caller
+  falls back to the address's own verdict rather than being refused outright. Refusing here would let
+  anyone who copied a cookie deny the Driver — who presents the identical cookie — with the correct
+  password from any network: issue #300's shape rebuilt on a new key, and cheaper to reach than the
+  shared-egress attack #314 set out to fix.
+- **The tightened state exempts a known device entirely.** `Core.SignInThrottle.AllowanceFor(underAttack,
+  knownDevice, options)` is the single definition both `Evaluate` (address path) and
+  `KnownDeviceStore.ClaimAttemptAsync` (device path, which cannot use `Evaluate` because it tests a
+  count it just wrote with `>`, not a count read before the attempt with `>=`) read from — a recognised
+  device keeps the ordinary allowance even while the account-wide high-water mark is crossed. Do not
+  restate the allowance rule in either path; call `AllowanceFor`.
+- **One success clears the device unconditionally.** `SignInAsync` calls
+  `KnownDeviceStore.ClearFailuresAsync` for this account's device on **any** successful sign-in, not
+  only when the device was the scope that admitted the caller — a thief who pinned the device counter
+  and then the Driver signs in through the address must not leave the device counter spent for the
+  rest of that window. The address counter is cleared only when it was the actual gating scope, for
+  the pre-existing reason (clearing it on a device-scoped success would hand a fresh address allowance
+  to whoever the Driver is sharing the address with).
+- **`NoteFailureAsync`'s owner notice still fires on the device path**, paced the same as the address
+  path. An earlier draft skipped it, reasoning a recognised device running out is the Driver mistyping
+  — true in the common case, but with the shipped numbers a device-scoped caller tops out well below
+  the account-wide high-water mark, so skipping it would silence the only detection signal for exactly
+  the adversary the exemption empowers (someone who stole the cookie and is guessing unobserved).
+- **Remembering the device must never cost a correct password its sign-in.** `KnownDeviceStore.RememberAsync`
+  runs inside a `try`/`catch (Exception ex) when (ex is not OperationCanceledException)`; a fault there
+  logs a warning and returns no cookie rather than failing the request — the worst case is a lost
+  exemption, never a 500 on the right password. `OperationCanceledException` still propagates: that's
+  the caller giving up, not a device-table fault.
+- **Password change, reset, and email-change forget every device, alongside revoking refresh tokens**
+  (`KnownDeviceStore.ForgetAllAsync`, beside the existing `RefreshTokenStore.RevokeAllActiveAsync`
+  call at each site). Skipping it would leave a device record outliving the credential change it's
+  supposed to remedy — a standing guessing allowance against the *new* password for the rest of the
+  90-day lifetime, reachable by anyone who still holds the old cookie.
+- **The cookie itself lives entirely in `KnownDeviceCookie`** (`src/ApexRacers.Api/Services/KnownDeviceCookie.cs`)
+  — the only place its name and `CookieOptions` are decided, read, or written. `AuthController` calls
+  `KnownDeviceCookie.Read`/`Write`; nothing else should touch `Request.Cookies`/`Response.Cookies` for
+  this cookie. Two attributes are load-bearing, not stylistic:
+  - **Name is `__Host-apexracers_device` wherever the environment can be `Secure`** (i.e. everywhere
+    but Development over plain HTTP, where it falls back to unprefixed `apexracers_device`). The
+    `__Host-` prefix is what makes a browser refuse to accept the cookie if it carries a `Domain`,
+    arrived over plain HTTP, or has a non-root `Path` — which is what stops a compromised sibling
+    subdomain or a network attacker against any plain-HTTP host on the same registrable parent domain
+    from planting a same-named cookie that shadows the real one. Reading only accept the name the
+    current environment writes; accepting the unprefixed name in a `Secure` environment would hand
+    back exactly the shadowing the prefix exists to prevent.
+  - **`Secure` follows `KnownDeviceCookie.IsSecure(env)` (the hosting environment), never
+    `Request.IsHttps`.** That property only reflects the client's real scheme once forwarded headers
+    are processed, and that registration is gated on an app setting whose absence the host only warns
+    about (see "Forwarded headers" below) — keying `Secure` off it would mean a dropped setting
+    silently downgrades a 90-day cookie to one sent in the clear and overwritable by a network
+    attacker.
+- The device cookie is never accepted from the request **body** — only from the cookie header via
+  `KnownDeviceCookie.Read`. A device name the page's own script could submit is a device an injected
+  script could mint, defeating the `HttpOnly` protection entirely.
+- `SignInThrottle`'s XML remarks (`src/ApexRacers.Core/SignInThrottle.cs`) are the canonical statement
+  of what this exemption closes and what residual remains after it; read them before changing any of
+  the rules above.
 
 ### Refresh token rotation
 

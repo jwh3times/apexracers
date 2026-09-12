@@ -40,10 +40,11 @@ Two schemas in one database:
 | `ExternalDataCaches`   | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on `CacheKey` (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
 | `Rivals`               | Guid PK     | A driver a user follows; unique index on (UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
 
-**`identity` schema** — all ASP.NET Identity tables plus refresh tokens and sign-in throttle counters:
+**`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
+known devices:
 
 `Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims`, `RefreshTokens`,
-`SignInAddressFailures`, `SignInAccountFailures`
+`SignInAddressFailures`, `SignInAccountFailures`, `KnownDevices`
 
 `ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?` (the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), and `ThemePreference string`. Its Identity-owned `AccessFailedCount`/`LockoutEnd` columns still exist but are dead: sign-in brute-force protection (issue #300) reads and writes only the two tables below, not these.
 
@@ -51,7 +52,9 @@ Two schemas in one database:
 
 `SignInAddressFailures` (issue #300): `Id` (Guid PK), `UserId` (Guid FK → Users, cascade delete), `IpAddress` (`varchar(56)` — sized for an IPv6 address plus a `%<scope-id>` suffix), `FailureCount`, `WindowStartedAt`, `LastFailureAt`. One row per (account, source address) pair, upserted by `SignInThrottleStore.ClaimAttemptAsync`'s raw `INSERT ... ON CONFLICT` (see Query patterns below).
 
-`SignInAccountFailures` (issue #300): `UserId` (Guid, **both** PK and FK → Users, cascade delete — so this table cannot grow with sign-in traffic, one row per account), `FailureCount`, `WindowStartedAt`, `LastFailureAt`, `NoticeSentAt?` (paces the owner's "someone is guessing" email to one per `SignInThrottleOptions.NoticeInterval`). Read only to decide whether an account is under distributed attack — crossing the configured high-water mark tightens every source address's allowance, it never denies a sign-in by itself.
+`SignInAccountFailures` (issue #300): `UserId` (Guid, **both** PK and FK → Users, cascade delete — so this table cannot grow with sign-in traffic, one row per account), `FailureCount`, `WindowStartedAt`, `LastFailureAt`, `NoticeSentAt?` (paces the owner's "someone is guessing" email to one per `SignInThrottleOptions.NoticeInterval`). Read only to decide whether an account is under distributed attack — crossing the configured high-water mark tightens every unrecognized source address's allowance, it never denies a sign-in by itself.
+
+`KnownDevices` (issue #314): `Id` (Guid PK), `UserId` (Guid FK → Users, cascade delete), `TokenHash` (`varchar(64)`, unique index — SHA-256 hex of the httpOnly cookie value, same shape as `RefreshToken.TokenHash`; raw value is never stored), `CreatedAt`, `LastSeenAt`, `ExpiresAt` (90-day lifetime from the most recent successful sign-in), `FailureCount`, `WindowStartedAt` (this device's own throttle window — same shape as `SignInAddressFailure`'s). Rows are written only after a password has actually been verified, so an unauthenticated caller cannot create one; a per-account cap of 10 evicts the least-recently-seen row on insert past the cap. Recognition (`KnownDeviceStore.RecogniseAsync`) looks this table up by `TokenHash` alone, never by `UserId`, so the lookup cost never varies with whether the caller's named account exists. Backs `Core.SignInThrottle`'s known-device exemption — a caller presenting a recognised device is throttled against this table's own counter instead of `SignInAddressFailures`.
 
 ## Persisted JSON columns hold owned Core types, not SDK types
 
@@ -67,7 +70,7 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Week.Id is a Guid
 
-`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `UploadedLap` (Guid), `RefreshToken` (Guid), `Rival` (Guid), and `SignInAddressFailure` (Guid). `SignInAccountFailure` is the odd one out: its PK is `UserId` itself, not a generated value — one row per account, reused rather than inserted fresh. Do not switch these PKs without a migration plan.
+`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `UploadedLap` (Guid), `RefreshToken` (Guid), `Rival` (Guid), `SignInAddressFailure` (Guid), and `KnownDevice` (Guid). `SignInAccountFailure` is the odd one out: its PK is `UserId` itself, not a generated value — one row per account, reused rather than inserted fresh. Do not switch these PKs without a migration plan.
 
 ## Critical indexes
 
@@ -93,6 +96,8 @@ Percentile queries use indexes on both sides of the `SubsessionResult` → `Subs
 
 `SignInAddressFailure` has a unique index on `(UserId, IpAddress)` — the conflict target for `ClaimAttemptAsync`'s `INSERT ... ON CONFLICT` upsert, so two concurrent failures against the same pair land as one bumped row, not two. Both `SignInAddressFailure` and `SignInAccountFailure` also index `LastFailureAt` — the only column `SignInThrottleCleanupService`'s hourly sweep filters on.
 
+`KnownDevice` has three indexes: a unique index on `TokenHash` (the only lookup path `KnownDeviceStore.RecogniseAsync` uses — never `UserId`, so recognition cost stays independent of account existence), a composite `(UserId, LastSeenAt)` backing the per-account 10-device cap's eviction order, and an index on `ExpiresAt` alone, which `SignInThrottleCleanupService`'s sweep filters on to drop expired devices (no grace period — unlike the failure-counter tables, recognition has genuinely lapsed the instant `ExpiresAt` passes).
+
 When adding new query patterns in services, consider whether a new index is needed. Check the existing entity configuration first.
 
 ## EF Core entity configurations
@@ -115,9 +120,10 @@ The `dotnet ef migrations add` / `database update` commands are in AGENTS.md (Co
 
 ## Query patterns in services
 
-Services query `AppDbContext` directly via LINQ — no raw SQL, no stored procedures. The one exception
-is `SignInThrottleStore.ClaimAttemptAsync` (below); EF has no upsert, so it is deliberate raw SQL, not
-a precedent for reaching for `SqlQueryRaw` elsewhere.
+Services query `AppDbContext` directly via LINQ — no raw SQL, no stored procedures. The exceptions are
+`SignInThrottleStore.ClaimAttemptAsync` and `KnownDeviceStore.ClaimAttemptAsync` (both below); EF has
+no upsert and no `UPDATE ... RETURNING`, so both are deliberate raw SQL, not a precedent for reaching
+for `SqlQueryRaw` elsewhere.
 
 Key access patterns to be aware of:
 
@@ -135,7 +141,8 @@ Key access patterns to be aware of:
   the fast SQLite ones — a concrete instance of the `DateTimeOffset` translation gap AGENTS.md's
   Testing section describes generally. `UserAnalyticsService` cannot push a single range into SQL because each result row belongs to a
   different Week, so it loads the caller's laps and windows once each and filters in memory instead.
-- **Sign-in throttle claim** (`SignInThrottleStore.ClaimAttemptAsync`, issue #300): the sole exception to the no-raw-SQL rule above. Reading a failure counter, checking a password, and writing the counter back is three steps with two gaps, and the middle step (PBKDF2) is tens of milliseconds wide — long enough for a concurrent burst to have every request read the same stale count and all pass the gate, which matters most exactly where the design leans hardest (the tightened allowance is 1). So it's a single `db.Database.SqlQueryRaw<int>` statement — `INSERT INTO identity."SignInAddressFailures" (...) VALUES (...) ON CONFLICT ("UserId", "IpAddress") DO UPDATE SET ... RETURNING "FailureCount"` — that inserts, bumps within the live window, or reopens an expired one and hands back the count it settled on in one round trip. It's read via `.ToListAsync()` rather than composed with `.Single()`: an `INSERT ... RETURNING` isn't composable, and asking EF for `Single()` would wrap it in a subquery the provider rejects. The account-wide counter (`SignInAccountFailures`) stays ordinary EF — `ExecuteUpdateAsync` for the increment, with an `InsertOrRetryAsync` fallback that catches a unique-violation on `PK_SignInAccountFailures` by name (not `DbUpdateException` at large) when two requests both find no row and race to insert one.
+- **Sign-in throttle claim** (`SignInThrottleStore.ClaimAttemptAsync`, issue #300): one of the two exceptions to the no-raw-SQL rule above. Reading a failure counter, checking a password, and writing the counter back is three steps with two gaps, and the middle step (PBKDF2) is tens of milliseconds wide — long enough for a concurrent burst to have every request read the same stale count and all pass the gate, which matters most exactly where the design leans hardest (the tightened allowance is 1). So it's a single `db.Database.SqlQueryRaw<int>` statement — `INSERT INTO identity."SignInAddressFailures" (...) VALUES (...) ON CONFLICT ("UserId", "IpAddress") DO UPDATE SET ... RETURNING "FailureCount"` — that inserts, bumps within the live window, or reopens an expired one and hands back the count it settled on in one round trip. It's read via `.ToListAsync()` rather than composed with `.Single()`: an `INSERT ... RETURNING` isn't composable, and asking EF for `Single()` would wrap it in a subquery the provider rejects. The account-wide counter (`SignInAccountFailures`) stays ordinary EF — `ExecuteUpdateAsync` for the increment, with an `InsertOrRetryAsync` fallback that catches a unique-violation on `PK_SignInAccountFailures` by name (not `DbUpdateException` at large) when two requests both find no row and race to insert one.
+- **Known-device claim** (`KnownDeviceStore.ClaimAttemptAsync`, issue #314): the other exception, and the same reasoning applied to a row known to already exist (recognition already read it) rather than one that might need creating. A single `db.Database.SqlQueryRaw<int>` `UPDATE identity."KnownDevices" SET "FailureCount" = ..., "WindowStartedAt" = ... WHERE "Id" = {deviceId} AND "UserId" = {userId} RETURNING "FailureCount"` bumps within the live window or reopens an expired one, matching both `Id` and `UserId` so the storage layer enforces the same ownership invariant the in-memory check already applies — no future caller can increment another account's device by passing a mismatched pair. Also read via `.ToListAsync()` for the same non-composability reason as above; an empty result (the row vanished between recognition and the claim) is treated as "fall back to the address scope," never as a refusal.
 - **Current-season / current-week resolution** (`SeasonQueries`, `src/ApexRacers.Api/Services/SeasonQueries.cs`): `AppDbContext.CurrentSeasonIdAsync` / `CurrentSeasonIdsAsync` centralize picking the *current* season — the one whose first race week began most recently, per `Core.SeasonCalendar.CurrentSeasonId` — that `ScheduleService`, `StrategyService`, `StandingsService`, `PercentileCalculationService`, `CarRecommendationService`, and `WeekCarStatsService` all query through rather than re-deriving. It is deliberately **not** `Where(Active).OrderByDescending(Year).ThenByDescending(Quarter)`: a series can have two seasons flagged active during a changeover (iRacing marks the incoming one active before it has raced), and ordering by year/quarter alone picks that upcoming, empty season while the quarter actually being raced is still current. `CurrentSeasonIdsAsync` runs two queries for a whole batch of series — season rows (id, year, quarter, active) and a grouped `MIN(Week.StartDate)` per season — then hands both to the pure rule in memory rather than expressing the tiebreak in SQL. `IQueryable<Week>.InSeason(seasonId, raceWeekIndex)` composes on an already-resolved id for the week projection. `SeriesService.GetActiveSeriesAsync` is the pattern to follow for a similar "resolve once, then query by id" reshape: active series ids, then `CurrentSeasonIdsAsync` for the whole batch, then the selected seasons, then their weeks, then `SubsessionResults` filtered to just the resolved current-week ids — with "which week is current" resolved once in memory via `Core.SeasonCalendar.CurrentRaceWeekIndex` and counts grouped in memory afterward. Prefer this shape (bulk-fetch by a resolved id set, aggregate in memory) over a `Select` whose subqueries would otherwise repeat per row.
 
 Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or project to DTOs with `.Select()` when only a subset of fields is needed.

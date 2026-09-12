@@ -17,8 +17,8 @@ namespace ApexRacers.Api.Services;
 /// The device value is deliberately <em>not</em> a field on <see cref="AuthResultDto"/>. That DTO is
 /// serialised into the response body, where page script could read it — and a device a script can
 /// read is a device an injected script can steal, which is the whole reason the cookie is
-/// <c>HttpOnly</c>. Keeping it in this internal type means the only way it can reach a client is as
-/// a cookie the controller sets.
+/// <c>HttpOnly</c>. Keeping it on this type, which is never serialised, means the only way it can
+/// reach a client is as a cookie the controller sets.
 /// </remarks>
 /// <param name="Result">The response body.</param>
 /// <param name="Device">

@@ -81,11 +81,66 @@ For each finding, report: **Affected surface**, **Attack scenario**, **Impact**,
   byte-identical `400` bodies (`"Invalid or expired password reset request."`). A weak new password
   submitted against a *valid* token still surfaces its own policy message — that path is reachable
   only by someone who already controls the mailbox, so it is not part of this oracle; don't flag it.
-- **Known, accepted residual — not a finding:** the throttle is scoped to source address, so an
-  attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN exit) can still
-  exhaust that address's allowance and deny the Driver from it. This is documented in
-  `ApexRacers.Core.SignInThrottle`'s remarks as a stated limitation, not tracked as open work — don't
-  report it as a new finding without a concrete scenario beyond what's already acknowledged there.
+- **Residual, narrowed by issue #314 — see "Known-device exemption" below:** the throttle is scoped to
+  source address, so an attacker sharing one with the Driver (CGNAT, a corporate egress, a shared VPN
+  exit) can still exhaust that address's allowance and deny the Driver from it, **unless** the Driver's
+  browser has already signed in successfully and still holds its known-device cookie. A Driver on a
+  genuinely new device, on a hostile network, remains deniable for the window's duration — that
+  narrower case is documented in `ApexRacers.Core.SignInThrottle`'s remarks as a stated limitation, not
+  tracked as open work. Report a finding only if the exemption itself can be defeated (see below), not
+  for the acknowledged new-device case.
+
+**Known-device exemption (issue #314)**
+
+The known-device cookie (`__Host-apexracers_device` in any environment that can set `Secure`,
+`apexracers_device` in Development only) is set on a successful sign-in and lets that browser's future
+sign-ins throttle against their own counter instead of the shared source address. It is not a session
+mechanism and grants no access by itself — verify that claim along with the exemption's boundaries:
+
+- Test: sign in successfully and inspect the `Set-Cookie` header — `HttpOnly`, `Secure` (outside
+  Development), `SameSite=Strict`, `Path=/`, and named with the `__Host-` prefix outside Development.
+  Confirm `document.cookie` in the browser console cannot read it.
+- Test: confirm the cookie value never appears anywhere in the response **body** of `POST
+  /api/auth/login` — only in `Set-Cookie`. A value in the body would be readable by an injected script,
+  defeating `HttpOnly`.
+- Test the exemption's core claim directly: register + confirm account A, sign in once to obtain its
+  device cookie, then fail A's password 5 times from a **fresh** source address while presenting that
+  cookie — the 6th attempt with the correct password from that same fresh address must still succeed
+  (the device counter, not the address counter, gated those attempts). Repeat without the cookie from
+  the same fresh address — the 6th attempt must now be refused, confirming the exemption (not a general
+  loosening) is what changed the outcome.
+- Test the recognition-is-not-an-oracle claim: present an arbitrary, well-formed but unrecognized
+  cookie value against both a real account's email and a nonexistent one — response latency and body
+  must be indistinguishable between the two (recognition is keyed on the token alone, resolved before
+  the account lookup, so it should cost the same regardless of which address is named).
+- Test that a device cannot widen the total allowance: exhaust the device's own counter (5 wrong
+  passwords while presenting its cookie from the *same* address it was minted on, so both scopes are
+  being charged), then attempt a 6th time still presenting the cookie — must be refused (falling back
+  to the now-also-exhausted address scope), not granted a fresh device-scoped allowance.
+- Test that a device can only add allowance, never remove one: exhaust a device's own counter, then
+  present that same cookie from a **different**, previously-clean source address — the attempt must
+  fall back to that clean address's own allowance (succeed on a correct password there) rather than
+  being refused on the strength of the spent device.
+- Test the tightening exemption: drive an account over `SIGNIN_ACCOUNT_HIGH_WATER_FAILURES` from other
+  addresses (tightening every *unrecognized* address's allowance to 1), then confirm a request
+  presenting this account's known-device cookie from a fresh address still gets the full ordinary
+  allowance (5), not the tightened one.
+- Test cross-account isolation: obtain account A's device cookie, then attempt to sign in to account
+  **B** while presenting it — the cookie must have no effect on B's throttle state (A's device is never
+  treated as known to B), and B's own address-scoped counters must behave exactly as if no cookie were
+  presented.
+- Test self-healing: exhaust a device's counter (as above), then have the legitimate Driver sign in
+  successfully through the *address* scope (not the device) — a subsequent attempt presenting the same
+  device cookie must be admitted again, confirming the device's failures were cleared by the
+  unrelated-scope success.
+- Test the owner notice still fires on the device path: exhaust a device's counter and confirm exactly
+  one "someone is guessing" email arrives, matching the pacing already verified for the address path
+  above — silence here would mean the exemption removed the only detection signal for a stolen cookie.
+- Test revocation completeness (extends the password-change test above): sign in from two browsers to
+  the same account (two device cookies), change the password from one, then confirm the **other**
+  browser's device cookie no longer grants the exemption — a fresh sign-in attempt presenting it must
+  be throttled as an unrecognized device, not admitted on the strength of the old cookie. Repeat for a
+  password reset and an email-address change.
 
 **Refresh token endpoints**
 

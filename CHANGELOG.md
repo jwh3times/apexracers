@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.16] - 2026-09-12
+
 ### Security
 
 - Signing in from a network you share with someone else no longer lets them keep you out. Sign-in
@@ -31,9 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already did. Changing your password is what you would do about a computer you no longer trust, so
   it needs to end that computer's recognition too.
 - You are told when repeated failed sign-ins use up a recognised browser's attempts, just as you
-  already were for a network address. An earlier draft of this change stayed quiet in that case, on
-  the grounds that it is usually you mistyping — which would have meant someone using a copied
-  marker could keep guessing indefinitely without you ever hearing about it.
+  already were for a network address, so a recognised browser is not a quiet way to keep guessing at
+  an account.
 
 ### Changed
 
@@ -1332,7 +1335,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.12...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.16...HEAD
+[9.0.16]: https://github.com/jwh3times/apexracers/compare/v9.0.15...v9.0.16
 [9.0.12]: https://github.com/jwh3times/apexracers/compare/v9.0.11...v9.0.12
 [9.0.11]: https://github.com/jwh3times/apexracers/compare/v9.0.10...v9.0.11
 [9.0.9]: https://github.com/jwh3times/apexracers/compare/v9.0.8...v9.0.9
