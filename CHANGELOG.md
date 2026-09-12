@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- A proposed change that would leave the two sets of coding-assistant configuration files out of step
+  with each other can no longer be merged. The check that detects it already ran on every proposed
+  change and reported the problem, but nothing stopped someone merging past it; it now blocks. Those
+  files are instructions that coding assistants act on, so a silent mismatch between them is the kind
+  of difference that should never reach the main line unnoticed.
 
 ## [9.0.12] - 2026-09-11
 

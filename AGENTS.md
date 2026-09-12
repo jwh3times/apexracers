@@ -71,12 +71,13 @@ hit for real while building this generator:
 
 Regenerate with `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`; add `-- --check` /
 `--check` to verify without writing) and commit every side that changed; the **Agent Config Sync** CI
-check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **reports a failure** on a
-generated tree that has drifted or that leaves an orphaned generated file behind. It is not in the
-ruleset's required-status-check list today — `Format`, `Test`, and `Verify changelog version` are —
-so it reports rather than hard-blocks; treat a red run as blocking anyway. (The workflow is
-deliberately not path-filtered: a path-filtered check never reports on an unrelated PR, so it could
-never be made required without stalling those merges.)
+check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **fails it** when the
+generated tree has drifted or leaves an orphaned generated file behind. As of 2026-09-11 it is one of
+the ruleset's required status checks, alongside `Format`, `Test`, and `Verify changelog version`, so
+a drifted PR cannot merge. (The workflow is deliberately **not** path-filtered, and that is what makes
+requiring it possible: a path-filtered check never reports at all on a PR touching none of its paths,
+and GitHub then holds the merge waiting for a result that never arrives. Do not add a `paths:` filter
+back — it would stall every unrelated PR.)
 
 The generator copies prose **verbatim** — it never rewrites wording — so keep agent and skill bodies
 **tool-neutral**: don't name one tool's entry-point file where "the project guide" will do, and write
