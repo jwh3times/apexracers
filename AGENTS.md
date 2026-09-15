@@ -31,6 +31,12 @@ it touched up to date, and cleans the regenerable build/test leftovers out of th
 section, or pushes source branches. It does publish required human-follow-up wiki instructions.
 Run `/ship` first if a branch is finished, then `/end-session`.
 
+Switching machines uses `/handoff` (writes the handoff document to the synced Proton Drive Handoffs
+folder, registers it in `handoff_map.json` via `scripts/handoff-map.mjs`, then runs `/end-session`)
+and `/lets-go` on the other machine (resumes from that active handoff and clears its entry). The
+script finds the folder under `~/Proton Drive/<account>/My files/Documents/Handoffs`; set
+`HANDOFFS_DIR` where it is mounted elsewhere.
+
 ## Agent config parity (Claude Code ↔ Codex)
 
 Both tools run the same agents and skills from **one** set of sources per row below. Agents are
