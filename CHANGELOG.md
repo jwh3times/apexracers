@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Contributor workflow: `/handoff` now hands work between machines through the synced Proton Drive
+  Handoffs folder — it alerts on any work not merged to `main`, writes the handoff document there,
+  records it as the project's active handoff in `handoff_map.json`, and closes out with
+  `/end-session`, which agents can now invoke. A new `/lets-go` skill resumes from that active
+  handoff on the other machine and clears the entry. `scripts/handoff-map.mjs` reads and updates the
+  map for both.
 
 ## [9.0.17] - 2026-09-12
 

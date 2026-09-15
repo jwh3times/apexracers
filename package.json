@@ -8,6 +8,6 @@
     "repo:status:check": "node scripts/repository-status.mjs --check",
     "sync:main": "node scripts/sync-main.mjs",
     "sync:agents": "node scripts/sync-agent-configs.mjs",
-    "test:repo": "node --test scripts/repository-status.test.mjs scripts/sync-main.test.mjs"
+    "test:repo": "node --test scripts/repository-status.test.mjs scripts/sync-main.test.mjs scripts/handoff-map.test.mjs"
   }
 }

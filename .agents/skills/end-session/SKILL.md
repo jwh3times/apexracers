@@ -1,7 +1,6 @@
 ---
 name: end-session
-description: End a work session cleanly — capture what was learned into memory, bring GitHub issues and the private/ planning docs up to date, and clean up the local workspace. Use when the user says "end session", "wrapping up for the day", "clean up before I stop", or invokes /end-session.
-disable-model-invocation: true
+description: End a work session cleanly — capture what was learned into memory, bring GitHub issues and the private/ planning docs up to date, and clean up the local workspace. Use when the user says "end session", "wrapping up for the day", "clean up before I stop", invokes /end-session, or the handoff skill reaches its end-session step.
 ---
 
 # End session
