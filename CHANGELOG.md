@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.20] - 2026-09-15
+
 ### Changed
 
 - Contributor workflow: `/handoff` now hands work between machines through the synced Proton Drive
@@ -1355,7 +1359,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.17...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.20...HEAD
+[9.0.20]: https://github.com/jwh3times/apexracers/compare/v9.0.19...v9.0.20
 [9.0.17]: https://github.com/jwh3times/apexracers/compare/v9.0.16...v9.0.17
 [9.0.16]: https://github.com/jwh3times/apexracers/compare/v9.0.15...v9.0.16
 [9.0.12]: https://github.com/jwh3times/apexracers/compare/v9.0.11...v9.0.12
