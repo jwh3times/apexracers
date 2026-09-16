@@ -14,8 +14,24 @@ names each project's **active handoff** — the document `/lets-go` resumes from
 
 **Announce at start:** "I'm using the handoff skill to hand this session off."
 
-> Run the shell commands through the POSIX shell (Git Bash on Windows). `jq` is not installed;
-> the map is read and written only through `node scripts/handoff-map.mjs`.
+> Run the shell commands through the POSIX shell (Git Bash on Windows). The map is read and written
+> only through `node scripts/handoff-map.mjs`, never with `jq` or by hand.
+
+## How the Handoffs folder reaches this machine
+
+Two transports, decided by what is installed:
+
+- **Desktop client** (Windows) — the Proton Drive client keeps
+  `~/Proton Drive/<account>/My files/Documents/Handoffs` in sync on its own. Writing into that folder
+  is the whole sync; the CLI steps below are skipped.
+- **CLI mirror** (Fedora, where no client exists) — `proton-drive` (the Proton Drive CLI) is on
+  `PATH` and `HANDOFFS_DIR` names a local mirror folder. Nothing syncs by itself: each **Pull** and
+  **Push** block below is run explicitly, and the cloud folder is always
+  `/my-files/Documents/Handoffs`. A CLI reply of `You need to login first` means `proton-drive auth
+  login` first — that is an interactive step for the user.
+
+Decide once at the start: `command -v proton-drive` succeeds **and** the desktop client's folder is
+absent means CLI mirror; otherwise desktop client.
 
 If the user passed arguments, treat them as what the next session will focus on and tailor the
 document to it.
@@ -58,6 +74,14 @@ continue the handoff either way; the alert informs, it does not block.
 
 ## 2. Write the handoff document
 
+**Pull** (CLI mirror only) — refresh the map before reading it, so the entry written on the other
+machine is the one this run supersedes:
+
+```bash
+mkdir -p "$HANDOFFS_DIR"
+proton-drive filesystem download -f remove /my-files/Documents/Handoffs/handoff_map.json "$HANDOFFS_DIR"
+```
+
 Resolve the Handoffs folder and this project's current entry:
 
 ```bash
@@ -98,6 +122,18 @@ after writing. The step is complete when that echo shows `file` equal to `<file-
 `lastUpdated`. If the project already had a different active handoff, that document is superseded:
 leave it in the folder and mention it in the report.
 
+**Push** (CLI mirror only) — the document and the map both leave this machine now:
+
+```bash
+proton-drive filesystem upload -f create-new-revision -t \
+  "$HANDOFFS_DIR/<file-name>" "$HANDOFFS_DIR/handoff_map.json" /my-files/Documents/Handoffs
+```
+
+`create-new-revision` keeps the cloud's earlier map as a revision instead of trashing it. The push is
+complete when the transfer summary lists both files as uploaded (an unchanged file reports as
+skipped, which is also complete). A summary with neither means the user's login lapsed — see the
+transport section above.
+
 ## 4. Close the session with end-session
 
 Invoke the **end-session** skill and run it to completion. Tell it the handoff document's path so its
@@ -108,6 +144,8 @@ If end-session changes a fact the handoff states — it commits or pushes work, 
 removes a worktree or branch, or the user resolves an open decision — edit the handoff document so it
 matches the final state. The document is complete when every "Where you are" and "Unmerged work"
 line is true after end-session.
+On the CLI mirror, an edited document is pushed again with the same **Push** command; the cloud copy
+is what `/lets-go` reads.
 
 ## 5. Report
 
@@ -117,4 +155,5 @@ End with:
 - the `⚠ Work not merged to main` list as it stands **after** end-session (repeat it even if step 1
   already showed it), or "Nothing unmerged — the other machine can start from `origin/main`."
 - end-session's own summary
-- the reminder: run `/lets-go` in this repository on the other machine once Proton Drive has synced
+- the reminder: run `/lets-go` in this repository on the other machine once the document is in the
+  cloud folder (the desktop client syncs it within a minute or so; a **Push** puts it there at once)
