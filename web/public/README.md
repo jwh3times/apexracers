@@ -1,10 +1,12 @@
 # ApexRacers Icon Pack
 
 Primary mark:
+
 - Electric cyan: #00E0FF
 - Dark ground: #0B0B0C
 
 Included:
+
 - `apexracers.svg` — scalable vector, transparent background
 - `apexracers-dark.svg` — scalable vector on #0B0B0C
 - `apexracers.ico` — multi-resolution ICO
@@ -19,6 +21,7 @@ ICO sizes:
 16x16, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256
 
 Suggested web set:
+
 - favicon.ico
 - 16x16 PNG
 - 32x32 PNG
