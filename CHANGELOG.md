@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Contributor workflow: `/handoff` and `/lets-go` now work on a machine without the Proton Drive
+  desktop client. Where the `proton-drive` CLI is installed instead, `HANDOFFS_DIR` names a local
+  mirror that the skills pull the map (and the named handoff document) into and push it back from,
+  so a handoff written on one machine reaches the other without a sync client.
 
 ## [9.0.21] - 2026-09-16
 

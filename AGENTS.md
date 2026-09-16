@@ -35,7 +35,9 @@ Switching machines uses `/handoff` (writes the handoff document to the synced Pr
 folder, registers it in `handoff_map.json` via `scripts/handoff-map.mjs`, then runs `/end-session`)
 and `/lets-go` on the other machine (resumes from that active handoff and clears its entry). The
 script finds the folder under `~/Proton Drive/<account>/My files/Documents/Handoffs`; set
-`HANDOFFS_DIR` where it is mounted elsewhere.
+`HANDOFFS_DIR` where it is mounted elsewhere. On a machine with no Proton Drive desktop client
+(Fedora), `HANDOFFS_DIR` is a local mirror and both skills pull and push it through the
+`proton-drive` CLI against the cloud folder `/my-files/Documents/Handoffs`.
 
 ## Agent config parity (Claude Code ↔ Codex)
 
