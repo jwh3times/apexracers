@@ -119,6 +119,8 @@ e2e/
   visual.spec.ts      ← CI-only visual regression (baselines in visual.spec.ts-snapshots/)
 public/
   theme-bootstrap.js  ← synchronous same-origin theme initialization before React
+  README.md           ← app icon pack: colors, files, PNG/ICO sizes (favicon/apple-touch-icon
+                          links live in index.html)
   licenses/           ← bundled font licenses and provenance
 src/
   features/           ← feature-grouped pages, each with a colocated *.test.tsx sibling

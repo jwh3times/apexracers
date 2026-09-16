@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.21] - 2026-09-16
+
+### Changed
+
+- ApexRacers now shows its own icon everywhere a browser or device displays one — the browser
+  tab, a bookmark, and an iOS or Android home-screen shortcut. The mark ships as a scalable
+  SVG, a multi-resolution `.ico`, and PNGs from 16x16 to 1024x1024, in both a
+  transparent and a dark-background variant.
+
+### Fixed
+
+- The browser tab showed a blank or default icon instead of the app’s. The page requested an
+  icon file that was no longer present, so browsers had nothing to draw.
+
 ## [9.0.20] - 2026-09-15
 
 ### Changed
@@ -1359,7 +1373,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.20...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.21...HEAD
+[9.0.21]: https://github.com/jwh3times/apexracers/compare/v9.0.20...v9.0.21
 [9.0.20]: https://github.com/jwh3times/apexracers/compare/v9.0.19...v9.0.20
 [9.0.17]: https://github.com/jwh3times/apexracers/compare/v9.0.16...v9.0.17
 [9.0.16]: https://github.com/jwh3times/apexracers/compare/v9.0.15...v9.0.16
