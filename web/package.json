@@ -45,7 +45,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
     "jsdom": "^30.0.1",
-    "oxlint": "^1.82.0",
+    "oxlint": "^1.83.0",
     "oxlint-tsgolint": "^7.0.2001",
     "postcss": "^8.5.28",
     "prettier": "^3.9.6",
