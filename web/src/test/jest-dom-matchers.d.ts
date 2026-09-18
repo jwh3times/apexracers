@@ -24,9 +24,16 @@
 // becomes redundant rather than harmful, but there is no reason to keep two.
 import type { TestingLibraryMatchers } from '@testing-library/jest-dom/matchers';
 
+// The empty body is the point: this is a declaration merge that contributes jest-dom's matchers to
+// Vitest's own `Matchers`, so it adds members by extension and must declare none itself. Giving it a
+// body to satisfy `no-empty-object-type` would change what it merges. The disable is a block rather
+// than `-next-line` because the signature wraps across several lines and the rule reports at the
+// `{}`, not at the `interface` keyword.
+/* oxlint-disable typescript/no-empty-object-type */
 declare module 'vitest' {
   interface Matchers<
     R extends void | Promise<void> = void | Promise<void>,
     T = unknown,
   > extends TestingLibraryMatchers<unknown, R> {}
 }
+/* oxlint-enable typescript/no-empty-object-type */
