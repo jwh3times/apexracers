@@ -5,8 +5,13 @@ public static class ContentSecurityPolicy
 {
     private const string Restrictions = "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
+    // `manifest-src` is stated rather than left to fall back to `default-src`, which would also
+    // have allowed the same-origin `manifest.webmanifest`. It is its own directive, so a later
+    // narrowing of `default-src` would silently stop the PWA manifest loading and take the install
+    // prompt with it — and every other fetch directive here is already explicit for the same reason.
     public const string Spa = "default-src 'self'; script-src 'self'; style-src 'self'; " +
         "img-src 'self' data: https://images-static.iracing.com; font-src 'self'; connect-src 'self'; " +
+        "manifest-src 'self'; " +
         Restrictions;
 
     // Called only by the mapped Development Scalar HTML handler, never by matching a URL prefix.

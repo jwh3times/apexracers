@@ -1,0 +1,36 @@
+{
+  "name": "ApexRacers",
+  "short_name": "ApexRacers",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0B0B0C",
+  "background_color": "#0B0B0C",
+  "icons": [
+    {
+      "src": "/png-transparent/apexracers-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/png-transparent/apexracers-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/png-dark/apexracers-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/png-dark/apexracers-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
