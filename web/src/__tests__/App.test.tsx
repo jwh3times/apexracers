@@ -5,9 +5,9 @@ import App from '../App';
 // AuthProvider reads from IndexedDB on mount — provide resolved stubs so the
 // async effect settles inside act() without warnings.
 vi.mock('../services/db', () => ({
-  dbGet: vi.fn().mockResolvedValue(undefined),
-  dbSet: vi.fn().mockResolvedValue(undefined),
-  dbRemove: vi.fn().mockResolvedValue(undefined),
+  dbGet: vi.fn<(key: string) => Promise<unknown>>().mockResolvedValue(undefined),
+  dbSet: vi.fn<(key: string, value: unknown) => Promise<void>>().mockResolvedValue(undefined),
+  dbRemove: vi.fn<(key: string) => Promise<void>>().mockResolvedValue(undefined),
 }));
 
 describe('App', () => {

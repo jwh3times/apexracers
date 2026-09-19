@@ -2,10 +2,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import LoginPage from './LoginPage';
-import { api } from '../../services/api';
+import { api, type AuthResult } from '../../services/api';
 
-const mockNavigate = vi.fn();
-const mockLogin = vi.fn().mockResolvedValue(undefined);
+const mockNavigate = vi.fn<(to: string) => void>();
+const mockLogin = vi
+  .fn<(result: AuthResult, email: string) => Promise<void>>()
+  .mockResolvedValue(undefined);
 
 vi.mock('react-router', async importOriginal => {
   const actual = await importOriginal<typeof import('react-router')>();

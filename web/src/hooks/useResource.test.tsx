@@ -15,7 +15,9 @@ function deferred<T>() {
 
 describe('useResource', () => {
   it('loads data through the injected fetcher', async () => {
-    const fetcher = vi.fn().mockResolvedValue({ id: 42 });
+    const fetcher = vi.fn<(signal: AbortSignal) => Promise<{ id: number }>>().mockResolvedValue({
+      id: 42,
+    });
     const { result } = renderHook(() => useResource(fetcher, []));
 
     await waitFor(() => expect(result.current).toEqual({ status: 'ok', data: { id: 42 } }));
@@ -23,14 +25,18 @@ describe('useResource', () => {
   });
 
   it('classifies the typed not-linked response once', async () => {
-    const fetcher = vi.fn().mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    const fetcher = vi
+      .fn<(signal: AbortSignal) => Promise<never>>()
+      .mockRejectedValue(new IRacingNotLinkedError('not linked'));
     const { result } = renderHook(() => useResource(fetcher, []));
 
     await waitFor(() => expect(result.current).toEqual({ status: 'not-linked' }));
   });
 
   it('settles a deliberately optional not-linked resource to its declared fallback', async () => {
-    const fetcher = vi.fn().mockRejectedValue(new IRacingNotLinkedError('not linked'));
+    const fetcher = vi
+      .fn<(signal: AbortSignal) => Promise<never>>()
+      .mockRejectedValue(new IRacingNotLinkedError('not linked'));
     const { result } = renderHook(() =>
       useResource(fetcher, [], { onNotLinked: { fallback: [] as string[] } })
     );
@@ -39,7 +45,9 @@ describe('useResource', () => {
   });
 
   it('settles a deliberately optional failed resource to its declared fallback', async () => {
-    const fetcher = vi.fn().mockRejectedValue(new Error('offline'));
+    const fetcher = vi
+      .fn<(signal: AbortSignal) => Promise<never>>()
+      .mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() =>
       useResource(fetcher, [], { onError: { fallback: [] as string[] } })
     );
@@ -48,7 +56,7 @@ describe('useResource', () => {
   });
 
   it('coerces non-Error rejections to the configured fallback', async () => {
-    const fetcher = vi.fn().mockRejectedValue('offline');
+    const fetcher = vi.fn<(signal: AbortSignal) => Promise<never>>().mockRejectedValue('offline');
     const { result } = renderHook(() =>
       useResource(fetcher, [], { fallbackMessage: 'Could not load the resource.' })
     );
@@ -74,7 +82,7 @@ describe('useResource', () => {
   });
 
   it('does not call the fetcher while disabled', async () => {
-    const fetcher = vi.fn().mockResolvedValue('unused');
+    const fetcher = vi.fn<(signal: AbortSignal) => Promise<string>>().mockResolvedValue('unused');
     const { result } = renderHook(() => useResource(fetcher, [false], { enabled: false }));
 
     await act(async () => Promise.resolve());
@@ -86,7 +94,7 @@ describe('useResource', () => {
     const first = deferred<string>();
     const second = deferred<string>();
     const signals: AbortSignal[] = [];
-    const fetcher = vi.fn((signal: AbortSignal, key: number) => {
+    const fetcher = vi.fn<(signal: AbortSignal, key: number) => Promise<string>>((signal, key) => {
       signals.push(signal);
       return key === 1 ? first.promise : second.promise;
     });

@@ -85,6 +85,38 @@ jobs:
         run: npx prettier --check .
         working-directory: web
 
+  # ── Lint gate — Oxlint correctness rules (issue #329) ────────────────────────
+  # This lives here, in an unfiltered workflow, rather than in a web-only one with a
+  # `paths:` filter: a path-filtered check never reports at all on a PR touching none of
+  # its paths, and a required check that never reports holds the merge forever. Same
+  # reasoning as the Agent Config Sync check — see AGENTS.md.
+  #
+  # `npm run lint` exits non-zero on Oxlint *errors* only; warnings do not affect the
+  # exit code. That is why this job could be added while 41 pre-existing
+  # `vitest(require-mock-type-parameters)` warnings were still outstanding — it was green
+  # from the first run. Those warnings were cleared in the same change, so the tree is now
+  # clean on both counts.
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Run Oxlint
+        run: npm run lint
+        working-directory: web
+
   # ── Test gate — repository + backend + frontend tests (required on PRs) ─────
   test:
     name: Test

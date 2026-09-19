@@ -34,7 +34,7 @@ export async function mockApiModule(
   };
 
   const stubbedApi = Object.fromEntries(
-    Object.keys(actual.api).map(name => [name, vi.fn()])
+    Object.keys(actual.api).map(name => [name, vi.fn<(...args: unknown[]) => unknown>()])
   ) as Record<string, unknown>;
 
   return { ...actual, api: stubbedApi };

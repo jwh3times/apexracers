@@ -305,7 +305,7 @@ describe('FeatureFlagContext', () => {
   });
 
   it('checks both iRacing flags even when the live flag is enabled', () => {
-    const isEnabled = vi.fn((key: string) => key === 'iracing-live');
+    const isEnabled = vi.fn<(key: string) => boolean>(key => key === 'iracing-live');
 
     function IracingConsumer() {
       const surface = useIracingSurface();

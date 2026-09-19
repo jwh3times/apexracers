@@ -4,10 +4,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ThemeProvider } from './ThemeProvider';
 import { useTheme } from './ThemeContext';
 
-const mockUpdateTheme = vi.fn();
+const mockUpdateTheme = vi.fn<(themePreference: string) => Promise<unknown>>();
 
 vi.mock('../services/api', () => ({
-  api: { updateTheme: (...args: unknown[]) => mockUpdateTheme(...args) },
+  api: { updateTheme: (themePreference: string) => mockUpdateTheme(themePreference) },
 }));
 
 function Consumer() {

@@ -54,7 +54,7 @@ function setupFakeIndexedDB(opts: FakeOpts = {}) {
 
   const fakeDb = {
     transaction: () => ({ objectStore: () => objectStore }),
-    createObjectStore: vi.fn(),
+    createObjectStore: vi.fn<(name: string) => void>(),
   };
 
   vi.stubGlobal('indexedDB', {
