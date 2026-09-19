@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- ApexRacers can be installed as an app. Chrome and Edge now offer an install prompt, and Android
+  can add a home-screen shortcut that opens without browser chrome. The installed app uses the
+  ApexRacers mark, with a dark splash screen matching the icon's own background. This does not make
+  the app work offline — that needs a service worker and is deliberately not included.
 
 ## [9.0.23] - 2026-09-16
 

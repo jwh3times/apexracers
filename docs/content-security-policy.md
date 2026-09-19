@@ -25,6 +25,12 @@ SPA policy on API responses and static assets as well as client-side navigation 
   image assets without permitting remote script, style, or font sources.
 - Embedded objects and framing are denied; base URLs and form submissions are same-origin.
   The policy permits neither inline scripts nor JavaScript string evaluation.
+- The PWA manifest (`/manifest.webmanifest`, added with #323) is same-origin and allowed by an
+  explicit `manifest-src 'self'`. That directive is stated rather than left to inherit from
+  `default-src 'self'`, which would also have permitted it: `manifest-src` is an independent fetch
+  directive, so a later narrowing of `default-src` would stop the manifest loading and take the
+  install prompt with it, with nothing in the policy naming the dependency. The icons it references
+  are same-origin PNGs already covered by `img-src 'self'`.
 
 ## Development API reference
 

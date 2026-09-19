@@ -52,9 +52,23 @@ public class SecurityHeadersMiddlewareTests
 
         Assert.Equal("default-src 'self'; script-src 'self'; style-src 'self'; " +
             "img-src 'self' data: https://images-static.iracing.com; font-src 'self'; connect-src 'self'; " +
+            "manifest-src 'self'; " +
             "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'", policy);
         Assert.DoesNotContain("unsafe-", policy);
         Assert.DoesNotContain("nonce-", policy);
+    }
+
+    [Fact]
+    public async Task SpaPolicyStatesManifestSrcExplicitly()
+    {
+        // The PWA manifest would also load under the `default-src 'self'` fallback, so asserting
+        // that it loads proves nothing about this directive. What this guards is the directive
+        // still being stated: `manifest-src` is independent, and a later narrowing of `default-src`
+        // would otherwise stop `manifest.webmanifest` loading and silently drop the install prompt.
+        var context = await InvokeAsync();
+        var policy = context.Response.Headers["Content-Security-Policy"].ToString();
+
+        Assert.Contains("manifest-src 'self'", policy);
     }
 
     [Fact]

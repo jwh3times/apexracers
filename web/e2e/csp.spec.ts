@@ -72,6 +72,50 @@ test('built SPA loads local assets, restores theme, and permits React style prop
   expect(violations).toEqual([]);
 });
 
+test('the PWA manifest loads under CSP and describes an installable app', async ({
+  page,
+  baseURL,
+}) => {
+  const violations = await watchViolations(page);
+  const response = await page.goto('/');
+
+  // `manifest-src` is stated explicitly rather than inherited from `default-src 'self'`, so that a
+  // later narrowing of the default cannot silently stop the manifest loading. Assert the directive
+  // is present, not merely that the fetch succeeded — the fetch would succeed either way.
+  expect(response?.headers()['content-security-policy']).toContain("manifest-src 'self'");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    'href',
+    '/manifest.webmanifest'
+  );
+
+  const manifestResponse = await page.request.get(new URL('/manifest.webmanifest', baseURL).href);
+  expect(manifestResponse.status()).toBe(200);
+  const manifest = (await manifestResponse.json()) as {
+    name: string;
+    display: string;
+    icons: { src: string; sizes: string; purpose: string }[];
+  };
+  expect(manifest.name).toBe('ApexRacers');
+  // `display: standalone` is what makes the browser offer to install at all; `browser` would not.
+  expect(manifest.display).toBe('standalone');
+
+  // Android crops a maskable icon to its own shape, so that one needs the full-bleed dark ground
+  // rather than the transparent mark.
+  const maskable = manifest.icons.filter(icon => icon.purpose === 'maskable');
+  expect(maskable.map(icon => icon.sizes).sort()).toEqual(['192x192', '512x512']);
+  expect(maskable.every(icon => icon.src.startsWith('/png-dark/'))).toBe(true);
+
+  // Every icon must actually be served — a manifest naming a missing file still parses, and the
+  // install prompt then appears with a broken or default icon.
+  for (const icon of manifest.icons) {
+    const iconResponse = await page.request.get(new URL(icon.src, baseURL).href);
+    expect(iconResponse.status(), `${icon.src} should be served`).toBe(200);
+  }
+
+  await settle(page);
+  expect(violations).toEqual([]);
+});
+
 test('registration and authenticated navigation work without CSP violations', async ({ page }) => {
   const violations = await watchViolations(page);
   await registerNewUser(page);
