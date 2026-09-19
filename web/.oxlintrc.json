@@ -209,7 +209,7 @@
     {
       "files": ["src/**/*.test.{ts,tsx}", "src/test/**/*.ts"],
       "rules": {
-        "vitest/require-mock-type-parameters": "warn"
+        "vitest/require-mock-type-parameters": "error"
       },
       "plugins": ["vitest"],
       "env": {
