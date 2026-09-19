@@ -49,8 +49,8 @@ Coverage is enforced at **85%** across statements, branches, functions, and line
 
 CI runs `npx prettier --check .` in its own `Format` job (blocks both deploy jobs) and `npm run lint`
 in a separate `Lint` job — both in `.github/workflows/deploy.yml`, alongside `Test`. `npm run lint`
-only fails on Oxlint _errors_; warnings don't affect its exit code, and Lint is not yet a required
-status check.
+only fails on Oxlint _errors_; warnings don't affect its exit code. Both `Format` and `Lint` are
+required status checks, so either one red blocks the merge.
 
 Oxlint enables the recommended correctness category across its ESLint, TypeScript, React,
 JSX-accessibility, import, promise, unicorn, Vitest, and Oxc plugins, then layers the project's
