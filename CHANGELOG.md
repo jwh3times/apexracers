@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.32] - 2026-09-19
+
 ### Added
 
 - ApexRacers can be installed as an app. Chrome and Edge now offer an install prompt, and Android
@@ -1387,7 +1391,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.23...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.32...HEAD
+[9.0.32]: https://github.com/jwh3times/apexracers/compare/v9.0.31...v9.0.32
 [9.0.23]: https://github.com/jwh3times/apexracers/compare/v9.0.22...v9.0.23
 [9.0.21]: https://github.com/jwh3times/apexracers/compare/v9.0.20...v9.0.21
 [9.0.20]: https://github.com/jwh3times/apexracers/compare/v9.0.19...v9.0.20

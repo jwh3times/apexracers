@@ -277,6 +277,16 @@ npx prettier --check .   # CI runs this exact check — fix with: npx prettier -
 Note: `npm run format` / `npm run format:check` exist but only cover `src/**` — CI's prettier check
 covers the whole `web/` tree, so prefer the `npx prettier … .` forms above.
 
+`npm run lint` also runs in CI, as a separate **Lint** job in `.github/workflows/deploy.yml` alongside
+**Format** and **Test** — deliberately in that unfiltered workflow rather than a new `web/`-scoped one
+with a `paths:` filter, for the same reason given under
+[Agent config parity](#agent-config-parity-claude-code--codex): a path-filtered check never reports on
+a PR touching none of its paths, and a required check that never reports holds the merge forever. Lint
+is not yet in the branch ruleset's required-check list (`Format`, `Test`, `Verify changelog version`,
+`Verify generated agent config`) or in `deploy-api`'s/`deploy-ingestion`'s `needs:`, so a red Lint run
+does not currently block a merge or a deploy on its own — `npm run lint` only fails on Oxlint *errors*,
+not warnings.
+
 Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
 
@@ -761,8 +771,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
 `react-frontend` agents carry the per-stack test rules — the load-bearing facts:
 
 - **Frontend (Vitest):** thresholds (statements/branches/functions/lines) in `vite.config.ts`; CI also
-  runs `npx prettier --check .` from `web/` (unformatted files block deploy). Run:
-  `cd web && npx vitest run --coverage`.
+  runs `npx prettier --check .` (the `Format` job — unformatted files block deploy) and `npm run lint`
+  (the `Lint` job, Oxlint correctness rules — see Commands above for its current, not-yet-required
+  status) from `web/`. Run: `cd web && npx vitest run --coverage`.
 - **Backend (.NET, xUnit in `src/ApexRacers.Tests/`):** 85% **line and branch** (CI gates both —
   `irongut/CodeCoverageSummary` for line, a `branch-rate` step for branch). Test services + `Core`
   helpers directly; controllers are excluded. Use the native Microsoft Testing Platform test,

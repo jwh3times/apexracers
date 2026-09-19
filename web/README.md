@@ -47,12 +47,16 @@ npx prettier --write .      # Auto-fix formatting
 
 Coverage is enforced at **85%** across statements, branches, functions, and lines in `vite.config.ts`. Keep all four metrics above the threshold when adding new source files.
 
-The CI `test` job runs `npx prettier --check .` before the Vitest coverage step. Any unformatted file blocks both deploy jobs.
+CI runs `npx prettier --check .` in its own `Format` job (blocks both deploy jobs) and `npm run lint`
+in a separate `Lint` job — both in `.github/workflows/deploy.yml`, alongside `Test`. `npm run lint`
+only fails on Oxlint _errors_; warnings don't affect its exit code, and Lint is not yet a required
+status check.
 
 Oxlint enables the recommended correctness category across its ESLint, TypeScript, React,
 JSX-accessibility, import, promise, unicorn, Vitest, and Oxc plugins, then layers the project's
 type-aware and policy rules on top. Keep exceptions scoped to the narrowest files that require them;
-test mocks are expected to supply type parameters, with that rule currently enforced as a warning.
+test mocks are required to supply type parameters (`vitest/require-mock-type-parameters` is an
+`error`, not a warning — a regression fails the `Lint` job).
 
 ### End-to-end (Playwright)
 
