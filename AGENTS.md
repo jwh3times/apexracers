@@ -281,11 +281,14 @@ covers the whole `web/` tree, so prefer the `npx prettier … .` forms above.
 **Format** and **Test** — deliberately in that unfiltered workflow rather than a new `web/`-scoped one
 with a `paths:` filter, for the same reason given under
 [Agent config parity](#agent-config-parity-claude-code--codex): a path-filtered check never reports on
-a PR touching none of its paths, and a required check that never reports holds the merge forever. Lint
-is not yet in the branch ruleset's required-check list (`Format`, `Test`, `Verify changelog version`,
-`Verify generated agent config`) or in `deploy-api`'s/`deploy-ingestion`'s `needs:`, so a red Lint run
-does not currently block a merge or a deploy on its own — `npm run lint` only fails on Oxlint *errors*,
-not warnings.
+a PR touching none of its paths, and a required check that never reports holds the merge forever. That
+unfiltered placement is what made it eligible, and **Lint became a required status check on
+2026-09-19** (private #21), joining `Format`, `Test`, `Verify changelog version`, and
+`Verify generated agent config` in the ruleset. Do not add a `paths:` filter to `deploy.yml` — it
+would stall every PR that touches nothing under it, for all three of its jobs at once.
+
+`Lint` is still **not** in `deploy-api`'s/`deploy-ingestion`'s `needs:`, so it gates the merge rather
+than the deploy. `npm run lint` fails on Oxlint *errors* only; warnings do not affect its exit code.
 
 Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
@@ -772,8 +775,8 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
 
 - **Frontend (Vitest):** thresholds (statements/branches/functions/lines) in `vite.config.ts`; CI also
   runs `npx prettier --check .` (the `Format` job — unformatted files block deploy) and `npm run lint`
-  (the `Lint` job, Oxlint correctness rules — see Commands above for its current, not-yet-required
-  status) from `web/`. Run: `cd web && npx vitest run --coverage`.
+  (the `Lint` job, Oxlint correctness rules — a required status check since 2026-09-19) from `web/`.
+  Run: `cd web && npx vitest run --coverage`.
 - **Backend (.NET, xUnit in `src/ApexRacers.Tests/`):** 85% **line and branch** (CI gates both —
   `irongut/CodeCoverageSummary` for line, a `branch-rate` step for branch). Test services + `Core`
   helpers directly; controllers are excluded. Use the native Microsoft Testing Platform test,
