@@ -5,31 +5,31 @@ import { AuthProvider } from './AuthProvider';
 import { useAuth } from './AuthContext';
 import { session } from '../services/session';
 
-const mockDbGet = vi.fn();
-const mockDbSet = vi.fn();
-const mockDbRemove = vi.fn();
-const mockRevokeToken = vi.fn();
+const mockDbGet = vi.fn<(key: string) => Promise<unknown>>();
+const mockDbSet = vi.fn<(key: string, value: unknown) => Promise<void>>();
+const mockDbRemove = vi.fn<(key: string) => Promise<void>>();
+const mockRevokeToken = vi.fn<(refreshToken: string) => Promise<void>>();
 
 // The db mock IS the storage seam — the real `session` runs against it, so these assertions
 // exercise the actual persistence path rather than a stand-in for it. Session *mechanics*
 // (refresh dedup, listener fan-out, rotation) are covered directly in services/session.test.ts;
 // what this file tests is the React binding on top.
 vi.mock('../services/db', () => ({
-  dbGet: (...args: unknown[]) => mockDbGet(...args),
-  dbSet: (...args: unknown[]) => mockDbSet(...args),
-  dbRemove: (...args: unknown[]) => mockDbRemove(...args),
+  dbGet: (key: string) => mockDbGet(key),
+  dbSet: (key: string, value: unknown) => mockDbSet(key, value),
+  dbRemove: (key: string) => mockDbRemove(key),
 }));
 
 vi.mock('../services/api', () => ({
-  api: { revokeToken: (...args: unknown[]) => mockRevokeToken(...args) },
+  api: { revokeToken: (refreshToken: string) => mockRevokeToken(refreshToken) },
 }));
 
-const mockSyncFromJwt = vi.fn();
+const mockSyncFromJwt = vi.fn<(themePreference: string) => void>();
 vi.mock('./ThemeContext', () => {
   // Stable references (created once) so AuthProvider's mount effect, which depends
   // on syncFromJwt, runs a single time — mirroring the real useCallback-backed value.
-  const setTheme = vi.fn();
-  const syncFromJwt = (...args: unknown[]) => mockSyncFromJwt(...args);
+  const setTheme = vi.fn<(t: string) => void>();
+  const syncFromJwt = (themePreference: string) => mockSyncFromJwt(themePreference);
   return { useTheme: () => ({ theme: 'auto', setTheme, syncFromJwt }) };
 });
 
@@ -354,10 +354,12 @@ describe('AuthContext', () => {
     });
     // The session exchanges the token over its own transport (raw fetch, deliberately not the
     // intercepting client — routing it through would recurse on the 401 it exists to handle).
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ token: newToken, refreshToken: 'new-rt' }),
-    });
+    const fetchMock = vi
+      .fn<(...args: unknown[]) => Promise<{ ok: boolean; json: () => Promise<unknown> }>>()
+      .mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ token: newToken, refreshToken: 'new-rt' }),
+      });
     vi.stubGlobal('fetch', fetchMock);
 
     await act(async () => {
@@ -382,7 +384,8 @@ describe('AuthContext', () => {
       if (key === 'ar_token') return Promise.resolve(expiredToken);
       return Promise.resolve(undefined);
     });
-    const fetchMock = vi.fn();
+    const fetchMock =
+      vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; json: () => Promise<unknown> }>>();
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => {
       render(

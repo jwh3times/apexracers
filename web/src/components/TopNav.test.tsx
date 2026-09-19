@@ -10,8 +10,8 @@ import { PaceSourceProvider } from '../context/PaceSourceProvider';
 // Module mocks — must be declared before any imports that use them
 // ---------------------------------------------------------------------------
 
-const mockNavigate = vi.fn();
-const mockLogout = vi.fn();
+const mockNavigate = vi.fn<(to: string) => void>();
+const mockLogout = vi.fn<() => Promise<void>>();
 
 vi.mock('react-router', async importOriginal => {
   const actual = await importOriginal<typeof import('react-router')>();

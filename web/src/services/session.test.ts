@@ -7,6 +7,8 @@ import {
   REFRESH_TOKEN_KEY,
   type KeyValueStore,
   type SessionTokens,
+  type SessionSnapshot,
+  type RefreshTransport,
 } from './session';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,7 +54,7 @@ function build(
   transport: (rt: string) => Promise<SessionTokens | null> = () => Promise.resolve(null)
 ) {
   const store = memoryStore(seed);
-  const refreshTransport = vi.fn(transport);
+  const refreshTransport = vi.fn<RefreshTransport>(transport);
   const session = createSession({ store, refreshTransport });
   return { session, store, refreshTransport };
 }
@@ -350,8 +352,8 @@ describe('refresh', () => {
 describe('subscribe', () => {
   it('notifies every listener, not just the most recent', async () => {
     const { session } = build();
-    const first = vi.fn();
-    const second = vi.fn();
+    const first = vi.fn<(snapshot: SessionSnapshot) => void>();
+    const second = vi.fn<(snapshot: SessionSnapshot) => void>();
     session.subscribe(first);
     session.subscribe(second);
 
@@ -363,8 +365,8 @@ describe('subscribe', () => {
 
   it('stops notifying after unsubscribe, leaving others intact', async () => {
     const { session } = build();
-    const kept = vi.fn();
-    const dropped = vi.fn();
+    const kept = vi.fn<(snapshot: SessionSnapshot) => void>();
+    const dropped = vi.fn<(snapshot: SessionSnapshot) => void>();
     session.subscribe(kept);
     const unsubscribe = session.subscribe(dropped);
 
@@ -378,7 +380,7 @@ describe('subscribe', () => {
   it('passes the new token and claims on adopt', async () => {
     const token = jwt({ ...CLAIMS, exp: FUTURE });
     const { session } = build();
-    const listener = vi.fn();
+    const listener = vi.fn<(snapshot: SessionSnapshot) => void>();
     session.subscribe(listener);
 
     await session.adopt({ accessToken: token });
@@ -392,7 +394,7 @@ describe('subscribe', () => {
   it('passes a signed-out snapshot on clear', async () => {
     const { session } = build();
     await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt' });
-    const listener = vi.fn();
+    const listener = vi.fn<(snapshot: SessionSnapshot) => void>();
     session.subscribe(listener);
 
     await session.clear();
@@ -403,7 +405,7 @@ describe('subscribe', () => {
   it('notifies on a failed refresh so the app can drop the user', async () => {
     const { session } = build({}, () => Promise.resolve(null));
     await session.adopt({ accessToken: jwt(CLAIMS), refreshToken: 'rt' });
-    const listener = vi.fn();
+    const listener = vi.fn<(snapshot: SessionSnapshot) => void>();
     session.subscribe(listener);
 
     await session.refresh();
@@ -413,7 +415,7 @@ describe('subscribe', () => {
 
   it('tolerates a listener unsubscribing itself mid-notification', async () => {
     const { session } = build();
-    const other = vi.fn();
+    const other = vi.fn<(snapshot: SessionSnapshot) => void>();
     const unsubscribe = session.subscribe(() => unsubscribe());
     session.subscribe(other);
 

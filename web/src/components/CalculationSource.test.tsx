@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import CalculationSource from './CalculationSource';
 import type { PaceSourceValue } from '../context/PaceSourceContext';
 
-function renderWith(value: PaceSourceValue, onChange = vi.fn()) {
+function renderWith(value: PaceSourceValue, onChange = vi.fn<(next: PaceSourceValue) => void>()) {
   return { onChange, ...render(<CalculationSource value={value} onChange={onChange} />) };
 }
 

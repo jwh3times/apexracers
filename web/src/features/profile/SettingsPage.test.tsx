@@ -2,12 +2,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SettingsPage from './SettingsPage';
-import { api } from '../../services/api';
+import { api, type AuthResult } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 
-const mockUpdateSession = vi.fn().mockResolvedValue(undefined);
-const mockSetAlertsEnabled = vi.fn().mockResolvedValue(undefined);
-const mockLogout = vi.fn().mockResolvedValue(undefined);
+const mockUpdateSession = vi
+  .fn<(result: AuthResult) => Promise<void>>()
+  .mockResolvedValue(undefined);
+const mockSetAlertsEnabled = vi.fn<(v: boolean) => Promise<void>>().mockResolvedValue(undefined);
+const mockLogout = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
 let mockUser: User | null = null;
 let mockAlertsEnabled = true;
@@ -16,7 +18,7 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser,
     loading: false,
-    login: vi.fn(),
+    login: vi.fn<(result: AuthResult, email: string) => Promise<void>>(),
     logout: mockLogout,
     updateSession: mockUpdateSession,
     alertsEnabled: mockAlertsEnabled,
@@ -30,7 +32,7 @@ vi.mock('../../services/api', async importOriginal => {
 });
 
 vi.mock('../../context/ThemeContext', () => ({
-  useTheme: () => ({ theme: 'auto', setTheme: vi.fn() }),
+  useTheme: () => ({ theme: 'auto', setTheme: vi.fn<(t: string) => void>() }),
 }));
 
 function renderPage() {
