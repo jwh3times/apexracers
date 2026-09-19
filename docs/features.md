@@ -89,6 +89,17 @@ Most account, telemetry, recommendation, and personal analytics views require si
 Selected series, schedule, standings, catalog, strategy, and race-detail views are
 public or partially public.
 
+## Installing the app
+
+ApexRacers ships a web app manifest, so a browser that supports installation offers to add it
+as an app: Chrome and Edge show an install prompt, and Android can add a home-screen shortcut
+that opens without browser chrome. The installed app uses the ApexRacers mark and a dark splash
+screen.
+
+This does not make the app work offline. Every page still needs the network, because there is
+no service worker — that is a separate capability with its own caching and offline-behaviour
+decisions, and it has deliberately not been built.
+
 ## iRacing Data Modes
 
 Some iRacing-backed features require service credentials that may not be available in
