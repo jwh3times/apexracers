@@ -1,5 +1,5 @@
 ---
-# GENERATED — DO NOT EDIT. Source: .agents/skills/domain-modeling/SKILL.md. Regenerate: npm run sync:agents
+# GENERATED — do not edit. Source: .agents/skills/domain-modeling/SKILL.md — regenerate with 'node scripts/sync-agents.mjs'.
 name: domain-modeling
 description: Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model.
 ---

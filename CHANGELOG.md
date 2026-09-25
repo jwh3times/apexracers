@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Contributor workflow: the agent/skill generator is now the shared cross-repository
+  `scripts/sync-agents.mjs` (with its own node:test suite), replacing `scripts/sync-agent-configs.mjs`.
+  Check mode is `npm run sync:agents:check`. Generated files carry a one-line
+  `# GENERATED — do not edit` banner, and Codex agent instructions are now a TOML literal string.
+  The tool-neutrality lint moved to `scripts/lint-agent-neutrality.mjs` and still runs in the
+  **Agent Config Sync** check.
 
 ## [9.0.32] - 2026-09-19
 

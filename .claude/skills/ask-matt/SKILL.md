@@ -1,5 +1,5 @@
 ---
-# GENERATED — DO NOT EDIT. Source: .agents/skills/ask-matt/SKILL.md. Regenerate: npm run sync:agents
+# GENERATED — do not edit. Source: .agents/skills/ask-matt/SKILL.md — regenerate with 'node scripts/sync-agents.mjs'.
 name: ask-matt
 description: Ask which skill or flow fits your situation. A router over the skills in this repo.
 disable-model-invocation: true

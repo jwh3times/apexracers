@@ -1,11 +1,8 @@
-# GENERATED FILE — DO NOT EDIT.
-# Source: .claude/agents/code-reviewer.md
-# Regenerate: node scripts/sync-agent-configs.mjs
-
+# GENERATED — do not edit. Source: .claude/agents/code-reviewer.md — regenerate with 'node scripts/sync-agents.mjs'.
 name = "code-reviewer"
 description = "Use to review diffs or changed files for correctness bugs, security issues, and violations of ApexRacers project patterns before merging."
 sandbox_mode = "read-only"
-developer_instructions = """
+developer_instructions = '''
 You are reviewing code changes against the established ApexRacers patterns. Be specific: cite file + approximate line, name the violated pattern, and give the correct fix. Do not flag style preferences — only correctness, security, and structural violations.
 
 ## Backend checks
@@ -273,5 +270,4 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   `ForwardedHeadersPolicy.Configure`.
 - Flag any change that widens `ForwardedHeadersPolicy`'s `ForwardLimit` above `1`, or that populates
   `KnownNetworks`/`KnownProxies` instead of clearing them, without a stated reason in the diff —
-  either widens who can inject a believed `X-Forwarded-For`/`X-Forwarded-Proto` value.
-"""
+  either widens who can inject a believed `X-Forwarded-For`/`X-Forwarded-Proto` value.'''

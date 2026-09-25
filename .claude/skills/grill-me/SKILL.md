@@ -1,5 +1,5 @@
 ---
-# GENERATED — DO NOT EDIT. Source: .agents/skills/grill-me/SKILL.md. Regenerate: npm run sync:agents
+# GENERATED — do not edit. Source: .agents/skills/grill-me/SKILL.md — regenerate with 'node scripts/sync-agents.mjs'.
 name: grill-me
 description: A relentless interview to sharpen a plan or design.
 disable-model-invocation: true

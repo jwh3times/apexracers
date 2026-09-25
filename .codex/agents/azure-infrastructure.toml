@@ -1,10 +1,7 @@
-# GENERATED FILE — DO NOT EDIT.
-# Source: .claude/agents/azure-infrastructure.md
-# Regenerate: node scripts/sync-agent-configs.mjs
-
+# GENERATED — do not edit. Source: .claude/agents/azure-infrastructure.md — regenerate with 'node scripts/sync-agents.mjs'.
 name = "azure-infrastructure"
 description = "Use for Azure deployments, Container Registry pushes, Key Vault secret management, App Service configuration, Container Apps updates for the ingestion worker, and cloud infrastructure changes."
-developer_instructions = """
+developer_instructions = '''
 You are managing ApexRacers cloud infrastructure. Know the deployment topology and
 runtime-configuration model. Use `private/ops/azure-deployment-runbook.md` when available
 for exact resource names, command targets, and maintainer-only deployment details.
@@ -82,9 +79,9 @@ az acr login --name "$ACR_NAME"
 docker push "$REGISTRY/apexracers-api:$IMAGE_TAG"
 
 # Update App Service to use the new image
-az webapp config container set \\
-  --name "$API_APP_NAME" \\
-  --resource-group "$RESOURCE_GROUP" \\
+az webapp config container set \
+  --name "$API_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
   --docker-custom-image-name "$REGISTRY/apexracers-api:$IMAGE_TAG"
 ```
 
@@ -98,9 +95,9 @@ docker build -t "$REGISTRY/apexracers-ingestion:$IMAGE_TAG" -f ingestion.Dockerf
 docker push "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
 
 # Update Container App
-az containerapp update \\
-  --name "$INGESTION_APP_NAME" \\
-  --resource-group "$RESOURCE_GROUP" \\
+az containerapp update \
+  --name "$INGESTION_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
   --image "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
 ```
 
@@ -180,8 +177,8 @@ environment-specific secret store.
 Both the API and ingestion worker write structured logs. View via:
 
 ```bash
-az monitor log-analytics query \\
-  --workspace "$LOG_ANALYTICS_WORKSPACE" \\
+az monitor log-analytics query \
+  --workspace "$LOG_ANALYTICS_WORKSPACE" \
   --analytics-query "ContainerAppConsoleLogs_CL | order by TimeGenerated desc | limit 50"
 ```
 
@@ -190,11 +187,10 @@ traces for the API app. Keep a daily data cap as a cost guardrail. Check usage a
 the cap:
 
 ```bash
-az monitor app-insights component quotastatus show \\
-  --resource-group "$RESOURCE_GROUP" \\
+az monitor app-insights component quotastatus show \
+  --resource-group "$RESOURCE_GROUP" \
   --resource-name "$APP_INSIGHTS_NAME"
 ```
 
 Exact resource names and one-off provisioning commands belong in
-`private/ops/azure-deployment-runbook.md`, not tracked agent docs.
-"""
+`private/ops/azure-deployment-runbook.md`, not tracked agent docs.'''

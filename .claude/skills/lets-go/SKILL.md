@@ -1,5 +1,5 @@
 ---
-# GENERATED — DO NOT EDIT. Source: .agents/skills/lets-go/SKILL.md. Regenerate: npm run sync:agents
+# GENERATED — do not edit. Source: .agents/skills/lets-go/SKILL.md — regenerate with 'node scripts/sync-agents.mjs'.
 name: lets-go
 description: Resume this repository from its active handoff in the synced Proton Drive handoff_map.json, then clear that entry.
 argument-hint: "Anything to focus on first (optional)"

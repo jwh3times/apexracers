@@ -56,11 +56,11 @@ third-party skill installers write; keeping the install target as the authored s
 installing or updating a skill stays a one-way drop-in with no manual copying afterward. The whole
 skill directory is mirrored, not just `SKILL.md` — references, `scripts/*.sh`, `agents/*.yaml`, and
 any other files a skill carries are all drift-controlled. Each generated `SKILL.md` gets a
-`# GENERATED — DO NOT EDIT` banner injected as a YAML comment on line 2 (line 1 stays `---`, so the
-frontmatter still parses); every other file in the tree is copied with no banner: text files
-(`.md`, `.yaml`, `.sh`, …) have CRLF normalized to LF, so a tool that rewrites the generated tree
-with Windows line endings after checkout does not read as permanent drift — and anything not on that
-text list is copied byte-for-byte.
+`# GENERATED — do not edit. Source: … — regenerate with 'node scripts/sync-agents.mjs'.` banner
+injected as a YAML comment on line 2 (line 1 stays `---`, so the frontmatter still parses); every
+other file in the tree is copied byte-for-byte with no banner. `--check` folds CRLF to LF when
+comparing any non-binary file, so a tool that rewrites the generated tree with Windows line endings
+after checkout does not read as permanent drift.
 
 **Never replace the generated `.claude/skills/` tree with a symlink back to `.agents/skills/`** (or
 any generated path with a symlink to its source) — two independent failure modes rule that out, both
@@ -77,8 +77,8 @@ hit for real while building this generator:
    tree while the generator still runs against it, every "generated" write actually lands back on the
    authored source file, silently corrupting it.
 
-Regenerate with `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`; add `-- --check` /
-`--check` to verify without writing) and commit every side that changed; the **Agent Config Sync** CI
+Regenerate with `node scripts/sync-agents.mjs` (or `npm run sync:agents`; `--check` /
+`npm run sync:agents:check` verifies without writing) and commit every side that changed; the **Agent Config Sync** CI
 check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **fails it** when the
 generated tree has drifted or leaves an orphaned generated file behind. As of 2026-09-11 it is one of
 the ruleset's required status checks, alongside `Format`, `Test`, and `Verify changelog version`, so
@@ -90,18 +90,22 @@ back — it would stall every unrelated PR.)
 The generator copies prose **verbatim** — it never rewrites wording — so keep agent and skill bodies
 **tool-neutral**: don't name one tool's entry-point file where "the project guide" will do, and write
 repo-root-relative paths as plain text rather than relative Markdown links (a relative link resolves
-differently from the mirrored location).
+differently from the mirrored location). `node scripts/lint-agent-neutrality.mjs` (`npm run
+lint:agents`) enforces this: it rejects blind `claude`→`Codex` substitution artifacts (`.Codex/`,
+`code.Codex.com`) and relative links that resolve from the source but break from the mirrored copy.
 
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
 becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model
-names, so Codex uses its session default). The generator also self-checks: it round-trips every
-generated TOML through an independent parser (catching an escaping regression before it ships) and
-lints the mirrored prose for substitution artifacts and depth-fragile relative links.
+names, so Codex uses its session default). Each generated TOML opens with a one-line `# GENERATED`
+banner and holds the instructions in a `'''` literal string. The generator is shared verbatim across
+repositories — change it in one and copy it to all — and is covered by its own node:test suite
+(`scripts/sync-agents.test.mjs`); the **Agent Config Sync** job runs that suite and the neutrality
+lint before `--check`.
 
 No formatter currently runs over `.agents/skills/` or `.claude/agents/` (Prettier in this repo is
 scoped to the `web/` tree only — see Commands below), so there is no format-before-sync ordering
 requirement today. If a formatter is ever pointed at those trees, run it before
-`sync-agent-configs.mjs`, not after: regenerating first would mirror unformatted content and drift
+`sync-agents.mjs`, not after: regenerating first would mirror unformatted content and drift
 again on the next format pass. In that case also point the formatter's ignore file at the generated
 tree (`.claude/skills/`), not the authored one.
 
@@ -309,10 +313,12 @@ agent.
 ### Agent config (run from repo root)
 
 ```bash
-node scripts/sync-agent-configs.mjs           # regenerate the generated trees from the authored sources
-node scripts/sync-agent-configs.mjs --check   # what CI runs; exits 1 on drift or orphaned files
+node scripts/sync-agents.mjs                  # regenerate the generated trees from the authored sources
+node scripts/sync-agents.mjs --check          # what CI runs; exits 1 on drift or orphaned files
 npm run sync:agents                           # same as the plain command above
-npm run sync:agents -- --check                # same, check mode
+npm run sync:agents:check                     # same, check mode
+node scripts/lint-agent-neutrality.mjs        # tool-neutrality lint (also: npm run lint:agents)
+node --test scripts/sync-agents.test.mjs      # the generator's own tests
 ```
 
 Needs only Node (no install step — the script has no dependencies; the root `package.json` also

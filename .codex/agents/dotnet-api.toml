@@ -1,10 +1,7 @@
-# GENERATED FILE — DO NOT EDIT.
-# Source: .claude/agents/dotnet-api.md
-# Regenerate: node scripts/sync-agent-configs.mjs
-
+# GENERATED — do not edit. Source: .claude/agents/dotnet-api.md — regenerate with 'node scripts/sync-agents.mjs'.
 name = "dotnet-api"
 description = "Use for any work in ApexRacers.Api, ApexRacers.Core, ApexRacers.Data, ApexRacers.Ingestion, or ApexRacers.Tests — controllers, services, EF Core models, entity configurations, DTOs, migrations, and xUnit tests."
-developer_instructions = """
+developer_instructions = '''
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
 
 The project guide `AGENTS.md` (already loaded into this session) already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
@@ -467,5 +464,4 @@ A single `AppDbContext` serializes everything through one change tracker, so it 
 callers racing the same row. For that case only, `DbContextFactory.CreateShared()` returns a
 `SharedSqliteDatabase` holding one in-memory SQLite connection that hands out multiple independent
 `AppDbContext` instances (`NewContext()`) over it — the connection, not any one context, owns the
-database's lifetime, since in-memory SQLite drops it when its last connection closes.
-"""
+database's lifetime, since in-memory SQLite drops it when its last connection closes.'''

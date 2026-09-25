@@ -4,7 +4,7 @@ name: Agent Config Sync
 # counterparts.
 #
 # `.claude/agents/*.md` is authored for Claude Code; the generator
-# (`scripts/sync-agent-configs.mjs`) renders `.codex/agents/*.toml` from it for Codex.
+# (`scripts/sync-agents.mjs`) renders `.codex/agents/*.toml` from it for Codex.
 #
 # Skills run the OPPOSITE direction: `.agents/skills/<name>/**` is authored — that is
 # where third-party skill installers write, so installing/updating a skill stays a
@@ -23,12 +23,16 @@ name: Agent Config Sync
 # has a source (an orphan left behind after a rename or delete). Both cases mean
 # someone edited a generated file by hand or forgot to re-run the script.
 #
-# The generator normalizes CRLF for text sources (agents, hooks, SKILL.md) on both
-# read and compare, so a Windows working copy and a Linux runner agree; every other
-# skill file (references, scripts/*.sh, agents/*.yaml, ...) is copied byte-for-byte
-# with no transformation.
+# The generator normalizes CRLF when reading agent and SKILL.md sources and folds CRLF
+# when comparing any non-binary generated file, so a Windows working copy and a Linux
+# runner agree; every other skill file (references, scripts/*.sh, agents/*.yaml, ...)
+# is written byte-for-byte with no transformation.
 #
-# Fix locally with:  node scripts/sync-agent-configs.mjs   (or: npm run sync:agents)
+# The same job also runs the generator's node:test suite and the tool-neutrality lint
+# (`scripts/lint-agent-neutrality.mjs`), which rejects blind claude->Codex substitution
+# artifacts and relative links that break once a source is mirrored.
+#
+# Fix locally with:  node scripts/sync-agents.mjs   (or: npm run sync:agents)
 #                    then commit the result
 
 # Deliberately NOT path-filtered on pull_request. A required status check that is
@@ -58,5 +62,11 @@ jobs:
         with:
           node-version: '26'
 
+      - name: Test the generator
+        run: node --test scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs
+
+      - name: Lint agent and skill sources for tool neutrality
+        run: node scripts/lint-agent-neutrality.mjs
+
       - name: Check generated agent config matches its sources
-        run: node scripts/sync-agent-configs.mjs --check
+        run: node scripts/sync-agents.mjs --check
