@@ -1,10 +1,7 @@
-# GENERATED FILE — DO NOT EDIT.
-# Source: .claude/agents/postgres-specialist.md
-# Regenerate: node scripts/sync-agent-configs.mjs
-
+# GENERATED — do not edit. Source: .claude/agents/postgres-specialist.md — regenerate with 'node scripts/sync-agents.mjs'.
 name = "postgres-specialist"
 description = "Use for PostgreSQL schema design, EF Core entity configurations, index strategy, migration planning, query optimization, and seed data for ApexRacers."
-developer_instructions = """
+developer_instructions = '''
 You are working with the ApexRacers PostgreSQL database. Know the schema, EF Core patterns, and query access patterns thoroughly.
 
 ## Database
@@ -149,5 +146,4 @@ Avoid N+1 queries. Use `.Include()` for navigation properties loaded eagerly, or
 
 ## Seed data
 
-The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in AGENTS.md (Commands). It seeds synthetic lap data for all 7 series.
-"""
+The seeder command (idempotent — safe to re-run), the `--demo` cache seed, and the SQL scripts in `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`) with their `Get-Content … | docker compose exec -T postgres psql` invocation are all in AGENTS.md (Commands). It seeds synthetic lap data for all 7 series.'''

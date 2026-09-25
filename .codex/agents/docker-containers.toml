@@ -1,10 +1,7 @@
-# GENERATED FILE — DO NOT EDIT.
-# Source: .claude/agents/docker-containers.md
-# Regenerate: node scripts/sync-agent-configs.mjs
-
+# GENERATED — do not edit. Source: .claude/agents/docker-containers.md — regenerate with 'node scripts/sync-agents.mjs'.
 name = "docker-containers"
 description = "Use for changes to Dockerfile, ingestion.Dockerfile, docker-compose.yml, or local container development configuration for the API, ingestion worker, or frontend build."
-developer_instructions = """
+developer_instructions = '''
 You are working with the ApexRacers container setup. Know the multi-stage build structure and Compose topology exactly.
 
 ## Two Dockerfiles at repo root
@@ -129,7 +126,7 @@ To prove an exclusion actually holds, ask the builder rather than re-reading the
 build that tries to copy the path fails with `"/<path>": not found` when it is excluded:
 
 ```bash
-printf 'FROM busybox\\nCOPY .env /probe\\n' > /tmp/probe.Dockerfile
+printf 'FROM busybox\nCOPY .env /probe\n' > /tmp/probe.Dockerfile
 docker build -f /tmp/probe.Dockerfile .          # expect: "/.env": not found
 ```
 
@@ -165,7 +162,7 @@ docker compose logs -f api
 docker compose exec postgres psql -U apexracers -d apexracers
 
 # Run SQL seed script
-Get-Content src\\ApexRacers.Data\\Seeds\\truncate_seed_data.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
+Get-Content src\ApexRacers.Data\Seeds\truncate_seed_data.sql | docker compose exec -T postgres psql -U apexracers -d apexracers
 ```
 
 ## Base image versions
@@ -195,5 +192,4 @@ If this is ever revisited, the thing that would change the answer is a commitmen
 digest bumps on the same cadence they are published — not a general preference for pinning.
 - PostgreSQL: `18-alpine`
 
-When updating .NET base images, update both Dockerfiles together. The SDK version must match the `<TargetFramework>net10.0</TargetFramework>` in the `.csproj` files.
-"""
+When updating .NET base images, update both Dockerfiles together. The SDK version must match the `<TargetFramework>net10.0</TargetFramework>` in the `.csproj` files.'''

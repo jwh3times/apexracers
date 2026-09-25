@@ -1,5 +1,5 @@
 ---
-# GENERATED — DO NOT EDIT. Source: .agents/skills/end-session/SKILL.md. Regenerate: npm run sync:agents
+# GENERATED — do not edit. Source: .agents/skills/end-session/SKILL.md — regenerate with 'node scripts/sync-agents.mjs'.
 name: end-session
 description: End a work session cleanly — capture what was learned into memory, bring GitHub issues and the private/ planning docs up to date, and clean up the local workspace. Use when the user says "end session", "wrapping up for the day", "clean up before I stop", invokes /end-session, or the handoff skill reaches its end-session step.
 ---
@@ -193,7 +193,7 @@ path, and confirm the list with the user first.
 Then check the two things a session commonly leaves inconsistent:
 
 ```bash
-npm run sync:agents -- --check   # agent/skill config drift — a required CI check fails the PR otherwise
+npm run sync:agents:check        # agent/skill config drift — a required CI check fails the PR otherwise
 docker compose ps                # local stack still running?
 ```
 

@@ -66,7 +66,7 @@ them. Skills run the opposite direction: `.agents/skills/<name>/**` is authored
 **generated** into `.claude/skills/<name>/**` for Claude Code. Session hooks remain
 tool-specific: the Claude Code hook is not mirrored into `.codex/`, and the repo
 does not check in project-scoped Codex config or lifecycle-hook files. For the
-generated trees, `node scripts/sync-agent-configs.mjs` (or `npm run sync:agents`)
+generated trees, `node scripts/sync-agents.mjs` (or `npm run sync:agents`)
 is the one generator, and generated files must not be hand-edited — an **Agent
 Config Sync** CI check runs on every PR and fails it when the generated tree has
 drifted (it is one of the ruleset's required status checks, so a drifted PR
