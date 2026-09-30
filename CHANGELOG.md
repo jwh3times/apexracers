@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.48] - 2026-09-30
+
+### Added
+
+- A cited review of iRacing's third-party development notice and terms, with an inventory of
+  ApexRacers screens, APIs, and stored data that expose driver identities. The audit distinguishes
+  consent-related engineering changes from unresolved data-use permissions; application behavior
+  is unchanged.
+
 ### Changed
 
 - Contributor workflow: the agent/skill generator is now the shared cross-repository
@@ -1398,7 +1409,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.32...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.48...HEAD
+[9.0.48]: https://github.com/jwh3times/apexracers/compare/v9.0.47...v9.0.48
 [9.0.32]: https://github.com/jwh3times/apexracers/compare/v9.0.31...v9.0.32
 [9.0.23]: https://github.com/jwh3times/apexracers/compare/v9.0.22...v9.0.23
 [9.0.21]: https://github.com/jwh3times/apexracers/compare/v9.0.20...v9.0.21
