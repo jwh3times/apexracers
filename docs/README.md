@@ -9,6 +9,7 @@ This directory contains public, contributor-safe project documentation.
 | [features.md](features.md) | Product capabilities and user-facing workflows. |
 | [roadmap.md](roadmap.md) | High-level project status and planned work. |
 | [content-security-policy.md](content-security-policy.md) | Browser resource policy, asset audit, and Development API-reference exceptions. |
+| [research/iracing-terms-2026-09-30.md](research/iracing-terms-2026-09-30.md) | Dated research on iRacing's third-party terms and an audit of ApexRacers' Driver identity exposure. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
