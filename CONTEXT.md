@@ -157,7 +157,7 @@ A User's affirmative, revocable permission to show their Verified Identity's Dri
 _Avoid_: Personal Analytics Consent, Account membership, OAuth login
 
 **Subject Driver**:
-The Driver whose data a page or calculation represents. Frequently, but not necessarily, the requesting User's Claimed Identity — any Driver may be the Subject Driver of a lookup.
+The Driver whose data a page or calculation represents. Being a Subject Driver does not itself establish identity ownership or disclosure consent.
 _Avoid_: Current driver, Target user, Member, Requesting user
 
 **Demo Driver**:
@@ -165,7 +165,7 @@ A synthetic Driver resolved as the Subject Driver for Users viewing the demo sur
 _Avoid_: Demo user, Impersonated driver, Fake member, Linked demo account
 
 **Rival**:
-A Driver a User follows for head-to-head comparison against their own Subject Driver. A Rival need not be a User.
+A Driver a User follows for head-to-head comparison against their own Subject Driver. Following alone grants no identity disclosure; named comparisons require current Identity Sharing Consent for that Driver's Verified Identity.
 _Avoid_: Friend, Opponent, Competitor, Followed member
 
 ## Lap Evidence
