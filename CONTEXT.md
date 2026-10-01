@@ -148,6 +148,14 @@ _Avoid_: Linked account, Connected account, Verified identity
 A Claimed Identity whose ownership has been proven by the Driver signing in to iRacing. No identity is verified today.
 _Avoid_: Confirmed identity, Authenticated driver, Validated identity
 
+**Personal Analytics Consent**:
+A User's affirmative, revocable permission for ApexRacers to access and present their Verified Identity's Driver data to that User for personal analytics.
+_Avoid_: OAuth login, Identity Sharing Consent, Publication consent
+
+**Identity Sharing Consent**:
+A User's affirmative, revocable permission to show their Verified Identity's Driver name and specified racing statistics to other signed-in Users. It excludes their Customer ID, Uploaded Laps and private personal-analytics history.
+_Avoid_: Personal Analytics Consent, Account membership, OAuth login
+
 **Subject Driver**:
 The Driver whose data a page or calculation represents. Frequently, but not necessarily, the requesting User's Claimed Identity — any Driver may be the Subject Driver of a lookup.
 _Avoid_: Current driver, Target user, Member, Requesting user
