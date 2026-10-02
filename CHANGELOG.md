@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Rival comparisons now keep results, loading and errors tied to the latest selection. Removing a
+  Rival invalidates its pending comparison, and an older removal cannot clear a newer selection.
 
 ## [9.0.48] - 2026-09-30
 
