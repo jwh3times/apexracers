@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { api, type ScheduleWeek } from '../../services/api';
 import { raceWeekLabel } from '../../utils/raceWeek';
@@ -126,7 +127,7 @@ export default function SchedulePage() {
   });
 
   // The current week is the latest week whose start date is on or before today.
-  const today = new Date().toISOString().slice(0, 10);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const weeks = resource.status === 'ok' ? resource.data.weeks : [];
   const past = weeks.filter(w => w.startDate <= today);
   const currentRaceWeekIndex = past.length > 0 ? past[past.length - 1].raceWeekIndex : null;

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported by technical research and replacement ADRs. It defines the target ownership and
   enforcement protocols; application behavior and live-data activation are unchanged.
 
+### Changed
+
+- Updated frontend lint tooling and initialized schedule/footer dates outside repeated rendering.
+
 ## [9.0.50] - 2026-10-01
 
 ### Fixed
