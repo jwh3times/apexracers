@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [9.0.53] - 2026-10-02
+
+### Added
+
+- An accepted architecture for Driver authorization, consented publication, and copy cleanup,
+  supported by technical research and replacement ADRs. It defines the target ownership and
+  enforcement protocols; application behavior and live-data activation are unchanged.
+
 ### Changed
 
 - Updated frontend lint tooling and initialized schedule/footer dates outside repeated rendering.
@@ -1418,7 +1428,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.50...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.53...HEAD
+[9.0.53]: https://github.com/jwh3times/apexracers/compare/v9.0.52...v9.0.53
 [9.0.50]: https://github.com/jwh3times/apexracers/compare/v9.0.49...v9.0.50
 [9.0.48]: https://github.com/jwh3times/apexracers/compare/v9.0.47...v9.0.48
 [9.0.32]: https://github.com/jwh3times/apexracers/compare/v9.0.31...v9.0.32
