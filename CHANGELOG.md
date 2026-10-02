@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- An accepted Driver acceptance and rollout plan with a traceable evidence matrix, migration and
+  recovery safeguards, bounded implementation handoff, and allowlisted pilot gates. These are
+  requirements for future work; validation and live activation remain unexecuted.
 
 ## [9.0.53] - 2026-10-02
 
