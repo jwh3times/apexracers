@@ -1,5 +1,10 @@
 # Drivers are referenced by iRacing Customer ID, not modelled as a local entity
 
+Target decision superseded on 2026-10-02 by
+[ADR 0005](0005-driver-authorization-and-identity-persistence.md). The historical rationale below
+remains useful; its snapshot-name/claim persistence describes current code pending later migration.
+The replacement preserves private Customer IDs and the rejection of a full Driver mirror.
+
 ApexRacers stores race results, rivals, personal laps and percentile results against a bare
 iRacing Customer ID rather than a foreign key to a local `Driver` table, and no such table exists.
 iRacing owns driver identity: we cannot enumerate its driver population, we receive no change feed

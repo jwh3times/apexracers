@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- An accepted architecture for Driver authorization, consented publication, and copy cleanup,
+  supported by technical research and replacement ADRs. It defines the target ownership and
+  enforcement protocols; application behavior and live-data activation are unchanged.
 
 ## [9.0.50] - 2026-10-01
 

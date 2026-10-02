@@ -137,8 +137,12 @@ Someone with an iRacing racing identity, addressed by their Customer ID. Drivers
 _Avoid_: Member, Customer, Racer, Competitor
 
 **Customer ID**:
-iRacing's numeric identifier for a Driver. It is the only identifier by which a Driver can be named.
+iRacing's numeric identifier for a Driver. It is distinct from a recipient- and purpose-scoped Driver Reference.
 _Avoid_: Member ID, Driver ID, User ID
+
+**Driver Reference**:
+An opaque, recipient- and purpose-scoped reference to a Driver whose detail is currently eligible for that recipient. Possession establishes neither ownership nor consent.
+_Avoid_: Customer ID, Ownership proof, Consent grant
 
 **Claimed Identity**:
 The Driver a User asserts is them. A Driver may be claimed by at most one User, and a User may claim at most one Driver. A claim is asserted rather than proven.
@@ -148,8 +152,20 @@ _Avoid_: Linked account, Connected account, Verified identity
 A Claimed Identity whose ownership has been proven by the Driver signing in to iRacing. No identity is verified today.
 _Avoid_: Confirmed identity, Authenticated driver, Validated identity
 
+**Personal Analytics Consent**:
+A User's affirmative, revocable permission for ApexRacers to access and present their Verified Identity's Driver data to that User for personal analytics.
+_Avoid_: OAuth login, Identity Sharing Consent, Publication consent
+
+**Identity Sharing Consent**:
+A User's affirmative, revocable permission to show their Verified Identity's Driver name and specified racing statistics to other signed-in Users. It excludes their Customer ID, Uploaded Laps and private personal-analytics history.
+_Avoid_: Personal Analytics Consent, Account membership, OAuth login
+
+**Dormant Personal Data**:
+A User's retained Uploaded Laps and private analytics history unavailable for personal use after loss of the required identity authorization or Personal Analytics Consent.
+_Avoid_: Deleted data, Active personal data, Independent racing evidence
+
 **Subject Driver**:
-The Driver whose data a page or calculation represents. Frequently, but not necessarily, the requesting User's Claimed Identity — any Driver may be the Subject Driver of a lookup.
+The Driver whose data a page or calculation represents. Being a Subject Driver does not itself establish identity ownership or disclosure consent.
 _Avoid_: Current driver, Target user, Member, Requesting user
 
 **Demo Driver**:
@@ -157,7 +173,7 @@ A synthetic Driver resolved as the Subject Driver for Users viewing the demo sur
 _Avoid_: Demo user, Impersonated driver, Fake member, Linked demo account
 
 **Rival**:
-A Driver a User follows for head-to-head comparison against their own Subject Driver. A Rival need not be a User.
+A Driver a User follows for head-to-head comparison against their own Subject Driver. Following alone grants no identity disclosure; named comparisons require current Identity Sharing Consent for that Driver's Verified Identity.
 _Avoid_: Friend, Opponent, Competitor, Followed member
 
 ## Lap Evidence
@@ -181,7 +197,7 @@ A Lap driven in the racing Sim Session of a Subsession, known to ApexRacers thro
 _Avoid_: Official lap, Session lap, Result lap
 
 **Uploaded Lap**:
-A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User and attributed to the Driver the file names, which is accepted only where it agrees with the User's Claimed Identity — itself an assertion rather than proof.
+A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User and attributed to their Verified Identity under Personal Analytics Consent; the file's recorder identity alone is not ownership proof.
 _Avoid_: Personal Lap, Telemetry lap, Practice lap
 
 **Telemetry Upload**:

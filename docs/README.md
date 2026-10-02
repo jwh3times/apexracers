@@ -10,6 +10,9 @@ This directory contains public, contributor-safe project documentation.
 | [roadmap.md](roadmap.md) | High-level project status and planned work. |
 | [content-security-policy.md](content-security-policy.md) | Browser resource policy, asset audit, and Development API-reference exceptions. |
 | [research/iracing-terms-2026-09-30.md](research/iracing-terms-2026-09-30.md) | Dated research on iRacing's third-party terms and an audit of ApexRacers' Driver identity exposure. |
+| [design/driver-disclosure-ownership.md](design/driver-disclosure-ownership.md) | Accepted Driver authorization, publication, and copy-lifecycle architecture, with interfaces and implementation proof obligations; distinct from implemented behavior. |
+| [research/driver-publication-coordination-2026-10-02.md](research/driver-publication-coordination-2026-10-02.md) | Primary-source technical review of cross-instance withdrawal and HTTP response-dispatch coordination. |
+| [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
