@@ -156,6 +156,10 @@ _Avoid_: OAuth login, Identity Sharing Consent, Publication consent
 A User's affirmative, revocable permission to show their Verified Identity's Driver name and specified racing statistics to other signed-in Users. It excludes their Customer ID, Uploaded Laps and private personal-analytics history.
 _Avoid_: Personal Analytics Consent, Account membership, OAuth login
 
+**Dormant Personal Data**:
+A User's retained Uploaded Laps and private analytics history unavailable for personal use after loss of the required identity authorization or Personal Analytics Consent.
+_Avoid_: Deleted data, Active personal data, Independent racing evidence
+
 **Subject Driver**:
 The Driver whose data a page or calculation represents. Being a Subject Driver does not itself establish identity ownership or disclosure consent.
 _Avoid_: Current driver, Target user, Member, Requesting user
@@ -189,7 +193,7 @@ A Lap driven in the racing Sim Session of a Subsession, known to ApexRacers thro
 _Avoid_: Official lap, Session lap, Result lap
 
 **Uploaded Lap**:
-A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User and attributed to the Driver the file names, which is accepted only where it agrees with the User's Claimed Identity — itself an assertion rather than proof.
+A Lap ApexRacers knows only because a User submitted the telemetry that recorded it. It is owned by that User and attributed to their Verified Identity under Personal Analytics Consent; the file's recorder identity alone is not ownership proof.
 _Avoid_: Personal Lap, Telemetry lap, Practice lap
 
 **Telemetry Upload**:
