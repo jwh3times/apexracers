@@ -942,6 +942,15 @@ describe('api', () => {
   });
 
   describe('compareRival', () => {
+    it('passes the comparison cancellation signal to the HTTP client', async () => {
+      mockFetchOk({});
+      const controller = new AbortController();
+      await api.compareRival(200, controller.signal);
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/users/me/compare?rivalCustId=200',
+        expect.objectContaining({ signal: controller.signal })
+      );
+    });
     it('calls GET /api/users/me/compare with the rival cust id', async () => {
       mockFetchOk({ you: {}, rival: {}, shared: {} });
       await api.compareRival(200);

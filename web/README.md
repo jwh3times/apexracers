@@ -135,7 +135,8 @@ src/
   context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext, PaceSourceContext
                           + provider components and colocated
                           *.test.tsx siblings
-  hooks/              ← useResource (read-only page request lifecycle) + colocated *.test.tsx sibling
+  hooks/              ← useResource + resourceRequest (shared read lifecycle)
+                          + colocated *.test.ts(x) siblings
   services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
                           session.ts (signed-in session: tokens, claims, persistence, silent
                           refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
@@ -183,7 +184,11 @@ that signal through the matching `api` method so dependency changes and unmounts
 The hook owns loading, stale-result suppression, typed `IRACING_NOT_LINKED` classification, and generic
 errors. Render those non-data states with `ResourceView`, and declare deliberately optional overlays
 with the hook's typed `onNotLinked` / `onError` fallbacks. Mutation-owned lists, debounced searches,
-uploads, and domain workflows keep their focused local state machines.
+uploads, and domain workflows keep their focused local state machines. Both `useResource` and the
+rival comparison workflow reuse `src/hooks/resourceRequest.ts` for request replacement, cancellation,
+and outcome classification. `features/rivals/useRivalComparison.ts` owns the selected Customer ID,
+active comparison, and successful-removal invalidation together: the latest request wins, and a
+completed removal clears the comparison only when that rival is still selected.
 
 ## Authentication
 
