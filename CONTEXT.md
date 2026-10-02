@@ -128,6 +128,13 @@ _Avoid_: SOF, Field strength, Field rating
 
 ApexRacers accounts and iRacing racing identities are separate populations that mostly do not overlap. **Member** and **Customer** are iRacing's own words and are not ApexRacers language; they survive only where a name mirrors iRacing's API directly.
 
+Driver Reference, the consent scopes, Dormant Personal Data, and the consent requirements in Rival
+and Uploaded Lap describe the accepted target in
+[ADR 0005](docs/adr/0005-driver-authorization-and-identity-persistence.md) and
+[ADR 0006](docs/adr/0006-driver-publication-requires-current-authorization.md).
+Their enforcement remains future work; these definitions do not establish that existing records
+or workflows satisfy those requirements.
+
 **User**:
 Someone who holds an ApexRacers account. A User need not have any iRacing racing identity.
 _Avoid_: Member, Customer, Account, Driver
