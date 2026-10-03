@@ -31,6 +31,12 @@ evidence namespace (`demo`, `real`, `unavailable`). It describes request selecti
 origin of account fields or Uploaded Laps, and is not a processing or publication grant.
 The persistent Demo banner remains the product-facing synthetic-data label.
 
+The Profile page waits for the current feature-flag owner to be ready before fetching or
+rendering Driver panels. Eligible Demo Users see synthetic licenses, career statistics and
+awards without setting a Claimed Identity; Real Users without a claim retain the link-needed
+state. Profile tests and the built-SPA Demo test cover these panels separately from a successful
+profile API response.
+
 Real mapped profiles, standings, leaderboards, qualifying, Time Trial and Driver search
 drop provider Driver names before cache writes and returns. Race ingestion also omits the
 provider name. Known warm mapped contracts are cleaned without renewing their original

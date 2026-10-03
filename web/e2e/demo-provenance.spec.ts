@@ -9,6 +9,11 @@ test.describe('credential-free synthetic Demo provenance', () => {
     page,
   }) => {
     await registerNewUser(page);
+    await page.goto('/settings');
+    await expect(page.getByLabel('iRacing Customer ID', { exact: true })).toHaveValue('');
+    await page.getByRole('button', { name: /^Alpha/ }).click();
+    await expect(page.getByText('Access tier updated.')).toBeVisible();
+
     const progressionResponse = page.waitForResponse(response =>
       response.url().endsWith('/api/users/me/progression')
     );
@@ -30,6 +35,22 @@ test.describe('credential-free synthetic Demo provenance', () => {
     expect(profile.headers()['x-apexracers-driver-evidence-namespace']).toBe('demo');
     const driverProfile = (await profile.json()) as DriverProfile;
     expect(driverProfile.driverName).toBe('Demo Driver');
+
+    const visibleProfileResponse = page.waitForResponse(response =>
+      response.url().endsWith('/api/users/me/profile-stats')
+    );
+    await page.goto('/profile');
+    const visibleProfile = await visibleProfileResponse;
+    expect(visibleProfile.status()).toBe(200);
+    expect(visibleProfile.headers()['x-apexracers-driver-evidence-namespace']).toBe('demo');
+    await expect(page.getByRole('status').filter({ hasText: 'Demo data' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Licenses', exact: true })).toBeVisible();
+    await expect(page.getByText('Class A · 3.50 SR', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Career by Category' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Trophy Case' })).toBeVisible();
+    await expect(page.getByText('Clean Driver', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Open Settings' })).toHaveCount(0);
+    await expect(page.getByText(/^ID \d+$/)).toHaveCount(0);
 
     const races = await page.request.get('/api/users/me/races', { headers });
     expect(races.status()).toBe(200);
