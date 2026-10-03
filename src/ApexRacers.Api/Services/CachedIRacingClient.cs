@@ -26,9 +26,9 @@ namespace ApexRacers.Api.Services;
 public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null)
 {
     /// <summary>
-    /// Returns the cached value for <paramref name="spec"/> when present and unexpired, otherwise
-    /// invokes <paramref name="fetch"/> against the live client, stores the result for the spec's
-    /// TTL, and returns it.
+    /// Returns unexpired owned evidence in the selected namespace. A Real miss may invoke
+    /// <paramref name="fetch"/> after Demo teardown and stores name-free evidence for the
+    /// spec's TTL; a Demo miss remains unavailable without invoking the provider.
     /// </summary>
     public async Task<T> GetOrFetchAsync<T>(
         CacheSpec spec,
@@ -117,6 +117,6 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProve
     }
 }
 
-/// <summary>Thrown when an iRacing fetch is attempted but no credentials are configured.</summary>
+/// <summary>Thrown when the selected evidence scope is unavailable or cannot satisfy a read.</summary>
 public sealed class IRacingNotConfiguredException()
     : Exception("iRacing integration is not configured on this server.");

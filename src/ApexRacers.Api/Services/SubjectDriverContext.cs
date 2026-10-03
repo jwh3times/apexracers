@@ -5,19 +5,17 @@ using Microsoft.EntityFrameworkCore;
 namespace ApexRacers.Api.Services;
 
 /// <summary>
-/// Resolves the authenticated User's Subject Driver from the database. Optional
+/// Resolves the authenticated User's Subject Driver and provenance. Optional
 /// personalization uses <see cref="GetSubjectDriverCustIdAsync"/>; endpoints that require a
 /// Subject Driver use <see cref="GetRequiredSubjectDriverCustIdAsync"/>, which owns the typed
 /// 409 failure contract.
 /// <para>
-/// Demo override: when the <c>iracing-demo</c> flag is active for the caller's role,
-/// every lookup resolves to the shared synthetic <see cref="DemoData.DriverCustId"/>
-/// (real cust_ids have no backing data while iRacing creds are absent). This is the
-/// only demo-aware branch in the API.
+/// The selected Demo request scope resolves to the shared synthetic
+/// <see cref="DemoData.DriverCustId"/>; Real resolves the stored claim. An unavailable
+/// selected scope refuses the lookup. Without a selected scope, controlled callers use
+/// current feature eligibility for the Demo override.
 /// </para>
 /// </summary>
-public sealed record SubjectDriver(long CustomerId, DataProvenance Provenance);
-
 public class SubjectDriverContext(AppDbContext db, FeatureFlagEligibility featureFlags, IRacingDataScope? dataScope = null)
 {
     public async Task<SubjectDriver?> GetSubjectDriverAsync(Guid userId, CancellationToken ct = default)
@@ -51,3 +49,6 @@ public class SubjectDriverContext(AppDbContext db, FeatureFlagEligibility featur
             ? throw new IRacingNotLinkedException()
             : subjectDriverCustId.Value;
 }
+
+/// <summary>A resolved Driver identity together with its acquisition namespace.</summary>
+public sealed record SubjectDriver(long CustomerId, DataProvenance Provenance);

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [10.0.0] - 2026-10-03
+
+### Changed
+
+- **Breaking:** Driver evidence now uses explicit Real/Demo namespaces and new persisted
+  table/key contracts. Pre-cutover evidence has Unknown origin and is unavailable; mapped
+  cache copies are quarantined with their original clocks. Older binaries are fenced out,
+  migration recovery is forward-only, and existing Demo environments require a controlled
+  fresh seed before preview is re-enabled.
+- Known mapped Real Driver evidence omits provider Driver names. API responses identify the
+  selected Driver evidence namespace; real acquisition requires completed Demo teardown.
+
 ### Fixed
 
 - Isolated synthetic Demo acquisition, mapped caches, race evidence, follows, percentiles,
@@ -1444,7 +1458,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.54...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v10.0.0...HEAD
+[10.0.0]: https://github.com/jwh3times/apexracers/compare/v9.0.54...v10.0.0
 [9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54
 [9.0.53]: https://github.com/jwh3times/apexracers/compare/v9.0.52...v9.0.53
 [9.0.50]: https://github.com/jwh3times/apexracers/compare/v9.0.49...v9.0.50

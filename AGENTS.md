@@ -613,8 +613,9 @@ allowance or the high-water mark could be 0, since either would silently deny th
   Identity; required callers use
   `GetRequiredSubjectDriverCustIdAsync` / `RequireSubjectDriverCustId`, which throw the typed
   `IRacingNotLinkedException` mapped
-  to the exact `409` contract above. The **only** demo-aware branch: under an eligible `iracing-demo`
-  flag it resolves the Subject Driver to the Demo Driver (`DemoData.DriverCustId` = 100001) instead.
+  to the exact `409` contract above. `GetSubjectDriverAsync` also returns the selected provenance;
+  under the selected Demo scope it resolves the Subject Driver to the Demo Driver
+  (`DemoData.DriverCustId` = 100001) instead. An unavailable selected scope throws the typed `503`.
   `CONTEXT.md`'s Identity section defines Subject Driver / Claimed Identity / Demo Driver.
 
 ### Core models (`src/ApexRacers.Core/Models/`)
