@@ -40,7 +40,7 @@ public class DemoCacheTests
     }
 
     [Fact]
-    public void Sentinel_IsInsideTheOwnedSentinelRange() =>
+    public void DemoFreshnessExpiryIsFarInTheFuture() =>
         Assert.True(DemoCache.Sentinel >= new DateTimeOffset(9000, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
     [Fact]

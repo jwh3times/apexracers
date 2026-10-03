@@ -131,12 +131,24 @@ public class DemoAcquisitionTests
             _ => throw new InvalidOperationException("Real should have its own warm cache"), Ct));
     }
 
-    [Fact]
-    public async Task DemoMissCannotUseConfiguredRealProvider()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingOrExpiredDemoCannotUseConfiguredRealProvider(bool expired)
     {
         await using var db = DbContextFactory.Create();
         var demo = new CachedIRacingClient(db, Substitute.For<IDataClient>(), DataProvenance.Demo);
         var realProviderReached = false;
+        if (expired)
+        {
+            db.ExternalDataCaches.Add(new ExternalDataCache
+            {
+                Provenance = DataProvenance.Demo, CacheKey = IRacingCacheKeys.Profile(100001).Key,
+                Payload = "{\"Lap\":91}", FetchedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1),
+            });
+            await db.SaveChangesAsync(Ct);
+        }
 
         await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => demo.GetOrFetchAsync(
             IRacingCacheKeys.Profile(100001),

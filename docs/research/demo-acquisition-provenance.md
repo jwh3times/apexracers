@@ -97,3 +97,10 @@ drop as in `.github/workflows/e2e.yml`. No iRacing credentials or captured respo
 required. A new User with no Claimed Identity sees useful synthetic progression, profile,
 race history and details; caller-selected provenance is ignored, and an unseeded search is
 unavailable. Local verification on 2026-10-03 passed against the built SPA served by the API.
+
+The full Release backend run passed 1,020 tests with 96.46% line and 92.76% branch coverage.
+After review refactoring, all 50 Seeder tests passed again. Frontend verification passed the
+production build, whole-tree Prettier and Oxlint checks, and 795 Vitest tests with 97.92%
+line and 91.35% branch coverage. Generated agent configuration matched its sources and
+all 14 generator tests passed. These measurements describe local synthetic fixtures,
+not a deployed environment or the later integrated acceptance matrix.

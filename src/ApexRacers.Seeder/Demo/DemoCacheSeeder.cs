@@ -11,15 +11,11 @@ namespace ApexRacers.Seeder.Demo;
 /// (so the CachedIRacingClient endpoints serve hits) plus the persisted BoP/weather gaps.
 /// Reads the freshly-seeded catalog/seasons from the same DB the main seeder just populated.
 /// </summary>
-public sealed class DemoCacheSeeder
+public sealed class DemoCacheSeeder(AppDbContext context)
 {
-    private readonly AppDbContext db;
-    public DemoCacheSeeder(AppDbContext db)
-    {
-        if (db.Provenance != DataProvenance.Demo)
-            throw new ArgumentException("Demo seeding requires an explicit Demo acquisition scope.", nameof(db));
-        this.db = db;
-    }
+    private readonly AppDbContext db = context.Provenance == DataProvenance.Demo
+        ? context
+        : throw new ArgumentException("Demo seeding requires an explicit Demo acquisition scope.", nameof(context));
     /// <summary>profile/career/chart for demo driver + rival; summary/recap for the demo driver only.</summary>
     public async Task SeedMembersAsync(CancellationToken ct)
     {

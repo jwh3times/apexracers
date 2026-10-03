@@ -72,19 +72,19 @@ public static class DemoSeedVerifier
         // 6. world records per (car, track) combo present in synthetic results.
         // Two-step + in-memory join (rather than a r.Subsession.TrackId nav-property join)
         // so this translates identically on SQLite/Npgsql and the EF InMemory provider.
-        var negativeSubTracks = await db.Subsessions
+        var demoSubTracks = await db.Subsessions
             .Where(s => s.Provenance == DataProvenance.Demo)
             .Select(s => new { s.Id, s.TrackId })
             .ToListAsync(ct);
-        var trackByNegSub = negativeSubTracks.ToDictionary(s => s.Id, s => s.TrackId);
+        var trackByDemoSub = demoSubTracks.ToDictionary(s => s.Id, s => s.TrackId);
 
         var wrPairs = await db.SubsessionResults
             .Where(r => r.Provenance == DataProvenance.Demo && r.BestLapSeconds > 0)
             .Select(r => new { r.CarId, r.SubsessionId })
             .Distinct().ToListAsync(ct);
         var wrCombos = wrPairs
-            .Where(p => trackByNegSub.ContainsKey(p.SubsessionId))
-            .Select(p => IRacingCacheKeys.WorldRecord(p.CarId, trackByNegSub[p.SubsessionId]).Key)
+            .Where(p => trackByDemoSub.ContainsKey(p.SubsessionId))
+            .Select(p => IRacingCacheKeys.WorldRecord(p.CarId, trackByDemoSub[p.SubsessionId]).Key)
             .Distinct().ToList();
         AddSetCheck(checks, "world-records", wrCombos, keySet);
 
@@ -101,17 +101,17 @@ public static class DemoSeedVerifier
 
         // 9. every demo cache row is fresh (materialize, then filter —
         //    DateTimeOffset range predicates are the known SQLite-untranslatable case)
-        var nonSentinel = (await db.ExternalDataCaches.Where(c => c.Provenance == DataProvenance.Demo)
+        var expiredKeys = (await db.ExternalDataCaches.Where(c => c.Provenance == DataProvenance.Demo)
                 .Select(c => new { c.CacheKey, c.ExpiresAt }).ToListAsync(ct))
             .Where(c => c.ExpiresAt <= DateTimeOffset.UtcNow)
             .Select(c => c.CacheKey)
             .ToList();
-        checks.Add(new("demo-cache-freshness", nonSentinel.Count == 0,
-            nonSentinel.Count == 0 ? "all Demo cache rows fresh" : $"{nonSentinel.Count} expired Demo rows"));
+        checks.Add(new("demo-cache-freshness", expiredKeys.Count == 0,
+            expiredKeys.Count == 0 ? "all Demo cache rows fresh" : $"{expiredKeys.Count} expired Demo rows"));
 
         // 10. persisted gaps: synthetic races, BoP, weather
-        var negSubs = await db.Subsessions.CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
-        checks.Add(new("synthetic-races", negSubs > 0, $"{negSubs} explicit Demo subsessions"));
+        var demoSubCount = await db.Subsessions.CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("synthetic-races", demoSubCount > 0, $"{demoSubCount} explicit Demo subsessions"));
         var bops = await db.SeasonCarBops.CountAsync(ct);
         checks.Add(new("bop", bops > 0, $"{bops} SeasonCarBop rows"));
         var weatherless = await db.Weeks.CountAsync(

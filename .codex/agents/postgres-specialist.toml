@@ -36,6 +36,8 @@ Two schemas in one database:
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
 | `MappedDataCaches` | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on (`Provenance`, `CacheKey`) (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
 | `ScopedRivals` | Guid PK     | A driver a user follows; unique index on (Provenance, UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
+| `QuarantinedDataCaches` | int PK | Unclassified pre-cutover payload and original clocks; unique CacheKey; unavailable as a cache fallback |
+| `ProvenanceMigrationInventory` | string PK | Observed Unknown row counts by StorageKind, with RecordedAt as observation time |
 
 **Provenance storage:** when changing Driver evidence tables, cache keys, seeding, teardown or
 migrations, read docs/research/demo-acquisition-provenance.md first. Mutable evidence table names
@@ -76,6 +78,8 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Critical indexes
 
+`QuarantinedDataCache.CacheKey` is unique within quarantined legacy evidence; its index never authorizes a live-cache fallback.
+
 Percentile queries use indexes on both sides of the `SubsessionResult` → `Subsession` join:
 
 - `SubsessionResult (CarId, SubsessionId)` and `SubsessionResult (CustId)` narrow results by Car or
@@ -90,7 +94,7 @@ Percentile queries use indexes on both sides of the `SubsessionResult` → `Subs
 
 `ExternalDataCache` has a unique index on (`Provenance`, `CacheKey`) (max length 200, sourced from the `ExternalDataCache.CacheKeyMaxLength` constant the EF configuration's `HasMaxLength` reads) — the only lookup path for `CachedIRacingClient`'s get-or-fetch. Two concurrent misses on the same missing key both read null and both attempt an insert; the loser hits this unique index and `SaveChangesAsync` throws `DbUpdateException`, which `GetOrFetchAsync` catches (only when its own read was null, so a genuine update failure still surfaces) and returns the value it fetched rather than re-querying — the winner's row is already correct. That catch used to also swallow an insert that failed for a different reason — a key over the 200-character column limit — turning an unbounded caller input into a permanent cache bypass rather than a lost race (GHSA-jv96-89xc-98h2); `GetOrFetchAsync` now checks the length itself and throws `ArgumentException` before ever reaching this insert, so the catch is unambiguously the concurrency case again.
 
-`Rival` has a unique index on `(UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
+`Rival` has a unique index on `(Provenance, UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
 
 `ApplicationUser.IRacingCustomerId` has a filtered unique index (`WHERE "IRacingCustomerId" IS NOT NULL`) — enforces at most one User per Customer ID (a Claimed Identity) without constraining the many users who have none. `AuthService` translates only PostgreSQL unique violations naming this constraint into `ClaimedIdentityConflictException` → 409; the constraint remains the concurrent-write source of truth.
 
