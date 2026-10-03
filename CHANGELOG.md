@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [10.0.1] - 2026-10-03
+
+### Fixed
+
+- Eligible Demo Users can view synthetic Profile licenses, career stats and awards without
+  claiming a real Driver. Driver panels wait for the current feature-flag owner; unlinked
+  Real Users retain the existing link-needed behavior.
+
 ## [10.0.0] - 2026-10-03
 
 ### Changed
@@ -1460,7 +1468,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v10.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v10.0.1...HEAD
+[10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1
 [10.0.0]: https://github.com/jwh3times/apexracers/compare/v9.0.54...v10.0.0
 [9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54
 [9.0.53]: https://github.com/jwh3times/apexracers/compare/v9.0.52...v9.0.53
