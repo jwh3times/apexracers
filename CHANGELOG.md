@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [9.0.54] - 2026-10-02
+
+### Added
+
+- An executable synthetic Driver publication-drain rehearsal using two Kestrel processes and real
+  PostgreSQL, covering admission/streaming races, disconnects, session/link loss, expired leases
+  and process restart. It records feasibility evidence without changing production authorization.
+
+- An accepted Driver acceptance and rollout plan with a traceable evidence matrix, migration and
+  recovery safeguards, bounded implementation handoff, and allowlisted pilot gates. These are
+  requirements for future work; full application validation and live activation remain outstanding.
+
 ## [9.0.53] - 2026-10-02
 
 ### Added
@@ -1428,7 +1440,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.53...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.54...HEAD
+[9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54
 [9.0.53]: https://github.com/jwh3times/apexracers/compare/v9.0.52...v9.0.53
 [9.0.50]: https://github.com/jwh3times/apexracers/compare/v9.0.49...v9.0.50
 [9.0.48]: https://github.com/jwh3times/apexracers/compare/v9.0.47...v9.0.48

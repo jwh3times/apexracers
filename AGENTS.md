@@ -788,6 +788,8 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   helpers directly; controllers are excluded. Use the native Microsoft Testing Platform test,
   class-filter, and Cobertura commands under [.NET](#net-run-from-repo-root); inspect the report with
   `reportgenerator` when needed.
+  For Driver publication/drain transport work, read `docs/research/driver-publication-drain-rehearsal.md`
+  before extending the dedicated two-process synthetic rehearsal or interpreting its evidence.
 - **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
   full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across public
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
