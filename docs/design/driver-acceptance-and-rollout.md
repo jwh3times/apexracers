@@ -30,6 +30,10 @@ to one scope does not silently approve another or impose a blanket synthetic-eng
 
 ## Evidence contract: Q2–Q5, Q7, Q10, Q13, Q17
 
+The [#368 transport rehearsal](../research/driver-publication-drain-rehearsal.md) supplies candidate
+two-process HTTP/PostgreSQL evidence. Its test-only protocol does not pass the full matrix or
+establish implemented application authorization, journal/restore behavior or deployed settings.
+
 Each matrix entry has a durable identifier and records its policy source, affected entry points and
 copies, fixture/provenance, test layer, observable assertions, execution result and artifact.
 Use **passed**, **failed**, and **not exercised**; an omitted, skipped or inconclusive case is not

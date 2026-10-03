@@ -434,7 +434,7 @@ never changes what gets registered.
 
 ## Tests
 
-xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
+xUnit in `src/ApexRacers.Tests/`. **Test ordinary services directly**; controller-binding tests stay outside that suite. Each service test creates its own `AppDbContext` and shares no state. Driver publication/drain transport contracts are the deliberate exception: use the dedicated test-only Kestrel processes and real PostgreSQL rehearsal described in docs/research/driver-publication-drain-rehearsal.md. Its actual writers/fault gates establish synthetic protocol evidence, not production endpoint authorization or deployed terminality. The project guide covers the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
 
 Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class into
 `PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only

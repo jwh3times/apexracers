@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- An executable synthetic Driver publication-drain rehearsal using two Kestrel processes and real
+  PostgreSQL, covering admission/streaming races, disconnects, session/link loss, expired leases
+  and process restart. It records feasibility evidence without changing production authorization.
+
 - An accepted Driver acceptance and rollout plan with a traceable evidence matrix, migration and
   recovery safeguards, bounded implementation handoff, and allowlisted pilot gates. These are
   requirements for future work; validation and live activation remain unexecuted.
