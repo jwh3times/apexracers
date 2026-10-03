@@ -180,7 +180,7 @@ public class SubsessionMapperTests
         Assert.Equal(3, entity.Division);
         Assert.True(entity.DropRace);
         Assert.Equal(12.75, entity.Interval);
-        Assert.Equal("Ada Racer", entity.DisplayName);
+        Assert.Null(entity.DisplayName);
         Assert.Equal(100.25, entity.QualLapSeconds);
         Assert.Equal(365, entity.NewSubLevel);
         Assert.Equal(342, entity.OldSubLevel);

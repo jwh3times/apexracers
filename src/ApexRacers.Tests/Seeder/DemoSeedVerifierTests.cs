@@ -61,7 +61,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task FullySeeded_Passes()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         var checks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
         Assert.All(checks, c => Assert.True(c.Passed, $"{c.Name}: {c.Detail}"));
@@ -70,7 +70,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task MissingKeyFamily_FailsThatCheckByName()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         db.ExternalDataCaches.RemoveRange(
             db.ExternalDataCaches.Where(c => c.CacheKey.StartsWith("leaderboard:")));
@@ -82,7 +82,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task OrphanedRecentRace_FailsRecentRaceLinksCheck()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         await DemoCache.UpsertAsync(
             db,
@@ -116,7 +116,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task EmptyRecentRacePayload_FailsRecentRaceLinksCheck()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         await DemoCache.UpsertAsync(
             db,
@@ -137,7 +137,7 @@ public class DemoSeedVerifierTests
     [InlineData("[null]")]
     public async Task MalformedRecentRacePayload_FailsRecentRaceLinksCheck(string payload)
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         var cache = db.ExternalDataCaches.Single(
             c => c.CacheKey == IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key);
@@ -154,7 +154,7 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task MissingRecentRacePayload_FailsRecentRaceLinksCheck()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         db.ExternalDataCaches.Remove(
             db.ExternalDataCaches.Single(
@@ -171,34 +171,34 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task SentinelChecks_UseTheOwnedThresholdAsAnInclusiveRange()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
         var below = db.ExternalDataCaches.First();
-        below.ExpiresAt = DemoCache.SentinelThreshold.AddTicks(-1);
+        below.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1);
         await db.SaveChangesAsync(Ct);
 
         var belowChecks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
         Assert.Contains(belowChecks, check =>
-            check.Name == "sentinel-expiry" && !check.Passed);
+            check.Name == "demo-cache-freshness" && !check.Passed);
 
-        below.ExpiresAt = DemoCache.SentinelThreshold;
+        below.ExpiresAt = new DateTimeOffset(9000, 1, 1, 0, 0, 0, TimeSpan.Zero);
         await db.SaveChangesAsync(Ct);
 
         var inclusiveChecks = await DemoSeedVerifier.VerifyDemoAsync(db, Ct);
         Assert.Contains(inclusiveChecks, check =>
-            check.Name == "sentinel-expiry" && check.Passed);
+            check.Name == "demo-cache-freshness" && check.Passed);
 
         var teardownChecks = await DemoSeedVerifier.VerifyTeardownAsync(db, Ct);
         var sentinelCheck = Assert.Single(
-            teardownChecks, check => check.Name == "no-sentinel-cache");
+            teardownChecks, check => check.Name == "no-demo-cache");
         Assert.False(sentinelCheck.Passed);
-        Assert.Equal($"{db.ExternalDataCaches.Count()} sentinel rows remain", sentinelCheck.Detail);
+        Assert.Equal($"{db.ExternalDataCaches.Count()} Demo cache rows remain", sentinelCheck.Detail);
     }
 
     [Fact]
     public async Task ZeroBestLapDemoResult_DoesNotProduceSpuriousLapDataFailure()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(db);
 
         // A second negative subsession for the demo driver with no valid best lap (e.g. a DNF).
@@ -222,11 +222,11 @@ public class DemoSeedVerifierTests
     [Fact]
     public async Task CleanDatabase_PassesTeardown_And_SeededFailsIt()
     {
-        await using var clean = DbContextFactory.Create();
+        await using var clean = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         var cleanChecks = await DemoSeedVerifier.VerifyTeardownAsync(clean, Ct);
         Assert.All(cleanChecks, c => Assert.True(c.Passed));
 
-        await using var seeded = DbContextFactory.Create();
+        await using var seeded = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await SeedHappyPathAsync(seeded);
         var seededChecks = await DemoSeedVerifier.VerifyTeardownAsync(seeded, Ct);
         Assert.Contains(seededChecks, c => !c.Passed);

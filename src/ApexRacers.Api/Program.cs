@@ -204,6 +204,8 @@ builder.Services.AddScoped(sp =>
     new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>()));
 builder.Services.AddScoped<FeatureFlagEligibility>();
 builder.Services.AddScoped<SubjectDriverContext>();
+builder.Services.AddScoped<ApexRacers.Core.IRacingDataScope>();
+builder.Services.AddScoped<IRacingRequestContext>();
 builder.Services.AddScoped<DriverStatsService>();
 builder.Services.AddScoped<AchievementsService>();
 builder.Services.AddScoped<RaceHistoryService>();
@@ -391,6 +393,7 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<IRacingDataScopeMiddleware>();
 app.MapControllers();
 
 // Anonymous probe endpoints, exempt from the global rate limiter so aggressive

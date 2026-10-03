@@ -1,3 +1,4 @@
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -5,9 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options)
+public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataScope? dataScope = null)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
+    private readonly IRacingDataScope _dataScope = dataScope ?? new();
+    public DataProvenance Provenance => _dataScope.Provenance;
+    public DbSet<QuarantinedDataCache> QuarantinedDataCaches => Set<QuarantinedDataCache>();
+    public DbSet<ProvenanceMigrationInventory> ProvenanceMigrationInventory => Set<ProvenanceMigrationInventory>();
     public DbSet<Series> Series => Set<Series>();
     public DbSet<Season> Seasons => Set<Season>();
     public DbSet<SeasonCar> SeasonCars => Set<SeasonCar>();
@@ -123,5 +128,54 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        modelBuilder.Entity<Subsession>().HasQueryFilter(s =>
+            Provenance != DataProvenance.Unknown && s.Provenance == Provenance);
+        modelBuilder.Entity<SubsessionResult>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+        modelBuilder.Entity<CarPercentileResult>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+        modelBuilder.Entity<Rival>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+        modelBuilder.Entity<SeasonCarBop>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+        // Uploaded evidence is user-supplied, not a synthetic acquisition adapter. It cannot
+        // enter a Demo Field even when its recorder ID happens to equal a Demo Driver ID.
+        modelBuilder.Entity<UploadedLap>().HasQueryFilter(_ => Provenance != DataProvenance.Demo);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        PrepareProvenanceWrites();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        PrepareProvenanceWrites();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void PrepareProvenanceWrites()
+    {
+        foreach (var week in ChangeTracker.Entries<Week>())
+            if (week.Property(w => w.WeatherSummaryJson).IsModified
+                || (week.State == EntityState.Added && week.Entity.WeatherSummaryJson is not null))
+            {
+                if (Provenance != DataProvenance.Real)
+                    throw new InvalidOperationException("Real weather requires a real acquisition scope.");
+                week.Entity.WeatherProvenance = DataProvenance.Real;
+            }
+        foreach (var entry in ChangeTracker.Entries<IProvenancedData>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Provenance == DataProvenance.Unknown)
+                entry.Entity.Provenance = Provenance;
+            if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+            if (entry.Entity.Provenance is not (DataProvenance.Real or DataProvenance.Demo))
+                throw new InvalidOperationException("Unknown evidence provenance cannot be written.");
+            if (entry.State == EntityState.Modified && entry.Property(nameof(IProvenancedData.Provenance)).IsModified)
+                throw new InvalidOperationException("Stored evidence provenance cannot be reassigned.");
+            if (entry.Entity is SubsessionResult { Provenance: DataProvenance.Real } result)
+                result.DisplayName = null;
+        }
     }
 }

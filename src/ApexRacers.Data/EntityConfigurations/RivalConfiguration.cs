@@ -8,10 +8,11 @@ public class RivalConfiguration : IEntityTypeConfiguration<Rival>
 {
     public void Configure(EntityTypeBuilder<Rival> builder)
     {
+        builder.ToTable("ScopedRivals");
         builder.HasKey(r => r.Id);
 
         // One rival entry per (user, rival) — makes AddAsync idempotent.
-        builder.HasIndex(r => new { r.UserId, r.RivalCustId }).IsUnique();
+        builder.HasIndex(r => new { r.Provenance, r.UserId, r.RivalCustId }).IsUnique();
 
         builder.Property(r => r.DisplayName).HasMaxLength(100);
 

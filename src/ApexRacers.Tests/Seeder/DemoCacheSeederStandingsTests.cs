@@ -14,7 +14,7 @@ public class DemoCacheSeederStandingsTests
     [Fact]
     public async Task SeedStandingsAsync_KeysPerActiveSeasonClassAndWeek()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         db.Seasons.Add(new Season { Id = 6115, SeriesId = 444, Active = true, Year = 2026, Quarter = 2 });
         db.Seasons.Add(new Season { Id = 7000, SeriesId = 9, Active = false, Year = 2025, Quarter = 1 }); // inactive → skipped
         db.SeasonCarClasses.Add(new SeasonCarClass { SeasonId = 6115, CarClassId = 100 });

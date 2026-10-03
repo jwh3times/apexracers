@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Isolated synthetic Demo acquisition, mapped caches, race evidence, follows, percentiles,
+  weather and BoP from Real evidence. Demo misses cannot reach a configured real provider;
+  ambiguous legacy copies are quarantined or unavailable with original clocks preserved.
 
 ## [9.0.54] - 2026-10-02
 

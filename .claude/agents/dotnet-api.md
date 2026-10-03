@@ -104,6 +104,11 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 ### `CachedIRacingClient` — the get-or-fetch seam
 
+For acquisition, Demo seed/cache changes, teardown or migration, first read
+docs/research/demo-acquisition-provenance.md. API requests freeze one server-selected provenance;
+cache identity includes that provenance, Demo misses stay offline, and Real mapped Driver evidence
+is name-free. Namespace selection is not proof, consent or publication admission.
+
 `CachedIRacingClient(AppDbContext db, IDataClient? client)` — `GetOrFetchAsync<T>(CacheSpec spec, Func<IDataClient, Task<T>> fetch, CancellationToken ct)`. `CacheSpec` (`Key` + `Ttl`) always comes from a factory on `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the sole author of every key string and its TTL; adding a cache-backed read path means adding a factory there, never interpolating a key at the call site. `client` is nullable rather than resolved from an `IServiceProvider`: it's registered in `Program.cs` via an explicit factory lambda (`sp.GetService<IDataClient>()`) because the SDK client itself is only registered when all four `IRACING_*` credentials are present; a null `client` on a cache miss throws `IRacingNotConfiguredException`. There is no `IsConfigured` property — check for a 503 by attempting the call, not by probing state first.
 
 **Bound unbounded caller input before it reaches a key, not after (GHSA-jv96-89xc-98h2).** A key

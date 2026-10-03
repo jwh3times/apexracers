@@ -8,7 +8,8 @@ public class SubsessionResultConfiguration : IEntityTypeConfiguration<Subsession
 {
     public void Configure(EntityTypeBuilder<SubsessionResult> builder)
     {
-        builder.HasKey(r => new { r.SubsessionId, r.CustId });
+        builder.ToTable("RaceEvidenceResults");
+        builder.HasKey(r => new { r.Provenance, r.SubsessionId, r.CustId });
 
         builder.HasIndex(r => new { r.CarId, r.SubsessionId });
         builder.HasIndex(r => r.CustId);

@@ -1,7 +1,8 @@
 namespace ApexRacers.Core.Models;
 
-public class CarPercentileResult
+public class CarPercentileResult : IProvenancedData
 {
+    public DataProvenance Provenance { get; set; }
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public int CarId { get; set; }

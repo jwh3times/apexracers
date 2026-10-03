@@ -256,7 +256,7 @@ Seeder's default/`--demo` modes need `private/iracing-api-response-objects/` pop
 see README); `--ci` mode does **not** (it fabricates a fully synthetic catalog, so CI/E2E can seed without
 the captured shapes — see `CiCatalogSeeder`). All modes read `DATABASE_CONNECTION_STRING` (else fall back
 to the local Docker default) and auto-apply pending migrations on start. `dotnet-ef` must be
-installed globally and match EF Core (currently 10.0.9). SQL cleanup scripts live in
+installed globally and match the EF Core version in `Directory.Packages.props`. SQL cleanup scripts live in
 `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
 (The old GT3 seed scripts were deleted 2026-07 — they targeted the pre-June-2026 `LapTimeEntries`
@@ -634,7 +634,7 @@ indexes, FK/`OnDelete` behavior).
 | `CarPercentileResult`                                                | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
 | `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
-| `ExternalDataCache`                                                  | cached iRacing response (`CacheKey` unique, serialized DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
+| `ExternalDataCache`                                                  | mapped evidence (`Provenance` + `CacheKey` unique, owned DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
 | `Rival`                                                              | a driver a user follows (unique on (UserId, RivalCustId); cascade FK to Users)                                                                                                                                                                            |
 | `SignInAddressFailure` / `SignInAccountFailure`                      | sign-in brute-force counters (issue #300) — failures per (User, source address) and per User across every address; `identity` schema, cascade FK to Users; back `Core.SignInThrottle`'s decision                                                          |
 | `KnownDevice`                                                        | a browser that has completed a successful sign-in (issue #314) — SHA-256 `TokenHash` (unique) of the httpOnly cookie value, its own failure counter/window, `CreatedAt`/`LastSeenAt`/`ExpiresAt` (90-day lifetime, capped at 10 per User, least-recently-seen evicted); `identity` schema, cascade FK to Users; the second dimension of identity `Core.SignInThrottle`'s known-device exemption throttles against instead of the source address |
@@ -688,17 +688,15 @@ term) — `ExternalDataCache.CacheKeyMaxLength` (200) is a hard column limit, no
 a car class id, a race week index, a free-text term — is validated by the service against the data it
 actually indexes (throwing `KeyNotFoundException`/`ArgumentException` as appropriate) before it ever
 reaches `IRacingCacheKeys`. Eviction is TTL-only (lazy);
-`ExternalDataCacheCleanupService` purges long-expired rows below the inclusive demo sentinel range and
-explicitly preserves that range even if the cleanup cutoff reaches it.
+`ExternalDataCacheCleanupService` purges only long-expired explicitly Real rows.
+Demo preservation and teardown use provenance rather than expiry or numeric identifiers.
 
 **Demo cache seeding** (`ApexRacers.Seeder --demo` → `DemoCacheSeeder`): seeds `ExternalDataCache` rows
 with synthetic mapped DTOs under each service's **exact** runtime cache keys — enforced by both trees
 calling the same `IRacingCacheKeys` factories rather than by hand-matching interpolated strings — with
-a far-future `ExpiresAt` sentinel so cleanup never evicts them. `Core.DemoData` owns both the inclusive
-range threshold (`CacheSentinelThreshold`, `9000-01-01T00:00:00Z`) and the value writers use
-(`CacheSentinel`, `9999-01-01T00:00:00Z`); `purge_demo_data.sql` is the explicit UTC SQL mirror of the
-threshold and `>=` operator. The seeder also seeds synthetic
-`SeasonCarBop`, `Week.WeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
+a far-future `ExpiresAt` for freshness. `DataProvenance.Demo` identifies synthetic copies;
+`purge_demo_data.sql` mirrors that owned enum and purges only Demo copies. The seeder also seeds synthetic
+`SeasonCarBop`, `Week.DemoWeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
@@ -709,6 +707,10 @@ demo-aware resolver, and `PercentileController` deliberately takes a caller-supp
 the page can look up _any_ Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
 so the `iracing_id` JWT claim the page reads first is absent and it falls through to the form. Enter
 `100001` (`DemoData.DriverCustId`) to see the Demo Driver's percentiles.
+
+**Provenance:** before changing acquisition, mapped caches, seeded evidence, teardown or migration,
+read `docs/research/demo-acquisition-provenance.md`. It owns the request namespace, mapped-contract,
+legacy quarantine, old-writer fencing and forward-recovery rules and their current evidence limits.
 
 ### Frontend (`web/`)
 

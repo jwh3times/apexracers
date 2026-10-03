@@ -16,18 +16,28 @@ namespace ApexRacers.Api.Services;
 /// only demo-aware branch in the API.
 /// </para>
 /// </summary>
-public class SubjectDriverContext(AppDbContext db, FeatureFlagEligibility featureFlags)
-{
-    public async Task<long?> GetSubjectDriverCustIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (await featureFlags.IsActiveForUserAsync("iracing-demo", userId, ct))
-            return DemoData.DriverCustId;
+public sealed record SubjectDriver(long CustomerId, DataProvenance Provenance);
 
-        return await db.Users
+public class SubjectDriverContext(AppDbContext db, FeatureFlagEligibility featureFlags, IRacingDataScope? dataScope = null)
+{
+    public async Task<SubjectDriver?> GetSubjectDriverAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (dataScope is { IsSelected: true, Provenance: DataProvenance.Unknown })
+            throw new IRacingNotConfiguredException();
+        var demo = dataScope is { IsSelected: true }
+            ? dataScope.Provenance == DataProvenance.Demo
+            : await featureFlags.IsActiveForUserAsync("iracing-demo", userId, ct);
+        if (demo) return new SubjectDriver(DemoData.DriverCustId, DataProvenance.Demo);
+
+        var customerId = await db.Users
             .Where(u => u.Id == userId)
             .Select(u => u.IRacingCustomerId)
             .FirstOrDefaultAsync(ct);
+        return customerId is { } id ? new SubjectDriver(id, DataProvenance.Real) : null;
     }
+
+    public async Task<long?> GetSubjectDriverCustIdAsync(Guid userId, CancellationToken ct = default) =>
+        (await GetSubjectDriverAsync(userId, ct))?.CustomerId;
 
     public async Task<long> GetRequiredSubjectDriverCustIdAsync(
         Guid userId, CancellationToken ct = default)

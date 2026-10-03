@@ -13,7 +13,7 @@ public sealed record VerificationCheck(string Name, bool Passed, string Detail);
 /// Mechanical gate for the prod demo rollout (maintainer-only runbook:
 /// private/ops/iracing-rollout.md §1) and the M2 teardown.
 /// VerifyDemoAsync: every cache-key family + persisted gap the demo surface reads must
-/// exist with the far-future sentinel. VerifyTeardownAsync: none of it remains.
+/// exist and be fresh. VerifyTeardownAsync: no explicit Demo copies remain.
 /// Expected key formats are read from <see cref="DemoCacheSeeder"/>'s actual writes —
 /// keep the two in lockstep if the seeder's key formats ever change.
 /// </summary>
@@ -22,7 +22,8 @@ public static class DemoSeedVerifier
     public static async Task<List<VerificationCheck>> VerifyDemoAsync(AppDbContext db, CancellationToken ct)
     {
         var checks = new List<VerificationCheck>();
-        var keys = await db.ExternalDataCaches.Select(c => c.CacheKey).ToListAsync(ct);
+        var keys = await db.ExternalDataCaches.Where(c => c.Provenance == DataProvenance.Demo)
+            .Select(c => c.CacheKey).ToListAsync(ct);
         var keySet = keys.ToHashSet();
 
         // 1. member keys (driver + rival; summary/recap driver-only)
@@ -72,13 +73,13 @@ public static class DemoSeedVerifier
         // Two-step + in-memory join (rather than a r.Subsession.TrackId nav-property join)
         // so this translates identically on SQLite/Npgsql and the EF InMemory provider.
         var negativeSubTracks = await db.Subsessions
-            .Where(s => s.Id < 0)
+            .Where(s => s.Provenance == DataProvenance.Demo)
             .Select(s => new { s.Id, s.TrackId })
             .ToListAsync(ct);
         var trackByNegSub = negativeSubTracks.ToDictionary(s => s.Id, s => s.TrackId);
 
         var wrPairs = await db.SubsessionResults
-            .Where(r => r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Where(r => r.Provenance == DataProvenance.Demo && r.BestLapSeconds > 0)
             .Select(r => new { r.CarId, r.SubsessionId })
             .Distinct().ToListAsync(ct);
         var wrCombos = wrPairs
@@ -89,7 +90,7 @@ public static class DemoSeedVerifier
 
         // 7. lap traces per demo-driver synthetic subsession
         var demoSubs = await db.SubsessionResults
-            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Where(r => r.Provenance == DataProvenance.Demo && r.CustId == DemoData.DriverCustId && r.BestLapSeconds > 0)
             .Select(r => r.SubsessionId).Distinct().ToListAsync(ct);
         AddSetCheck(checks, "lap-data",
             demoSubs.Select(s => IRacingCacheKeys.LapData(s, DemoData.DriverCustId).Key).ToList(), keySet);
@@ -98,23 +99,23 @@ public static class DemoSeedVerifier
         AddSetCheck(checks, "driver-search",
             DemoDriverSearchData.Terms.Keys.Select(t => IRacingCacheKeys.DriverSearch(t)!.Value.Key).ToList(), keySet);
 
-        // 9. every demo cache row carries the sentinel (materialize, then filter —
+        // 9. every demo cache row is fresh (materialize, then filter —
         //    DateTimeOffset range predicates are the known SQLite-untranslatable case)
-        var nonSentinel = (await db.ExternalDataCaches
+        var nonSentinel = (await db.ExternalDataCaches.Where(c => c.Provenance == DataProvenance.Demo)
                 .Select(c => new { c.CacheKey, c.ExpiresAt }).ToListAsync(ct))
-            .Where(c => c.ExpiresAt < DemoCache.SentinelThreshold)
+            .Where(c => c.ExpiresAt <= DateTimeOffset.UtcNow)
             .Select(c => c.CacheKey)
             .ToList();
-        checks.Add(new("sentinel-expiry", nonSentinel.Count == 0,
-            nonSentinel.Count == 0 ? "all cache rows sentinel" : $"non-sentinel: {string.Join(", ", nonSentinel.Take(5))}…"));
+        checks.Add(new("demo-cache-freshness", nonSentinel.Count == 0,
+            nonSentinel.Count == 0 ? "all Demo cache rows fresh" : $"{nonSentinel.Count} expired Demo rows"));
 
         // 10. persisted gaps: synthetic races, BoP, weather
-        var negSubs = await db.Subsessions.CountAsync(s => s.Id < 0, ct);
-        checks.Add(new("synthetic-races", negSubs > 0, $"{negSubs} negative-id subsessions"));
+        var negSubs = await db.Subsessions.CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("synthetic-races", negSubs > 0, $"{negSubs} explicit Demo subsessions"));
         var bops = await db.SeasonCarBops.CountAsync(ct);
         checks.Add(new("bop", bops > 0, $"{bops} SeasonCarBop rows"));
         var weatherless = await db.Weeks.CountAsync(
-            w => seasonIds.Contains(w.SeasonId) && string.IsNullOrEmpty(w.WeatherSummaryJson), ct);
+            w => seasonIds.Contains(w.SeasonId) && string.IsNullOrEmpty(w.DemoWeatherSummaryJson), ct);
         checks.Add(new("weather", weatherless == 0, $"{weatherless} active-season weeks missing weather"));
 
         // 11. flag row exists (state is the operator's call — report, don't fail)
@@ -128,14 +129,27 @@ public static class DemoSeedVerifier
     public static async Task<List<VerificationCheck>> VerifyTeardownAsync(AppDbContext db, CancellationToken ct)
     {
         var checks = new List<VerificationCheck>();
-        var sentinelRows = (await db.ExternalDataCaches
-                .Select(c => c.ExpiresAt).ToListAsync(ct))
-            .Count(e => e >= DemoCache.SentinelThreshold);
-        checks.Add(new("no-sentinel-cache", sentinelRows == 0, $"{sentinelRows} sentinel rows remain"));
-        var negSubs = await db.Subsessions.CountAsync(s => s.Id < 0, ct);
-        checks.Add(new("no-synthetic-races", negSubs == 0, $"{negSubs} negative-id subsessions remain"));
-        var posSubs = await db.Subsessions.CountAsync(s => s.Id > 0, ct);
-        checks.Add(new("real-ingestion-info", true, $"{posSubs} positive-id (real) subsessions present"));
+        var demoRows = await db.ExternalDataCaches.CountAsync(c => c.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-cache", demoRows == 0, $"{demoRows} Demo cache rows remain"));
+        var demoSubs = await db.Subsessions.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-synthetic-races", demoSubs == 0, $"{demoSubs} Demo subsessions remain"));
+        var demoResults = await db.SubsessionResults.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-results", demoResults == 0, $"{demoResults} Demo race results remain"));
+        var demoBops = await db.SeasonCarBops.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-bop", demoBops == 0, $"{demoBops} Demo BoP rows remain"));
+        var demoPercentiles = await db.CarPercentileResults.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-percentiles", demoPercentiles == 0, $"{demoPercentiles} Demo percentile rows remain"));
+        var demoFollows = await db.Rivals.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-follows", demoFollows == 0, $"{demoFollows} Demo follows remain"));
+        var demoWeather = await db.Weeks.CountAsync(w => w.DemoWeatherSummaryJson != null, ct);
+        checks.Add(new("no-demo-weather", demoWeather == 0, $"{demoWeather} Demo weather copies remain"));
+        var enabled = await db.FeatureFlags.AnyAsync(f => f.Key == "iracing-demo" && f.IsEnabled, ct);
+        checks.Add(new("demo-disabled", !enabled, enabled ? "Demo flag remains enabled" : "Demo disabled"));
+        var realSubs = await db.Subsessions.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Real, ct);
+        checks.Add(new("real-ingestion-info", true, $"{realSubs} explicitly Real subsessions present"));
+        var quarantined = await db.QuarantinedDataCaches.CountAsync(ct);
+        var unknownSubs = await db.Subsessions.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Unknown, ct);
+        checks.Add(new("unknown-provenance-info", true, $"{quarantined} quarantined cache rows; {unknownSubs} Unknown subsessions. These are unavailable, not certified erased or reclassified."));
         return checks;
     }
 
@@ -156,7 +170,7 @@ public static class DemoSeedVerifier
     {
         var key = IRacingCacheKeys.RecentRaces(DemoData.DriverCustId).Key;
         var payload = await db.ExternalDataCaches
-            .Where(c => c.CacheKey == key)
+            .Where(c => c.Provenance == DataProvenance.Demo && c.CacheKey == key)
             .Select(c => c.Payload)
             .SingleOrDefaultAsync(ct);
         if (payload is null)

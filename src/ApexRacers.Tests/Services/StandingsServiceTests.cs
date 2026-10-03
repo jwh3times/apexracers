@@ -148,7 +148,7 @@ public class StandingsServiceTests
         Assert.Equal("GT3 Class", dto.CarClassName);
         Assert.Equal(2, dto.CarClasses.Count);
         Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Standing));
-        Assert.Equal("Leader", dto.Standings[0].DriverName);
+        Assert.Equal(string.Empty, dto.Standings[0].DriverName);
         Assert.Equal(950, dto.Standings[0].Points);
         Assert.Equal(5.4, dto.Standings[0].AvgFinishPosition, precision: 3);
     }
@@ -201,7 +201,7 @@ public class StandingsServiceTests
 
         var dto = await h.Service.GetDriverStandingsAsync(SeriesId, null, Ct);
 
-        Assert.Equal("Leader", Assert.Single(dto.Standings).DriverName);
+        Assert.Equal(string.Empty, Assert.Single(dto.Standings).DriverName);
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class StandingsServiceTests
 
         Assert.Equal(4091, dto.CarClassId);
         Assert.Equal(new[] { 1, 2 }, dto.Standings.Select(s => s.Standing));
-        Assert.Equal("Leader", dto.Standings[0].DriverName);
+        Assert.Equal(string.Empty, dto.Standings[0].DriverName);
         Assert.Equal(2500, dto.Standings[0].TtRating);
         Assert.Equal(800, dto.Standings[0].Points);
         Assert.Equal(5.5, dto.Standings[0].AvgFinishPosition, precision: 3);
@@ -279,7 +279,7 @@ public class StandingsServiceTests
         Assert.Equal(2, dto.RaceWeekIndex); // latest past week
         Assert.Equal(new[] { 0, 1, 2 }, dto.AvailableRaceWeekIndices);
         Assert.Equal(new[] { 1, 2 }, dto.Results.Select(r => r.Standing));
-        Assert.Equal("Pole", dto.Results[0].DriverName);
+        Assert.Equal(string.Empty, dto.Results[0].DriverName);
         Assert.Equal(375.0, dto.Results[0].BestQualLapSeconds, precision: 4);
         Assert.Equal(7000, dto.Results[0].IRating);
     }

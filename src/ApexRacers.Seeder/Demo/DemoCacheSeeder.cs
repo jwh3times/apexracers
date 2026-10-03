@@ -11,8 +11,15 @@ namespace ApexRacers.Seeder.Demo;
 /// (so the CachedIRacingClient endpoints serve hits) plus the persisted BoP/weather gaps.
 /// Reads the freshly-seeded catalog/seasons from the same DB the main seeder just populated.
 /// </summary>
-public sealed class DemoCacheSeeder(AppDbContext db)
+public sealed class DemoCacheSeeder
 {
+    private readonly AppDbContext db;
+    public DemoCacheSeeder(AppDbContext db)
+    {
+        if (db.Provenance != DataProvenance.Demo)
+            throw new ArgumentException("Demo seeding requires an explicit Demo acquisition scope.", nameof(db));
+        this.db = db;
+    }
     /// <summary>profile/career/chart for demo driver + rival; summary/recap for the demo driver only.</summary>
     public async Task SeedMembersAsync(CancellationToken ct)
     {
@@ -36,7 +43,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
         await DemoCache.UpsertAsync(db, IRacingCacheKeys.Awards(DemoData.DriverCustId).Key, DemoActivityData.BuildAwards(DemoData.DriverCustId), ct);
 
         var persistedRaces = await db.SubsessionResults
-            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0)
+            .Where(r => r.CustId == DemoData.DriverCustId)
             .Select(r => new
             {
                 r.SubsessionId,
@@ -133,8 +140,8 @@ public sealed class DemoCacheSeeder(AppDbContext db)
 
             foreach (var week in weeks)
             {
-                if (string.IsNullOrEmpty(week.WeatherSummaryJson))
-                    week.WeatherSummaryJson = DemoScheduleData.WeatherJson();
+                if (string.IsNullOrEmpty(week.DemoWeatherSummaryJson))
+                    week.DemoWeatherSummaryJson = DemoScheduleData.WeatherJson();
 
                 foreach (var carId in carIds)
                 {
@@ -155,7 +162,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     {
         // Project entity columns server-side (nav join is fine), then group in memory (SQLite-safe).
         var rows = await db.SubsessionResults
-            .Where(r => r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Where(r => r.BestLapSeconds > 0)
             .Select(r => new { r.CarId, r.Subsession.TrackId, r.BestLapSeconds })
             .ToListAsync(ct);
 
@@ -173,7 +180,7 @@ public sealed class DemoCacheSeeder(AppDbContext db)
     public async Task SeedLapDataAsync(CancellationToken ct)
     {
         var subBests = await db.SubsessionResults
-            .Where(r => r.CustId == DemoData.DriverCustId && r.SubsessionId < 0 && r.BestLapSeconds > 0)
+            .Where(r => r.CustId == DemoData.DriverCustId && r.BestLapSeconds > 0)
             .Select(r => new { r.SubsessionId, r.BestLapSeconds })
             .ToListAsync(ct);
 

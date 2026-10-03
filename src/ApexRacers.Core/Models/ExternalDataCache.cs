@@ -6,7 +6,7 @@ namespace ApexRacers.Core.Models;
 /// result stored whole in <see cref="Payload"/>. Backs <c>CachedIRacingClient</c>'s
 /// get-or-fetch so repeated reads come from Postgres and we stay within rate limits.
 /// </summary>
-public class ExternalDataCache
+public class ExternalDataCache : IProvenancedData
 {
     /// <summary>
     /// Storage limit on <see cref="CacheKey"/>, shared by the EF configuration that enforces it
@@ -18,6 +18,7 @@ public class ExternalDataCache
     public const int CacheKeyMaxLength = 200;
 
     public int Id { get; set; }
+    public DataProvenance Provenance { get; set; }
     public required string CacheKey { get; set; }
     public required string Payload { get; set; }
     public DateTimeOffset FetchedAt { get; set; }

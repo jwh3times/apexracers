@@ -15,7 +15,7 @@ public class DemoCacheSeederAllTests
     [Fact]
     public async Task SeedAllAsync_AllRowsUseTheSentinelExpiry()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         db.Seasons.Add(new Season { Id = 6115, SeriesId = 444, Active = true, Year = 2026, Quarter = 2 });
         db.SeasonCarClasses.Add(new SeasonCarClass { SeasonId = 6115, CarClassId = 100 });
         db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
