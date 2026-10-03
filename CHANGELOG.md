@@ -26,6 +26,8 @@ No unreleased changes.
 - Isolated synthetic Demo acquisition, mapped caches, race evidence, follows, percentiles,
   weather and BoP from Real evidence. Demo misses cannot reach a configured real provider;
   ambiguous legacy copies are quarantined or unavailable with original clocks preserved.
+- User-uploaded telemetry remains visible in My Laps and imports remain idempotent during
+  Demo preview, while synthetic Driver aggregates exclude user uploads.
 
 ## [9.0.54] - 2026-10-02
 

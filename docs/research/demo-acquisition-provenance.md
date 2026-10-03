@@ -18,6 +18,8 @@ IDs may exist independently in Real and Demo. Composite race parent/child keys p
 Real result from attaching to a Demo parent. Percentile snapshots, follows and BoP have
 namespace filters and uniqueness constraints; weather uses separate Real and Demo columns.
 Uploaded Laps remain user-provided evidence and are excluded from Demo aggregates.
+The caller's upload inventory and import deduplication retain their ordinary User scope
+during Demo preview; they read user uploads independently of synthetic Driver aggregates.
 
 Demo reads only explicitly synthetic mapped evidence. Missing or expired Demo cache rows
 return the established unavailable response without touching even a configured SDK client.
