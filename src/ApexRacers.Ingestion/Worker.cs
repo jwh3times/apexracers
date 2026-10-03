@@ -43,6 +43,7 @@ public sealed class Worker(
         using var scope = scopeFactory.CreateScope();
         var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var client = scope.ServiceProvider.GetRequiredService<IDataClient>();
+        await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
 
         logger.LogInformation("Ingestion run starting at {Time}", DateTimeOffset.UtcNow);
 

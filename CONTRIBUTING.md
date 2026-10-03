@@ -53,7 +53,7 @@ with review turnaround.
   [Compose plugin](https://docs.docker.com/compose/install/linux/) (the native Engine setup is
   validated on Fedora/Linux). Keep the engine running for the full backend test suite.
 - The EF Core CLI: `dotnet tool install --global dotnet-ef` (version must match
-  EF Core — currently **10.0.9**)
+  the EF Core version in `Directory.Packages.props`)
 - iRacing OAuth credentials are only needed for the ingestion worker — see the
   [README](README.md#iracing-oauth-credentials). You do **not** need them for most
   contributions.

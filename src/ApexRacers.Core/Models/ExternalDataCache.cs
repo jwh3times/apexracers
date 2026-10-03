@@ -1,12 +1,12 @@
 namespace ApexRacers.Core.Models;
 
 /// <summary>
-/// A single cached external (iRacing) API response. Keyed by an opaque
-/// <see cref="CacheKey"/> (e.g. "chart:691062:2:1") with the serialized typed
-/// result stored whole in <see cref="Payload"/>. Backs <c>CachedIRacingClient</c>'s
+/// Cached owned evidence keyed by <see cref="Provenance"/> and an opaque
+/// <see cref="CacheKey"/> (e.g. "chart:691062:2:1"). <see cref="Payload"/> stores the
+/// mapped contract; Real Driver evidence omits names. Backs <c>CachedIRacingClient</c>'s
 /// get-or-fetch so repeated reads come from Postgres and we stay within rate limits.
 /// </summary>
-public class ExternalDataCache
+public class ExternalDataCache : IProvenancedData
 {
     /// <summary>
     /// Storage limit on <see cref="CacheKey"/>, shared by the EF configuration that enforces it
@@ -18,6 +18,7 @@ public class ExternalDataCache
     public const int CacheKeyMaxLength = 200;
 
     public int Id { get; set; }
+    public DataProvenance Provenance { get; set; }
     public required string CacheKey { get; set; }
     public required string Payload { get; set; }
     public DateTimeOffset FetchedAt { get; set; }

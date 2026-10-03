@@ -16,13 +16,14 @@
 BEGIN;
 
 -- ── 1. Derived / computed data ────────────────────────────────────────────────
-DELETE FROM iracing."CarPercentileResults";
+DELETE FROM iracing."ScopedCarPercentileResults";
 
 -- ── 2. Race results and subsessions ──────────────────────────────────────────
 -- SubsessionResults cascade automatically when Subsessions are deleted.
-DELETE FROM iracing."Subsessions";
+DELETE FROM iracing."RaceEvidenceSubsessions";
 
 -- ── 3. Schedule data ──────────────────────────────────────────────────────────
+DELETE FROM iracing."ScopedSeasonCarBops";
 DELETE FROM iracing."Weeks";
 DELETE FROM iracing."SeasonCars";
 DELETE FROM iracing."SeasonCarClasses";

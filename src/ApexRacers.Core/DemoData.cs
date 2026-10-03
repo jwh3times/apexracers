@@ -13,11 +13,7 @@ public static class DemoData
     /// <summary>A second synthetic pool driver used as the demo /compare rival.</summary>
     public const long RivalCustId = 100_002;
 
-    /// <summary>Inclusive lower bound identifying synthetic demo cache rows.</summary>
-    public static readonly DateTimeOffset CacheSentinelThreshold =
-        new(9000, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-    /// <summary>Far-future expiry written to every synthetic demo cache row.</summary>
+    /// <summary>Far-future freshness expiry; origin is identified by explicit provenance.</summary>
     public static readonly DateTimeOffset CacheSentinel =
         new(9999, 1, 1, 0, 0, 0, TimeSpan.Zero);
 }

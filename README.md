@@ -130,12 +130,19 @@ dotnet run --project src/ApexRacers.Seeder -- --verify-demo      # exit 0 iff th
 dotnet run --project src/ApexRacers.Seeder -- --verify-teardown  # exit 0 iff no demo data remains (post-purge)
 ```
 
-Both print one `[PASS]`/`[FAIL]` line per check (cache-key family, recent-race links, sentinel expiry, synthetic races,
+Both print one `[PASS]`/`[FAIL]` line per check (cache-key family, recent-race links, cache freshness, synthetic races,
 BoP/weather, the `iracing-demo` flag row) and exit non-zero on any failure — CI/deploy scripts can gate
 on the exit code. `--demo` runs `--verify-demo` automatically at the end of seeding and fails the run if
 it doesn't pass. Recent Races is built from the Demo Driver's persisted synthetic results; verification
 also requires a nonempty recent-race cache whose links resolve to persisted Subsessions. Rerun `--demo`
 to replace an older cache containing broken race links.
+
+Demo and Real evidence use explicit provenance namespaces; expiry and numeric IDs do not
+identify origin. Demo misses stay offline, and Real acquisition requires Demo teardown.
+Existing databases require a controlled Demo reseed after the provenance migration; legacy
+copies remain unavailable pending reconciliation. Read the
+[migration and verification evidence](docs/research/demo-acquisition-provenance.md) before
+changing caches, seeding, teardown or recovery.
 
 ### 7. Run the ingestion worker (optional)
 

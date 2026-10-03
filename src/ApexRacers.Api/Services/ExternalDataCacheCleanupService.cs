@@ -22,9 +22,8 @@ public class ExternalDataCacheCleanupService(IServiceScopeFactory scopeFactory, 
         AppDbContext db, DateTimeOffset now, TimeSpan grace, CancellationToken ct)
     {
         var cutoff = now - grace;
-        var sentinelThreshold = DemoData.CacheSentinelThreshold;
         var stale = await db.ExternalDataCaches
-            .Where(c => c.ExpiresAt < cutoff && c.ExpiresAt < sentinelThreshold)
+            .Where(c => c.Provenance == DataProvenance.Real && c.ExpiresAt < cutoff)
             .ToListAsync(ct);
         if (stale.Count == 0)
             return 0;

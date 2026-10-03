@@ -1,4 +1,5 @@
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
@@ -9,9 +10,9 @@ namespace ApexRacers.Tests.Services;
 
 public class TelemetryUploadServiceTests
 {
-    private static AppDbContext CreateCatalogDb()
+    private static AppDbContext CreateCatalogDb(DataProvenance provenance = DataProvenance.Real)
     {
-        var db = DbContextFactory.Create();
+        var db = DbContextFactory.Create(provenance);
         db.Cars.Add(new Car { Id = 99, Name = "Porsche 992 GT3", NameAbbreviated = "P992" });
         db.Tracks.Add(new Track { Id = 42, Name = "Spa-Francorchamps", ConfigName = "Full" });
         db.SaveChanges();
@@ -300,10 +301,12 @@ public class TelemetryUploadServiceTests
         Assert.Empty(db.UploadedLaps);
     }
 
-    [Fact]
-    public async Task ProcessAsync_SameSessionUploadedTwice_DoesNotDuplicateLaps()
+    [Theory]
+    [InlineData(DataProvenance.Real)]
+    [InlineData(DataProvenance.Demo)]
+    public async Task ProcessAsync_SameSessionUploadedTwice_DoesNotDuplicateLaps(DataProvenance provenance)
     {
-        await using var db = CreateCatalogDb();
+        await using var db = CreateCatalogDb(provenance);
         var userId = Guid.NewGuid();
         var svc = new TelemetryUploadService(db);
 
@@ -315,7 +318,9 @@ public class TelemetryUploadServiceTests
         using var second = FakeIbtBuilder.Build(laps: 3, lapTime: 95.0f, validLaps: true);
         await svc.ProcessAsync(second, userId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(3, db.UploadedLaps.Count());
+        var inventory = await new UploadedLapService(db).GetUploadedBestsAsync(userId,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(3, Assert.Single(inventory).LapCount);
     }
 
     [Fact]

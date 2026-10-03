@@ -14,6 +14,22 @@ public class SubjectDriverContextTests
     private static SubjectDriverContext CreateContext(AppDbContext db) =>
         new(db, new FeatureFlagEligibility(db));
 
+    [Theory]
+    [InlineData(false, DataProvenance.Real)]
+    [InlineData(true, DataProvenance.Demo)]
+    public async Task SubjectCarriesProvenanceWhenARealClaimCollidesWithTheDemoCustomerId(
+        bool demoEnabled, DataProvenance expected)
+    {
+        await using var db = DbContextFactory.Create();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Synthetic test account", IRacingCustomerId = DemoData.DriverCustId };
+        SeedAlphaUserWithDemoFlag(db, user, "Alpha", demoEnabled);
+        await db.SaveChangesAsync(Ct);
+        var subject = await CreateContext(db).GetSubjectDriverAsync(user.Id, Ct);
+        Assert.NotNull(subject);
+        Assert.Equal(DemoData.DriverCustId, subject.CustomerId);
+        Assert.Equal(expected, subject.Provenance);
+    }
+
     [Fact]
     public async Task GetSubjectDriverCustIdAsync_UserWithClaimedIdentity_ReturnsCustomerId()
     {

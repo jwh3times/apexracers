@@ -65,3 +65,6 @@ src/ApexRacers.Data/Seeds/Screenshots/
 
 # Optional standalone maintainer companion repository (cloned here; never part of this history)
 private/
+
+# Generated SPA copied into API for local built-app checks
+src/ApexRacers.Api/wwwroot/

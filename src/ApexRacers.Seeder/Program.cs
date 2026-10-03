@@ -25,7 +25,7 @@ var options = new DbContextOptionsBuilder<AppDbContext>()
     .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing"))
     .Options;
 
-await using var db = new AppDbContext(options);
+await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
 
 Console.WriteLine("ApexRacers Seeder — connecting to database…");
 

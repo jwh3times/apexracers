@@ -49,7 +49,9 @@ public class TelemetryUploadService(AppDbContext db)
         // (Keying on individual lap times instead would collapse legitimately-repeated
         // identical times within a single session.)
         var recordedAt = session.SessionDate;
-        var alreadyImported = await db.UploadedLaps.AnyAsync(p =>
+        // Import identity belongs to the User's uploads, including during Demo preview.
+        // The aggregate-only Demo filter must not hide an already imported session.
+        var alreadyImported = await db.UploadedLaps.IgnoreQueryFilters().AnyAsync(p =>
             p.UserId == userId
             && p.CarId == session.IracingCarId
             && p.TrackId == session.IracingTrackId

@@ -17,7 +17,7 @@ public class DemoCacheSeederCompletionTests
     // One synthetic subsession (negative id) on track 532 with the demo driver's result.
     private static async Task<AppDbContext> SeededResultsAsync()
     {
-        var db = DbContextFactory.Create();
+        var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, RaceWeekIndex = 0, TrackId = 532 });
         db.SubsessionResults.Add(new SubsessionResult
         {
@@ -64,7 +64,7 @@ public class DemoCacheSeederCompletionTests
     [Fact]
     public async Task SeedDriverSearchAsync_WritesCuratedTermKeys()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
 
         await new DemoCacheSeeder(db).SeedDriverSearchAsync(Ct);
 

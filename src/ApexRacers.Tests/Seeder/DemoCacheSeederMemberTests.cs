@@ -16,7 +16,7 @@ public class DemoCacheSeederMemberTests
     [Fact]
     public async Task SeedMembersAsync_WritesProfileChartCareerForDemoAndRival()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
 
         await new DemoCacheSeeder(db).SeedMembersAsync(Ct);
 

@@ -25,6 +25,10 @@ This directory contains public, contributor-safe project documentation.
 
 ## Private docs
 
+For acquisition, mapped caches, Demo seeding, teardown or provenance cutover, read
+[Demo acquisition evidence](research/demo-acquisition-provenance.md). It records implemented
+namespace boundaries and migration checks, with explicit limits on lifecycle and rollout claims.
+
 Deployment runbooks, the full product spec, sanitized API samples, and archived implementation notes
 live in a standalone private companion repository checked out at `private/`. The public repository
 intentionally ignores the nested worktree and must not require it for builds, tests, CI, or normal

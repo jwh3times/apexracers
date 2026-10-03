@@ -8,7 +8,8 @@ public class SubsessionConfiguration : IEntityTypeConfiguration<Subsession>
 {
     public void Configure(EntityTypeBuilder<Subsession> builder)
     {
-        builder.HasKey(s => s.Id);
+        builder.ToTable("RaceEvidenceSubsessions");
+        builder.HasKey(s => new { s.Provenance, s.Id });
         builder.Property(s => s.Id).ValueGeneratedNever();
 
         builder.HasIndex(s => new { s.SeasonId, s.RaceWeekIndex });
@@ -32,7 +33,7 @@ public class SubsessionConfiguration : IEntityTypeConfiguration<Subsession>
 
         builder.HasMany(s => s.Results)
             .WithOne(r => r.Subsession)
-            .HasForeignKey(r => r.SubsessionId)
+            .HasForeignKey(r => new { r.Provenance, r.SubsessionId })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

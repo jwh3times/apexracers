@@ -117,6 +117,7 @@ e2e/
   admin.spec.ts       ← provisions an Admin and axe-audits /admin
   auth.spec.ts        ← logout, registration/confirm-email, and password-reset auth flows
   csp.spec.ts         ← built-SPA resource policy and Development Scalar checks
+  demo-provenance.spec.ts ← credential-free Demo evidence and server-selected namespace (E2E_DEMO=1)
   gating.spec.ts      ← feature-flag gating (demo content vs ComingSoon)
   smoke.spec.ts       ← register → dashboard smoke test
   telemetry.spec.ts   ← .ibt upload → My Laps

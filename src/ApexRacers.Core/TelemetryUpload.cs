@@ -27,8 +27,7 @@ namespace ApexRacers.Core;
 /// The upload page mirrors <see cref="MaxFileSizeMegabytes"/> in TypeScript
 /// (<c>web/src/features/telemetry/uploadLimits.ts</c>) and checks a file against it before sending,
 /// so the ordinary oversized case never spends the bandwidth at all. That mirror is the only place
-/// this value is duplicated — change the two together, the same way
-/// <c>purge_demo_data.sql</c> mirrors <c>DemoData.CacheSentinelThreshold</c>.
+/// this value is duplicated — change the two together.
 /// </para>
 /// </remarks>
 public static class TelemetryUpload

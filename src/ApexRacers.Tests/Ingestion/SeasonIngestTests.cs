@@ -152,7 +152,7 @@ public class SeasonIngestTests
             .UseSqlite(connection)
             .AddInterceptors(probe)
             .Options;
-        await using var db = new AppDbContext(options);
+        await using var db = new AppDbContext(options, new ApexRacers.Core.IRacingDataScope(ApexRacers.Core.DataProvenance.Real));
         await db.Database.EnsureCreatedAsync(ct);
 
         var item = ScheduleItem();
