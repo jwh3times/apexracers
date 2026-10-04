@@ -1,4 +1,5 @@
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
@@ -33,6 +34,20 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
     }
 
     // ── Add / List / Remove ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DemoFollowRequiresSyntheticDriverAndIgnoresCallerSuppliedName()
+    {
+        await using var db = DbContextFactory.Create(DataProvenance.Demo);
+        SeedResult(db, 7, 100002, "Fictional Racer");
+        await db.SaveChangesAsync(Ct);
+        var service = Build(db, Substitute.For<IDataClient>());
+        var result = await service.AddAsync(Guid.NewGuid(), 100002, "Caller supplied real name", Ct);
+        Assert.Equal("Fictional Racer", result.DriverName);
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
+            service.AddAsync(Guid.NewGuid(), 777, "Unseeded real person", Ct));
+        Assert.Single(db.Rivals);
+    }
 
     [Fact]
     public async Task AddAsync_NewRival_Persists()
@@ -179,7 +194,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
         Assert.Equal(2, result.Count);
         Assert.Equal(691062, result[0].CustomerId);
-        Assert.Equal("Jerry Holland", result[0].DriverName);
+        Assert.Equal(string.Empty, result[0].DriverName);
     }
 
     [Fact]
@@ -271,7 +286,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
         Assert.Equal(2, result.Count);
         Assert.Equal(200, result[0].CustomerId);   // most shared races first
         Assert.Equal(2, result[0].SharedRaces);
-        Assert.Equal("Rival A", result[0].DriverName);
+        Assert.Equal(string.Empty, result[0].DriverName);
         Assert.Equal(300, result[1].CustomerId);
         Assert.Equal(1, result[1].SharedRaces);
         Assert.DoesNotContain(result, s => s.CustomerId == me || s.CustomerId == 400);

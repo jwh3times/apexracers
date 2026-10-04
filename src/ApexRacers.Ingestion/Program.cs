@@ -22,6 +22,7 @@ var connectionString =
     builder.Configuration["DATABASE_CONNECTION_STRING"]
     ?? throw new InvalidOperationException("DATABASE_CONNECTION_STRING is not set.");
 
+builder.Services.AddScoped(_ => new ApexRacers.Core.IRacingDataScope(ApexRacers.Core.DataProvenance.Real));
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")));
 

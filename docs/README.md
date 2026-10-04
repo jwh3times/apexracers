@@ -10,6 +10,12 @@ This directory contains public, contributor-safe project documentation.
 | [roadmap.md](roadmap.md) | High-level project status and planned work. |
 | [content-security-policy.md](content-security-policy.md) | Browser resource policy, asset audit, and Development API-reference exceptions. |
 | [research/iracing-terms-2026-09-30.md](research/iracing-terms-2026-09-30.md) | Dated research on iRacing's third-party terms and an audit of ApexRacers' Driver identity exposure. |
+| [design/driver-disclosure-ownership.md](design/driver-disclosure-ownership.md) | Accepted Driver authorization, publication, and copy-lifecycle architecture, with interfaces and implementation proof obligations; distinct from implemented behavior. |
+| [design/driver-acceptance-and-rollout.md](design/driver-acceptance-and-rollout.md) | Accepted scenario/evidence matrix, implementation readiness, migration safeguards, and staged pilot/expansion gates; validation remains to be executed. |
+| [design/driver-implementation-handoff.md](design/driver-implementation-handoff.md) | Bounded implementation slices, evidence prerequisites, and links to their authoritative work briefs. |
+| [research/driver-publication-coordination-2026-10-02.md](research/driver-publication-coordination-2026-10-02.md) | Primary-source technical review of cross-instance withdrawal and HTTP response-dispatch coordination. |
+| [research/driver-publication-drain-rehearsal.md](research/driver-publication-drain-rehearsal.md) | Executable two-process Kestrel/PostgreSQL transport rehearsal, failure outcomes, reproduction commands and limits of its synthetic evidence. |
+| [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
@@ -18,6 +24,10 @@ This directory contains public, contributor-safe project documentation.
 | [adr/](adr/) | Architecture decision records — why a structural decision was made and what alternative was rejected, not just what shipped. |
 
 ## Private docs
+
+For acquisition, mapped caches, Demo seeding, teardown or provenance cutover, read
+[Demo acquisition evidence](research/demo-acquisition-provenance.md). It records implemented
+namespace boundaries and migration checks, with explicit limits on lifecycle and rollout claims.
 
 Deployment runbooks, the full product spec, sanitized API samples, and archived implementation notes
 live in a standalone private companion repository checked out at `private/`. The public repository

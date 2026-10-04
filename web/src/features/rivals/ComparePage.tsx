@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import {
   api,
   ApiError,
-  IRacingNotLinkedError,
   type DriverSearchResult,
   type DriverComparison,
   type ComparisonSide,
@@ -13,15 +12,9 @@ import IRatingCompareChart from '../../components/IRatingCompareChart';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
+import { useRivalComparison } from './useRivalComparison';
 
 const RIVAL_COLOR = '#f5a623';
-
-type ComparisonState =
-  | { status: 'idle' }
-  | { status: 'comparing' }
-  | { status: 'ok'; data: DriverComparison }
-  | { status: 'not-linked' }
-  | { status: 'error'; message: string };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -302,8 +295,7 @@ export default function ComparePage() {
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<DriverSearchResult[]>([]);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [comparison, setComparison] = useState<ComparisonState>({ status: 'idle' });
+  const { selected, comparison, compare, remove: removeComparison } = useRivalComparison();
 
   const rivalsResource = useResource(signal => api.getRivals(signal), [rivalVersion], {
     fallbackMessage: 'Failed to load rivals.',
@@ -362,30 +354,8 @@ export default function ComparePage() {
   };
 
   const remove = async (custId: number) => {
-    await api.removeRival(custId);
-    if (selected === custId) {
-      setSelected(null);
-      setComparison({ status: 'idle' });
-    }
+    await removeComparison(custId);
     setRivalVersion(version => version + 1);
-  };
-
-  const compare = (custId: number) => {
-    setSelected(custId);
-    setComparison({ status: 'comparing' });
-    api
-      .compareRival(custId)
-      .then(data => setComparison({ status: 'ok', data }))
-      .catch((err: unknown) => {
-        if (err instanceof IRacingNotLinkedError) {
-          setComparison({ status: 'not-linked' });
-          return;
-        }
-        setComparison({
-          status: 'error',
-          message: err instanceof Error ? err.message : 'Failed to load comparison.',
-        });
-      });
   };
 
   return (

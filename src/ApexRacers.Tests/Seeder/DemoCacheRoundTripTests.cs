@@ -28,7 +28,7 @@ public class DemoCacheRoundTripTests
     [Fact]
     public async Task SeededMemberCache_IsReadableByDriverStatsService()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await new DemoCacheSeeder(db).SeedMembersAsync(Ct);
 
         var service = new DriverStatsService(Offline(db));
@@ -48,7 +48,7 @@ public class DemoCacheRoundTripTests
     [Fact]
     public async Task SeededActivityCache_IsReadableByItsServices()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await new DemoCacheSeeder(db).SeedActivityAsync(Ct);
 
         var awards = await new AchievementsService(Offline(db))
@@ -63,7 +63,7 @@ public class DemoCacheRoundTripTests
     [Fact]
     public async Task SeededRecentRaces_AllOpenThroughSubsessionDetailService()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await new CiCatalogSeeder(db).SeedAsync();
         await new DemoCacheSeeder(db).SeedActivityAsync(Ct);
 
@@ -94,7 +94,7 @@ public class DemoCacheRoundTripTests
     [Fact]
     public async Task SeededLeaderboardCache_IsReadableByLeaderboardService()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         await new DemoCacheSeeder(db).SeedLeaderboardsAsync(Ct);
 
         var service = new LeaderboardService(Offline(db));
@@ -109,7 +109,7 @@ public class DemoCacheRoundTripTests
     {
         // Guards the guard: if a miss did not throw, every assertion above would pass vacuously
         // against an empty cache.
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
 
         await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
             new DriverStatsService(Offline(db)).GetProgressionAsync(DemoData.DriverCustId, Ct));

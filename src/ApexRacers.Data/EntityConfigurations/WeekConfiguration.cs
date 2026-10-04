@@ -8,6 +8,7 @@ public class WeekConfiguration : IEntityTypeConfiguration<Week>
 {
     public void Configure(EntityTypeBuilder<Week> builder)
     {
+        builder.Property(w => w.WeatherSummaryJson).HasColumnName("RealWeatherSummaryJson");
         builder.HasKey(w => w.Id);
 
         builder.HasIndex(w => new { w.SeasonId, w.RaceWeekIndex }).IsUnique();

@@ -14,14 +14,7 @@ namespace ApexRacers.Seeder.Demo;
 /// </summary>
 public static class DemoCache
 {
-    /// <summary>
-    /// Seeder-facing alias for the shared lower bound identifying every synthetic demo cache row.
-    /// The production teardown mirror is <c>src/ApexRacers.Data/Seeds/purge_demo_data.sql</c>; its
-    /// value and <c>&gt;=</c> operator must remain in lockstep with <see cref="DemoData"/>.
-    /// </summary>
-    public static DateTimeOffset SentinelThreshold => DemoData.CacheSentinelThreshold;
-
-    /// <summary>Far-future expiry written to demo cache rows; always inside the sentinel range.</summary>
+    /// <summary>Far-future freshness expiry; provenance separately identifies Demo copies.</summary>
     public static DateTimeOffset Sentinel => DemoData.CacheSentinel;
 
     /// <summary>Fixed reference date for deterministic payload dates (keeps builders unit-testable).</summary>
@@ -29,13 +22,16 @@ public static class DemoCache
 
     public static async Task UpsertAsync<T>(AppDbContext db, string key, T value, CancellationToken ct)
     {
+        MappedEvidenceContract.RequireOwned<T>();
         var json = JsonSerializer.Serialize(value);
-        var row = await db.ExternalDataCaches.FirstOrDefaultAsync(c => c.CacheKey == key, ct);
+        var row = await db.ExternalDataCaches.FirstOrDefaultAsync(
+            c => c.Provenance == DataProvenance.Demo && c.CacheKey == key, ct);
         if (row is null)
         {
             db.ExternalDataCaches.Add(new ExternalDataCache
             {
                 CacheKey = key,
+                Provenance = DataProvenance.Demo,
                 Payload = json,
                 FetchedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = Sentinel,

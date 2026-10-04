@@ -13,7 +13,7 @@ public class DemoCacheSeederScheduleTests
     [Fact]
     public async Task SeedBopAndWeatherAsync_FillsWeatherAndBop_Idempotently()
     {
-        await using var db = DbContextFactory.Create();
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
         db.Seasons.Add(new Season { Id = 6115, SeriesId = 444, Active = true, Year = 2026, Quarter = 2 });
         db.Weeks.Add(new Week { Id = Guid.NewGuid(), SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
         db.SeasonCars.Add(new SeasonCar { SeasonId = 6115, CarId = 132 });
@@ -24,7 +24,7 @@ public class DemoCacheSeederScheduleTests
         await seeder.SeedBopAndWeatherAsync(Ct); // re-run: no duplicates / no overwrite churn
 
         var week = await db.Weeks.SingleAsync(w => w.SeasonId == 6115 && w.RaceWeekIndex == 0, Ct);
-        Assert.False(string.IsNullOrEmpty(week.WeatherSummaryJson));
+        Assert.False(string.IsNullOrEmpty(week.DemoWeatherSummaryJson));
         Assert.Equal(1, await db.SeasonCarBops.CountAsync(b => b.SeasonId == 6115 && b.CarId == 132, Ct));
     }
 }

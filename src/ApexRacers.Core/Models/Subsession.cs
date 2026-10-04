@@ -1,7 +1,8 @@
 namespace ApexRacers.Core.Models;
 
-public class Subsession
+public class Subsession : IProvenancedData
 {
+    public DataProvenance Provenance { get; set; }
     public int Id { get; set; }                    // subsession_id
     /// <summary>
     /// iRacing's Race Session identity. Every Split produced for one scheduled timeslot shares

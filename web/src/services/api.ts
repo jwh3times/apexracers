@@ -994,8 +994,8 @@ export const api = {
   },
 
   /** GET /api/users/me/compare?rivalCustId= — head-to-head comparison (409 if unlinked) */
-  compareRival(rivalCustId: number): Promise<DriverComparison> {
-    return request(`/api/users/me/compare?rivalCustId=${rivalCustId}`);
+  compareRival(rivalCustId: number, signal?: AbortSignal): Promise<DriverComparison> {
+    return request(`/api/users/me/compare?rivalCustId=${rivalCustId}`, { signal });
   },
 
   /** GET /api/cars — full car catalog (browse grid) */

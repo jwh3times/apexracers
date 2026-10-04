@@ -138,6 +138,9 @@ namespace ApexRacers.Data.Migrations
                     b.Property<double>("PercentileRank")
                         .HasColumnType("double precision");
 
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer");
 
@@ -159,12 +162,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("SeriesId");
 
+                    b.HasIndex("UserId");
+
                     b.HasIndex("WeekId");
 
-                    b.HasIndex("UserId", "CarId", "SeriesId", "WeekId")
+                    b.HasIndex("Provenance", "UserId", "CarId", "SeriesId", "WeekId")
                         .IsUnique();
 
-                    b.ToTable("CarPercentileResults", "iracing");
+                    b.ToTable("ScopedCarPercentileResults", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.ExternalDataCache", b =>
@@ -190,12 +195,18 @@ namespace ApexRacers.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CacheKey")
+                    b.HasIndex("Provenance", "CacheKey")
                         .IsUnique();
 
-                    b.ToTable("ExternalDataCaches", "iracing");
+                    b.ToTable("MappedDataCaches", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_MappedDataCaches_KnownProvenance", "\"Provenance\" IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.FeatureFlag", b =>
@@ -279,6 +290,54 @@ namespace ApexRacers.Data.Migrations
                     b.ToTable("KnownDevices", "identity");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.ProvenanceMigrationInventory", b =>
+                {
+                    b.Property<string>("StorageKind")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UnknownRows")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("StorageKind");
+
+                    b.ToTable("ProvenanceMigrationInventory", "iracing");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.QuarantinedDataCache", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CacheKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("FetchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CacheKey")
+                        .IsUnique();
+
+                    b.ToTable("QuarantinedDataCaches", "iracing");
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -325,6 +384,9 @@ namespace ApexRacers.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.Property<long>("RivalCustId")
                         .HasColumnType("bigint");
 
@@ -333,10 +395,12 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "RivalCustId")
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Provenance", "UserId", "RivalCustId")
                         .IsUnique();
 
-                    b.ToTable("Rivals", "iracing");
+                    b.ToTable("ScopedRivals", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Season", b =>
@@ -396,6 +460,9 @@ namespace ApexRacers.Data.Migrations
 
             modelBuilder.Entity("ApexRacers.Core.Models.SeasonCarBop", b =>
                 {
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SeasonId")
                         .HasColumnType("integer");
 
@@ -417,11 +484,11 @@ namespace ApexRacers.Data.Migrations
                     b.Property<double>("WeightPenaltyKg")
                         .HasColumnType("double precision");
 
-                    b.HasKey("SeasonId", "RaceWeekIndex", "CarId");
+                    b.HasKey("Provenance", "SeasonId", "RaceWeekIndex", "CarId");
 
                     b.HasIndex("SeasonId", "RaceWeekIndex");
 
-                    b.ToTable("SeasonCarBops", "iracing");
+                    b.ToTable("ScopedSeasonCarBops", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.SeasonCarClass", b =>
@@ -526,6 +593,9 @@ namespace ApexRacers.Data.Migrations
 
             modelBuilder.Entity("ApexRacers.Core.Models.Subsession", b =>
                 {
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Id")
                         .HasColumnType("integer");
 
@@ -595,7 +665,7 @@ namespace ApexRacers.Data.Migrations
                     b.Property<Guid?>("WeekId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("Provenance", "Id");
 
                     b.HasIndex("RaceSessionId");
 
@@ -605,11 +675,14 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("SeasonId", "RaceWeekIndex");
 
-                    b.ToTable("Subsessions", "iracing");
+                    b.ToTable("RaceEvidenceSubsessions", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.SubsessionResult", b =>
                 {
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SubsessionId")
                         .HasColumnType("integer");
 
@@ -701,7 +774,7 @@ namespace ApexRacers.Data.Migrations
                     b.Property<int>("StartingPositionInClass")
                         .HasColumnType("integer");
 
-                    b.HasKey("SubsessionId", "CustId");
+                    b.HasKey("Provenance", "SubsessionId", "CustId");
 
                     b.HasIndex("CarClassId");
 
@@ -709,7 +782,7 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("CarId", "SubsessionId");
 
-                    b.ToTable("SubsessionResults", "iracing");
+                    b.ToTable("RaceEvidenceResults", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Track", b =>
@@ -848,6 +921,9 @@ namespace ApexRacers.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DemoWeatherSummaryJson")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset?>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -863,8 +939,12 @@ namespace ApexRacers.Data.Migrations
                     b.Property<int>("TrackId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("WeatherProvenance")
+                        .HasColumnType("integer");
+
                     b.Property<string>("WeatherSummaryJson")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("RealWeatherSummaryJson");
 
                     b.HasKey("Id");
 
@@ -1276,7 +1356,7 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasOne("ApexRacers.Core.Models.Subsession", "Subsession")
                         .WithMany("Results")
-                        .HasForeignKey("SubsessionId")
+                        .HasForeignKey("Provenance", "SubsessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

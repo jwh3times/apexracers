@@ -1,7 +1,8 @@
 namespace ApexRacers.Core.Models;
 
-public class SubsessionResult
+public class SubsessionResult : IProvenancedData
 {
+    public DataProvenance Provenance { get; set; }
     public int SubsessionId { get; set; }
     public long CustId { get; set; }
     public int CarId { get; set; }

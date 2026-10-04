@@ -1,4 +1,5 @@
 using ApexRacers.Api.Dtos;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,12 @@ public class RivalService(AppDbContext db, CachedIRacingClient cached)
             return new RivalDto(existing.RivalCustId, existing.DisplayName, existing.CreatedAt);
 
         var name = displayName?.Trim() is { Length: > 0 } n ? n : $"Driver {custId}";
+        if (db.Provenance == DataProvenance.Demo)
+        {
+            name = await db.SubsessionResults.Where(r => r.CustId == custId)
+                .Select(r => r.DisplayName).FirstOrDefaultAsync(ct)
+                ?? throw new IRacingNotConfiguredException();
+        }
         var rival = new Rival
         {
             Id = Guid.NewGuid(),

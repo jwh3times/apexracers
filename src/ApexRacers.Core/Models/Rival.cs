@@ -4,8 +4,9 @@ namespace ApexRacers.Core.Models;
 /// A driver the user follows for head-to-head comparison. One row per (user, rival cust_id);
 /// the display name is snapshotted at add time for listing without an extra fetch.
 /// </summary>
-public class Rival
+public class Rival : IProvenancedData
 {
+    public DataProvenance Provenance { get; set; }
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public long RivalCustId { get; set; }

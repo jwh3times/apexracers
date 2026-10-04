@@ -1,5 +1,11 @@
 # Per-lap pace traces are readable for any Driver, because official lap data is already public
 
+Target decision superseded on 2026-10-02 by
+[ADR 0006](0006-driver-publication-requires-current-authorization.md). The text below is the
+historical rationale and still describes current endpoint behavior. Restricted access is an
+accepted future requirement; this documentation change does not implement it or establish rights
+to republish upstream data.
+
 `GET /api/subsessions/{id}/laps?customerId=` accepts any caller-supplied Customer ID and passes it to
 `LapDataService` with no "is this you, or a rival you follow" check. Any signed-in User can read the
 per-lap trace of any Driver in any Subsession. This is intended behavior, not an oversight, and the

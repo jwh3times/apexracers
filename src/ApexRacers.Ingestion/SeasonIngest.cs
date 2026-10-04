@@ -96,7 +96,7 @@ public sealed class SeasonIngest(AppDbContext db)
             foreach (var restriction in item.CarRestrictions ?? [])
             {
                 var bop = await db.SeasonCarBops.FindAsync(
-                    [seasonId, item.RaceWeekNum, restriction.CarId], ct);
+                    [db.Provenance, seasonId, item.RaceWeekNum, restriction.CarId], ct);
                 if (bop is null)
                 {
                     bop = new SeasonCarBop

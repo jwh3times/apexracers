@@ -104,7 +104,12 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
 
 ### `CachedIRacingClient` — the get-or-fetch seam
 
-`CachedIRacingClient(AppDbContext db, IDataClient? client)` — `GetOrFetchAsync<T>(CacheSpec spec, Func<IDataClient, Task<T>> fetch, CancellationToken ct)`. `CacheSpec` (`Key` + `Ttl`) always comes from a factory on `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the sole author of every key string and its TTL; adding a cache-backed read path means adding a factory there, never interpolating a key at the call site. `client` is nullable rather than resolved from an `IServiceProvider`: it's registered in `Program.cs` via an explicit factory lambda (`sp.GetService<IDataClient>()`) because the SDK client itself is only registered when all four `IRACING_*` credentials are present; a null `client` on a cache miss throws `IRacingNotConfiguredException`. There is no `IsConfigured` property — check for a 503 by attempting the call, not by probing state first.
+For acquisition, Demo seed/cache changes, teardown or migration, first read
+docs/research/demo-acquisition-provenance.md. API requests freeze one server-selected provenance;
+cache identity includes that provenance, Demo misses stay offline, and Real mapped Driver evidence
+is name-free. Namespace selection is not proof, consent or publication admission.
+
+`CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null)` — `GetOrFetchAsync<T>(CacheSpec spec, Func<IDataClient, Task<T>> fetch, CancellationToken ct)`. The namespace defaults to `db.Provenance`; the optional source selects an explicit namespace for controlled callers. `CacheSpec` (`Key` + `Ttl`) always comes from a factory on `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the sole author of every key string and its TTL; adding a cache-backed read path means adding a factory there, never interpolating a key at the call site. `client` is nullable rather than resolved from an `IServiceProvider`: it's registered in `Program.cs` via an explicit factory lambda (`sp.GetService<IDataClient>()`) because the SDK client itself is only registered when all four `IRACING_*` credentials are present; a null `client` on a Real cache miss throws `IRacingNotConfiguredException`. There is no `IsConfigured` property — check for a 503 by attempting the call, not by probing state first.
 
 **Bound unbounded caller input before it reaches a key, not after (GHSA-jv96-89xc-98h2).** A key
 factory on `IRacingCacheKeys` that folds in free-text or ID-shaped caller input owns its own length
@@ -434,7 +439,7 @@ never changes what gets registered.
 
 ## Tests
 
-xUnit in `src/ApexRacers.Tests/`. **Test services directly** — never spin up the HTTP pipeline or test controllers; each test creates its own `AppDbContext` and shares no state. The project guide covers the rest: the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
+xUnit in `src/ApexRacers.Tests/`. **Test ordinary services directly**; controller-binding tests stay outside that suite. Each service test creates its own `AppDbContext` and shares no state. Driver publication/drain transport contracts are the deliberate exception: use the dedicated test-only Kestrel processes and real PostgreSQL rehearsal described in docs/research/driver-publication-drain-rehearsal.md. Its actual writers/fault gates establish synthetic protocol evidence, not production endpoint authorization or deployed terminality. The project guide covers the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
 
 Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class into
 `PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only

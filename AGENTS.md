@@ -256,7 +256,7 @@ Seeder's default/`--demo` modes need `private/iracing-api-response-objects/` pop
 see README); `--ci` mode does **not** (it fabricates a fully synthetic catalog, so CI/E2E can seed without
 the captured shapes — see `CiCatalogSeeder`). All modes read `DATABASE_CONNECTION_STRING` (else fall back
 to the local Docker default) and auto-apply pending migrations on start. `dotnet-ef` must be
-installed globally and match EF Core (currently 10.0.9). SQL cleanup scripts live in
+installed globally and match the EF Core version in `Directory.Packages.props`. SQL cleanup scripts live in
 `src/ApexRacers.Data/Seeds/` (`truncate_seed_data.sql`, `purge_demo_data.sql`),
 piped in via `Get-Content … | docker compose exec -T postgres psql -U apexracers -d apexracers`.
 (The old GT3 seed scripts were deleted 2026-07 — they targeted the pre-June-2026 `LapTimeEntries`
@@ -613,8 +613,9 @@ allowance or the high-water mark could be 0, since either would silently deny th
   Identity; required callers use
   `GetRequiredSubjectDriverCustIdAsync` / `RequireSubjectDriverCustId`, which throw the typed
   `IRacingNotLinkedException` mapped
-  to the exact `409` contract above. The **only** demo-aware branch: under an eligible `iracing-demo`
-  flag it resolves the Subject Driver to the Demo Driver (`DemoData.DriverCustId` = 100001) instead.
+  to the exact `409` contract above. `GetSubjectDriverAsync` also returns the selected provenance;
+  under the selected Demo scope it resolves the Subject Driver to the Demo Driver
+  (`DemoData.DriverCustId` = 100001) instead. An unavailable selected scope throws the typed `503`.
   `CONTEXT.md`'s Identity section defines Subject Driver / Claimed Identity / Demo Driver.
 
 ### Core models (`src/ApexRacers.Core/Models/`)
@@ -630,12 +631,13 @@ indexes, FK/`OnDelete` behavior).
 | `SeasonCar` / `SeasonCarClass` / `SeasonCarBop`                      | per-season cars/classes; per-week BoP (composite PK)                                                                                                                                                                                                      |
 | `Subsession` / `SubsessionResult`                                    | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). `RaceSessionId` persists iRacing's `session_id` so sibling Splits can be grouped; null means the Subsession predates that persistence. Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy. `SplitIndex`/`SplitCount` are nullable and derived from per-Split Strength of Field, not from array order — null is an unknown position, never index 0 (see `docs/adr/0003-split-index-is-derived-from-strength-of-field.md`). `TeamEntryCount`/`AiEntryCount` record the entries that produced no Race Result, so a Field with gaps is distinguishable from a complete one |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names                                                                                                                                                                                           |
+| `QuarantinedDataCache` / `ProvenanceMigrationInventory` | Unclassified pre-cutover cache copies and observed Unknown row counts; unavailable to ordinary evidence reads |
 | `UploadedLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
-| `CarPercentileResult`                                                | cached percentile rank + top share per (UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
+| `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
 | `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
-| `ExternalDataCache`                                                  | cached iRacing response (`CacheKey` unique, serialized DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
-| `Rival`                                                              | a driver a user follows (unique on (UserId, RivalCustId); cascade FK to Users)                                                                                                                                                                            |
+| `ExternalDataCache`                                                  | mapped evidence (`Provenance` + `CacheKey` unique, owned DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
+| `Rival`                                                              | a driver a user follows (unique on (Provenance, UserId, RivalCustId); cascade FK to Users)                                                                                                                                                                            |
 | `SignInAddressFailure` / `SignInAccountFailure`                      | sign-in brute-force counters (issue #300) — failures per (User, source address) and per User across every address; `identity` schema, cascade FK to Users; back `Core.SignInThrottle`'s decision                                                          |
 | `KnownDevice`                                                        | a browser that has completed a successful sign-in (issue #314) — SHA-256 `TokenHash` (unique) of the httpOnly cookie value, its own failure counter/window, `CreatedAt`/`LastSeenAt`/`ExpiresAt` (90-day lifetime, capped at 10 per User, least-recently-seen evicted); `identity` schema, cascade FK to Users; the second dimension of identity `Core.SignInThrottle`'s known-device exemption throttles against instead of the source address |
 
@@ -688,17 +690,15 @@ term) — `ExternalDataCache.CacheKeyMaxLength` (200) is a hard column limit, no
 a car class id, a race week index, a free-text term — is validated by the service against the data it
 actually indexes (throwing `KeyNotFoundException`/`ArgumentException` as appropriate) before it ever
 reaches `IRacingCacheKeys`. Eviction is TTL-only (lazy);
-`ExternalDataCacheCleanupService` purges long-expired rows below the inclusive demo sentinel range and
-explicitly preserves that range even if the cleanup cutoff reaches it.
+`ExternalDataCacheCleanupService` purges only long-expired explicitly Real rows.
+Demo preservation and teardown use provenance rather than expiry or numeric identifiers.
 
 **Demo cache seeding** (`ApexRacers.Seeder --demo` → `DemoCacheSeeder`): seeds `ExternalDataCache` rows
 with synthetic mapped DTOs under each service's **exact** runtime cache keys — enforced by both trees
 calling the same `IRacingCacheKeys` factories rather than by hand-matching interpolated strings — with
-a far-future `ExpiresAt` sentinel so cleanup never evicts them. `Core.DemoData` owns both the inclusive
-range threshold (`CacheSentinelThreshold`, `9000-01-01T00:00:00Z`) and the value writers use
-(`CacheSentinel`, `9999-01-01T00:00:00Z`); `purge_demo_data.sql` is the explicit UTC SQL mirror of the
-threshold and `>=` operator. The seeder also seeds synthetic
-`SeasonCarBop`, `Week.WeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
+a far-future `ExpiresAt` for freshness. `DataProvenance.Demo` identifies synthetic copies;
+`purge_demo_data.sql` mirrors that owned enum and purges only Demo copies. The seeder also seeds synthetic
+`SeasonCarBop`, `Week.DemoWeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
@@ -709,6 +709,10 @@ demo-aware resolver, and `PercentileController` deliberately takes a caller-supp
 the page can look up _any_ Driver. A demo User has no Claimed Identity (no real `IRacingCustomerId`),
 so the `iracing_id` JWT claim the page reads first is absent and it falls through to the form. Enter
 `100001` (`DemoData.DriverCustId`) to see the Demo Driver's percentiles.
+
+**Provenance:** before changing acquisition, mapped caches, seeded evidence, teardown or migration,
+read `docs/research/demo-acquisition-provenance.md`. It owns the request namespace, mapped-contract,
+legacy quarantine, old-writer fencing and forward-recovery rules and their current evidence limits.
 
 ### Frontend (`web/`)
 
@@ -788,6 +792,8 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   helpers directly; controllers are excluded. Use the native Microsoft Testing Platform test,
   class-filter, and Cobertura commands under [.NET](#net-run-from-repo-root); inspect the report with
   `reportgenerator` when needed.
+  For Driver publication/drain transport work, read `docs/research/driver-publication-drain-rehearsal.md`
+  before extending the dedicated two-process synthetic rehearsal or interpreting its evidence.
 - **E2E + accessibility (Playwright):** tests live in `web/e2e/`; run with `npm run test:e2e` against the
   full stack at `http://localhost:8080`. The suite includes axe-core WCAG 2.1 A/AA audits across public
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow

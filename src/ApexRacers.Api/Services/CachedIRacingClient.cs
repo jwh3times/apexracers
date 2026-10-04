@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
@@ -22,18 +23,20 @@ namespace ApexRacers.Api.Services;
 /// which had forced twelve test files to each declare an identical stub returning the same object
 /// for any requested type.
 /// </remarks>
-public class CachedIRacingClient(AppDbContext db, IDataClient? client)
+public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null)
 {
     /// <summary>
-    /// Returns the cached value for <paramref name="spec"/> when present and unexpired, otherwise
-    /// invokes <paramref name="fetch"/> against the live client, stores the result for the spec's
-    /// TTL, and returns it.
+    /// Returns unexpired owned evidence in the selected namespace. A Real miss may invoke
+    /// <paramref name="fetch"/> after Demo teardown and stores name-free evidence for the
+    /// spec's TTL; a Demo miss remains unavailable without invoking the provider.
     /// </summary>
     public async Task<T> GetOrFetchAsync<T>(
         CacheSpec spec,
         Func<IDataClient, Task<T>> fetch,
         CancellationToken ct)
     {
+        var provenance = source ?? db.Provenance;
+        MappedEvidenceContract.RequireOwned<T>();
         // A key longer than the column is not a cache miss, it is a permanent cache *bypass*: the
         // insert below throws, the catch treats that as a lost cold-start race, and every later
         // request for the key repeats the live fetch. That is how unbounded user input reaching a
@@ -45,14 +48,34 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client)
                 $"({spec.Key.Length}); the key factory must bound its inputs.",
                 nameof(spec));
 
+        if (provenance is not (DataProvenance.Real or DataProvenance.Demo))
+            throw new IRacingNotConfiguredException();
         var now = DateTimeOffset.UtcNow;
-        var row = await db.ExternalDataCaches.FirstOrDefaultAsync(c => c.CacheKey == spec.Key, ct);
+        var row = await db.ExternalDataCaches.FirstOrDefaultAsync(
+            c => c.Provenance == provenance && c.CacheKey == spec.Key, ct);
         if (row is not null && row.ExpiresAt > now)
-            return JsonSerializer.Deserialize<T>(row.Payload)!;
+        {
+            var value = JsonSerializer.Deserialize<T>(row.Payload)!;
+            if (provenance == DataProvenance.Demo) return value;
+            var evidence = NameFreeIRacingEvidence.Map(value);
+            var cleaned = JsonSerializer.Serialize(evidence);
+            if (cleaned != row.Payload)
+            {
+                row.Payload = cleaned;
+                // Repair a known owned contract without renewing freshness or its original clocks.
+                await db.SaveChangesAsync(ct);
+            }
+            return evidence;
+        }
 
+        // A configured provider is irrelevant to a synthetic request, including a cold miss.
+        if (provenance != DataProvenance.Real)
+            throw new IRacingNotConfiguredException();
         var live = client ?? throw new IRacingNotConfiguredException();
+        await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
 
-        var fresh = await fetch(live);
+        var fresh = NameFreeIRacingEvidence.Map(await fetch(live));
+        await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
         var json = JsonSerializer.Serialize(fresh);
 
         if (row is null)
@@ -60,6 +83,7 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client)
             db.ExternalDataCaches.Add(new ExternalDataCache
             {
                 CacheKey = spec.Key,
+                Provenance = provenance,
                 Payload = json,
                 FetchedAt = now,
                 ExpiresAt = now + spec.Ttl,
@@ -93,6 +117,6 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client)
     }
 }
 
-/// <summary>Thrown when an iRacing fetch is attempted but no credentials are configured.</summary>
+/// <summary>Thrown when the selected evidence scope is unavailable or cannot satisfy a read.</summary>
 public sealed class IRacingNotConfiguredException()
     : Exception("iRacing integration is not configured on this server.");

@@ -95,7 +95,7 @@ public class SubsessionDetailServiceTests
         // Ordered by finish: winner (P1) first.
         Assert.Equal(2, dto.Results.Count);
         Assert.Equal(1, dto.Results[0].FinishPosition);
-        Assert.Equal("Winner", dto.Results[0].DriverName);
+        Assert.Equal(string.Empty, dto.Results[0].DriverName);
         Assert.Equal(2000 - 1950, dto.Results[0].IRatingDelta); // +50
         Assert.Equal((415 - 400) / 100.0, dto.Results[0].SrDelta, precision: 4); // +0.15
 
@@ -107,7 +107,7 @@ public class SubsessionDetailServiceTests
     public async Task GetAsync_UnknownSplitPosition_StaysNullInsteadOfReadingAsTheStrongestSplit()
     {
         await using var db = await SeededDbAsync(weatherJson: null);
-        var sub = await db.Subsessions.FindAsync([100], Ct);
+        var sub = await db.Subsessions.FindAsync([ApexRacers.Core.DataProvenance.Real, 100], Ct);
         sub!.SplitIndex = null;
         sub.SplitCount = null;
         await db.SaveChangesAsync(Ct);
@@ -123,7 +123,7 @@ public class SubsessionDetailServiceTests
     public async Task GetAsync_UncountedFieldEntries_StayNullRatherThanClaimingACompleteField()
     {
         await using var db = await SeededDbAsync(weatherJson: null);
-        var sub = await db.Subsessions.FindAsync([100], Ct);
+        var sub = await db.Subsessions.FindAsync([ApexRacers.Core.DataProvenance.Real, 100], Ct);
         sub!.TeamEntryCount = null;
         sub.AiEntryCount = null;
         await db.SaveChangesAsync(Ct);

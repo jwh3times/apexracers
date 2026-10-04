@@ -31,7 +31,9 @@ public class ScheduleService(AppDbContext db)
                 TrackName = w.Track.Name,
                 w.Track.ConfigName,
                 w.StartDate,
-                w.WeatherSummaryJson,
+                WeatherSummaryJson = db.Provenance == DataProvenance.Demo ? w.DemoWeatherSummaryJson
+                    : db.Provenance == DataProvenance.Real && w.WeatherProvenance == DataProvenance.Real
+                        ? w.WeatherSummaryJson : null,
             })
             .ToListAsync(ct);
 

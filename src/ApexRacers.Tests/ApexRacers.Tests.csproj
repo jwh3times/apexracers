@@ -5,6 +5,8 @@
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <!-- Child Kestrel processes use the test assembly; ordinary invocations retain the MTP runner. -->
+    <StartupObject>ApexRacers.Tests.Publication.RehearsalEntryPoint</StartupObject>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

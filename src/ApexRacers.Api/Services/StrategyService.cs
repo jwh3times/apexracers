@@ -39,7 +39,9 @@ public class StrategyService(
                 w.Track.NumberPitstalls,
                 w.Track.PitRoadSpeedLimit,
                 w.Track.NightLighting,
-                w.WeatherSummaryJson,
+                WeatherSummaryJson = db.Provenance == DataProvenance.Demo ? w.DemoWeatherSummaryJson
+                    : db.Provenance == DataProvenance.Real && w.WeatherProvenance == DataProvenance.Real
+                        ? w.WeatherSummaryJson : null,
             })
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException($"No week {raceWeekIndex} for series {seriesId}.");

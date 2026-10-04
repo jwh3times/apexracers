@@ -8,7 +8,8 @@ public class SeasonCarBopConfiguration : IEntityTypeConfiguration<SeasonCarBop>
 {
     public void Configure(EntityTypeBuilder<SeasonCarBop> builder)
     {
-        builder.HasKey(b => new { b.SeasonId, b.RaceWeekIndex, b.CarId });
+        builder.ToTable("ScopedSeasonCarBops");
+        builder.HasKey(b => new { b.Provenance, b.SeasonId, b.RaceWeekIndex, b.CarId });
         builder.HasIndex(b => new { b.SeasonId, b.RaceWeekIndex });
     }
 }
