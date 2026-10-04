@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [11.0.0] - 2026-10-04
+
 ### Added
 
 - A PostgreSQL-backed Driver authorization and lifecycle spine with separate personal/sharing
@@ -1482,7 +1486,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v10.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v11.0.0...HEAD
+[11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v11.0.0
 [10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1
 [10.0.0]: https://github.com/jwh3times/apexracers/compare/v9.0.54...v10.0.0
 [9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54

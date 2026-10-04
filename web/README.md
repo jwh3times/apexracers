@@ -86,7 +86,8 @@ failure output).
 throttled-sign-in coverage for GHSA-72v6-mw4c-q96r and GHSA-28pc-cx5w-g6jp; password reset — reading the emailed link back out of
 the Development mail drop via `e2e/helpers/mail.ts` — set `E2E_MAIL_DIR` if the API's
 `DEV_MAIL_DROP_PATH` is not the compose default),
-`telemetry.spec.ts` (`.ibt` upload → My Laps, from the committed `e2e/fixtures/demo-session.ibt`),
+`telemetry.spec.ts` (unavailable upload and My Laps responses, including valid `.ibt` recordings,
+forged Demo namespace headers and unknown catalog IDs),
 `admin.spec.ts` (provisions an Admin, then axe-audits `/admin`), and `gating.spec.ts` (feature-flag
 gating — gated routes render synthetic demo content when `iracing-demo` is on, ComingSoon when off).
 
@@ -120,7 +121,7 @@ e2e/
   demo-provenance.spec.ts ← credential-free Demo evidence and server-selected namespace (E2E_DEMO=1)
   gating.spec.ts      ← feature-flag gating (demo content vs ComingSoon)
   smoke.spec.ts       ← register → dashboard smoke test
-  telemetry.spec.ts   ← .ibt upload → My Laps
+  telemetry.spec.ts   ← unavailable uploads/My Laps; forged namespace and unknown catalog IDs
   visual.spec.ts      ← CI-only visual regression (baselines in visual.spec.ts-snapshots/)
 public/
   theme-bootstrap.js  ← synchronous same-origin theme initialization before React

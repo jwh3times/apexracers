@@ -276,7 +276,14 @@ When this is implemented, the following must be present:
 
 ## File upload (`POST /api/telemetry/upload`)
 
-`TelemetryUploadService` receives a multipart file upload. `IbtParser` performs content validation before any further processing.
+First verify the current lifecycle denial from the project guide: valid and invalid recordings,
+forged Demo headers and unknown catalog IDs must not reach parsing or persistence. The browser
+cases in web/e2e/telemetry.spec.ts check unavailable upload and My Laps responses.
+
+The retained `TelemetryUploadService` and `IbtParser` implementation is exercised directly by
+service/parser tests. Apply the following upload validation cases to an HTTP workflow only after
+verified attribution and protected access are implemented; current denial does not establish that
+the legacy `400`/`413` upload outcomes were executed.
 
 Content validation in `IbtParser.Parse()`:
 
@@ -286,7 +293,7 @@ Content validation in `IbtParser.Parse()`:
 - Validates session date is within `DateTimeOffset` representable range.
 - Wraps `EndOfStreamException`, `OverflowException`, `ArgumentOutOfRangeException`, `OutOfMemoryException` as `InvalidDataException` — no raw exceptions escape to the API layer.
 
-Test cases:
+Retained parser/service validation cases:
 
 - Upload a non-`.ibt` file (text, image, script) — must be rejected (version check fails even if extension matches).
 - Upload a 100-byte file — must be rejected (too small).

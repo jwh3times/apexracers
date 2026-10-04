@@ -15,6 +15,7 @@ This directory contains public, contributor-safe project documentation.
 | [design/driver-implementation-handoff.md](design/driver-implementation-handoff.md) | Bounded implementation slices, evidence prerequisites, and links to their authoritative work briefs. |
 | [research/driver-publication-coordination-2026-10-02.md](research/driver-publication-coordination-2026-10-02.md) | Primary-source technical review of cross-instance withdrawal and HTTP response-dispatch coordination. |
 | [research/driver-publication-drain-rehearsal.md](research/driver-publication-drain-rehearsal.md) | Executable two-process Kestrel/PostgreSQL transport rehearsal, failure outcomes, reproduction commands and limits of its synthetic evidence. |
+| [research/driver-lifecycle-admission-spine.md](research/driver-lifecycle-admission-spine.md) | Implemented journal-first lifecycle, protected-writer admission, legacy route fences and forward-only schema boundary, with synthetic evidence and remaining integration limits. |
 | [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
