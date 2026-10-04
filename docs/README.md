@@ -10,6 +10,8 @@ This directory contains public, contributor-safe project documentation.
 | [roadmap.md](roadmap.md) | High-level project status and planned work. |
 | [content-security-policy.md](content-security-policy.md) | Browser resource policy, asset audit, and Development API-reference exceptions. |
 | [research/iracing-terms-2026-09-30.md](research/iracing-terms-2026-09-30.md) | Dated research on iRacing's third-party terms and an audit of ApexRacers' Driver identity exposure. |
+| [research/iracing-data-permissions-2026-10-01.md](research/iracing-data-permissions-2026-10-01.md) | Historical public-source review separating access, identity proof, disclosure consent and processing permission; its open questions record the 2026-10-01 planning frontier. |
+| [DriverDisclosure.prototype.html](../web/src/features/racing/DriverDisclosure.prototype.html) | Historical 2026-10-01 synthetic disclosure exploration; open the standalone HTML locally. Its illustrative row model is superseded by the accepted architecture and is not deployed enforcement. |
 | [design/driver-disclosure-ownership.md](design/driver-disclosure-ownership.md) | Accepted Driver authorization, publication, and copy-lifecycle architecture, with interfaces and implementation proof obligations; distinct from implemented behavior. |
 | [design/driver-acceptance-and-rollout.md](design/driver-acceptance-and-rollout.md) | Accepted scenario/evidence matrix, implementation readiness, migration safeguards, and staged pilot/expansion gates; validation remains to be executed. |
 | [design/driver-implementation-handoff.md](design/driver-implementation-handoff.md) | Bounded implementation slices, evidence prerequisites, and links to their authoritative work briefs. |

@@ -1,213 +1,1224 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ApexRacers — Driver disclosure prototype</title>
-<style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0c1117;color:#e6edf3;--accent:#00d5ed;--line:#2c3946}
-*{box-sizing:border-box}body{margin:0}main{max-width:1240px;margin:auto;padding:28px 24px 100px}h1{font-size:clamp(24px,3vw,36px);margin:8px 0}h2{font-size:20px;margin:0 0 14px}h3{font-size:16px;margin:0 0 10px}p{line-height:1.6;margin:8px 0}.muted{color:#a6b5c3}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:1.5px;color:var(--accent)}.banner{padding:12px 16px;background:#142c32;border:1px solid #2a505a;border-radius:8px}.layout{display:grid;grid-template-columns:290px 1fr;gap:20px;margin-top:22px}.panel{background:#141d27;border:1px solid var(--line);padding:20px;border-radius:10px}.stack{display:grid;gap:16px}.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fact{background:#0e151e;padding:12px;border-radius:6px}.fact small{display:block;color:#a6b5c3}.fact strong{display:block;font-size:20px;margin-top:4px}label{display:block;font-size:13px;margin:12px 0 5px}select,button{font:inherit;background:#1d2a38;border:1px solid #3b4b5c;border-radius:6px;color:#eef4f9;padding:9px 12px}select{width:100%}button{cursor:pointer}button:hover,button:focus-visible{border-color:var(--accent)}button.active{background:#153943;border-color:var(--accent)}button:disabled{opacity:.5;cursor:default}.buttons{display:flex;gap:8px;flex-wrap:wrap}.buttons button{font-size:13px}.controls .buttons{margin-top:12px}.state{font-size:13px;line-height:1.9;margin:14px 0 0}.state dt{color:#a6b5c3}.state dd{margin:0 0 6px}.notice{border-left:3px solid #e8ad61;background:#2c241b;padding:12px 15px;margin-bottom:15px;line-height:1.5}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}th{text-align:left;color:#a6b5c3;font-size:12px;padding:11px 9px;border-bottom:1px solid var(--line)}td{padding:13px 9px;border-bottom:1px solid #26323f}tr.mine{background:#14343c}.chip{font-size:11px;color:#92e1ed;background:#15343b;padding:4px 6px;border-radius:4px;margin-left:6px}.bars{display:flex;align-items:flex-end;height:95px;gap:12px;padding:8px}.bar{flex:1;background:#2394a5;position:relative;border-radius:3px 3px 0 0}.bar span{position:absolute;top:-22px;width:100%;text-align:center;font-size:12px}.bar-labels{display:flex;gap:12px;font-size:11px;color:#a6b5c3}.bar-labels span{flex:1;text-align:center}.mono{font-family:ui-monospace,monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#09121a;padding:14px;border-radius:6px;font-size:12px;line-height:1.6}.walks{margin-top:20px}.walks p{font-size:14px}.dock{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);padding:9px 12px;border:1px solid #53606a;border-radius:12px;background:#101820;display:flex;gap:12px;align-items:center;box-shadow:0 8px 28px #000a;max-width:calc(100% - 24px)}.dock span{font-size:13px;min-width:190px;text-align:center}.fine{font-size:12px;color:#a6b5c3}details{margin-top:15px}summary{cursor:pointer;color:#8ee5ef;font-size:13px}.candidate{margin-top:20px}.candidate a{color:#85e3ed}a{color:#85e3ed}.empty{padding:22px;border:1px dashed #415364;border-radius:8px}.policy{font-size:13px;line-height:1.5;margin-top:14px}@media(max-width:800px){main{padding:20px 14px 100px}.layout{grid-template-columns:1fr}.facts{grid-template-columns:1fr 1fr}.dock span{min-width:170px}.panel{padding:16px}}
-</style>
-<style>.layout>*,.stack>*,.panel{min-width:0}.table-wrap{max-width:100%}</style>
-<main>
-<div class="eyebrow">APEXRACERS / DECISION LAB</div>
-<h1>Useful analytics, controlled identity</h1>
-<div class="banner"><strong>Throwaway prototype · entirely synthetic data</strong><p>Question: how much competitor detail should a browser receive when identity sharing is absent? Compare three output policies and try consent/access changes. This is a disclosure-policy demo, not a visual redesign.</p></div>
-<p class="fine">No provider calls, database, credentials or persistence. All fixtures—including hidden names and IDs—are synthetic and present in this file. A real server must make disclosure decisions <em>before</em> sending data. These are proposed ApexRacers response examples, not upstream API shapes or implemented behavior.</p>
-<div class="layout">
-<aside class="panel controls">
-<h2>Explore a state</h2>
-<label for="viewer">Who is viewing?</label><select id="viewer"><option value="owner">Owner view</option><option value="other">Another signed-in User</option><option value="guest">Anonymous visitor</option></select>
-<label for="surface">Surface</label><select id="surface"><option value="race">Race Results</option><option value="standings">Series standings</option><option value="leaderboard">Global leaderboard</option><option value="rivals">Rival directory / comparison</option><option value="personal">Personal lap / Percentile Rank</option><option value="lookup">Other-Driver lap lookup</option><option value="receipt">Telemetry receipt</option></select>
-<label for="source">Read from</label><select id="source"><option value="fresh">Fresh retrieval</option><option value="cache">Warm cache (old named snapshot)</option><option value="history">Historical snapshot</option></select>
-<label for="population">Synthetic presentation pool</label><select id="population"><option value="dense">Supported base bands</option><option value="mergeable">Sparse bands that can merge</option><option value="sparse">Too few hidden Drivers</option></select>
-<div class="buttons">
-<button data-action="personal">Toggle your personal consent</button><button data-action="ownerSharing">Toggle your sharing</button>
-<button data-action="targetSharing">Toggle Demo Blake sharing</button><button data-action="unlink">Unlink your identity</button>
-<button data-action="restore">Verify and consent again</button><button data-action="outage">Provider outage / recover</button>
-<button data-action="revoke">Revoke your provider access</button><button data-action="reset">Reset</button>
-<button data-action="uploadMismatch">Matching / mismatched upload</button>
-<button data-action="lookupTarget">Lookup non-User / Demo Blake</button>
-</div>
-<dl class="state" id="state"></dl>
-</aside>
-<section class="stack">
-<div class="panel"><div class="eyebrow" id="policyLabel"></div><h2 id="surfaceTitle" style="margin-top:8px"></h2><div id="risk" class="notice"></div><div id="screen"></div><details><summary>Inspect the proposed browser payload and request boundary</summary><p class="fine" id="request"></p><pre id="payload"></pre></details><p class="fine">No driver-addressing link exists for a hidden row. A row key is a response-local presentation value; it is not a hashed Customer ID or a cross-race identifier. Consented comparison references are separate and need a real server authorization design.</p></div>
-<div class="panel"><h2>What remains useful</h2><div class="facts"><div class="fact"><small>Field Size</small><strong>240</strong></div><div class="fact"><small>Car recommendation</small><strong>Car A</strong></div></div><p class="muted">Aggregates and Car ordering remain available in every candidate. Your private lap and Percentile Rank need verified ownership and Personal Analytics Consent. These sample values illustrate output only; this file does not calculate racing analytics.</p></div>
-</section></div>
-<section class="panel walks">
-<h2>Guided walkthroughs</h2><div class="buttons" id="walkTabs"></div><p id="walkDescription"></p><div class="buttons" id="walkSteps"></div>
-</section>
-<section class="panel candidate">
-<h2>Accepted presentation choices</h2><p><strong>B · Signed-in default:</strong> hidden rows start with 0.5-second lap-time bands; iRating uses 250-point bands from 1000 up to 2500, and 500-point bands outside. Hidden rows are ordered by bands, never original classification. Each displayed band combination needs at least five nonconsenting Drivers; coarsen or use aggregate-only output otherwise.</p><p><strong>C · Anonymous default:</strong> hidden Drivers contribute only to aggregate output. Named sharing remains limited to signed-in Users.</p><p><strong>A · Unselected comparison:</strong> exact positions and metrics can be matched to outside results. It remains here to illustrate the rejected alternative, not an accepted production mode.</p><p class="fine">Named/owner rows require current consent and proof as applicable. These safeguards are product choices, not a legal finding of anonymity or a grant to process source data. The demo's coarsening ladder is illustrative; aggregate disclosure and differencing still need architecture/rollout assessment.</p><p class="fine">Planning ticket: <a href="https://github.com/jwh3times/apexracers/issues/359">Choose anonymous presentation without exposing Driver linkage</a>.</p>
-</section>
-</main>
-<div class="dock"><button id="prev" aria-label="Previous output policy">←</button><span id="variantName"></span><button id="next" aria-label="Next output policy">→</button></div>
-<script>
-// Pure disclosure decision model. No DOM or network references; fixtures are deliberately synthetic.
-const DisclosureLab=(()=>{
- const rows=[
- {kind:'target',name:'Demo Blake',cust:100002,position:1,start:3,lap:88.812,rating:3021,points:280},
- {kind:'nonuser',name:'Demo Casey',cust:100003,position:3,start:4,lap:89.121,rating:2550,points:224},
- {kind:'owner',name:'Demo Avery',cust:100001,position:7,start:9,lap:89.451,rating:2434,points:198},
- {kind:'privateUser',name:'Demo Drew',cust:100004,position:12,start:15,lap:90.381,rating:2192,points:180}];
- const families=[[88.6,3050],[89.05,2600],[90.1,2050],[89.05,2300],[91.05,750],[92.05,1100]];
- const extras=families.flatMap(([lap,rating],family)=>Array.from({length:6},(_,i)=>({kind:'nonuser',name:'Synthetic pool Driver '+(family*6+i+1),cust:100010+family*6+i,position:20+family*6+i,start:22+family*6+i,lap:lap+i*.03,rating:rating+i*5,points:100-i,family,index:i})));
- const pool=s=>rows.concat(s.population==='sparse'?[]:extras.filter(r=>s.population==='dense'||(r.family<2?r.index<3:r.family<4)));
- const initial=()=>({viewer:'owner',surface:'race',source:'fresh',population:'dense',personal:true,ownerSharing:false,verified:true,targetSharing:false,provider:'ready',mismatchedUpload:false,lookupTarget:'nonuser',variant:'B',epoch:1,event:'Personal analytics on; name sharing off. Accepted signed-in default: B.'});
- function reduce(s,a){
-  const n={...s,epoch:s.epoch+1};
-  if(a.type==='reset')return initial();
-  if(a.type==='set'){n[a.key]=a.value;if(a.key==='viewer')n.variant=a.value==='guest'?'C':'B';n.event='Changed '+a.key+'.';return n;}
-  if(a.type==='personal'){if(n.verified){n.personal=!n.personal;if(!n.personal)n.ownerSharing=false;}n.event='Personal consent changed; sharing requires personal consent.';}
-  if(a.type==='ownerSharing'){if(n.verified&&n.personal)n.ownerSharing=!n.ownerSharing;n.event='Your sharing changed only if verification and personal consent permit it.';}
-  if(a.type==='targetSharing'){n.targetSharing=!n.targetSharing;n.event='Demo Blake '+(n.targetSharing?'opted in':'withdrew sharing')+'.';}
-  if(a.type==='uploadMismatch'){n.mismatchedUpload=!n.mismatchedUpload;n.event='Simulated recorder match changed.';}
-  if(a.type==='lookupTarget'){n.lookupTarget=n.lookupTarget==='nonuser'?'target':'nonuser';n.event='Changed the synthetic lookup target.';}
-  if(a.type==='unlink'){n.verified=false;n.personal=false;n.ownerSharing=false;n.event='Unlinked: both permissions cancelled.';}
-  if(a.type==='restore'){n.verified=true;n.personal=true;n.ownerSharing=false;n.provider='ready';n.event='Fresh proof and personal consent; sharing remains off.';}
-  if(a.type==='outage'){n.provider=n.provider==='outage'?'ready':'outage';n.event='Provider availability changed; recorded consent is preserved.';}
-  if(a.type==='revoke'){n.provider='revoked';n.verified=false;n.personal=false;n.ownerSharing=false;n.event='Detected revocation: your personal access and sharing are suspended.';}
-  return n;
- }
- const own=s=>s.viewer==='owner'&&s.verified&&s.personal&&s.provider!=='revoked';
- const shared=(r,s)=>s.viewer!=='guest'&&((r.kind==='target'&&s.targetSharing)||(r.kind==='owner'&&s.verified&&s.personal&&s.ownerSharing));
- const visible=(r,s)=>(r.kind==='owner'&&own(s))||shared(r,s);
- function key(s,i){return 'response-'+s.epoch+'-row-'+i;} // Response-local, no cust_id-derived input.
- function ratingBounds(rating,factor){
-  const core=rating>=1000&&rating<2500,anchor=core?1000:rating>=2500?2500:0;
-  const width=(core?250:500)*factor,low=anchor+Math.floor((rating-anchor)/width)*width;
-  return [low,Math.min(low+width,core?2500:rating<1000?1000:Infinity)];
- }
- function bandPlan(s){
-  const hidden=pool(s).filter(r=>!visible(r,s));
-  if(!hidden.length)return {groups:[],factor:1};
-  // Illustrative coarsening only; the production algorithm is a later design detail.
-  for(const factor of [1,2,4,8]){
-   const groups=new Map(),timeWidth=.5*factor;
-   for(const r of hidden){
-    const timeLow=Math.floor(r.lap/timeWidth)*timeWidth,[ratingLow,ratingHigh]=ratingBounds(r.rating,factor);
-    const groupKey=[timeLow,ratingLow,ratingHigh].join(':');
-    const group=groups.get(groupKey)??{timeLow,timeHigh:timeLow+timeWidth,ratingLow,ratingHigh,count:0};
-    group.count++;groups.set(groupKey,group);
-   }
-   const ordered=[...groups.values()].sort((a,b)=>a.timeLow-b.timeLow||a.ratingLow-b.ratingLow);
-   if(ordered.every(g=>g.count>=5))return {groups:ordered,factor};
-  }
-  return null;
- }
- function memberRows(s,plan){
-  const selected=pool(s).filter(r=>s.variant==='A'||visible(r,s));
-  const disclosed=selected.map((r,i)=>{
-   const shown=visible(r,s),self=r.kind==='owner'&&own(s);
-   const base={rowKey:key(s,i),displayLabel:self?'You':shown?r.name:'Driver',isSelf:self};
-   if(shown)base.driverName=r.name;
-   if(shown&&!self)base.comparisonHandle='synthetic-consented-reference-'+s.epoch+'-'+i;
-   const position=s.surface==='race'?{finishPosition:r.position,startPosition:r.start}:{standing:r.position};
-   return {...base,...position,bestLapSeconds:r.lap,iRating:r.rating,points:r.points};
-  });
-  if(s.variant!=='B'||!plan)return disclosed;
-  // Expand only sanitized groups. Neither source row ordering nor a Driver tie-breaker survives.
-  const hidden=plan.groups.flatMap(g=>Array.from({length:g.count},()=>({displayLabel:'Driver',isSelf:false,paceBand:g.timeLow.toFixed(1)+' to <'+g.timeHigh.toFixed(1)+' s',ratingBand:g.ratingLow+'–'+(g.ratingHigh-1)})));
-  return disclosed.concat(hidden).map((r,i)=>({...r,rowKey:key(s,i)}));
- }
- function project(s){
-  const base={policy:s.variant,source:s.source,fieldSize:240};
-  if(s.provider==='outage'&&s.source==='fresh'&&s.surface!=='receipt')return {...base,status:'unavailable',message:'Provider data is temporarily unavailable. Your consent choices are unchanged.'};
-  if(s.surface==='personal'){
-   if(!own(s))return {...base,status:'unavailable',message:'Connect and verify iRacing, then authorize personal analytics.'};
-   return {...base,status:'ok',isSelf:true,personalBestLapSeconds:89.451,personalBestLapEvidence:'RaceLap',percentileRank:86.9,fieldPosition:32,cleanLaps:[{lapNumber:1,lapTimeSeconds:89.812},{lapNumber:2,lapTimeSeconds:89.451}]};
-  }
-  if(s.surface==='receipt'){
-   if(s.viewer==='guest')return {...base,status:'unavailable',message:'Sign in to upload telemetry.'};
-   if(s.mismatchedUpload)return {...base,status:'unavailable',message:'Recorded Driver does not match the verified identity.'};
-   if(!own(s))return {...base,status:'ok',timedLaps:8,driverIdentity:'withheld',message:'Receipt identity requires verified ownership and personal consent.'};
-   return {...base,status:'ok',timedLaps:8,driverName:'Demo Avery',customerId:100001,isSelf:true};
-  }
-  if(s.surface==='lookup'){
-   if(s.viewer==='guest'||s.lookupTarget!=='target'||!s.targetSharing)return {...base,status:'unavailable',message:'Driver data unavailable.'};
-   return {...base,status:'ok',driverName:'Demo Blake',comparisonHandle:'synthetic-consented-reference-'+s.epoch,sourceEvidence:'RaceLap',laps:[{lapNumber:1,lapTimeSeconds:89.121},{lapNumber:2,lapTimeSeconds:88.812}]};
-  }
-  if(s.surface==='rivals'){
-   if(s.viewer==='guest')return {...base,status:'unavailable',message:'Sign in to view opted-in Drivers.'};
-   if(!s.targetSharing)return {...base,status:'ok',directory:[],comparison:{status:'unavailable',message:'Comparison unavailable.'}};
-   return {...base,status:'ok',directory:[{driverName:'Demo Blake',comparisonHandle:'synthetic-consented-reference-'+s.epoch}],comparison:own(s)?{status:'ok',driverName:'Demo Blake',sharedRaces:4,yourFinish:7,rivalFinish:1,yourRaceLapSeconds:89.451,rivalRaceLapSeconds:88.812}:{status:'unavailable',message:'Authorize your verified personal analytics to compare.'}};
-  }
-  const plan=s.variant==='B'?bandPlan(s):null;
-  const projected=memberRows(s,plan);
-  if(s.surface==='race'&&s.variant==='A')return {...base,status:'ok',subsessionId:424242,raceDate:'2026-09-28T18:00:00Z',rows:projected};
-  if(s.variant==='C'||(s.variant==='B'&&!plan))return {...base,status:'ok',effectivePolicy:'C',...(s.variant==='B'?{presentationMessage:'Insufficient hidden-Driver support for banded rows; aggregate-only presentation.'}:{}),summary:{medianRaceBestLapSeconds:91.2,driversBelow90Seconds:48,drivers90To92Seconds:132,driversAbove92Seconds:60},disclosedRows:projected};
-  return {...base,status:'ok',rows:projected,...(s.variant==='B'?{effectivePolicy:'B',banding:plan.factor===1?'Base bands':'Coarsened bands',context:'Car A / Race Week 2 — no exact race reference'}:{context:'Exact competition standings / race metrics'})};
- }
- return {initial,reduce,project,own};
-})();
-</script>
-<script>
-// Throwaway page shell; current state and payload are re-rendered after every action.
-let state=DisclosureLab.initial(),walk=null,walkIndex=0;
-const names={A:'A · Detailed field',B:'B · Banded field',C:'C · Aggregate core'};
-const titles={race:'Race Results',standings:'Series standings',leaderboard:'Global leaderboard',rivals:'Rival discovery and comparison',personal:'Your lap and Percentile Rank',lookup:'Other-Driver lap lookup',receipt:'Telemetry receipt'};
-const walks=[
- {name:'Private → shared → withdrawn',description:'Your private view does not require publication consent. Then watch an opted-in target disappear from named output on withdrawal.',steps:[['View your personal lap',{type:'set',key:'surface',value:'personal'}],['Return to Race Results',{type:'set',key:'surface',value:'race'}],['Demo Blake opts in',{type:'targetSharing'}],['Demo Blake withdraws',{type:'targetSharing'}]]},
- {name:'Warm cache after withdrawal',description:'Old snapshots contain synthetic names. The browser payload follows current permission, not the snapshot label.',steps:[['Use warm snapshot',{type:'set',key:'source',value:'cache'}],['Demo Blake opts in',{type:'targetSharing'}],['View the directory',{type:'set',key:'surface',value:'rivals'}],['Demo Blake withdraws',{type:'targetSharing'}]]},
- {name:'Unlink and receipt identity',description:'A receipt can expose identity only to the verified consenting owner. Unlinking cancels both permissions; reconnecting does not restore sharing.',steps:[['View own receipt',{type:'set',key:'surface',value:'receipt'}],['Enable your sharing',{type:'ownerSharing'}],['Unlink identity',{type:'unlink'}],['Verify and consent again',{type:'restore'}]]},
- {name:'Outage versus revocation',description:'An outage preserves consent. Detected access revocation suspends your permissions; fresh proof and consent are needed to restore them.',steps:[['View own lap',{type:'set',key:'surface',value:'personal'}],['Provider outage',{type:'outage'}],['Provider recovers',{type:'outage'}],['Revoke your access',{type:'revoke'}],['Fresh verification and consent',{type:'restore'}]]},
- {name:'Supported → merged → aggregate',description:'Base bands need five hidden Drivers per combination. Sparse groups coarsen or disappear into aggregate output; exact internal evidence and the owner percentile remain available.',steps:[['Use accepted signed-in B',{type:'set',key:'viewer',value:'owner'}],['Use mergeable bands',{type:'set',key:'population',value:'mergeable'}],['Use too few hidden Drivers',{type:'set',key:'population',value:'sparse'}],['View unchanged own percentile',{type:'set',key:'surface',value:'personal'}],['Anonymous default is C',{type:'set',key:'viewer',value:'guest'}],['View public results',{type:'set',key:'surface',value:'race'}]]}
-];
-const $=id=>document.getElementById(id);
-function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function table(rows,s){
- if(!rows.length)return '<div class="empty">No eligible individual rows. Aggregate analytics still contribute to the useful core.</div>';
- const band=s.variant==='B',standing=s.surface!=='race';
- if(band&&rows.some(r=>r.paceBand)){
-  const groups=new Map();for(const r of rows.filter(r=>r.paceBand)){const k=r.paceBand+' / '+r.ratingBand;groups.set(k,(groups.get(k)??0)+1);}
-  const visibleRows=rows.filter(r=>!r.paceBand);
-  return '<h3>Private owner / opted-in rows</h3>'+table(visibleRows,s)+'<h3 style="margin-top:20px">Hidden rows, grouped by displayed bands</h3><div class="table-wrap"><table><thead><tr><th>Lap-time band</th><th>iRating band</th><th>Drivers</th></tr></thead><tbody>'+[...groups].map(([k,count])=>{const [pace,rating]=k.split(' / ');return '<tr><td>'+esc(pace)+'</td><td>'+esc(rating)+'</td><td>'+count+'</td></tr>';}).join('')+'</tbody></table></div>';
- }
- const columns=band?['Driver',standing?'Standing / group':'Finish / group','Lap time / band','iRating / band']:standing?['Driver','Standing','Points','Best lap']:['Pos','Driver','Start','Best lap','iRating'];
- return '<div class="table-wrap"><table><thead><tr>'+columns.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>{
- const name=esc(r.displayLabel)+(r.isSelf?' <span class="chip">private owner view</span>':r.comparisonHandle?' <span class="chip">opted in</span>':'');
- const cells=band?[name,(standing?r.standing:r.finishPosition)??'withheld',r.paceBand??r.bestLapSeconds.toFixed(3)+' s',r.ratingBand??r.iRating]:standing?[name,r.standing??'withheld',r.points??'withheld',(r.bestLapSeconds?.toFixed(3)??'withheld')]:[r.finishPosition,name,r.startPosition,r.bestLapSeconds.toFixed(3)+' s',r.iRating];
- return '<tr'+(r.isSelf?' class="mine"':'')+'>'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
- }).join('')+'</tbody></table></div>';
-}
-function render(){
- const p=DisclosureLab.project(state);
- $('viewer').value=state.viewer;$('surface').value=state.surface;$('source').value=state.source;$('population').value=state.population;
- $('variantName').textContent=names[state.variant];$('policyLabel').textContent='SYNTHETIC OUTPUT / '+names[state.variant];$('surfaceTitle').textContent=titles[state.surface];
- const risks={A:'Identity hidden is not proven anonymity: exact positions, lap times, competition context and an exposed race reference can be joined to outside results. Hidden rows have no persistent Driver handle or drill-down.',B:'Coarser fields reduce some direct linkage. This is not a demonstrated anonymity guarantee; rare values and context can still identify someone.',C:'Hidden Drivers appear only in aggregate output. Own and opted-in rows remain distinct. Aggregates still need privacy and provider-permission assessment.'};
- $('risk').textContent=risks[state.variant];
- const facts=[['Viewer',state.viewer==='owner'?'Owner view':state.viewer==='other'?'Another signed-in User':'Anonymous visitor'],['Owner proof',state.verified?'Verified':'Not currently verified'],['Owner personal consent',state.personal?'On':'Off'],['Owner sharing',state.ownerSharing?'On':'Off'],['Demo Blake sharing',state.targetSharing?'On':'Off'],['Upload recorder',state.mismatchedUpload?'Mismatched':'Matches synthetic owner'],['Lookup target',state.lookupTarget==='target'?'Demo Blake':'Non-User fixture'],['Read source',state.source==='cache'?'Warm, previously named snapshot':state.source==='history'?'Historical snapshot':'Fresh retrieval'],['Provider access',state.provider],['Last action',state.event]];
- facts.push(['Presentation pool',state.population],['Accepted audience default',state.viewer==='guest'?'C':'B'],['Effective output',p.effectivePolicy??'Surface-specific']);
- $('state').innerHTML=facts.map(([k,v])=>'<dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd>').join('');
- $('payload').textContent=JSON.stringify(p,null,2);
- const bounds={race:'Race/row presentation keys are not Customer IDs. Hidden rows cannot address a Driver-specific request.',standings:'Anonymous requests get no names. Standings do not return Customer IDs, including for opted-in Users.',leaderboard:'A category may be browsed without identifying hidden Drivers; opted-in names need a signed-in recipient.',rivals:'Search/follow/compare resolve an eligible consenting ApexRacers identity through an opaque authorized reference, not an arbitrary raw Customer ID.',personal:'The server derives the Subject Driver from the verified, personally consenting caller. This proposal removes arbitrary customerId lookup from this personal endpoint.',lookup:'Proposed restriction: no arbitrary Customer ID lookup. A signed-in User can request consented official-racing evidence through an authorized comparison reference; hidden targets are unavailable. Personal Percentile Rank and private history remain owner-only.',receipt:'Return recorder identity only after verified owner match and explicit personal consent. Any mismatch error is generic and omits both IDs.'};
- $('request').textContent=bounds[state.surface];
- let screen='';
- if(p.status==='unavailable')screen='<div class="empty">'+esc(p.message)+'</div>';
- else if(state.surface==='personal')screen='<div class="facts"><div class="fact"><small>Your Personal Best · Race Lap</small><strong>'+p.personalBestLapSeconds+' s</strong></div><div class="fact"><small>Your Percentile Rank</small><strong>'+p.percentileRank+'</strong></div><div class="fact"><small>Field Position</small><strong>'+p.fieldPosition+' of '+p.fieldSize+'</strong></div><div class="fact"><small>Your identity</small><strong>Private to you</strong></div></div><p class="muted">Competitors contribute to the Field, with no names, Customer IDs or individually addressable traces in this response.</p>';
- else if(state.surface==='receipt')screen='<div class="facts"><div class="fact"><small>Timed Laps parsed</small><strong>'+p.timedLaps+'</strong></div><div class="fact"><small>Recorder</small><strong>'+esc(p.driverName??'Identity withheld')+'</strong></div></div><p class="muted">'+(p.isSelf?'Only your expressly authorized private receipt includes your name and Customer ID.':'Parsing a file is not proof of Driver ownership. Non-identifying receipt fields remain.')+'</p>';
- else if(state.surface==='rivals')screen=(p.directory.length?'<div class="fact"><small>Opted-in synthetic Driver</small><strong>Demo Blake</strong></div>':'<div class="empty">No opted-in matches. Unavailable targets are not named or confirmed.</div>')+'<p>'+esc(p.comparison.status==='ok'?'Your finish: 7 · Demo Blake: 1 · shared Races: 4':p.comparison.message)+'</p><p class="fine">Private uploads and personal Percentile Rank history are excluded from the comparison.</p>';
- else if(state.surface==='lookup')screen='<div class="fact"><small>Consented official Race Laps</small><strong>'+esc(p.driverName)+'</strong></div><p class="mono">Lap 1: 89.121 s · Lap 2: 88.812 s</p><p class="fine">No Customer ID, Uploaded Lap or private personal-analytics history is returned.</p>';
- else{
-  if(p.presentationMessage)screen+='<p class="muted">'+esc(p.presentationMessage)+'</p>';
-  if(p.banding)screen+='<p class="fine">'+esc(p.banding)+' · at least five hidden Drivers per displayed combination.</p>';
-  if(p.summary)screen+='<div class="facts"><div class="fact"><small>Median Race Best</small><strong>'+p.summary.medianRaceBestLapSeconds+' s</strong></div><div class="fact"><small>Field Size</small><strong>'+p.fieldSize+'</strong></div></div><div class="bars"><div class="bar" style="height:35%"><span>48</span></div><div class="bar" style="height:90%"><span>132</span></div><div class="bar" style="height:42%"><span>60</span></div></div><div class="bar-labels"><span>Below 90 s</span><span>90–92 s</span><span>Above 92 s</span></div><h3 style="margin-top:22px">Your row and opted-in Drivers</h3>';
-  screen+=table(p.rows??p.disclosedRows,state);
-  screen+='<p class="fine">The synthetic presentation pool is separate from the illustrative 240-Driver Race Week Field. Race finish and championship Standing illustrate separate surfaces; these are not provider response mappings. Public/aggregate fallbacks still need privacy assessment.</p>';
-  if(p.subsessionId)screen+='<p class="fine">Exact synthetic race reference: '+p.subsessionId+' · '+p.raceDate+'. This exposes a joinable context even though Customer IDs are withheld.</p>';
- }
- $('screen').innerHTML=screen;
- document.querySelectorAll('#walkTabs button').forEach((b,i)=>b.classList.toggle('active',i===walk));
- $('walkDescription').textContent=walk===null?'Pick a walkthrough; it resets to a known initial state. You can also use any control freely.':walks[walk].description;
- $('walkSteps').innerHTML=walk===null?'':walks[walk].steps.map(([label],i)=>'<button data-step="'+i+'" '+(i!==walkIndex?'disabled':'')+'>'+esc(label)+(i<walkIndex?' ✓':'')+'</button>').join('');
- if(walk!==null&&walkIndex===walks[walk].steps.length)$('walkSteps').innerHTML+='<span class="fine">Complete. Explore the payload or another output policy.</span>';
-}
-function act(a){state=DisclosureLab.reduce(state,a);render();}
-for(const id of ['viewer','surface','source','population'])$(id).addEventListener('change',e=>act({type:'set',key:id,value:e.target.value}));
-document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>act({type:b.dataset.action})));
-$('walkTabs').innerHTML=walks.map((w,i)=>'<button data-walk="'+i+'">'+esc(w.name)+'</button>').join('');
-$('walkTabs').addEventListener('click',e=>{const b=e.target.closest('[data-walk]');if(!b)return;walk=Number(b.dataset.walk);walkIndex=0;const variant=state.variant;state=DisclosureLab.initial();state.variant=variant;render();});
-$('walkSteps').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(!b||Number(b.dataset.step)!==walkIndex)return;const a=walks[walk].steps[walkIndex][1];walkIndex++;act(a);});
-function cycle(d){const keys=['A','B','C'];state=DisclosureLab.reduce(state,{type:'set',key:'variant',value:keys[(keys.indexOf(state.variant)+d+3)%3]});const u=new URL(location.href);u.searchParams.set('variant',state.variant);try{history.replaceState(null,'',u);}catch{}render();}
-$('prev').addEventListener('click',()=>cycle(-1));$('next').addEventListener('click',()=>cycle(1));
-document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,[contenteditable]'))return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();cycle(e.key==='ArrowRight'?1:-1);}});
-const variant=new URL(location.href).searchParams.get('variant');if(names[variant])state.variant=variant;render();
-</script></html>
+<html lang="en">
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ApexRacers — Driver disclosure prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      background: #0c1117;
+      color: #e6edf3;
+      --accent: #00d5ed;
+      --line: #2c3946;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    main {
+      max-width: 1240px;
+      margin: auto;
+      padding: 28px 24px 100px;
+    }
+    h1 {
+      font-size: clamp(24px, 3vw, 36px);
+      margin: 8px 0;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 0 0 14px;
+    }
+    h3 {
+      font-size: 16px;
+      margin: 0 0 10px;
+    }
+    p {
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+    .muted {
+      color: #a6b5c3;
+    }
+    .eyebrow {
+      font:
+        12px ui-monospace,
+        monospace;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+    }
+    .banner {
+      padding: 12px 16px;
+      background: #142c32;
+      border: 1px solid #2a505a;
+      border-radius: 8px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 20px;
+      margin-top: 22px;
+    }
+    .panel {
+      background: #141d27;
+      border: 1px solid var(--line);
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+    .facts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .fact {
+      background: #0e151e;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    .fact small {
+      display: block;
+      color: #a6b5c3;
+    }
+    .fact strong {
+      display: block;
+      font-size: 20px;
+      margin-top: 4px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin: 12px 0 5px;
+    }
+    select,
+    button {
+      font: inherit;
+      background: #1d2a38;
+      border: 1px solid #3b4b5c;
+      border-radius: 6px;
+      color: #eef4f9;
+      padding: 9px 12px;
+    }
+    select {
+      width: 100%;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:hover,
+    button:focus-visible {
+      border-color: var(--accent);
+    }
+    button.active {
+      background: #153943;
+      border-color: var(--accent);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .buttons button {
+      font-size: 13px;
+    }
+    .controls .buttons {
+      margin-top: 12px;
+    }
+    .state {
+      font-size: 13px;
+      line-height: 1.9;
+      margin: 14px 0 0;
+    }
+    .state dt {
+      color: #a6b5c3;
+    }
+    .state dd {
+      margin: 0 0 6px;
+    }
+    .notice {
+      border-left: 3px solid #e8ad61;
+      background: #2c241b;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+    .table-wrap {
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    th {
+      text-align: left;
+      color: #a6b5c3;
+      font-size: 12px;
+      padding: 11px 9px;
+      border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 13px 9px;
+      border-bottom: 1px solid #26323f;
+    }
+    tr.mine {
+      background: #14343c;
+    }
+    .chip {
+      font-size: 11px;
+      color: #92e1ed;
+      background: #15343b;
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      height: 95px;
+      gap: 12px;
+      padding: 8px;
+    }
+    .bar {
+      flex: 1;
+      background: #2394a5;
+      position: relative;
+      border-radius: 3px 3px 0 0;
+    }
+    .bar span {
+      position: absolute;
+      top: -22px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+    }
+    .bar-labels {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: #a6b5c3;
+    }
+    .bar-labels span {
+      flex: 1;
+      text-align: center;
+    }
+    .mono {
+      font-family: ui-monospace, monospace;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #09121a;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .walks {
+      margin-top: 20px;
+    }
+    .walks p {
+      font-size: 14px;
+    }
+    .dock {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 9px 12px;
+      border: 1px solid #53606a;
+      border-radius: 12px;
+      background: #101820;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      box-shadow: 0 8px 28px #000a;
+      max-width: calc(100% - 24px);
+    }
+    .dock span {
+      font-size: 13px;
+      min-width: 190px;
+      text-align: center;
+    }
+    .fine {
+      font-size: 12px;
+      color: #a6b5c3;
+    }
+    details {
+      margin-top: 15px;
+    }
+    summary {
+      cursor: pointer;
+      color: #8ee5ef;
+      font-size: 13px;
+    }
+    .candidate {
+      margin-top: 20px;
+    }
+    .candidate a {
+      color: #85e3ed;
+    }
+    a {
+      color: #85e3ed;
+    }
+    .empty {
+      padding: 22px;
+      border: 1px dashed #415364;
+      border-radius: 8px;
+    }
+    .policy {
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 14px;
+    }
+    @media (max-width: 800px) {
+      main {
+        padding: 20px 14px 100px;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .facts {
+        grid-template-columns: 1fr 1fr;
+      }
+      .dock span {
+        min-width: 170px;
+      }
+      .panel {
+        padding: 16px;
+      }
+    }
+  </style>
+  <style>
+    .layout > *,
+    .stack > *,
+    .panel {
+      min-width: 0;
+    }
+    .table-wrap {
+      max-width: 100%;
+    }
+  </style>
+  <main>
+    <div class="eyebrow">APEXRACERS / DECISION LAB</div>
+    <h1>Useful analytics, controlled identity</h1>
+    <div class="banner">
+      <strong>Historical prototype · 2026-10-01 · entirely synthetic data</strong>
+      <p>
+        Question: how much competitor detail should a browser receive when identity sharing is
+        absent? Compare three output policies and try consent/access changes. This archived
+        exploration is standalone and is not deployed safeguard implementation.
+      </p>
+      <p>
+        The
+        <a href="../../../../docs/design/driver-disclosure-ownership.md"
+          >accepted 2026-10-02 architecture</a
+        >
+        supersedes this model, including its one-row-per-hidden-Driver output: approved groups
+        require summaries without exact counts and joint release review. The simulated consent,
+        cache and upload responses below do not describe current API behavior or establish anonymity
+        or provider permission.
+      </p>
+    </div>
+    <p class="fine">
+      No provider calls, database, credentials or persistence. All fixtures—including hidden names
+      and IDs—are synthetic and present in this file. A real server must make disclosure decisions
+      <em>before</em> sending data. These are proposed ApexRacers response examples, not upstream
+      API shapes or implemented behavior.
+    </p>
+    <div class="layout">
+      <aside class="panel controls">
+        <h2>Explore a state</h2>
+        <label for="viewer">Who is viewing?</label
+        ><select id="viewer">
+          <option value="owner">Owner view</option>
+          <option value="other">Another signed-in User</option>
+          <option value="guest">Anonymous visitor</option>
+        </select>
+        <label for="surface">Surface</label
+        ><select id="surface">
+          <option value="race">Race Results</option>
+          <option value="standings">Series standings</option>
+          <option value="leaderboard">Global leaderboard</option>
+          <option value="rivals">Rival directory / comparison</option>
+          <option value="personal">Personal lap / Percentile Rank</option>
+          <option value="lookup">Other-Driver lap lookup</option>
+          <option value="receipt">Telemetry receipt</option>
+        </select>
+        <label for="source">Read from</label
+        ><select id="source">
+          <option value="fresh">Fresh retrieval</option>
+          <option value="cache">Warm cache (old named snapshot)</option>
+          <option value="history">Historical snapshot</option>
+        </select>
+        <label for="population">Synthetic presentation pool</label
+        ><select id="population">
+          <option value="dense">Supported base bands</option>
+          <option value="mergeable">Sparse bands that can merge</option>
+          <option value="sparse">Too few hidden Drivers</option>
+        </select>
+        <div class="buttons">
+          <button data-action="personal">Toggle your personal consent</button
+          ><button data-action="ownerSharing">Toggle your sharing</button>
+          <button data-action="targetSharing">Toggle Demo Blake sharing</button
+          ><button data-action="unlink">Unlink your identity</button>
+          <button data-action="restore">Verify and consent again</button
+          ><button data-action="outage">Provider outage / recover</button>
+          <button data-action="revoke">Revoke your provider access</button
+          ><button data-action="reset">Reset</button>
+          <button data-action="uploadMismatch">Matching / mismatched upload</button>
+          <button data-action="lookupTarget">Lookup non-User / Demo Blake</button>
+        </div>
+        <dl class="state" id="state"></dl>
+      </aside>
+      <section class="stack">
+        <div class="panel">
+          <div class="eyebrow" id="policyLabel"></div>
+          <h2 id="surfaceTitle" style="margin-top: 8px"></h2>
+          <div id="risk" class="notice"></div>
+          <div id="screen"></div>
+          <details>
+            <summary>Inspect the proposed browser payload and request boundary</summary>
+            <p class="fine" id="request"></p>
+            <pre id="payload"></pre>
+          </details>
+          <p class="fine">
+            No driver-addressing link exists for a hidden row. A row key is a response-local
+            presentation value; it is not a hashed Customer ID or a cross-race identifier. Consented
+            comparison references are separate and need a real server authorization design.
+          </p>
+        </div>
+        <div class="panel">
+          <h2>What remains useful</h2>
+          <div class="facts">
+            <div class="fact"><small>Field Size</small><strong>240</strong></div>
+            <div class="fact"><small>Car recommendation</small><strong>Car A</strong></div>
+          </div>
+          <p class="muted">
+            Aggregates and Car ordering remain available in every candidate. Your private lap and
+            Percentile Rank need verified ownership and Personal Analytics Consent. These sample
+            values illustrate output only; this file does not calculate racing analytics.
+          </p>
+        </div>
+      </section>
+    </div>
+    <section class="panel walks">
+      <h2>Guided walkthroughs</h2>
+      <div class="buttons" id="walkTabs"></div>
+      <p id="walkDescription"></p>
+      <div class="buttons" id="walkSteps"></div>
+    </section>
+    <section class="panel candidate">
+      <h2>Presentation choices recorded in this historical prototype</h2>
+      <p>
+        <strong>B · Signed-in default:</strong> hidden rows start with 0.5-second lap-time bands;
+        iRating uses 250-point bands from 1000 up to 2500, and 500-point bands outside. Hidden rows
+        are ordered by bands, never original classification. Each displayed band combination needs
+        at least five nonconsenting Drivers; coarsen or use aggregate-only output otherwise.
+      </p>
+      <p>
+        <strong>C · Anonymous default:</strong> hidden Drivers contribute only to aggregate output.
+        Named sharing remains limited to signed-in Users.
+      </p>
+      <p>
+        <strong>A · Unselected comparison:</strong> exact positions and metrics can be matched to
+        outside results. It remains here to illustrate the rejected alternative, not an accepted
+        production mode.
+      </p>
+      <p class="fine">
+        Named/owner rows require current consent and proof as applicable. These safeguards are
+        product choices, not a legal finding of anonymity or a grant to process source data. The
+        demo's coarsening ladder is illustrative; aggregate disclosure and differencing still need
+        architecture/rollout assessment.
+      </p>
+      <p class="fine">
+        Planning ticket:
+        <a href="https://github.com/jwh3times/apexracers/issues/359"
+          >Choose anonymous presentation without exposing Driver linkage</a
+        >.
+      </p>
+    </section>
+  </main>
+  <div class="dock">
+    <button id="prev" aria-label="Previous output policy">←</button><span id="variantName"></span
+    ><button id="next" aria-label="Next output policy">→</button>
+  </div>
+  <script>
+    // Pure disclosure decision model. No DOM or network references; fixtures are deliberately synthetic.
+    const DisclosureLab = (() => {
+      const rows = [
+        {
+          kind: 'target',
+          name: 'Demo Blake',
+          cust: 100002,
+          position: 1,
+          start: 3,
+          lap: 88.812,
+          rating: 3021,
+          points: 280,
+        },
+        {
+          kind: 'nonuser',
+          name: 'Demo Casey',
+          cust: 100003,
+          position: 3,
+          start: 4,
+          lap: 89.121,
+          rating: 2550,
+          points: 224,
+        },
+        {
+          kind: 'owner',
+          name: 'Demo Avery',
+          cust: 100001,
+          position: 7,
+          start: 9,
+          lap: 89.451,
+          rating: 2434,
+          points: 198,
+        },
+        {
+          kind: 'privateUser',
+          name: 'Demo Drew',
+          cust: 100004,
+          position: 12,
+          start: 15,
+          lap: 90.381,
+          rating: 2192,
+          points: 180,
+        },
+      ];
+      const families = [
+        [88.6, 3050],
+        [89.05, 2600],
+        [90.1, 2050],
+        [89.05, 2300],
+        [91.05, 750],
+        [92.05, 1100],
+      ];
+      const extras = families.flatMap(([lap, rating], family) =>
+        Array.from({ length: 6 }, (_, i) => ({
+          kind: 'nonuser',
+          name: 'Synthetic pool Driver ' + (family * 6 + i + 1),
+          cust: 100010 + family * 6 + i,
+          position: 20 + family * 6 + i,
+          start: 22 + family * 6 + i,
+          lap: lap + i * 0.03,
+          rating: rating + i * 5,
+          points: 100 - i,
+          family,
+          index: i,
+        }))
+      );
+      const pool = s =>
+        rows.concat(
+          s.population === 'sparse'
+            ? []
+            : extras.filter(
+                r => s.population === 'dense' || (r.family < 2 ? r.index < 3 : r.family < 4)
+              )
+        );
+      const initial = () => ({
+        viewer: 'owner',
+        surface: 'race',
+        source: 'fresh',
+        population: 'dense',
+        personal: true,
+        ownerSharing: false,
+        verified: true,
+        targetSharing: false,
+        provider: 'ready',
+        mismatchedUpload: false,
+        lookupTarget: 'nonuser',
+        variant: 'B',
+        epoch: 1,
+        event: 'Personal analytics on; name sharing off. Accepted signed-in default: B.',
+      });
+      function reduce(s, a) {
+        const n = { ...s, epoch: s.epoch + 1 };
+        if (a.type === 'reset') return initial();
+        if (a.type === 'set') {
+          n[a.key] = a.value;
+          if (a.key === 'viewer') n.variant = a.value === 'guest' ? 'C' : 'B';
+          n.event = 'Changed ' + a.key + '.';
+          return n;
+        }
+        if (a.type === 'personal') {
+          if (n.verified) {
+            n.personal = !n.personal;
+            if (!n.personal) n.ownerSharing = false;
+          }
+          n.event = 'Personal consent changed; sharing requires personal consent.';
+        }
+        if (a.type === 'ownerSharing') {
+          if (n.verified && n.personal) n.ownerSharing = !n.ownerSharing;
+          n.event = 'Your sharing changed only if verification and personal consent permit it.';
+        }
+        if (a.type === 'targetSharing') {
+          n.targetSharing = !n.targetSharing;
+          n.event = 'Demo Blake ' + (n.targetSharing ? 'opted in' : 'withdrew sharing') + '.';
+        }
+        if (a.type === 'uploadMismatch') {
+          n.mismatchedUpload = !n.mismatchedUpload;
+          n.event = 'Simulated recorder match changed.';
+        }
+        if (a.type === 'lookupTarget') {
+          n.lookupTarget = n.lookupTarget === 'nonuser' ? 'target' : 'nonuser';
+          n.event = 'Changed the synthetic lookup target.';
+        }
+        if (a.type === 'unlink') {
+          n.verified = false;
+          n.personal = false;
+          n.ownerSharing = false;
+          n.event = 'Unlinked: both permissions cancelled.';
+        }
+        if (a.type === 'restore') {
+          n.verified = true;
+          n.personal = true;
+          n.ownerSharing = false;
+          n.provider = 'ready';
+          n.event = 'Fresh proof and personal consent; sharing remains off.';
+        }
+        if (a.type === 'outage') {
+          n.provider = n.provider === 'outage' ? 'ready' : 'outage';
+          n.event = 'Provider availability changed; recorded consent is preserved.';
+        }
+        if (a.type === 'revoke') {
+          n.provider = 'revoked';
+          n.verified = false;
+          n.personal = false;
+          n.ownerSharing = false;
+          n.event = 'Detected revocation: your personal access and sharing are suspended.';
+        }
+        return n;
+      }
+      const own = s => s.viewer === 'owner' && s.verified && s.personal && s.provider !== 'revoked';
+      const shared = (r, s) =>
+        s.viewer !== 'guest' &&
+        ((r.kind === 'target' && s.targetSharing) ||
+          (r.kind === 'owner' && s.verified && s.personal && s.ownerSharing));
+      const visible = (r, s) => (r.kind === 'owner' && own(s)) || shared(r, s);
+      function key(s, i) {
+        return 'response-' + s.epoch + '-row-' + i;
+      } // Response-local, no cust_id-derived input.
+      function ratingBounds(rating, factor) {
+        const core = rating >= 1000 && rating < 2500,
+          anchor = core ? 1000 : rating >= 2500 ? 2500 : 0;
+        const width = (core ? 250 : 500) * factor,
+          low = anchor + Math.floor((rating - anchor) / width) * width;
+        return [low, Math.min(low + width, core ? 2500 : rating < 1000 ? 1000 : Infinity)];
+      }
+      function bandPlan(s) {
+        const hidden = pool(s).filter(r => !visible(r, s));
+        if (!hidden.length) return { groups: [], factor: 1 };
+        // Illustrative coarsening only; the production algorithm is a later design detail.
+        for (const factor of [1, 2, 4, 8]) {
+          const groups = new Map(),
+            timeWidth = 0.5 * factor;
+          for (const r of hidden) {
+            const timeLow = Math.floor(r.lap / timeWidth) * timeWidth,
+              [ratingLow, ratingHigh] = ratingBounds(r.rating, factor);
+            const groupKey = [timeLow, ratingLow, ratingHigh].join(':');
+            const group = groups.get(groupKey) ?? {
+              timeLow,
+              timeHigh: timeLow + timeWidth,
+              ratingLow,
+              ratingHigh,
+              count: 0,
+            };
+            group.count++;
+            groups.set(groupKey, group);
+          }
+          const ordered = [...groups.values()].sort(
+            (a, b) => a.timeLow - b.timeLow || a.ratingLow - b.ratingLow
+          );
+          if (ordered.every(g => g.count >= 5)) return { groups: ordered, factor };
+        }
+        return null;
+      }
+      function memberRows(s, plan) {
+        const selected = pool(s).filter(r => s.variant === 'A' || visible(r, s));
+        const disclosed = selected.map((r, i) => {
+          const shown = visible(r, s),
+            self = r.kind === 'owner' && own(s);
+          const base = {
+            rowKey: key(s, i),
+            displayLabel: self ? 'You' : shown ? r.name : 'Driver',
+            isSelf: self,
+          };
+          if (shown) base.driverName = r.name;
+          if (shown && !self)
+            base.comparisonHandle = 'synthetic-consented-reference-' + s.epoch + '-' + i;
+          const position =
+            s.surface === 'race'
+              ? { finishPosition: r.position, startPosition: r.start }
+              : { standing: r.position };
+          return {
+            ...base,
+            ...position,
+            bestLapSeconds: r.lap,
+            iRating: r.rating,
+            points: r.points,
+          };
+        });
+        if (s.variant !== 'B' || !plan) return disclosed;
+        // Expand only sanitized groups. Neither source row ordering nor a Driver tie-breaker survives.
+        const hidden = plan.groups.flatMap(g =>
+          Array.from({ length: g.count }, () => ({
+            displayLabel: 'Driver',
+            isSelf: false,
+            paceBand: g.timeLow.toFixed(1) + ' to <' + g.timeHigh.toFixed(1) + ' s',
+            ratingBand: g.ratingLow + '–' + (g.ratingHigh - 1),
+          }))
+        );
+        return disclosed.concat(hidden).map((r, i) => ({ ...r, rowKey: key(s, i) }));
+      }
+      function project(s) {
+        const base = { policy: s.variant, source: s.source, fieldSize: 240 };
+        if (s.provider === 'outage' && s.source === 'fresh' && s.surface !== 'receipt')
+          return {
+            ...base,
+            status: 'unavailable',
+            message:
+              'Provider data is temporarily unavailable. Your consent choices are unchanged.',
+          };
+        if (s.surface === 'personal') {
+          if (!own(s))
+            return {
+              ...base,
+              status: 'unavailable',
+              message: 'Connect and verify iRacing, then authorize personal analytics.',
+            };
+          return {
+            ...base,
+            status: 'ok',
+            isSelf: true,
+            personalBestLapSeconds: 89.451,
+            personalBestLapEvidence: 'RaceLap',
+            percentileRank: 86.9,
+            fieldPosition: 32,
+            cleanLaps: [
+              { lapNumber: 1, lapTimeSeconds: 89.812 },
+              { lapNumber: 2, lapTimeSeconds: 89.451 },
+            ],
+          };
+        }
+        if (s.surface === 'receipt') {
+          if (s.viewer === 'guest')
+            return { ...base, status: 'unavailable', message: 'Sign in to upload telemetry.' };
+          if (s.mismatchedUpload)
+            return {
+              ...base,
+              status: 'unavailable',
+              message: 'Recorded Driver does not match the verified identity.',
+            };
+          if (!own(s))
+            return {
+              ...base,
+              status: 'ok',
+              timedLaps: 8,
+              driverIdentity: 'withheld',
+              message: 'Receipt identity requires verified ownership and personal consent.',
+            };
+          return {
+            ...base,
+            status: 'ok',
+            timedLaps: 8,
+            driverName: 'Demo Avery',
+            customerId: 100001,
+            isSelf: true,
+          };
+        }
+        if (s.surface === 'lookup') {
+          if (s.viewer === 'guest' || s.lookupTarget !== 'target' || !s.targetSharing)
+            return { ...base, status: 'unavailable', message: 'Driver data unavailable.' };
+          return {
+            ...base,
+            status: 'ok',
+            driverName: 'Demo Blake',
+            comparisonHandle: 'synthetic-consented-reference-' + s.epoch,
+            sourceEvidence: 'RaceLap',
+            laps: [
+              { lapNumber: 1, lapTimeSeconds: 89.121 },
+              { lapNumber: 2, lapTimeSeconds: 88.812 },
+            ],
+          };
+        }
+        if (s.surface === 'rivals') {
+          if (s.viewer === 'guest')
+            return { ...base, status: 'unavailable', message: 'Sign in to view opted-in Drivers.' };
+          if (!s.targetSharing)
+            return {
+              ...base,
+              status: 'ok',
+              directory: [],
+              comparison: { status: 'unavailable', message: 'Comparison unavailable.' },
+            };
+          return {
+            ...base,
+            status: 'ok',
+            directory: [
+              {
+                driverName: 'Demo Blake',
+                comparisonHandle: 'synthetic-consented-reference-' + s.epoch,
+              },
+            ],
+            comparison: own(s)
+              ? {
+                  status: 'ok',
+                  driverName: 'Demo Blake',
+                  sharedRaces: 4,
+                  yourFinish: 7,
+                  rivalFinish: 1,
+                  yourRaceLapSeconds: 89.451,
+                  rivalRaceLapSeconds: 88.812,
+                }
+              : {
+                  status: 'unavailable',
+                  message: 'Authorize your verified personal analytics to compare.',
+                },
+          };
+        }
+        const plan = s.variant === 'B' ? bandPlan(s) : null;
+        const projected = memberRows(s, plan);
+        if (s.surface === 'race' && s.variant === 'A')
+          return {
+            ...base,
+            status: 'ok',
+            subsessionId: 424242,
+            raceDate: '2026-09-28T18:00:00Z',
+            rows: projected,
+          };
+        if (s.variant === 'C' || (s.variant === 'B' && !plan))
+          return {
+            ...base,
+            status: 'ok',
+            effectivePolicy: 'C',
+            ...(s.variant === 'B'
+              ? {
+                  presentationMessage:
+                    'Insufficient hidden-Driver support for banded rows; aggregate-only presentation.',
+                }
+              : {}),
+            summary: {
+              medianRaceBestLapSeconds: 91.2,
+              driversBelow90Seconds: 48,
+              drivers90To92Seconds: 132,
+              driversAbove92Seconds: 60,
+            },
+            disclosedRows: projected,
+          };
+        return {
+          ...base,
+          status: 'ok',
+          rows: projected,
+          ...(s.variant === 'B'
+            ? {
+                effectivePolicy: 'B',
+                banding: plan.factor === 1 ? 'Base bands' : 'Coarsened bands',
+                context: 'Car A / Race Week 2 — no exact race reference',
+              }
+            : { context: 'Exact competition standings / race metrics' }),
+        };
+      }
+      return { initial, reduce, project, own };
+    })();
+  </script>
+  <script>
+    // Throwaway page shell; current state and payload are re-rendered after every action.
+    let state = DisclosureLab.initial(),
+      walk = null,
+      walkIndex = 0;
+    const names = { A: 'A · Detailed field', B: 'B · Banded field', C: 'C · Aggregate core' };
+    const titles = {
+      race: 'Race Results',
+      standings: 'Series standings',
+      leaderboard: 'Global leaderboard',
+      rivals: 'Rival discovery and comparison',
+      personal: 'Your lap and Percentile Rank',
+      lookup: 'Other-Driver lap lookup',
+      receipt: 'Telemetry receipt',
+    };
+    const walks = [
+      {
+        name: 'Private → shared → withdrawn',
+        description:
+          'Your private view does not require publication consent. Then watch an opted-in target disappear from named output on withdrawal.',
+        steps: [
+          ['View your personal lap', { type: 'set', key: 'surface', value: 'personal' }],
+          ['Return to Race Results', { type: 'set', key: 'surface', value: 'race' }],
+          ['Demo Blake opts in', { type: 'targetSharing' }],
+          ['Demo Blake withdraws', { type: 'targetSharing' }],
+        ],
+      },
+      {
+        name: 'Warm cache after withdrawal',
+        description:
+          'Old snapshots contain synthetic names. The browser payload follows current permission, not the snapshot label.',
+        steps: [
+          ['Use warm snapshot', { type: 'set', key: 'source', value: 'cache' }],
+          ['Demo Blake opts in', { type: 'targetSharing' }],
+          ['View the directory', { type: 'set', key: 'surface', value: 'rivals' }],
+          ['Demo Blake withdraws', { type: 'targetSharing' }],
+        ],
+      },
+      {
+        name: 'Unlink and receipt identity',
+        description:
+          'A receipt can expose identity only to the verified consenting owner. Unlinking cancels both permissions; reconnecting does not restore sharing.',
+        steps: [
+          ['View own receipt', { type: 'set', key: 'surface', value: 'receipt' }],
+          ['Enable your sharing', { type: 'ownerSharing' }],
+          ['Unlink identity', { type: 'unlink' }],
+          ['Verify and consent again', { type: 'restore' }],
+        ],
+      },
+      {
+        name: 'Outage versus revocation',
+        description:
+          'An outage preserves consent. Detected access revocation suspends your permissions; fresh proof and consent are needed to restore them.',
+        steps: [
+          ['View own lap', { type: 'set', key: 'surface', value: 'personal' }],
+          ['Provider outage', { type: 'outage' }],
+          ['Provider recovers', { type: 'outage' }],
+          ['Revoke your access', { type: 'revoke' }],
+          ['Fresh verification and consent', { type: 'restore' }],
+        ],
+      },
+      {
+        name: 'Supported → merged → aggregate',
+        description:
+          'Base bands need five hidden Drivers per combination. Sparse groups coarsen or disappear into aggregate output; exact internal evidence and the owner percentile remain available.',
+        steps: [
+          ['Use accepted signed-in B', { type: 'set', key: 'viewer', value: 'owner' }],
+          ['Use mergeable bands', { type: 'set', key: 'population', value: 'mergeable' }],
+          ['Use too few hidden Drivers', { type: 'set', key: 'population', value: 'sparse' }],
+          ['View unchanged own percentile', { type: 'set', key: 'surface', value: 'personal' }],
+          ['Anonymous default is C', { type: 'set', key: 'viewer', value: 'guest' }],
+          ['View public results', { type: 'set', key: 'surface', value: 'race' }],
+        ],
+      },
+    ];
+    const $ = id => document.getElementById(id);
+    function esc(x) {
+      return String(x).replace(
+        /[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+      );
+    }
+    function table(rows, s) {
+      if (!rows.length)
+        return '<div class="empty">No eligible individual rows. Aggregate analytics still contribute to the useful core.</div>';
+      const band = s.variant === 'B',
+        standing = s.surface !== 'race';
+      if (band && rows.some(r => r.paceBand)) {
+        const groups = new Map();
+        for (const r of rows.filter(r => r.paceBand)) {
+          const k = r.paceBand + ' / ' + r.ratingBand;
+          groups.set(k, (groups.get(k) ?? 0) + 1);
+        }
+        const visibleRows = rows.filter(r => !r.paceBand);
+        return (
+          '<h3>Private owner / opted-in rows</h3>' +
+          table(visibleRows, s) +
+          '<h3 style="margin-top:20px">Hidden rows, grouped by displayed bands</h3><div class="table-wrap"><table><thead><tr><th>Lap-time band</th><th>iRating band</th><th>Drivers</th></tr></thead><tbody>' +
+          [...groups]
+            .map(([k, count]) => {
+              const [pace, rating] = k.split(' / ');
+              return (
+                '<tr><td>' +
+                esc(pace) +
+                '</td><td>' +
+                esc(rating) +
+                '</td><td>' +
+                count +
+                '</td></tr>'
+              );
+            })
+            .join('') +
+          '</tbody></table></div>'
+        );
+      }
+      const columns = band
+        ? [
+            'Driver',
+            standing ? 'Standing / group' : 'Finish / group',
+            'Lap time / band',
+            'iRating / band',
+          ]
+        : standing
+          ? ['Driver', 'Standing', 'Points', 'Best lap']
+          : ['Pos', 'Driver', 'Start', 'Best lap', 'iRating'];
+      return (
+        '<div class="table-wrap"><table><thead><tr>' +
+        columns.map(c => '<th>' + c + '</th>').join('') +
+        '</tr></thead><tbody>' +
+        rows
+          .map(r => {
+            const name =
+              esc(r.displayLabel) +
+              (r.isSelf
+                ? ' <span class="chip">private owner view</span>'
+                : r.comparisonHandle
+                  ? ' <span class="chip">opted in</span>'
+                  : '');
+            const cells = band
+              ? [
+                  name,
+                  (standing ? r.standing : r.finishPosition) ?? 'withheld',
+                  r.paceBand ?? r.bestLapSeconds.toFixed(3) + ' s',
+                  r.ratingBand ?? r.iRating,
+                ]
+              : standing
+                ? [
+                    name,
+                    r.standing ?? 'withheld',
+                    r.points ?? 'withheld',
+                    r.bestLapSeconds?.toFixed(3) ?? 'withheld',
+                  ]
+                : [
+                    r.finishPosition,
+                    name,
+                    r.startPosition,
+                    r.bestLapSeconds.toFixed(3) + ' s',
+                    r.iRating,
+                  ];
+            return (
+              '<tr' +
+              (r.isSelf ? ' class="mine"' : '') +
+              '>' +
+              cells.map(c => '<td>' + c + '</td>').join('') +
+              '</tr>'
+            );
+          })
+          .join('') +
+        '</tbody></table></div>'
+      );
+    }
+    function render() {
+      const p = DisclosureLab.project(state);
+      $('viewer').value = state.viewer;
+      $('surface').value = state.surface;
+      $('source').value = state.source;
+      $('population').value = state.population;
+      $('variantName').textContent = names[state.variant];
+      $('policyLabel').textContent = 'SYNTHETIC OUTPUT / ' + names[state.variant];
+      $('surfaceTitle').textContent = titles[state.surface];
+      const risks = {
+        A: 'Identity hidden is not proven anonymity: exact positions, lap times, competition context and an exposed race reference can be joined to outside results. Hidden rows have no persistent Driver handle or drill-down.',
+        B: 'Coarser fields reduce some direct linkage. This is not a demonstrated anonymity guarantee; rare values and context can still identify someone.',
+        C: 'Hidden Drivers appear only in aggregate output. Own and opted-in rows remain distinct. Aggregates still need privacy and provider-permission assessment.',
+      };
+      $('risk').textContent = risks[state.variant];
+      const facts = [
+        [
+          'Viewer',
+          state.viewer === 'owner'
+            ? 'Owner view'
+            : state.viewer === 'other'
+              ? 'Another signed-in User'
+              : 'Anonymous visitor',
+        ],
+        ['Owner proof', state.verified ? 'Verified' : 'Not currently verified'],
+        ['Owner personal consent', state.personal ? 'On' : 'Off'],
+        ['Owner sharing', state.ownerSharing ? 'On' : 'Off'],
+        ['Demo Blake sharing', state.targetSharing ? 'On' : 'Off'],
+        ['Upload recorder', state.mismatchedUpload ? 'Mismatched' : 'Matches synthetic owner'],
+        ['Lookup target', state.lookupTarget === 'target' ? 'Demo Blake' : 'Non-User fixture'],
+        [
+          'Read source',
+          state.source === 'cache'
+            ? 'Warm, previously named snapshot'
+            : state.source === 'history'
+              ? 'Historical snapshot'
+              : 'Fresh retrieval',
+        ],
+        ['Provider access', state.provider],
+        ['Last action', state.event],
+      ];
+      facts.push(
+        ['Presentation pool', state.population],
+        ['Accepted audience default', state.viewer === 'guest' ? 'C' : 'B'],
+        ['Effective output', p.effectivePolicy ?? 'Surface-specific']
+      );
+      $('state').innerHTML = facts
+        .map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>')
+        .join('');
+      $('payload').textContent = JSON.stringify(p, null, 2);
+      const bounds = {
+        race: 'Race/row presentation keys are not Customer IDs. Hidden rows cannot address a Driver-specific request.',
+        standings:
+          'Anonymous requests get no names. Standings do not return Customer IDs, including for opted-in Users.',
+        leaderboard:
+          'A category may be browsed without identifying hidden Drivers; opted-in names need a signed-in recipient.',
+        rivals:
+          'Search/follow/compare resolve an eligible consenting ApexRacers identity through an opaque authorized reference, not an arbitrary raw Customer ID.',
+        personal:
+          'The server derives the Subject Driver from the verified, personally consenting caller. This proposal removes arbitrary customerId lookup from this personal endpoint.',
+        lookup:
+          'Proposed restriction: no arbitrary Customer ID lookup. A signed-in User can request consented official-racing evidence through an authorized comparison reference; hidden targets are unavailable. Personal Percentile Rank and private history remain owner-only.',
+        receipt:
+          'Return recorder identity only after verified owner match and explicit personal consent. Any mismatch error is generic and omits both IDs.',
+      };
+      $('request').textContent = bounds[state.surface];
+      let screen = '';
+      if (p.status === 'unavailable') screen = '<div class="empty">' + esc(p.message) + '</div>';
+      else if (state.surface === 'personal')
+        screen =
+          '<div class="facts"><div class="fact"><small>Your Personal Best · Race Lap</small><strong>' +
+          p.personalBestLapSeconds +
+          ' s</strong></div><div class="fact"><small>Your Percentile Rank</small><strong>' +
+          p.percentileRank +
+          '</strong></div><div class="fact"><small>Field Position</small><strong>' +
+          p.fieldPosition +
+          ' of ' +
+          p.fieldSize +
+          '</strong></div><div class="fact"><small>Your identity</small><strong>Private to you</strong></div></div><p class="muted">Competitors contribute to the Field, with no names, Customer IDs or individually addressable traces in this response.</p>';
+      else if (state.surface === 'receipt')
+        screen =
+          '<div class="facts"><div class="fact"><small>Timed Laps parsed</small><strong>' +
+          p.timedLaps +
+          '</strong></div><div class="fact"><small>Recorder</small><strong>' +
+          esc(p.driverName ?? 'Identity withheld') +
+          '</strong></div></div><p class="muted">' +
+          (p.isSelf
+            ? 'Only your expressly authorized private receipt includes your name and Customer ID.'
+            : 'Parsing a file is not proof of Driver ownership. Non-identifying receipt fields remain.') +
+          '</p>';
+      else if (state.surface === 'rivals')
+        screen =
+          (p.directory.length
+            ? '<div class="fact"><small>Opted-in synthetic Driver</small><strong>Demo Blake</strong></div>'
+            : '<div class="empty">No opted-in matches. Unavailable targets are not named or confirmed.</div>') +
+          '<p>' +
+          esc(
+            p.comparison.status === 'ok'
+              ? 'Your finish: 7 · Demo Blake: 1 · shared Races: 4'
+              : p.comparison.message
+          ) +
+          '</p><p class="fine">Private uploads and personal Percentile Rank history are excluded from the comparison.</p>';
+      else if (state.surface === 'lookup')
+        screen =
+          '<div class="fact"><small>Consented official Race Laps</small><strong>' +
+          esc(p.driverName) +
+          '</strong></div><p class="mono">Lap 1: 89.121 s · Lap 2: 88.812 s</p><p class="fine">No Customer ID, Uploaded Lap or private personal-analytics history is returned.</p>';
+      else {
+        if (p.presentationMessage)
+          screen += '<p class="muted">' + esc(p.presentationMessage) + '</p>';
+        if (p.banding)
+          screen +=
+            '<p class="fine">' +
+            esc(p.banding) +
+            ' · at least five hidden Drivers per displayed combination.</p>';
+        if (p.summary)
+          screen +=
+            '<div class="facts"><div class="fact"><small>Median Race Best</small><strong>' +
+            p.summary.medianRaceBestLapSeconds +
+            ' s</strong></div><div class="fact"><small>Field Size</small><strong>' +
+            p.fieldSize +
+            '</strong></div></div><div class="bars"><div class="bar" style="height:35%"><span>48</span></div><div class="bar" style="height:90%"><span>132</span></div><div class="bar" style="height:42%"><span>60</span></div></div><div class="bar-labels"><span>Below 90 s</span><span>90–92 s</span><span>Above 92 s</span></div><h3 style="margin-top:22px">Your row and opted-in Drivers</h3>';
+        screen += table(p.rows ?? p.disclosedRows, state);
+        screen +=
+          '<p class="fine">The synthetic presentation pool is separate from the illustrative 240-Driver Race Week Field. Race finish and championship Standing illustrate separate surfaces; these are not provider response mappings. Public/aggregate fallbacks still need privacy assessment.</p>';
+        if (p.subsessionId)
+          screen +=
+            '<p class="fine">Exact synthetic race reference: ' +
+            p.subsessionId +
+            ' · ' +
+            p.raceDate +
+            '. This exposes a joinable context even though Customer IDs are withheld.</p>';
+      }
+      $('screen').innerHTML = screen;
+      document
+        .querySelectorAll('#walkTabs button')
+        .forEach((b, i) => b.classList.toggle('active', i === walk));
+      $('walkDescription').textContent =
+        walk === null
+          ? 'Pick a walkthrough; it resets to a known initial state. You can also use any control freely.'
+          : walks[walk].description;
+      $('walkSteps').innerHTML =
+        walk === null
+          ? ''
+          : walks[walk].steps
+              .map(
+                ([label], i) =>
+                  '<button data-step="' +
+                  i +
+                  '" ' +
+                  (i !== walkIndex ? 'disabled' : '') +
+                  '>' +
+                  esc(label) +
+                  (i < walkIndex ? ' ✓' : '') +
+                  '</button>'
+              )
+              .join('');
+      if (walk !== null && walkIndex === walks[walk].steps.length)
+        $('walkSteps').innerHTML +=
+          '<span class="fine">Complete. Explore the payload or another output policy.</span>';
+    }
+    function act(a) {
+      state = DisclosureLab.reduce(state, a);
+      render();
+    }
+    for (const id of ['viewer', 'surface', 'source', 'population'])
+      $(id).addEventListener('change', e => act({ type: 'set', key: id, value: e.target.value }));
+    document
+      .querySelectorAll('[data-action]')
+      .forEach(b => b.addEventListener('click', () => act({ type: b.dataset.action })));
+    $('walkTabs').innerHTML = walks
+      .map((w, i) => '<button data-walk="' + i + '">' + esc(w.name) + '</button>')
+      .join('');
+    $('walkTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-walk]');
+      if (!b) return;
+      walk = Number(b.dataset.walk);
+      walkIndex = 0;
+      const variant = state.variant;
+      state = DisclosureLab.initial();
+      state.variant = variant;
+      render();
+    });
+    $('walkSteps').addEventListener('click', e => {
+      const b = e.target.closest('[data-step]');
+      if (!b || Number(b.dataset.step) !== walkIndex) return;
+      const a = walks[walk].steps[walkIndex][1];
+      walkIndex++;
+      act(a);
+    });
+    function cycle(d) {
+      const keys = ['A', 'B', 'C'];
+      state = DisclosureLab.reduce(state, {
+        type: 'set',
+        key: 'variant',
+        value: keys[(keys.indexOf(state.variant) + d + 3) % 3],
+      });
+      const u = new URL(location.href);
+      u.searchParams.set('variant', state.variant);
+      try {
+        history.replaceState(null, '', u);
+      } catch {}
+      render();
+    }
+    $('prev').addEventListener('click', () => cycle(-1));
+    $('next').addEventListener('click', () => cycle(1));
+    document.addEventListener('keydown', e => {
+      if (e.target.closest('input,select,textarea,[contenteditable]')) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        cycle(e.key === 'ArrowRight' ? 1 : -1);
+      }
+    });
+    const variant = new URL(location.href).searchParams.get('variant');
+    if (names[variant]) state.variant = variant;
+    render();
+  </script>
+</html>

@@ -2,6 +2,13 @@
 
 Reviewed 2026-10-01 for [Establish the evidence and unknowns for hosted iRacing data use](https://github.com/jwh3times/apexracers/issues/355), under the [iRacing data and identity plan](https://github.com/jwh3times/apexracers/issues/354). This public-source engineering note extends the [September 30 audit](iracing-terms-2026-09-30.md); it does not repeat the implementation inventory or establish legal permission for ApexRacers.
 
+**Historical review scope:** this is the 2026-10-01 public-source snapshot, not a current
+permission decision or a fresh check of provider registration. Later supplied-policy review and
+maintainer follow-ups are separate evidence. The open questions below record that date's planning
+frontier; use the [accepted architecture](../design/driver-disclosure-ownership.md) and
+[acceptance/rollout plan](../design/driver-acceptance-and-rollout.md) for subsequent engineering
+decisions. Neither those decisions nor this note grant provider processing permission.
+
 ## Finding
 
 The public OAuth documentation explains identity verification and Data API access, including an internal-support role for retrieving official results. Its introduction explicitly subjects OAuth, SDK, Data API and resulting data use to the underlying terms. No reviewed public source supplies a distinct license for ApexRacers' hosted archive, cross-member analytics or aggregate reuse. This is an unresolved permission question, not proof that every possible analytics design is prohibited. [OAuth introduction][intro], [Client Roles][roles].
