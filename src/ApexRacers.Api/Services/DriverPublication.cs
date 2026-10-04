@@ -34,8 +34,21 @@ public sealed class DriverPublication(
         return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer);
     }
 
-    private static ObjectResult Unavailable() => new(new ProblemDetails { Status = StatusCodes.Status503ServiceUnavailable,
-        Detail = "Driver publication is unavailable." }) { StatusCode = StatusCodes.Status503ServiceUnavailable };
+    private static ObjectResult Unavailable() => new UnavailableDriverResult();
+
+    private sealed class UnavailableDriverResult() : ObjectResult(new ProblemDetails
+    {
+        Status = StatusCodes.Status503ServiceUnavailable,
+        Detail = "Driver publication is unavailable.",
+    })
+    {
+        public override Task ExecuteResultAsync(ActionContext context)
+        {
+            context.HttpContext.Response.Headers.CacheControl = "no-store";
+            StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return base.ExecuteResultAsync(context);
+        }
+    }
 }
 
 internal sealed class ProtectedDriverResult(

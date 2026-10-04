@@ -387,6 +387,7 @@ public sealed class DriverLifecycleHttpTests(PostgreSqlFixture fixture)
     private static async Task AssertUnavailableAsync(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("Synthetic Owner", body);
         AssertSafeBody(body);
