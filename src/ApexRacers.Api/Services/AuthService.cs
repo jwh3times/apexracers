@@ -36,6 +36,7 @@ public class AuthService(
     SignInThrottleStore signInThrottle,
     KnownDeviceStore knownDevices,
     IOutboundEmailQueue emailQueue,
+    DriverAuthorityStore driverAuthority,
     ILogger<AuthService> logger)
 {
     private const int AccessTokenMinutes = 15;
@@ -368,23 +369,30 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(request.DisplayName))
             throw new InvalidOperationException("Display name cannot be empty.");
 
-        var user = await userManager.FindByIdAsync(userId.ToString())
-            ?? throw new InvalidOperationException("User not found.");
-
-        if (request.IRacingCustomerId.HasValue && request.IRacingCustomerId != user.IRacingCustomerId)
-            await RequireCurrentPasswordAsync(user, request.CurrentPassword);
-
-        user.DisplayName = request.DisplayName.Trim();
-        if (request.IRacingCustomerId.HasValue)
-            user.IRacingCustomerId = request.IRacingCustomerId.Value;
-        if (!string.IsNullOrWhiteSpace(request.ThemePreference) &&
-            request.ThemePreference is "auto" or "light" or "dark")
-            user.ThemePreference = request.ThemePreference;
-
-        IdentityResult result;
+        ApplicationUser user;
         try
         {
-            result = await userManager.UpdateAsync(user);
+            user = await driverAuthority.UpdateUnverifiedProfileAsync(userId, async (current, associated, token) =>
+            {
+                if (request.IRacingCustomerId.HasValue && request.IRacingCustomerId != current.IRacingCustomerId)
+                {
+                    await RequireCurrentPasswordAsync(current, request.CurrentPassword);
+                    // Grant creation cannot race this check or the subsequent Identity save.
+                    // A profile edit cannot stand in for journal-first unlink/reassignment.
+                    if (associated) throw new IRacingNotConfiguredException();
+                }
+                current.DisplayName = request.DisplayName.Trim();
+                if (request.IRacingCustomerId.HasValue)
+                    current.IRacingCustomerId = request.IRacingCustomerId.Value;
+                if (!string.IsNullOrWhiteSpace(request.ThemePreference) &&
+                    request.ThemePreference is "auto" or "light" or "dark")
+                    current.ThemePreference = request.ThemePreference;
+                token.ThrowIfCancellationRequested();
+                var result = await userManager.UpdateAsync(current);
+                if (!result.Succeeded)
+                    throw new InvalidOperationException("Update failed. Please try again.");
+                return current;
+            }, ct);
         }
         catch (DbUpdateException ex) when (
             ex.InnerException is PostgresException
@@ -395,9 +403,6 @@ public class AuthService(
         {
             throw new ClaimedIdentityConflictException(ex);
         }
-
-        if (!result.Succeeded)
-            throw new InvalidOperationException("Update failed. Please try again.");
 
         return new AuthResultDto(await GenerateJwtAsync(user), user.Id, user.DisplayName);
     }
@@ -748,4 +753,3 @@ public class AuthService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
-

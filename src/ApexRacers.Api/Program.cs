@@ -35,7 +35,8 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
         new HyphenToUnderscoreSecretManager());
 }
 
-builder.Services.AddControllers();
+builder.Services.AddScoped<LegacyDriverAccessGuard>();
+builder.Services.AddControllers(options => options.Filters.AddService<LegacyDriverAccessGuard>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi("v1", options =>
 {
@@ -230,6 +231,17 @@ builder.Services.AddScoped<CarRecommendationService>();
 builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+// No verified registered-client proof or production journal adapter exists yet. Neither
+// configuration nor a caller header can select the controlled synthetic test adapters.
+builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipProof>();
+builder.Services.AddSingleton<IDriverEnforcementJournal, UnavailableDriverEnforcementJournal>();
+builder.Services.AddScoped<DriverAuthorityStore>();
+builder.Services.AddScoped<DriverAuthorization>();
+builder.Services.AddScoped<CopyLifecycle>();
+var driverHostIncarnation = Guid.NewGuid();
+builder.Services.AddScoped(sp => new DriverPublication(
+    sp.GetRequiredService<DriverAuthorization>(), sp.GetRequiredService<DriverAuthorityStore>(),
+    sp.GetRequiredService<IDriverEnforcementJournal>(), driverHostIncarnation));
 builder.Services.AddScoped<RefreshTokenStore>();
 
 // Sign-in throttling (issue #300). Thresholds are config-driven for the same reason the rate limits

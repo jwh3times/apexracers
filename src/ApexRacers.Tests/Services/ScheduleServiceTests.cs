@@ -1,10 +1,12 @@
 using System.Text.Json;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Aydsko.iRacingData.Series;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -50,9 +52,10 @@ public class ScheduleServiceTests
         Assert.True(json.GetProperty("hasUploadedLapAtTrack").GetBoolean());
     }
 
-    private static async Task<AppDbContext> SeededAsync(bool active = true)
+    private static async Task<AppDbContext> SeededAsync(
+        bool active = true, DataProvenance provenance = DataProvenance.Real)
     {
-        var db = DbContextFactory.Create();
+        var db = DbContextFactory.Create(provenance);
         db.Series.Add(new Series { Id = SeriesId, Name = "GT3 Cup" });
         db.Seasons.Add(new Season { Id = SeasonId, SeriesId = SeriesId, Active = active, Year = 2026, Quarter = 2 });
         db.Tracks.Add(new Track { Id = 532, Name = "Thruxton", ConfigName = "Club" });
@@ -60,7 +63,10 @@ public class ScheduleServiceTests
         db.Weeks.Add(new Week
         {
             Id = Guid.NewGuid(), SeasonId = SeasonId, RaceWeekIndex = 1, TrackId = 532,
-            StartDate = new DateOnly(2026, 5, 29), WeatherSummaryJson = WeatherJson(),
+            StartDate = new DateOnly(2026, 5, 29),
+            WeatherSummaryJson = provenance == DataProvenance.Real ? WeatherJson() : null,
+            WeatherProvenance = provenance,
+            DemoWeatherSummaryJson = provenance == DataProvenance.Demo ? WeatherJson() : null,
         });
         db.Weeks.Add(new Week
         {
@@ -73,15 +79,17 @@ public class ScheduleServiceTests
         db.SeasonCarBops.AddRange(
             new SeasonCarBop
             {
+                Provenance = provenance,
                 SeasonId = SeasonId, RaceWeekIndex = 1, CarId = 132,
                 WeightPenaltyKg = 10, PowerAdjustPct = -1.5, MaxPctFuelFill = 50, MaxDryTireSets = 0,
             },
             new SeasonCarBop
             {
+                Provenance = provenance,
                 SeasonId = SeasonId, RaceWeekIndex = 1, CarId = 119,
                 WeightPenaltyKg = 0, PowerAdjustPct = 0, MaxPctFuelFill = 100, MaxDryTireSets = 2,
             });
-        // Track familiarity is deliberately independent of the scheduled cars and Race Week dates.
+        // An existing private upload cannot turn the independent schedule into a publication path.
         db.UploadedLaps.Add(new UploadedLap
         {
             Id = Guid.NewGuid(),
@@ -118,7 +126,7 @@ public class ScheduleServiceTests
         Assert.Equal(10, w1.Bop[0].WeightPenaltyKg);
         Assert.Equal(-1.5, w1.Bop[0].PowerAdjustPct);
 
-        Assert.True(w1.HasUploadedLapAtTrack);
+        Assert.False(w1.HasUploadedLapAtTrack);
 
         var w2 = dto.Weeks[1];
         Assert.Null(w2.ConfigName);
@@ -136,6 +144,28 @@ public class ScheduleServiceTests
         var dto = await service.GetScheduleAsync(SeriesId, userId: null, Ct);
 
         Assert.All(dto.Weeks, w => Assert.False(w.HasUploadedLapAtTrack));
+    }
+
+    [Theory]
+    [InlineData(DataProvenance.Real)]
+    [InlineData(DataProvenance.Demo)]
+    public async Task GetScheduleAsync_ExistingPrivateUploads_CannotChangeIndependentResponse(
+        DataProvenance provenance)
+    {
+        await using var db = await SeededAsync(provenance: provenance);
+        var service = new ScheduleService(db);
+
+        var anonymous = await service.GetScheduleAsync(SeriesId, userId: null, Ct);
+        var owner = await service.GetScheduleAsync(SeriesId, UserId, Ct);
+        var anotherUser = await service.GetScheduleAsync(SeriesId, Guid.NewGuid(), Ct);
+
+        Assert.Equal(JsonSerializer.Serialize(anonymous), JsonSerializer.Serialize(owner));
+        Assert.Equal(JsonSerializer.Serialize(anonymous), JsonSerializer.Serialize(anotherUser));
+        Assert.All(owner.Weeks, week => Assert.False(week.HasUploadedLapAtTrack));
+        Assert.Equal(new[] { "Thruxton", "Laguna Seca" }, owner.Weeks.Select(week => week.TrackName));
+        Assert.NotNull(owner.Weeks[0].Weather);
+        Assert.NotEmpty(owner.Weeks[0].Bop);
+        Assert.Single(db.UploadedLaps.IgnoreQueryFilters());
     }
 
     [Fact]

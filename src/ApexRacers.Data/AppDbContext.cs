@@ -36,6 +36,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
     public DbSet<KnownDevice> KnownDevices => Set<KnownDevice>();
     public DbSet<SignInAccountFailure> SignInAccountFailures => Set<SignInAccountFailure>();
 
+    public DbSet<DriverAuthorizationGrant> DriverAuthorizationGrants => Set<DriverAuthorizationGrant>();
+    public DbSet<DriverProofReceipt> DriverProofReceipts => Set<DriverProofReceipt>();
+    public DbSet<DriverLifecycleOperation> DriverLifecycleOperations => Set<DriverLifecycleOperation>();
+    public DbSet<DriverPublicationAdmission> DriverPublicationAdmissions => Set<DriverPublicationAdmission>();
+    public DbSet<DriverTrackedCopy> DriverTrackedCopies => Set<DriverTrackedCopy>();
+    public DbSet<DriverCopyCleanup> DriverCopyCleanups => Set<DriverCopyCleanup>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // HasDefaultSchema applies to every entity in the model, including those registered

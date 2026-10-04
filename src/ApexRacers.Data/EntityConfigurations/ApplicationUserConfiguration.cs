@@ -11,9 +11,13 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
             .IsRequired()
             .HasMaxLength(100);
 
-        // Conditional unique index: multiple users without an iRacing account must not conflict.
+        // This remains a legacy claim, never proof or consent. Fence old Identity writers
+        // through a physical rename while preserving every existing unverified value.
+        builder.Property(u => u.IRacingCustomerId).HasColumnName("ClaimedIRacingCustomerId");
+        // Keep the constraint name used by conflict translation stable.
         builder.HasIndex(u => u.IRacingCustomerId)
             .IsUnique()
-            .HasFilter("\"IRacingCustomerId\" IS NOT NULL");
+            .HasDatabaseName("IX_Users_IRacingCustomerId")
+            .HasFilter("\"ClaimedIRacingCustomerId\" IS NOT NULL");
     }
 }

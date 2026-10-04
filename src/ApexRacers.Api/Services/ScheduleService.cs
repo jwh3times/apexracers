@@ -9,9 +9,9 @@ namespace ApexRacers.Api.Services;
 
 /// <summary>
 /// The active-season schedule for a series: per-week track, date, weather forecast,
-/// and per-car Balance of Performance (all bulk-ingested by the worker), plus a
-/// track-familiarity overlay marking Race Weeks where the caller has an Uploaded Lap at that Track.
-/// Public endpoint; the overlay is populated only when an authenticated user id is passed.
+/// and per-car Balance of Performance (all bulk-ingested by the worker).
+/// Private upload familiarity remains unavailable until it joins verified ownership
+/// and protected personal publication; this independent endpoint reads no Uploaded Laps.
 /// </summary>
 public class ScheduleService(AppDbContext db)
 {
@@ -27,7 +27,6 @@ public class ScheduleService(AppDbContext db)
             .Select(w => new
             {
                 w.RaceWeekIndex,
-                w.TrackId,
                 TrackName = w.Track.Name,
                 w.Track.ConfigName,
                 w.StartDate,
@@ -49,14 +48,6 @@ public class ScheduleService(AppDbContext db)
             .Where(c => carIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
 
-        var uploadedLapTrackIds = userId is null
-            ? []
-            : (await db.UploadedLaps
-                .Where(lap => lap.UserId == userId)
-                .Select(lap => lap.TrackId)
-                .Distinct()
-                .ToListAsync(ct)).ToHashSet();
-
         var weekDtos = weeks.Select(w => new ScheduleWeekDto(
             w.RaceWeekIndex,
             w.TrackName,
@@ -73,7 +64,7 @@ public class ScheduleService(AppDbContext db)
                     b.MaxDryTireSets))
                 .OrderBy(c => c.CarName)
                 .ToList(),
-            uploadedLapTrackIds.Contains(w.TrackId)))
+            HasUploadedLapAtTrack: false))
             .ToList();
 
         return new SeasonScheduleDto(seriesId, seriesName, weekDtos);

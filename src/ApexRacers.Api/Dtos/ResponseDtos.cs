@@ -2,6 +2,8 @@ using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Dtos;
 
+internal sealed record SyntheticDriverArtifact(string? DriverName, string Audience, string Provenance);
+
 public record SeriesDto(
     int Id,
     string Name,

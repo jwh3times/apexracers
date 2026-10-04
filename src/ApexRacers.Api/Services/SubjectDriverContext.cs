@@ -11,8 +11,9 @@ namespace ApexRacers.Api.Services;
 /// 409 failure contract.
 /// <para>
 /// The selected Demo request scope resolves to the shared synthetic
-/// <see cref="DemoData.DriverCustId"/>; Real resolves the stored claim. An unavailable
-/// selected scope refuses the lookup. Without a selected scope, controlled callers use
+/// <see cref="DemoData.DriverCustId"/>; a stored Real claim never grants an authorized
+/// Subject Driver. Real feature integration must use Driver Authorization and protected
+/// publication. An unavailable selected scope refuses the lookup. Controlled callers use
 /// current feature eligibility for the Demo override.
 /// </para>
 /// </summary>
@@ -22,16 +23,13 @@ public class SubjectDriverContext(AppDbContext db, FeatureFlagEligibility featur
     {
         if (dataScope is { IsSelected: true, Provenance: DataProvenance.Unknown })
             throw new IRacingNotConfiguredException();
+        if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return null;
         var demo = dataScope is { IsSelected: true }
             ? dataScope.Provenance == DataProvenance.Demo
             : await featureFlags.IsActiveForUserAsync("iracing-demo", userId, ct);
         if (demo) return new SubjectDriver(DemoData.DriverCustId, DataProvenance.Demo);
 
-        var customerId = await db.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.IRacingCustomerId)
-            .FirstOrDefaultAsync(ct);
-        return customerId is { } id ? new SubjectDriver(id, DataProvenance.Real) : null;
+        return null;
     }
 
     public async Task<long?> GetSubjectDriverCustIdAsync(Guid userId, CancellationToken ct = default) =>

@@ -207,17 +207,22 @@ Policies in `Program.cs`:
 
 **Cross-user data access**
 
+- Probe the resource-filter boundary before endpoint-specific validation: legacy Real Driver
+  routes must return `503` with `no-store`, including malformed IDs and bodies, while independently
+  accessible account/catalog routes remain usable. Telemetry must be unavailable even under Demo.
+  Confirm no attributed upload is bound/persisted and catalog detail exposes no private overlays.
+  A forged namespace header, stored claim or `iracing_id` claim cannot reopen these paths.
+
 - `PUT /api/auth/profile` accepts a self-asserted Customer ID. Claim the same ID from two Users,
   including concurrent requests: exactly one claim must persist and the loser must receive a
   non-disclosing `409 Conflict` that identifies no account. The filtered unique index, not a
   read-before-write check, is the race-safe control.
-- `GET /api/series/:id/weeks/:num/cars/:id/percentile?customerId=<X>` — `customerId` is a query parameter, not derived from the JWT. Any authenticated user can query any driver's percentile by passing their iRacing customer ID.
+- `GET /api/series/:id/weeks/:num/cars/:id/percentile?customerId=<X>` — the legacy query parameter remains under eligible Demo access; Real access is unavailable before binding. Demo IDs establish neither real ownership nor disclosure permission.
 - Test: can an unauthenticated user query percentiles?
 - Assess: is exposing other drivers' percentile data a privacy concern, or is this public race data?
-- Test the **write**, not just the read (GHSA-cjjj-33vx-38g5): query that endpoint with a `customerId`
+- For an eligible Demo request, test the **write**, not just the read (GHSA-cjjj-33vx-38g5): query that endpoint with a `customerId`
   that is not the caller's Claimed Identity and confirm no `CarPercentileResult` row is cached against
-  the caller. Reading another Driver's percentile is acceptable — it is public race data — but a cache
-  write keyed on the caller while holding a *different* Driver's figures poisons that caller's own
+  the caller. A cache write keyed on the caller while holding a *different* synthetic Driver's figures poisons that caller's own
   "Your pct" overlay and recommendations with someone else's numbers. The eligible Demo Driver path
   (`SubjectDriverContext` resolving to `DemoData.DriverCustId`) must remain able to write.
 - `GET /api/users/me/analytics` — `/me/` in path should return only the authenticated user's data. Verify the service resolves user from JWT `sub` claim, not from a query parameter.
@@ -271,7 +276,14 @@ When this is implemented, the following must be present:
 
 ## File upload (`POST /api/telemetry/upload`)
 
-`TelemetryUploadService` receives a multipart file upload. `IbtParser` performs content validation before any further processing.
+First verify the current lifecycle denial from the project guide: valid and invalid recordings,
+forged Demo headers and unknown catalog IDs must not reach parsing or persistence. The browser
+cases in web/e2e/telemetry.spec.ts check unavailable upload and My Laps responses.
+
+The retained `TelemetryUploadService` and `IbtParser` implementation is exercised directly by
+service/parser tests. Apply the following upload validation cases to an HTTP workflow only after
+verified attribution and protected access are implemented; current denial does not establish that
+the legacy `400`/`413` upload outcomes were executed.
 
 Content validation in `IbtParser.Parse()`:
 
@@ -281,7 +293,7 @@ Content validation in `IbtParser.Parse()`:
 - Validates session date is within `DateTimeOffset` representable range.
 - Wraps `EndOfStreamException`, `OverflowException`, `ArgumentOutOfRangeException`, `OutOfMemoryException` as `InvalidDataException` — no raw exceptions escape to the API layer.
 
-Test cases:
+Retained parser/service validation cases:
 
 - Upload a non-`.ibt` file (text, image, script) — must be rejected (version check fails even if extension matches).
 - Upload a 100-byte file — must be rejected (too small).

@@ -38,6 +38,17 @@ Two schemas in one database:
 | `ScopedRivals` | Guid PK     | A driver a user follows; unique index on (Provenance, UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
 | `QuarantinedDataCaches` | int PK | Unclassified pre-cutover payload and original clocks; unique CacheKey; unavailable as a cache fallback |
 | `ProvenanceMigrationInventory` | string PK | Observed Unknown row counts by StorageKind, with RecordedAt as observation time |
+| `DriverProofReceipts` | Guid PK | Original User/Customer ID/provenance proof binding; composite alternate key `(Id, UserId, CustomerId, Provenance)`; restricted FK to Users |
+| `DriverAuthorizationGrants` | Guid PK | Revision concurrency token, proof binding and versioned personal/sharing consent; composite receipt FK preserves original association |
+| `DriverLifecycleOperations` | Guid PK | Applied revision, original loss time and completion; alternate key `(Id, GrantId, OriginalLossAt)` binds cleanup to its original operation |
+| `DriverPublicationAdmissions` | Guid PK | Purpose/revision/incarnation-bound writer admission; `TerminalAt`, not `LeaseUntil`, determines drain |
+| `DriverTrackedCopies` | Guid PK | Purpose/revision-bound payload (16 KiB runtime bound), creation and unavailability time; restricted grant FK |
+| `DriverCopyCleanups` | Guid PK | Unique `(OperationId, Purpose)`; original loss, due and verified-removal time; restricted operation/grant FKs |
+
+The lifecycle migration creates these six tables empty and renames the physical legacy claim column
+to `identity.Users.ClaimedIRacingCustomerId`, preserving values and the named claim uniqueness
+constraint. The C# property remains `IRacingCustomerId`. No claim is backfilled as proof or consent;
+Down refuses to discard the fences/history. Driver authority requires real PostgreSQL coordination.
 
 **Provenance storage:** when changing Driver evidence tables, cache keys, seeding, teardown or
 migrations, read docs/research/demo-acquisition-provenance.md first. Mutable evidence table names
@@ -78,6 +89,12 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Critical indexes
 
+`DriverAuthorizationGrants` is unique by `(Provenance, UserId, CustomerId)` and, for active bindings,
+by `(Provenance, CustomerId)` and `(Provenance, UserId)`. `DriverPublicationAdmissions` indexes
+`(GrantId, Purpose, TerminalAt)` and `Incarnation`; expiry is excluded from drain authority.
+`DriverTrackedCopies` indexes `(GrantId, Purpose, UnavailableAt)`; cleanup indexes
+`(VerifiedRemovedAt, DueAt)` and lifecycle work indexes `(GrantId, CompletedAt)`.
+
 `QuarantinedDataCache.CacheKey` is unique within quarantined legacy evidence; its index never authorizes a live-cache fallback.
 
 Percentile queries use indexes on both sides of the `SubsessionResult` → `Subsession` join:
@@ -96,7 +113,7 @@ Percentile queries use indexes on both sides of the `SubsessionResult` → `Subs
 
 `Rival` has a unique index on `(Provenance, UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
 
-`ApplicationUser.IRacingCustomerId` has a filtered unique index (`WHERE "IRacingCustomerId" IS NOT NULL`) — enforces at most one User per Customer ID (a Claimed Identity) without constraining the many users who have none. `AuthService` translates only PostgreSQL unique violations naming this constraint into `ClaimedIdentityConflictException` → 409; the constraint remains the concurrent-write source of truth.
+`ApplicationUser.IRacingCustomerId` maps to `ClaimedIRacingCustomerId`, with the preserved `IX_Users_IRacingCustomerId` unique index (`WHERE "ClaimedIRacingCustomerId" IS NOT NULL`). It enforces claim uniqueness without creating proof or consent. `AuthService` translates only PostgreSQL unique violations naming this constraint into `ClaimedIdentityConflictException` → 409.
 
 `SeasonCarBop` has an index on `(SeasonId, RaceWeekIndex)` — backs the per-week BoP lookup from `ScheduleService`/`StrategyService`.
 

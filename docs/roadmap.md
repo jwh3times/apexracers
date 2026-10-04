@@ -20,6 +20,10 @@ using the `<major>.<minor>.<build>` format.
 
 ## Active Themes
 
+- **Driver authorization and publication:** integrate versioned personal/sharing consent,
+  journal-first lifecycle transitions, protected HTTP dispatch and tracked-copy cleanup. Controlled
+  synthetic modules precede provider proof, the production journal adapter, feature integration and
+  the complete acceptance matrix; legacy Real Driver workflows remain unavailable meanwhile.
 - **Live iRacing data readiness:** keep the iRacing-backed surface gated until required
   service credentials and rollout checks are complete.
 - **Sign in with iRacing:** replace self-entered customer IDs with a verified OAuth

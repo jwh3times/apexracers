@@ -172,6 +172,275 @@ namespace ApexRacers.Data.Migrations
                     b.ToTable("ScopedCarPercentileResults", "iracing");
                 });
 
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverAuthorizationGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AuthorizedDriverName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("BindingActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("PersonalClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PersonalConsentVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("ProofReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ProofValid")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("SharingClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SharingConsentVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Provenance", "CustomerId")
+                        .IsUnique()
+                        .HasFilter("\"BindingActive\" = TRUE");
+
+                    b.HasIndex("Provenance", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"BindingActive\" = TRUE");
+
+                    b.HasIndex("Provenance", "UserId", "CustomerId")
+                        .IsUnique();
+
+                    b.HasIndex("ProofReceiptId", "UserId", "CustomerId", "Provenance");
+
+                    b.ToTable("DriverAuthorizationGrants", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverGrant_ConsentProof", "\"ProofValid\" OR (\"PersonalConsentVersion\" IS NULL AND \"SharingConsentVersion\" IS NULL AND \"AuthorizedDriverName\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_DriverGrant_Provenance", "\"Provenance\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_DriverGrant_Revision", "\"Revision\" > 0");
+
+                            t.HasCheckConstraint("CK_DriverGrant_SharingPersonal", "\"SharingConsentVersion\" IS NULL OR \"PersonalConsentVersion\" IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverCopyCleanup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OriginalLossAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ThroughRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("VerifiedRemovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrantId");
+
+                    b.HasIndex("OperationId", "Purpose")
+                        .IsUnique();
+
+                    b.HasIndex("VerifiedRemovedAt", "DueAt");
+
+                    b.HasIndex("OperationId", "GrantId", "OriginalLossAt");
+
+                    b.ToTable("DriverCopyCleanups", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverCleanup_Deadline", "\"DueAt\" >= \"OriginalLossAt\"");
+
+                            t.HasCheckConstraint("CK_DriverCleanup_Purpose", "\"Purpose\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_DriverCleanup_ThroughRevision", "\"ThroughRevision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverLifecycleOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("AppliedRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("OriginalLossAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("PrimaryAppliedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrantId", "CompletedAt");
+
+                    b.ToTable("DriverLifecycleOperations", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverOperation_Kind", "\"Kind\" IN (1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_DriverOperation_Revision", "\"AppliedRevision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverProofReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Authority")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Provenance")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DriverProofReceipts", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverProof_Provenance", "\"Provenance\" IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverPublicationAdmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AdmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Incarnation")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("TerminalAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Incarnation");
+
+                    b.HasIndex("GrantId", "Purpose", "TerminalAt");
+
+                    b.ToTable("DriverPublicationAdmissions", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverAdmission_Purpose", "\"Purpose\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_DriverAdmission_Revision", "\"Revision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverTrackedCopy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GrantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(16384)
+                        .HasColumnType("character varying(16384)");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("UnavailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrantId", "Purpose", "UnavailableAt");
+
+                    b.ToTable("DriverTrackedCopies", "iracing", t =>
+                        {
+                            t.HasCheckConstraint("CK_DriverCopy_Purpose", "\"Purpose\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_DriverCopy_Revision", "\"Revision\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("ApexRacers.Core.Models.ExternalDataCache", b =>
                 {
                     b.Property<int>("Id")
@@ -982,7 +1251,8 @@ namespace ApexRacers.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<long?>("IRacingCustomerId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("ClaimedIRacingCustomerId");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -1025,7 +1295,8 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("IRacingCustomerId")
                         .IsUnique()
-                        .HasFilter("\"IRacingCustomerId\" IS NOT NULL");
+                        .HasDatabaseName("IX_Users_IRacingCustomerId")
+                        .HasFilter("\"ClaimedIRacingCustomerId\" IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -1218,6 +1489,68 @@ namespace ApexRacers.Data.Migrations
                     b.Navigation("Car");
 
                     b.Navigation("Week");
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverAuthorizationGrant", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.DriverProofReceipt", null)
+                        .WithMany()
+                        .HasForeignKey("ProofReceiptId", "UserId", "CustomerId", "Provenance")
+                        .HasPrincipalKey("Id", "UserId", "CustomerId", "Provenance")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverCopyCleanup", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.DriverAuthorizationGrant", null)
+                        .WithMany()
+                        .HasForeignKey("GrantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ApexRacers.Core.Models.DriverLifecycleOperation", null)
+                        .WithMany()
+                        .HasForeignKey("OperationId", "GrantId", "OriginalLossAt")
+                        .HasPrincipalKey("Id", "GrantId", "OriginalLossAt")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverLifecycleOperation", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.DriverAuthorizationGrant", null)
+                        .WithMany()
+                        .HasForeignKey("GrantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverProofReceipt", b =>
+                {
+                    b.HasOne("ApexRacers.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverPublicationAdmission", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.DriverAuthorizationGrant", null)
+                        .WithMany()
+                        .HasForeignKey("GrantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexRacers.Core.Models.DriverTrackedCopy", b =>
+                {
+                    b.HasOne("ApexRacers.Core.Models.DriverAuthorizationGrant", null)
+                        .WithMany()
+                        .HasForeignKey("GrantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.KnownDevice", b =>
