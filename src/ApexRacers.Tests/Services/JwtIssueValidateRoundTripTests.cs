@@ -90,6 +90,7 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
                 TimeProvider.System,
                 SignInThrottle.Defaults),
             new ImmediateEmailQueue(new FakeEmailSender()),
+            provider.GetRequiredService<AppDbContext>(),
             NullLogger<AuthService>.Instance);
 
         // Registration hands back nothing now — an account is unusable until its address is

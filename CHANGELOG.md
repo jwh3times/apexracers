@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- A PostgreSQL-backed Driver authorization and lifecycle spine with separate personal/sharing
+  consent, proof bindings, journal-first recovery, generation-scoped copy cleanup and protected
+  response-writer checkpoints. Controlled synthetic two-host evidence exercises failure and
+  replay; Real proof and journal adapters remain unavailable pending their independent work.
+
+### Changed
+
+- **Breaking:** Unintegrated Real Driver routes and legacy telemetry persistence/read workflows
+  remain unavailable while authorization is implemented. Claimed identities no longer grant a
+  Real Subject Driver, and catalog pages omit private upload overlays. Demo Driver pages and
+  independent catalog/account workflows retain their applicable behavior.
+- Legacy identity claims retain their values in a renamed physical column; new authorization
+  stores start empty, and rollback refuses to discard enforcement history.
 
 ## [10.0.1] - 2026-10-03
 

@@ -2,6 +2,16 @@
 
 Lap time percentile tracking and car recommendations for iRacing weekly series. ApexRacers aggregates iRacing lap time data and shows where you rank by percentile against the full field — so you can pick the car where you are most competitive.
 
+Driver authorization is being integrated. Eligible Demo views remain available, but legacy Real
+Driver workflows and telemetry upload/lap routes return unavailable; account, catalog, series and
+schedule routes retain independent access. Catalog detail omits private upload overlays. See the
+[lifecycle implementation boundary](docs/research/driver-lifecycle-admission-spine.md).
+
+Existing databases must use the forward-only lifecycle migration: it preserves unverified claim
+values under a renamed physical column and creates empty authorization tables. Stop old writers
+before applying it; an old binary/schema is not a supported recovery path. Ordinary startup has no
+usable provider-ownership or independent-journal adapter, and stored claims do not grant access.
+
 ## Repo structure
 
 | Path                        | Description                                                                |

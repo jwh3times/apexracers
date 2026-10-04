@@ -106,7 +106,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             timeProvider ?? TimeProvider.System,
             throttleOptions ?? TestThrottleOptions);
         return new AuthService(
-            userManager, config, jwt, refreshTokens, sender, throttle, devices, new ImmediateEmailQueue(sender),
+            userManager, config, jwt, refreshTokens, sender, throttle, devices, new ImmediateEmailQueue(sender), db,
             NullLogger<AuthService>.Instance);
     }
 
@@ -1003,6 +1003,43 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     }
 
     // ── UpdateProfileAsync ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateProfileAsync_ActiveVerifiedAssociationRequiresLifecycleBeforeClaimChange()
+    {
+        await using var provider = BuildProvider();
+        await SeedRolesAsync(provider);
+        var svc = BuildService(provider);
+        var ct = TestContext.Current.CancellationToken;
+        var reg = await RegisterAndSignInAsync(provider, svc, "lifecycle-profile@example.com", "Pass1234", ct);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await userManager.FindByIdAsync(reg.UserId.ToString()))!;
+        user.IRacingCustomerId = 100;
+        Assert.True((await userManager.UpdateAsync(user)).Succeeded);
+        var originalName = user.DisplayName;
+        var db = provider.GetRequiredService<AppDbContext>();
+        var proofId = Guid.NewGuid();
+        db.DriverProofReceipts.Add(new ApexRacers.Core.Models.DriverProofReceipt
+        {
+            Id = proofId, UserId = user.Id, CustomerId = 100, Provenance = DataProvenance.Demo,
+            VerifiedAt = DateTimeOffset.UtcNow, Authority = "controlled-synthetic-proof",
+        });
+        db.DriverAuthorizationGrants.Add(new ApexRacers.Core.Models.DriverAuthorizationGrant
+        {
+            Id = Guid.NewGuid(), UserId = user.Id, CustomerId = 100, Provenance = DataProvenance.Demo,
+            ProofReceiptId = proofId, ProofValid = true,
+            PersonalConsentVersion = DriverAuthorizationPolicy.PersonalConsentVersion,
+        });
+        await db.SaveChangesAsync(ct);
+
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => svc.UpdateProfileAsync(
+            reg.UserId, new UpdateProfileRequest("Changed", 200L, "dark", "Pass1234"), ct));
+
+        var unchanged = await userManager.FindByIdAsync(reg.UserId.ToString());
+        Assert.Equal(100L, unchanged!.IRacingCustomerId);
+        Assert.Equal(originalName, unchanged.DisplayName);
+        Assert.Equal("auto", unchanged.ThemePreference);
+    }
 
     [Theory]
     [InlineData(null, null)]

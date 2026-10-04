@@ -36,6 +36,7 @@ public class AuthService(
     SignInThrottleStore signInThrottle,
     KnownDeviceStore knownDevices,
     IOutboundEmailQueue emailQueue,
+    AppDbContext db,
     ILogger<AuthService> logger)
 {
     private const int AccessTokenMinutes = 15;
@@ -372,7 +373,13 @@ public class AuthService(
             ?? throw new InvalidOperationException("User not found.");
 
         if (request.IRacingCustomerId.HasValue && request.IRacingCustomerId != user.IRacingCustomerId)
+        {
             await RequireCurrentPasswordAsync(user, request.CurrentPassword);
+            // A profile claim update cannot stand in for journal-first unlink/reassignment.
+            // Until this legacy workflow joins that lifecycle, refuse before mutating any field.
+            if (await db.DriverAuthorizationGrants.AnyAsync(g => g.UserId == userId && g.BindingActive, ct))
+                throw new IRacingNotConfiguredException();
+        }
 
         user.DisplayName = request.DisplayName.Trim();
         if (request.IRacingCustomerId.HasValue)
@@ -748,4 +755,3 @@ public class AuthService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
-

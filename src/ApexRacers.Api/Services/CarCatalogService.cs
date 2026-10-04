@@ -7,7 +7,8 @@ namespace ApexRacers.Api.Services;
 /// <summary>
 /// Browsable car catalog, read from the persisted <see cref="Core.Models.Car"/> catalog (populated
 /// by the ingestion worker + seeder). Detail joins car-class membership and overlays the caller's
-/// personal best laps in that car when a user id is supplied.
+/// public catalog metadata. Private upload overlays remain unavailable until their
+/// ownership and protected publication workflow joins Driver Authorization.
 /// </summary>
 public class CarCatalogService(AppDbContext db)
 {
@@ -31,17 +32,6 @@ public class CarCatalogService(AppDbContext db)
             .Join(db.CarClasses, x => x.CarClassId, cc => cc.Id, (_, cc) => new CarClassRefDto(cc.Id, cc.Name))
             .ToListAsync(ct);
 
-        IReadOnlyList<UploadedBestDto> bests = userId is { } uid
-            ? await PersonalBestsForCarAsync(uid, carId, ct)
-            : [];
-
-        return CarCatalogMapper.ToDetail(car, carClasses, bests);
+        return CarCatalogMapper.ToDetail(car, carClasses, []);
     }
-
-    private Task<List<UploadedBestDto>> PersonalBestsForCarAsync(
-        Guid userId, int carId, CancellationToken ct) =>
-        UploadedBestQuery.RunAsync(
-            db.UploadedLaps.Where(l => l.UserId == userId && l.CarId == carId),
-            UploadedBestOrder.FastestFirst,
-            ct);
 }

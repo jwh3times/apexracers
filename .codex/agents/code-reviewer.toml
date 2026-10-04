@@ -199,6 +199,16 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag tests that import or reference a controller — services are tested directly, never through the HTTP pipeline.
 - Flag tests that share a single `AppDbContext` instance across test methods.
 
+## Driver lifecycle checks
+
+- Flag a production proof/journal fixture selectable through caller input or ordinary configuration,
+  a stored claim used as Driver permission, or a legacy route reopened without protected dispatch.
+- Flag completion inferred from lease expiry, process replacement or requested cancellation rather
+  than durable terminal-writer evidence. Journal recovery must retain the original intent and clock.
+- Flag claim/schema rollback that restores old writers, claim-to-proof backfill, or direct profile
+  reassignment around an active authorization binding. Independent catalog output intentionally
+  omits private upload overlays while their integration is unavailable.
+
 ## Frontend checks
 
 **API calls**

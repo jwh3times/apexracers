@@ -394,6 +394,22 @@ Package versions are centrally managed in `Directory.Packages.props` — **never
 HTTP request → Controller (binds inputs only) → Service (all logic + EF Core) → AppDbContext → PostgreSQL
 ```
 
+**Driver lifecycle boundary:** `DriverAuthorization`, `DriverPublication`, and `CopyLifecycle`
+coordinate proof/consent generations, journal-first closure, actual protected-writer admission/drain,
+and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers unavailable
+ownership-proof and enforcement-journal adapters; positive protected publication is limited to
+controlled synthetic hosts. A stored claim or an `iracing_id` JWT claim grants no Driver access.
+For lifecycle transitions, protected results, recovery or copy changes, read
+`docs/research/driver-lifecycle-admission-spine.md` before extending these modules.
+
+`LegacyDriverAccessGuard` runs before model binding. Auth, Admin, FeatureFlags, Cars, Tracks, Series
+and Schedule retain independent access; other legacy controllers require Demo provenance, and
+Telemetry is unavailable in every namespace. Denied workflows return `503` ProblemDetails with
+`no-store`. Catalog detail omits private upload overlays. The lifecycle migration creates empty
+authorization tables and fences old claim writers without promoting any stored claim to ownership;
+recovery is forward-only. Synthetic implementation evidence does not establish live authorization
+or the complete publication/copy/restore acceptance matrix.
+
 Controllers do no logic beyond binding inputs and returning `Ok(result)`. Services live in
 `src/ApexRacers.Api/Services/`; response shapes are `record` types in `Dtos/ResponseDtos.cs`. If an
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
@@ -496,7 +512,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `RaceGuideController`                 | official sessions starting in the next ~3 h (**public**)                                                                                                                                  |
 | `RivalsController`                    | rivals a user follows — list/add (idempotent)/remove, search (`400` over `IRacingCacheKeys.MaxDriverSearchLength`; rate-limited per user), suggestions                                    |
 | `CompareController`                   | head-to-head between caller and a rival                                                                                                                                                   |
-| `CarsController` / `TracksController` | browsable car/track catalog + detail (**public**; Uploaded Best overlay; `404`)                                                                                                           |
+| `CarsController` / `TracksController` | browsable car/track catalog + detail (**public**; private upload overlays omitted; `404`)                                                                                                           |
 
 ### Services (`src/ApexRacers.Api/Services/`)
 
@@ -585,7 +601,7 @@ allowance or the high-water mark could be 0, since either would silently deny th
 - `RaceGuideService` — "race now" board (60 s).
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows). A search term over `IRacingCacheKeys.MaxDriverSearchLength` (64) throws `ArgumentException` (→ 400) rather than searching, since the term is the only unbounded caller input reaching a cache key (GHSA-jv96-89xc-98h2); the endpoint is also rate-limited per user (see Rate limiting above).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
-- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables + Uploaded Best overlay; no creds at read time. Lists omit retired entries, while ID-based detail keeps them reachable with their class relationships and historical Uploaded Bests.
+- `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables; no creds at read time. Lists omit retired entries, while ID-based detail keeps them reachable with their class relationships. Private Uploaded Best overlays are omitted pending protected Driver integration.
 - `UploadedBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
   order), used by `UploadedLapService` and the catalog services' overlays instead of each holding
   its own copy. It sees Uploaded Laps only — a Personal Best also weighs the Race Best. See
@@ -608,9 +624,9 @@ allowance or the high-water mark could be 0, since either would silently deny th
   (`MinimumRole` level ≤ user level), shared by `AdminService` and `SubjectDriverContext`. Unknown or role-less
   users receive Standard eligibility; an unknown `MinimumRole` fails closed.
 - `CachedIRacingClient` — get-or-fetch over `IDataClient`; throws `IRacingNotConfiguredException` when creds absent. Also throws `ArgumentException` (→ 400) before ever fetching when `spec.Key` exceeds `ExternalDataCache.CacheKeyMaxLength` — an unstorable key isn't a cache miss, it's a permanent bypass, since the insert failure it would otherwise cause is indistinguishable from the cold-start uniqueness race `GetOrFetchAsync` already swallows (GHSA-jv96-89xc-98h2). This is the backstop; the actual bound belongs on the `IRacingCacheKeys` factory that built the key.
-- `SubjectDriverContext` — resolves the caller's Subject Driver, i.e. their Claimed Identity's Customer ID:
-  optional callers use `GetSubjectDriverCustIdAsync` and receive null when the caller has no Claimed
-  Identity; required callers use
+- `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
+  a stored Real claim yields no authorized Subject Driver. Optional callers use
+  `GetSubjectDriverCustIdAsync`; required callers use
   `GetRequiredSubjectDriverCustIdAsync` / `RequireSubjectDriverCustId`, which throw the typed
   `IRacingNotLinkedException` mapped
   to the exact `409` contract above. `GetSubjectDriverAsync` also returns the selected provenance;
@@ -632,6 +648,9 @@ indexes, FK/`OnDelete` behavior).
 | `Subsession` / `SubsessionResult`                                    | one Split of a Race Session + per-Driver Race Result (+ race context; owned weather/track-state snapshot JSON). `RaceSessionId` persists iRacing's `session_id` so sibling Splits can be grouped; null means the Subsession predates that persistence. Only the race Sim Session's results are stored, and only for race Event Types; `CONTEXT.md`'s Race Sessions section defines the hierarchy. `SplitIndex`/`SplitCount` are nullable and derived from per-Split Strength of Field, not from array order — null is an unknown position, never index 0 (see `docs/adr/0003-split-index-is-derived-from-strength-of-field.md`). `TeamEntryCount`/`AiEntryCount` record the entries that produced no Race Result, so a Field with gaps is distinguishable from a complete one |
 | `WeatherSnapshot` / `WeatherForecastSnapshot` / `TrackStateSnapshot` | SDK-independent persisted JSON contracts with pinned wire names                                                                                                                                                                                           |
 | `QuarantinedDataCache` / `ProvenanceMigrationInventory` | Unclassified pre-cutover cache copies and observed Unknown row counts; unavailable to ordinary evidence reads |
+| `DriverProofReceipt` / `DriverAuthorizationGrant` | Participating proof bindings and versioned personal/sharing authorization; no migration from legacy claims |
+| `DriverLifecycleOperation` / `DriverPublicationAdmission` | Original-clock lifecycle progress and incarnation-bound protected-writer terminal checkpoints |
+| `DriverTrackedCopy` / `DriverCopyCleanup` | Purpose/generation-bound copies and durable earliest-deadline cleanup work |
 | `UploadedLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
 | `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |

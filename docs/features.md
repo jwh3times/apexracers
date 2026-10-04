@@ -3,6 +3,12 @@
 ApexRacers helps iRacing drivers understand where they are competitive by combining
 weekly-series data, personal telemetry, and synthetic/demo data for development.
 
+Driver authorization is being integrated. Eligible synthetic Demo views remain available; legacy
+Real Driver workflows return unavailable until they join protected authorization and publication.
+Telemetry upload and saved-lap routes are unavailable in both modes. Account, catalog, series and
+schedule routes retain independent access. These limits do not establish live proof, consent,
+publication safety or completed retention/restore validation.
+
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,
@@ -28,18 +34,16 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
   Undersized readings do not influence expected-percentile history or driver analytics.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
-- **Telemetry upload:** parse `.ibt` files, store the Timed Laps they recorded, and surface each
-  driver's Uploaded Best per car and track. A file recorded by a driver other than the one
-  linked to the uploading account is refused. The Car and Track must already exist in the catalog
-  before upload; files with unknown catalog IDs are refused. A file may be at most 250 MB — the
-  limit the upload page advertises and the one the API enforces.
+- **Telemetry:** the `.ibt` parser and persisted Uploaded Laps remain implemented internally.
+  Upload and saved-lap API access is currently unavailable while verified attribution and protected
+  personal publication are integrated; requests are denied before the legacy upload binds its body.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.
 - **iRacing standings:** report championship, Time Trial, qualifying, and category-leaderboard
   Standings without conflating those awarded positions with ApexRacers' Recommendation Rank.
-- **Catalog exploration:** browse current cars and tracks, including Uploaded Best overlays
-  when the user has telemetry data. Retired catalog entries stay available through their direct
+- **Catalog exploration:** browse current cars and tracks; private Uploaded Best overlays are
+  omitted pending protected personal publication. Retired catalog entries stay available through their direct
   detail URLs so historical laps remain reachable without crowding the default lists.
 - **Admin controls:** manage non-Admin user roles and feature flags through an Admin-only panel.
   Admin promotion uses startup seeding; the role-management API cannot grant or remove Admin.
@@ -49,6 +53,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 Changing an email address or setting a new Claimed Identity Customer ID requires the current account
 password. Ordinary display-name/theme edits and an unchanged Customer ID do not. This confirms access
 to the local account; a Claimed Identity still does not prove ownership of an iRacing Driver.
+Changing a claim is unavailable when an active authorization binding exists, so a profile edit
+cannot bypass the required identity lifecycle transition. Ordinary account edits remain available.
 
 **API clients upgrading to v8.0.0:** include `currentPassword` in the JSON body of
 `POST /api/auth/request-email-change` alongside `newEmail`. Include it in

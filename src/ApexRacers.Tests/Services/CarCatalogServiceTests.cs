@@ -61,7 +61,7 @@ public class CarCatalogServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_RetiredCar_ReturnsDetailWithCarClassesAndHistoricalUploadedBests()
+    public async Task GetAsync_ClaimedUserDoesNotOpenPrivateOverlay_CatalogRemainsAvailable()
     {
         await using var db = DbContextFactory.Create();
         var userId = Guid.NewGuid();
@@ -82,9 +82,7 @@ public class CarCatalogServiceTests
         Assert.Equal(132, detail.CarId);
         Assert.Equal("Merc GT3", detail.Name);
         Assert.Equal(2523, Assert.Single(detail.CarClasses).CarClassId);
-        var best = Assert.Single(detail.YourUploadedBests);
-        Assert.Equal("Spa", best.TrackName);
-        Assert.Equal(138.5, best.BestLapSeconds, precision: 3);
+        Assert.Empty(detail.YourUploadedBests);
     }
 
     [Fact]

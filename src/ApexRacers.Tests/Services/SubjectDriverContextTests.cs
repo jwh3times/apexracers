@@ -15,7 +15,7 @@ public class SubjectDriverContextTests
         new(db, new FeatureFlagEligibility(db));
 
     [Theory]
-    [InlineData(false, DataProvenance.Real)]
+    [InlineData(false, DataProvenance.Unknown)]
     [InlineData(true, DataProvenance.Demo)]
     public async Task SubjectCarriesProvenanceWhenARealClaimCollidesWithTheDemoCustomerId(
         bool demoEnabled, DataProvenance expected)
@@ -25,13 +25,18 @@ public class SubjectDriverContextTests
         SeedAlphaUserWithDemoFlag(db, user, "Alpha", demoEnabled);
         await db.SaveChangesAsync(Ct);
         var subject = await CreateContext(db).GetSubjectDriverAsync(user.Id, Ct);
+        if (expected == DataProvenance.Unknown)
+        {
+            Assert.Null(subject);
+            return;
+        }
         Assert.NotNull(subject);
         Assert.Equal(DemoData.DriverCustId, subject.CustomerId);
         Assert.Equal(expected, subject.Provenance);
     }
 
     [Fact]
-    public async Task GetSubjectDriverCustIdAsync_UserWithClaimedIdentity_ReturnsCustomerId()
+    public async Task GetSubjectDriverCustIdAsync_ClaimDoesNotGrantAuthorizedSubject()
     {
         await using var db = DbContextFactory.Create();
         var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Jerry", IRacingCustomerId = 260514 };
@@ -40,7 +45,7 @@ public class SubjectDriverContextTests
 
         var result = await CreateContext(db).GetSubjectDriverCustIdAsync(user.Id, Ct);
 
-        Assert.Equal(260514, result);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -94,7 +99,7 @@ public class SubjectDriverContextTests
     }
 
     [Fact]
-    public async Task GetSubjectDriverCustIdAsync_DemoFlagOnButUserBelowMinimumRole_ReturnsClaimedIdentity()
+    public async Task GetSubjectDriverCustIdAsync_DemoFlagBelowMinimumDoesNotGrantRealSubject()
     {
         await using var db = DbContextFactory.Create();
         var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Std", IRacingCustomerId = 555 };
@@ -103,11 +108,11 @@ public class SubjectDriverContextTests
 
         var result = await CreateContext(db).GetSubjectDriverCustIdAsync(user.Id, Ct);
 
-        Assert.Equal(555, result); // override does NOT fire — Standard < Alpha
+        Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetSubjectDriverCustIdAsync_DemoFlagDisabled_ReturnsClaimedIdentity()
+    public async Task GetSubjectDriverCustIdAsync_DemoFlagDisabledDoesNotGrantRealSubject()
     {
         await using var db = DbContextFactory.Create();
         var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Alpha", IRacingCustomerId = 555 };
@@ -116,20 +121,19 @@ public class SubjectDriverContextTests
 
         var result = await CreateContext(db).GetSubjectDriverCustIdAsync(user.Id, Ct);
 
-        Assert.Equal(555, result); // flag off — normal resolution
+        Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetRequiredSubjectDriverCustIdAsync_UserWithClaimedIdentity_ReturnsCustomerId()
+    public async Task GetRequiredSubjectDriverCustIdAsync_ClaimWithoutProofCannotGrantAccess()
     {
         await using var db = DbContextFactory.Create();
         var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Jerry", IRacingCustomerId = 260514 };
         db.Users.Add(user);
         await db.SaveChangesAsync(Ct);
 
-        var result = await CreateContext(db).GetRequiredSubjectDriverCustIdAsync(user.Id, Ct);
-
-        Assert.Equal(260514, result);
+        await Assert.ThrowsAsync<IRacingNotLinkedException>(() =>
+            CreateContext(db).GetRequiredSubjectDriverCustIdAsync(user.Id, Ct));
     }
 
     [Fact]
