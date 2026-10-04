@@ -27,6 +27,15 @@ No unreleased changes.
 - Legacy identity claims retain their values in a renamed physical column; new authorization
   stores start empty, and rollback refuses to discard enforcement history.
 
+## [10.0.2] - 2026-10-04
+
+### Added
+
+- Preserve the October 1 iRacing permissions research and synthetic Driver disclosure prototype
+  as indexed historical planning artifacts. Their original review scope and superseded
+  presentation choices are explicit; accepted architecture and current application behavior
+  remain separate from the prototype's simulated consent and lifecycle controls.
+
 ## [10.0.1] - 2026-10-03
 
 ### Fixed
@@ -1487,7 +1496,8 @@ Initial release — the version currently deployed to production
 - Licensed under the GNU Affero General Public License v3.0.
 
 [Unreleased]: https://github.com/jwh3times/apexracers/compare/v11.0.0...HEAD
-[11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v11.0.0
+[11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0
+[10.0.2]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v10.0.2
 [10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1
 [10.0.0]: https://github.com/jwh3times/apexracers/compare/v9.0.54...v10.0.0
 [9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54
