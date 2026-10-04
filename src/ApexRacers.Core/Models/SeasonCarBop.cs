@@ -6,8 +6,9 @@ namespace ApexRacers.Core.Models;
 /// (SeasonId, RaceWeekIndex, CarId). CarId is stored plain (no FK) so ingestion order
 /// never blocks a BoP row; names are resolved from the catalog at read time.
 /// </summary>
-public class SeasonCarBop
+public class SeasonCarBop : IProvenancedData
 {
+    public DataProvenance Provenance { get; set; }
     public int SeasonId { get; set; }
     public int RaceWeekIndex { get; set; }
     public int CarId { get; set; }

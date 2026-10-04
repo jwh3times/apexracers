@@ -112,7 +112,8 @@ src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext, PaceSourceContext) + their Provider components
                           (AuthProvider, …), each with a colocated *.test.tsx sibling
-src/hooks/              ← shared hooks (`useResource`) with colocated *.test.tsx siblings
+src/hooks/              ← shared hooks (`useResource`) and request lifecycle (`resourceRequest`)
+                          with colocated *.test.ts(x) siblings
 src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
@@ -203,6 +204,13 @@ the hook call instead of reinterpreting every non-`ok` state in the component.
 Keep local state machines for mutation-owned collections and domain workflows: admin CRUD lists that
 are updated in place after writes, debounced searches, uploads, and the percentile lookup's
 idle/not-found/compute flow are not read-only page resources.
+
+When a domain workflow also owns a replaceable read, reuse `createResourceRequest` from
+web/src/hooks/resourceRequest.ts for cancellation, stale-settlement suppression, and outcome
+classification. Keep domain transitions in the feature hook: web/src/features/rivals/useRivalComparison.ts
+owns the selected Customer ID, active comparison, and successful-removal invalidation together.
+Removal checks the current selection after the write succeeds; a request replaced by a newer
+selection, removed selection, or unmount must not publish a late success or failure.
 
 Icons use Material Symbols via `<span className="material-symbols-outlined" aria-hidden="true">icon_name</span>`. Always include `aria-hidden="true"` on decorative icons.
 

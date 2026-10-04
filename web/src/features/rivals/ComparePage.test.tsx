@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ComparePage from './ComparePage';
@@ -122,6 +122,22 @@ function renderPage() {
   );
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const SECOND_COMPARISON: DriverComparison = {
+  ...COMPARISON,
+  you: side(100, 'You against Ana', 2000),
+  rival: side(300, 'Ana Speed', 2200),
+};
+
 describe('ComparePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -136,6 +152,93 @@ describe('ComparePage', () => {
     });
     mockRemove.mockResolvedValue(undefined);
     mockCompare.mockResolvedValue(COMPARISON);
+  });
+
+  it.each(['success', 'error', 'not-linked'])(
+    'ignores an obsolete comparison %s',
+    async outcome => {
+      const first = deferred<DriverComparison>();
+      const second = deferred<DriverComparison>();
+      mockGetRivals.mockResolvedValue([
+        ...RIVALS,
+        { customerId: 300, driverName: 'Ana Speed', createdAt: '2026-01-02T00:00:00Z' },
+      ]);
+      mockCompare.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+      fireEvent.click(screen.getByRole('button', { name: /compare against ana speed/i }));
+      await act(() => Promise.resolve(second.resolve(SECOND_COMPARISON)));
+      expect(screen.getByText('You against Ana')).toBeInTheDocument();
+
+      await act(() => {
+        if (outcome === 'success') first.resolve(COMPARISON);
+        else
+          first.reject(
+            outcome === 'error' ? new Error('obsolete failure') : new IRacingNotLinkedError('old')
+          );
+        return Promise.resolve();
+      });
+      expect(screen.getByText('You against Ana')).toBeInTheDocument();
+      expect(screen.queryByText('You Driver')).not.toBeInTheDocument();
+      expect(screen.queryByText('obsolete failure')).not.toBeInTheDocument();
+    }
+  );
+
+  it('keeps the latest comparison loading when an obsolete result arrives', async () => {
+    const first = deferred<DriverComparison>();
+    const second = deferred<DriverComparison>();
+    mockCompare.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    renderPage();
+    const button = await screen.findByRole('button', { name: /compare against max power/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await act(() => Promise.resolve(first.resolve(COMPARISON)));
+    expect(screen.getByText(/comparing/i)).toBeInTheDocument();
+    expect(screen.queryByText('You Driver')).not.toBeInTheDocument();
+    await act(() => Promise.resolve(second.reject(new Error('current failure'))));
+    expect(screen.getByText('current failure')).toBeInTheDocument();
+  });
+
+  it.each(['success', 'error'])(
+    'cannot revive a removed pending comparison after late %s',
+    async outcome => {
+      const pending = deferred<DriverComparison>();
+      mockCompare.mockReturnValue(pending.promise);
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+      mockGetRivals.mockResolvedValue([]);
+      fireEvent.click(screen.getByRole('button', { name: /remove max power/i }));
+      await screen.findByText(/pick a rival and hit compare/i);
+      await act(() => {
+        if (outcome === 'success') pending.resolve(COMPARISON);
+        else pending.reject(new Error('removed failure'));
+        return Promise.resolve();
+      });
+      expect(screen.getByText(/pick a rival and hit compare/i)).toBeInTheDocument();
+      expect(screen.queryByText('You Driver')).not.toBeInTheDocument();
+      expect(screen.queryByText('removed failure')).not.toBeInTheDocument();
+    }
+  );
+
+  it('does not clear a newer selection when an older removal finishes', async () => {
+    const removal = deferred<void>();
+    mockGetRivals.mockResolvedValue([
+      ...RIVALS,
+      { customerId: 300, driverName: 'Ana Speed', createdAt: '2026-01-02T00:00:00Z' },
+    ]);
+    mockRemove.mockReturnValue(removal.promise);
+    mockCompare.mockResolvedValueOnce(COMPARISON).mockResolvedValueOnce(SECOND_COMPARISON);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /compare against max power/i }));
+    await screen.findByText('You Driver');
+    fireEvent.click(screen.getByRole('button', { name: /remove max power/i }));
+    fireEvent.click(screen.getByRole('button', { name: /compare against ana speed/i }));
+    await screen.findByText('You against Ana');
+    await act(() => Promise.resolve(removal.resolve()));
+    expect(screen.getByText('You against Ana')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /compare against ana speed/i }).closest('li')
+    ).toHaveClass('border-primary-container');
   });
 
   it('lists the followed rivals and the shared-race suggestions', async () => {
@@ -185,7 +288,7 @@ describe('ComparePage', () => {
     fireEvent.click(compareBtn);
 
     await waitFor(() => {
-      expect(mockCompare).toHaveBeenCalledWith(200);
+      expect(mockCompare).toHaveBeenCalledWith(200, expect.any(AbortSignal));
       expect(screen.getByText('You Driver')).toBeInTheDocument();
       expect(screen.getByText(/3 shared races/i)).toBeInTheDocument();
       expect(screen.getAllByText('Spa').length).toBeGreaterThan(0);

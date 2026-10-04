@@ -8,6 +8,7 @@ public class CarPercentileResultConfiguration : IEntityTypeConfiguration<CarPerc
 {
     public void Configure(EntityTypeBuilder<CarPercentileResult> builder)
     {
+        builder.ToTable("ScopedCarPercentileResults");
         builder.HasKey(r => r.Id);
 
         builder.HasOne<ApplicationUser>()
@@ -30,6 +31,6 @@ public class CarPercentileResultConfiguration : IEntityTypeConfiguration<CarPerc
             .HasForeignKey(r => r.SeriesId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(r => new { r.UserId, r.CarId, r.SeriesId, r.WeekId }).IsUnique();
+        builder.HasIndex(r => new { r.Provenance, r.UserId, r.CarId, r.SeriesId, r.WeekId }).IsUnique();
     }
 }

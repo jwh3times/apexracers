@@ -1,4 +1,5 @@
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
@@ -8,6 +9,23 @@ namespace ApexRacers.Tests.Services;
 
 public class UploadedLapServiceTests
 {
+    [Fact]
+    public async Task DemoUserCanReadOwnUploadsWhileDemoAggregatesExcludeThem()
+    {
+        await using var db = DbContextFactory.Create(DataProvenance.Demo);
+        var (user, car, track) = SeedUserCarAndTrack(db);
+        var other = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Other fixture User" };
+        db.Users.Add(other);
+        db.UploadedLaps.AddRange(MakeLap(user, car, track, 90), MakeLap(other, car, track, 70));
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await new UploadedLapService(db).GetUploadedBestsAsync(user.Id,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(90, Assert.Single(result).BestLapSeconds);
+        Assert.Empty(db.UploadedLaps); // Synthetic aggregate queries still exclude user uploads.
+    }
+
     private static (ApplicationUser user, Car car, Track track) SeedUserCarAndTrack(AppDbContext db)
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), IRacingCustomerId = 1, DisplayName = "Jerry" };

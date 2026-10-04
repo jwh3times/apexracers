@@ -9,6 +9,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [10.0.1] - 2026-10-03
+
+### Fixed
+
+- Eligible Demo Users can view synthetic Profile licenses, career stats and awards without
+  claiming a real Driver. Driver panels wait for the current feature-flag owner; unlinked
+  Real Users retain the existing link-needed behavior.
+
+## [10.0.0] - 2026-10-03
+
+### Changed
+
+- **Breaking:** Driver evidence now uses explicit Real/Demo namespaces and new persisted
+  table/key contracts. Pre-cutover evidence has Unknown origin and is unavailable; mapped
+  cache copies are quarantined with their original clocks. Older binaries are fenced out,
+  migration recovery is forward-only, and existing Demo environments require a controlled
+  fresh seed before preview is re-enabled.
+- Known mapped Real Driver evidence omits provider Driver names. API responses identify the
+  selected Driver evidence namespace; real acquisition requires completed Demo teardown.
+
+### Fixed
+
+- Isolated synthetic Demo acquisition, mapped caches, race evidence, follows, percentiles,
+  weather and BoP from Real evidence. Demo misses cannot reach a configured real provider;
+  ambiguous legacy copies are quarantined or unavailable with original clocks preserved.
+- User-uploaded telemetry remains visible in My Laps and imports remain idempotent during
+  Demo preview, while synthetic Driver aggregates exclude user uploads.
+
+## [9.0.54] - 2026-10-02
+
+### Added
+
+- An executable synthetic Driver publication-drain rehearsal using two Kestrel processes and real
+  PostgreSQL, covering admission/streaming races, disconnects, session/link loss, expired leases
+  and process restart. It records feasibility evidence without changing production authorization.
+
+- An accepted Driver acceptance and rollout plan with a traceable evidence matrix, migration and
+  recovery safeguards, bounded implementation handoff, and allowlisted pilot gates. These are
+  requirements for future work; full application validation and live activation remain outstanding.
+
+## [9.0.53] - 2026-10-02
+
+### Added
+
+- An accepted architecture for Driver authorization, consented publication, and copy cleanup,
+  supported by technical research and replacement ADRs. It defines the target ownership and
+  enforcement protocols; application behavior and live-data activation are unchanged.
+
+### Changed
+
+- Updated frontend lint tooling and initialized schedule/footer dates outside repeated rendering.
+
+## [9.0.50] - 2026-10-01
+
+### Fixed
+
+- Rival comparisons now keep results, loading and errors tied to the latest selection. Removing a
+  Rival invalidates its pending comparison, and an older removal cannot clear a newer selection.
+
 ## [9.0.48] - 2026-09-30
 
 ### Added
@@ -1409,7 +1468,12 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v9.0.48...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v10.0.1...HEAD
+[10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1
+[10.0.0]: https://github.com/jwh3times/apexracers/compare/v9.0.54...v10.0.0
+[9.0.54]: https://github.com/jwh3times/apexracers/compare/v9.0.53...v9.0.54
+[9.0.53]: https://github.com/jwh3times/apexracers/compare/v9.0.52...v9.0.53
+[9.0.50]: https://github.com/jwh3times/apexracers/compare/v9.0.49...v9.0.50
 [9.0.48]: https://github.com/jwh3times/apexracers/compare/v9.0.47...v9.0.48
 [9.0.32]: https://github.com/jwh3times/apexracers/compare/v9.0.31...v9.0.32
 [9.0.23]: https://github.com/jwh3times/apexracers/compare/v9.0.22...v9.0.23

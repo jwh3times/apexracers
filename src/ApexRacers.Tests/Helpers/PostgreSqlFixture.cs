@@ -35,7 +35,7 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
         params IInterceptor[] interceptors)
     {
         var options = await CreateOptionsAsync(ct, interceptors);
-        return new AppDbContext(options);
+        return new AppDbContext(options, new ApexRacers.Core.IRacingDataScope(ApexRacers.Core.DataProvenance.Real));
     }
 
     public DbContextOptions<AppDbContext> CreateOptions(params IInterceptor[] interceptors)

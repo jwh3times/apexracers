@@ -51,12 +51,12 @@ public class RaceWeekIndexMigrationTests(PostgreSqlFixture postgres)
         var migration = new RenameWeekNumberToRaceWeekIndex();
         await ApplyAsync(db, migration.DownOperations);
         Assert.Equal(
-            ["SeasonCarBops.WeekNumber", "Subsessions.WeekNumber", "Weeks.WeekNumber"],
+            ["RaceEvidenceSubsessions.WeekNumber", "ScopedSeasonCarBops.WeekNumber", "Weeks.WeekNumber"],
             await RaceWeekColumnsAsync(db));
         Assert.Equal(
             [
-                "SeasonCarBops.IX_SeasonCarBops_SeasonId_WeekNumber",
-                "Subsessions.IX_Subsessions_SeasonId_WeekNumber",
+                "RaceEvidenceSubsessions.IX_RaceEvidenceSubsessions_SeasonId_WeekNumber",
+                "ScopedSeasonCarBops.IX_ScopedSeasonCarBops_SeasonId_WeekNumber",
                 "Weeks.IX_Weeks_SeasonId_WeekNumber",
             ],
             await RaceWeekIndexesAsync(db));
@@ -65,12 +65,12 @@ public class RaceWeekIndexMigrationTests(PostgreSqlFixture postgres)
         db.ChangeTracker.Clear();
 
         Assert.Equal(
-            ["SeasonCarBops.RaceWeekIndex", "Subsessions.RaceWeekIndex", "Weeks.RaceWeekIndex"],
+            ["RaceEvidenceSubsessions.RaceWeekIndex", "ScopedSeasonCarBops.RaceWeekIndex", "Weeks.RaceWeekIndex"],
             await RaceWeekColumnsAsync(db));
         Assert.Equal(
             [
-                "SeasonCarBops.IX_SeasonCarBops_SeasonId_RaceWeekIndex",
-                "Subsessions.IX_Subsessions_SeasonId_RaceWeekIndex",
+                "RaceEvidenceSubsessions.IX_RaceEvidenceSubsessions_SeasonId_RaceWeekIndex",
+                "ScopedSeasonCarBops.IX_ScopedSeasonCarBops_SeasonId_RaceWeekIndex",
                 "Weeks.IX_Weeks_SeasonId_RaceWeekIndex",
             ],
             await RaceWeekIndexesAsync(db));
@@ -88,7 +88,9 @@ public class RaceWeekIndexMigrationTests(PostgreSqlFixture postgres)
     {
         var generator = db.GetService<IMigrationsSqlGenerator>();
         foreach (var command in generator.Generate(operations, db.Model))
-            await db.Database.ExecuteSqlRawAsync(command.CommandText, Ct);
+            await db.Database.ExecuteSqlRawAsync(command.CommandText
+                .Replace("Subsessions", "RaceEvidenceSubsessions", StringComparison.Ordinal)
+                .Replace("SeasonCarBops", "ScopedSeasonCarBops", StringComparison.Ordinal), Ct);
     }
 
     private static async Task<List<string>> RaceWeekColumnsAsync(AppDbContext db) =>
@@ -97,7 +99,7 @@ public class RaceWeekIndexMigrationTests(PostgreSqlFixture postgres)
                 SELECT "table_name" || '.' || "column_name" AS "Value"
                 FROM information_schema.columns
                 WHERE table_schema = 'iracing'
-                  AND table_name IN ('Weeks', 'Subsessions', 'SeasonCarBops')
+                  AND table_name IN ('Weeks', 'RaceEvidenceSubsessions', 'ScopedSeasonCarBops')
                   AND column_name IN ('WeekNumber', 'RaceWeekIndex')
                 ORDER BY "table_name"
                 """)
@@ -109,14 +111,14 @@ public class RaceWeekIndexMigrationTests(PostgreSqlFixture postgres)
                 SELECT tablename || '.' || indexname AS "Value"
                 FROM pg_indexes
                 WHERE schemaname = 'iracing'
-                  AND tablename IN ('Weeks', 'Subsessions', 'SeasonCarBops')
+                  AND tablename IN ('Weeks', 'RaceEvidenceSubsessions', 'ScopedSeasonCarBops')
                   AND indexname IN (
                       'IX_Weeks_SeasonId_WeekNumber',
                       'IX_Weeks_SeasonId_RaceWeekIndex',
-                      'IX_Subsessions_SeasonId_WeekNumber',
-                      'IX_Subsessions_SeasonId_RaceWeekIndex',
-                      'IX_SeasonCarBops_SeasonId_WeekNumber',
-                      'IX_SeasonCarBops_SeasonId_RaceWeekIndex')
+                      'IX_RaceEvidenceSubsessions_SeasonId_WeekNumber',
+                      'IX_RaceEvidenceSubsessions_SeasonId_RaceWeekIndex',
+                      'IX_ScopedSeasonCarBops_SeasonId_WeekNumber',
+                      'IX_ScopedSeasonCarBops_SeasonId_RaceWeekIndex')
                 ORDER BY tablename
                 """)
             .ToListAsync(Ct);

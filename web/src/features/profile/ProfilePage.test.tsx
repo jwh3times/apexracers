@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ProfilePage from './ProfilePage';
 import { api, IRacingNotLinkedError, type Award, type DriverProfile } from '../../services/api';
 import type { User } from '../../context/AuthContext';
+import { FeatureFlagContext } from '../../context/FeatureFlagContext';
 
 let mockUser: User | null = {
   token: 'tok',
@@ -20,9 +21,7 @@ vi.mock('../../context/AuthContext', () => ({
 
 let mockLiveFlag = true;
 let mockDemoFlag = false;
-vi.mock('../../context/FeatureFlagContext', () => ({
-  useIracingSurface: () => ({ enabled: mockLiveFlag || mockDemoFlag, ready: true }),
-}));
+let mockFlagsReady = true;
 
 vi.mock('../../services/api', async importOriginal => {
   const { mockApiModule } = await import('../../test/apiMock');
@@ -145,7 +144,15 @@ const sampleSeries = [
 function renderPage() {
   return render(
     <MemoryRouter>
-      <ProfilePage />
+      <FeatureFlagContext.Provider
+        value={{
+          isEnabled: key =>
+            (key === 'iracing-live' && mockLiveFlag) || (key === 'iracing-demo' && mockDemoFlag),
+          ready: mockFlagsReady,
+        }}
+      >
+        <ProfilePage />
+      </FeatureFlagContext.Provider>
     </MemoryRouter>
   );
 }
@@ -155,6 +162,7 @@ describe('ProfilePage', () => {
     vi.resetAllMocks();
     mockLiveFlag = true;
     mockDemoFlag = false;
+    mockFlagsReady = true;
     mockUser = {
       token: 'tok',
       userId: 'u1',
@@ -349,6 +357,32 @@ describe('ProfilePage', () => {
     expect(screen.getByText('×3')).toBeInTheDocument(); // earned 3 times
   });
 
+  it('shows synthetic licenses, career, and awards for an unlinked Demo User without a Driver claim', async () => {
+    mockLiveFlag = false;
+    mockDemoFlag = true;
+    mockUser = { ...mockUser!, role: 'Alpha', iRacingCustomerId: null };
+    mockGetProfileStats.mockResolvedValue({
+      ...sampleProfile,
+      customerId: 100001,
+      driverName: 'Demo Driver',
+    });
+    mockGetAchievements.mockResolvedValue({
+      customerId: 100001,
+      awardCount: 1,
+      awards: [award(1, 'Clean Race')],
+    });
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Licenses' })).toBeInTheDocument();
+    expect(screen.getByText('Sports Car')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Career by Category' })).toBeInTheDocument();
+    expect(await screen.findByText('Clean Race')).toBeInTheDocument();
+    expect(screen.getByText('Test Driver')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /settings/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/ID 100001/)).not.toBeInTheDocument();
+    expect(mockUser.iRacingCustomerId).toBeNull();
+  });
+
   it('toggles show-all when there are more awards than the preview limit', async () => {
     const many = Array.from({ length: 20 }, (_, i) => award(i + 1, `Award ${i + 1}`));
     mockGetAchievements.mockResolvedValue({ customerId: 100042, awardCount: 20, awards: many });
@@ -387,6 +421,22 @@ describe('ProfilePage', () => {
     await waitFor(() => expect(screen.getByText('Active Series')).toBeInTheDocument());
     expect(mockGetAchievements).not.toHaveBeenCalled();
     expect(screen.queryByText('Trophy Case')).not.toBeInTheDocument();
+  });
+
+  it('waits for the current flag owner before reading or showing Driver evidence', async () => {
+    mockFlagsReady = false;
+    mockDemoFlag = true;
+    mockGetProfileStats.mockResolvedValue(sampleProfile);
+    renderPage();
+
+    await screen.findByText(/No lap data yet/i);
+    expect(screen.queryByRole('heading', { name: 'Licenses' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Trophy Case' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Active Series' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /settings/i })).not.toBeInTheDocument();
+    expect(mockGetProfileStats).not.toHaveBeenCalled();
+    expect(mockGetAchievements).not.toHaveBeenCalled();
+    expect(mockGetSeries).not.toHaveBeenCalled();
   });
 
   it('hides iRacing sections and skips their fetches when iracing-live is off', async () => {

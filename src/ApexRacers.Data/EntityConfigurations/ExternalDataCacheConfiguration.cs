@@ -9,8 +9,10 @@ public class ExternalDataCacheConfiguration : IEntityTypeConfiguration<ExternalD
     public void Configure(EntityTypeBuilder<ExternalDataCache> builder)
     {
         builder.HasKey(c => c.Id);
-
-        builder.HasIndex(c => c.CacheKey).IsUnique();
+        // A new table fences binaries that still read/write the unqualified legacy table.
+        builder.ToTable("MappedDataCaches", table => table.HasCheckConstraint(
+            "CK_MappedDataCaches_KnownProvenance", "\"Provenance\" IN (1, 2)"));
+        builder.HasIndex(c => new { c.Provenance, c.CacheKey }).IsUnique();
 
         builder.Property(c => c.CacheKey).HasMaxLength(ExternalDataCache.CacheKeyMaxLength);
 

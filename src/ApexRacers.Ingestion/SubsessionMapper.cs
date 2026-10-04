@@ -34,6 +34,7 @@ public static class SubsessionMapper
         new()
         {
             Id = subsessionId,
+            Provenance = DataProvenance.Real,
             RaceSessionId = data.SessionId,
             SeasonId = data.SeasonId,
             RaceWeekIndex = data.RaceWeekIndex,
@@ -66,6 +67,7 @@ public static class SubsessionMapper
         new()
         {
             SubsessionId = subsessionId,
+            Provenance = DataProvenance.Real,
             CustId = result.CustomerId!.Value,
             CarId = result.CarId,
             CarClassId = result.CarClassId,
@@ -89,7 +91,7 @@ public static class SubsessionMapper
             Division = result.Division,
             DropRace = result.DropRace,
             Interval = result.ClassInterval?.TotalSeconds ?? -1,
-            DisplayName = result.DisplayName,
+            DisplayName = null,
             QualLapSeconds = SubsessionIndexer.LapSecondsOrSentinel(result.QualifyingLapTime),
             NewSubLevel = result.NewSubLevel,
             OldSubLevel = result.OldSubLevel,

@@ -118,7 +118,9 @@ public class CachedDriverIdentityMigrationTests(PostgreSqlFixture postgres)
         if (connection.State != ConnectionState.Open)
             await connection.OpenAsync(Ct);
         await using var command = connection.CreateCommand();
-        command.CommandText = sql;
+        // Exercise the historical JSON transformation over its owned contracts; the full
+        // migration-chain test separately proves the original legacy table's actual cutover.
+        command.CommandText = sql.Replace("\"ExternalDataCaches\"", "\"MappedDataCaches\"", StringComparison.Ordinal);
         await command.ExecuteNonQueryAsync(Ct);
     }
 

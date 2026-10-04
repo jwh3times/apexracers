@@ -1,3 +1,4 @@
+using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public static class DbContextFactory
     /// open connection to EF with <c>contextOwnsConnection: true</c> — disposing the returned
     /// context (callers use <c>await using</c>) closes the connection and tears the database down.
     /// </summary>
-    public static AppDbContext Create()
+    public static AppDbContext Create(DataProvenance provenance = DataProvenance.Real)
     {
         // Foreign Keys=False: T9's goal is to validate SQL *translatability* (the relational query
         // pipeline, shared with Npgsql), not referential integrity. Unit tests use minimal partial
@@ -33,7 +34,7 @@ public static class DbContextFactory
             .UseSqlite(connection, contextOwnsConnection: true)
             .Options;
 
-        var context = new AppDbContext(options);
+        var context = new AppDbContext(options, new IRacingDataScope(provenance));
         context.Database.EnsureCreated();
         return context;
     }
@@ -61,10 +62,10 @@ public static class DbContextFactory
             seed.Database.EnsureCreated();
         }
 
-        public AppDbContext NewContext() =>
+        public AppDbContext NewContext(DataProvenance provenance = DataProvenance.Real) =>
             new(new DbContextOptionsBuilder<AppDbContext>()
                 .UseSqlite(_connection, contextOwnsConnection: false)
-                .Options);
+                .Options, new IRacingDataScope(provenance));
 
         public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
     }

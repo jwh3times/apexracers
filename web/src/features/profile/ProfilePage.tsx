@@ -11,7 +11,7 @@ import {
 import ResourceView, { NotLinkedCard } from '../../components/ResourceView';
 import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
-import { useIracingSurface } from '../../context/FeatureFlagContext';
+import { useFeatureFlag, useIracingSurface } from '../../context/FeatureFlagContext';
 import type { Resource } from '../../hooks/useResource';
 import { useResource } from '../../hooks/useResource';
 import { formatLapTime } from '../../utils/lapTime';
@@ -295,9 +295,13 @@ function SeriesCard({ s }: { s: Series }) {
 export default function ProfilePage() {
   const { user } = useAuth();
   const displayName = user?.displayName ?? 'Driver';
-  const { enabled: showIracing } = useIracingSurface();
+  const { enabled, ready } = useIracingSurface();
+  const showIracing = ready && enabled;
+  const demo = useFeatureFlag('iracing-demo');
 
   const linked = !!user?.iRacingCustomerId;
+  // Demo supplies the Subject Driver without asserting a User's Claimed Identity.
+  const hasSubjectDriver = linked || demo;
   const lapsResource = useResource(signal => api.getMyUploadedBests(signal), [], {
     onError: { fallback: [] },
   });
@@ -305,15 +309,19 @@ export default function ProfilePage() {
     enabled: showIracing,
     onError: { fallback: [] },
   });
-  const statsResource = useResource(signal => api.getProfileStats(signal), [linked, showIracing], {
-    enabled: linked && showIracing,
-    fallbackMessage: 'Failed to load driver stats.',
-  });
+  const statsResource = useResource(
+    signal => api.getProfileStats(signal),
+    [hasSubjectDriver, demo, showIracing],
+    {
+      enabled: hasSubjectDriver && showIracing,
+      fallbackMessage: 'Failed to load driver stats.',
+    }
+  );
   const achievementsResource = useResource(
     signal => api.getAchievements(signal),
-    [linked, showIracing],
+    [hasSubjectDriver, demo, showIracing],
     {
-      enabled: linked && showIracing,
+      enabled: hasSubjectDriver && showIracing,
       onNotLinked: { fallback: { customerId: 0, awardCount: 0, awards: [] } },
       onError: { fallback: { customerId: 0, awardCount: 0, awards: [] } },
     }
@@ -406,7 +414,7 @@ export default function ProfilePage() {
 
       {/* Driver stats — career, licenses, favorites */}
       {showIracing &&
-        (linked ? (
+        (hasSubjectDriver ? (
           statsResource.status === 'ok' ? (
             <DriverStats data={statsResource.data} />
           ) : (
@@ -420,7 +428,7 @@ export default function ProfilePage() {
         ))}
 
       {/* Trophy case — earned awards/achievements */}
-      {showIracing && linked && <TrophyCase resource={achievementsResource} />}
+      {showIracing && hasSubjectDriver && <TrophyCase resource={achievementsResource} />}
 
       {/* Active series */}
       {showIracing && (
