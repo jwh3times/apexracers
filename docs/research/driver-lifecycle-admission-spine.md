@@ -44,7 +44,10 @@ Sharing withdrawal leaves valid personal access. Personal withdrawal, unlink, de
 proof/revocation and explicit deletion close both scopes. Routine provider expiry/outage does not
 manufacture a withdrawal. Regrant requires current proof/consent, cannot contract scope outside
 the journal-first lifecycle, cannot restore explicit deletion, and cannot restore dormant personal
-data at or after day 90. New generations do not reset old cleanup clocks. Old cleanup is bounded
+data at or after day 90. A deletion tombstone prevents grants for the same User across Customer IDs.
+The controlled deletion transition is unavailable when the User has multiple historical associations;
+it cannot acknowledge only one association as a completed User deletion. User-wide journal orchestration
+remains required before that account workflow becomes available. New generations do not reset old cleanup clocks. Old cleanup is bounded
 to its affected copy revisions and cannot erase later authorized generations.
 
 ## Legacy paths and migration
@@ -54,9 +57,11 @@ scope, including warm-cache and arbitrary-ID calls. A global MVC resource filter
 binding. Demo Driver routes retain their synthetic behavior. The legacy telemetry upload/lap
 workflow remains unavailable because recorder IDs and claims cannot establish attributed
 persistence or personal use; its full integration belongs to #372. Independent catalog/account
-routes remain available. Car/Track metadata excludes private upload overlays pending integration.
+routes remain available. Car/Track metadata and Schedule exclude private upload overlays pending integration.
+Schedule's retained `HasUploadedLapAtTrack` field is always false and does not query private laps.
 The old Subject Driver resolver no longer derives Real permission from a stored claim. Changing a
 claim while an active verified association exists requires the lifecycle rather than a profile edit.
+The profile check and persisted mutation share the primary store's grant coordination transaction.
 
 Migration `20261004012741_DriverLifecycleAdmissionSpine` starts authorization stores empty and
 preserves existing claims as unverified. Their physical column is renamed

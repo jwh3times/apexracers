@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ApexRacers.Api.Dtos;
 using ApexRacers.Core;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -62,7 +63,7 @@ internal sealed class ProtectedDriverResult(
             { http.Response.StatusCode = 503; return; }
             http.Response.ContentType = "application/x-ndjson";
             var first = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new SyntheticDriverArtifact(access.DriverName,
-                access.Purpose == DriverConsentScope.Personal ? "owner" : "signed-in-sharing", "synthetic")) + "\n");
+                access.Purpose == DriverConsentScope.Personal ? "owner" : "signed-in-sharing", "synthetic"), JsonSerializerOptions.Web) + "\n");
             var last = "{\"complete\":true,\"provenance\":\"synthetic\"}\n"u8.ToArray();
             // Artifact is bounded before any output and contains no raw other-Driver identifiers,
             // uploads or private history. No arbitrary caller serializer/payload can bypass it.
@@ -91,5 +92,4 @@ internal sealed class ProtectedDriverResult(
     }
 
     private Task PhaseAsync(string phase, Guid id, CancellationToken ct) => observer?.PhaseAsync(phase, id, ct) ?? Task.CompletedTask;
-    private sealed record SyntheticDriverArtifact(string? DriverName, string Audience, string Provenance);
 }

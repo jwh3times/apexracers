@@ -122,16 +122,17 @@ public class PercentileCalculationServiceTests
     }
 
     [Fact]
-    public async Task ComputeAndCacheAsync_UserProfileExists_CreatesCarPercentileResult()
+    public async Task ComputeAndCacheAsync_DemoSubject_CreatesCarPercentileResult()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
-        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
+        db.FeatureFlags.Add(new FeatureFlag { Key = "iracing-demo", Name = "Demo", MinimumRole = "Standard", IsEnabled = true });
+        AddResult(db, subsession, car, carClass, custId: DemoData.DriverCustId, lapSeconds: 70);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
+        await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: DemoData.DriverCustId, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         var cached = Assert.Single(db.CarPercentileResults);
         Assert.Equal(userId, cached.UserId);
@@ -147,12 +148,13 @@ public class PercentileCalculationServiceTests
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
         db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Jerry" });
-        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
+        db.FeatureFlags.Add(new FeatureFlag { Key = "iracing-demo", Name = "Demo", MinimumRole = "Standard", IsEnabled = true });
+        AddResult(db, subsession, car, carClass, custId: DemoData.DriverCustId, lapSeconds: 70);
         var oldTime = DateTimeOffset.UtcNow.AddDays(-1);
         db.CarPercentileResults.Add(new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 25, SampleSize = 2, ComputedAt = oldTime });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
+        await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: DemoData.DriverCustId, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(db.CarPercentileResults);
         Assert.Equal(50.0, db.CarPercentileResults.Single().PercentileRank);
@@ -241,9 +243,9 @@ public class PercentileCalculationServiceTests
     [InlineData("Alpha", true, true, true, 1L)]
     [InlineData("Alpha", true, false, false, 1L)]
     [InlineData("Standard", true, true, false, 1L)]
-    [InlineData("Standard", true, false, true, 1L)]
+    [InlineData("Standard", true, false, false, 1L)]
     [InlineData("Alpha", false, true, false, 1L)]
-    [InlineData("Alpha", false, false, true, 1L)]
+    [InlineData("Alpha", false, false, false, 1L)]
     [InlineData("Alpha", true, true, true, null)]
     public async Task ComputeAndCacheAsync_DemoEligibility_CachesOnlyResolvedSubject(
         string roleName, bool demoEnabled, bool lookupDemo, bool shouldCache, long? claimedCustomerId)

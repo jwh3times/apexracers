@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Data.Common;
 using System.Security.Claims;
 using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
@@ -8,11 +9,11 @@ using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
@@ -106,7 +107,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             timeProvider ?? TimeProvider.System,
             throttleOptions ?? TestThrottleOptions);
         return new AuthService(
-            userManager, config, jwt, refreshTokens, sender, throttle, devices, new ImmediateEmailQueue(sender), db,
+            userManager, config, jwt, refreshTokens, sender, throttle, devices, new ImmediateEmailQueue(sender), new DriverAuthorityStore(db, timeProvider ?? TimeProvider.System),
             NullLogger<AuthService>.Instance);
     }
 
@@ -1042,6 +1043,72 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UpdateProfileAsync_ConcurrentVerifiedGrantSerializesBeforeProfileMutation(bool grantFirst)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = postgres.CreateOptions();
+        Guid userId;
+        string originalName;
+        await using (var setup = BuildProvider(options))
+        {
+            await SeedRolesAsync(setup);
+            var registered = await RegisterAndSignInAsync(setup, BuildService(setup), "grant-profile@example.com", "Pass1234", ct);
+            userId = registered.UserId;
+            var manager = setup.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await manager.FindByIdAsync(userId.ToString()))!;
+            user.IRacingCustomerId = 100;
+            originalName = user.DisplayName;
+            Assert.True((await manager.UpdateAsync(user)).Succeeded);
+        }
+
+        var journal = new ControlledGrantJournal(grantFirst);
+        var saveGate = new ProfileSaveGate(200);
+        var lockAttempt = new CoordinationLockAttempt();
+        await using var profileProvider = BuildProvider(postgres.WithInterceptors(options, grantFirst ? lockAttempt : saveGate));
+        await using var grantDb = new AppDbContext(grantFirst ? options : postgres.WithInterceptors(options, lockAttempt));
+        var grantStore = new DriverAuthorityStore(grantDb, TimeProvider.System);
+        var profile = BuildService(profileProvider);
+        var scope = new DriverScope(userId, 100, DataProvenance.Demo);
+        var proof = new VerifiedDriverProof(Guid.NewGuid(), scope, DateTimeOffset.UtcNow.AddMinutes(-1),
+            "controlled-synthetic-proof", "Synthetic Driver");
+        Task<DriverAccess> grantTask;
+        Task<Exception?> profileTask;
+        if (grantFirst)
+        {
+            grantTask = grantStore.GrantAsync(proof, new(DriverAuthorizationPolicy.PersonalConsentVersion), journal, ct);
+            await journal.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            profileTask = CaptureAsync(() => profile.UpdateProfileAsync(userId, new("Changed", 200, "dark", "Pass1234"), ct));
+        }
+        else
+        {
+            profileTask = CaptureAsync(() => profile.UpdateProfileAsync(userId, new("Changed", 200, "dark", "Pass1234"), ct));
+            await saveGate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            grantTask = grantStore.GrantAsync(proof, new(DriverAuthorizationPolicy.PersonalConsentVersion), journal, ct);
+        }
+        try { await AssertWaitingForCoordinationAsync(options, lockAttempt); }
+        finally
+        {
+            journal.Release.TrySetResult();
+            saveGate.Release.TrySetResult();
+        }
+        var access = await grantTask;
+        var error = await profileTask;
+        if (grantFirst) Assert.IsType<IRacingNotConfiguredException>(error);
+        else Assert.Null(error);
+        await using var verification = new AppDbContext(options);
+        var current = await verification.Users.AsNoTracking().SingleAsync(u => u.Id == userId, ct);
+        Assert.Equal(grantFirst ? 100L : 200L, current.IRacingCustomerId);
+        Assert.Equal(grantFirst ? originalName : "Changed", current.DisplayName);
+        Assert.Equal(grantFirst ? "auto" : "dark", current.ThemePreference);
+        var binding = Assert.Single(await verification.DriverAuthorizationGrants.AsNoTracking().ToListAsync(ct));
+        Assert.Equal(access.GrantId, binding.Id);
+        Assert.Equal(scope.CustomerId, binding.CustomerId);
+        Assert.True(binding.BindingActive);
+    }
+
+    [Theory]
     [InlineData(null, null)]
     [InlineData(null, "")]
     [InlineData(null, "wrong")]
@@ -1179,8 +1246,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     public async Task UpdateProfileAsync_ConcurrentClaims_OneUserWinsAndOneReceivesClaimedIdentityConflict()
     {
         const long customerId = 123456L;
-        var barrier = new ConcurrentClaimSaveBarrier(customerId);
-        var options = postgres.CreateOptions(barrier);
+        var options = postgres.CreateOptions();
 
         Guid firstUserId;
         Guid secondUserId;
@@ -1192,20 +1258,28 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             secondUserId = (await RegisterAndSignInAsync(setupProvider, setupService, "second@example.com", "Pass1234", TestContext.Current.CancellationToken)).UserId;
         }
 
-        await using var firstProvider = BuildProvider(options);
-        await using var secondProvider = BuildProvider(options);
+        var saveGate = new ProfileSaveGate(customerId);
+        var lockAttempt = new CoordinationLockAttempt();
+        await using var firstProvider = BuildProvider(postgres.WithInterceptors(options, saveGate));
+        await using var secondProvider = BuildProvider(postgres.WithInterceptors(options, lockAttempt));
         var firstService = BuildService(firstProvider);
         var secondService = BuildService(secondProvider);
 
-        var outcomes = await Task.WhenAll(
-            CaptureAsync(() => firstService.UpdateProfileAsync(
+        var first = CaptureAsync(() => firstService.UpdateProfileAsync(
                 firstUserId,
                 new UpdateProfileRequest("First Driver", customerId, CurrentPassword: "Pass1234"),
-                TestContext.Current.CancellationToken)),
-            CaptureAsync(() => secondService.UpdateProfileAsync(
+                TestContext.Current.CancellationToken));
+        await saveGate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var second = CaptureAsync(() => secondService.UpdateProfileAsync(
                 secondUserId,
                 new UpdateProfileRequest("Second Driver", customerId, CurrentPassword: "Pass1234"),
-                TestContext.Current.CancellationToken)));
+                TestContext.Current.CancellationToken));
+        try
+        {
+            await AssertWaitingForCoordinationAsync(options, lockAttempt);
+        }
+        finally { saveGate.Release.TrySetResult(); }
+        var outcomes = await Task.WhenAll(first, second);
 
         Assert.Single(outcomes, outcome => outcome is null);
         var conflict = Assert.Single(outcomes.OfType<ClaimedIdentityConflictException>());
@@ -2071,11 +2145,10 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         }
     }
 
-    private sealed class ConcurrentClaimSaveBarrier(long customerId) : SaveChangesInterceptor
+    private sealed class ProfileSaveGate(long customerId) : SaveChangesInterceptor
     {
-        private readonly TaskCompletionSource release =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private int arrivals;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
@@ -2083,19 +2156,54 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             CancellationToken cancellationToken = default)
         {
             if (eventData.Context?.ChangeTracker.Entries<ApplicationUser>()
-                    .Any(IsCompetingClaim) is not true)
+                    .Any(entry => entry.State == EntityState.Modified &&
+                        entry.Property(user => user.IRacingCustomerId).CurrentValue == customerId) is not true)
                 return result;
-
-            if (Interlocked.Increment(ref arrivals) == 2)
-                release.TrySetResult();
-
-            await release.Task.WaitAsync(cancellationToken);
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
             return result;
         }
+    }
 
-        private bool IsCompetingClaim(EntityEntry<ApplicationUser> entry) =>
-            entry.State == EntityState.Modified &&
-            entry.Property(user => user.IRacingCustomerId).CurrentValue == customerId;
+    private sealed class CoordinationLockAttempt : DbCommandInterceptor
+    {
+        public TaskCompletionSource<int> Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("pg_advisory_xact_lock", StringComparison.Ordinal))
+                Entered.TrySetResult(((NpgsqlConnection)command.Connection!).ProcessID);
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private static async Task AssertWaitingForCoordinationAsync(DbContextOptions<AppDbContext> options,
+        CoordinationLockAttempt attempt)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var pid = await attempt.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+        await using var db = new AppDbContext(options);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        while (!await db.Database.SqlQuery<int>($"SELECT COUNT(*)::integer AS \"Value\" FROM pg_locks WHERE pid = {pid} AND locktype = 'advisory' AND NOT granted")
+            .AnyAsync(count => count > 0, deadline.Token))
+            await Task.Delay(10, deadline.Token);
+    }
+
+    private sealed class ControlledGrantJournal(bool hold) : IDriverEnforcementJournal
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task<DriverJournalState> ReadAsync(DriverScope scope, CancellationToken ct = default)
+        {
+            Entered.TrySetResult();
+            if (hold) await Release.Task.WaitAsync(ct);
+            return new(true, 0, []);
+        }
+        public Task<DriverLifecycleIntent> AppendAsync(DriverLifecycleIntent intent, CancellationToken ct = default) =>
+            throw new InvalidOperationException("This controlled fixture only gates grants.");
+        public Task ReconcileAsync(DriverLifecycleIntent intent, long revision, CancellationToken ct = default) =>
+            throw new InvalidOperationException("This controlled fixture only gates grants.");
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexRacers.Core;
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
@@ -155,13 +156,14 @@ public class StrategyServiceTests
     }
 
     [Fact]
-    public async Task GetStrategyAsync_LinkedCaller_OverlaysRecommendationAndOrdersByRecommendationRank()
+    public async Task GetStrategyAsync_DemoCaller_OverlaysRecommendationAndOrdersByRecommendationRank()
     {
         await using var db = await SeededAsync();
 
-        // A linked user who raced the BMW this week and beat the field.
+        // An eligible Demo caller whose synthetic Driver beat the field this week.
         var userId = Guid.NewGuid();
-        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = 1, DisplayName = "Driver" });
+        db.Users.Add(new ApplicationUser { Id = userId, IRacingCustomerId = DemoData.DriverCustId, DisplayName = "Driver" });
+        db.FeatureFlags.Add(new FeatureFlag { Key = "iracing-demo", Name = "Demo", MinimumRole = "Standard", IsEnabled = true });
         var carClass = new CarClass { Id = 1, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
         db.CarClasses.Add(carClass);
         var weekId = await db.Weeks
@@ -171,7 +173,7 @@ public class StrategyServiceTests
         db.Subsessions.Add(subsession);
         await db.SaveChangesAsync(Ct);
 
-        AddResult(db, subsession, Bmw, carClass, custId: 1, lapSeconds: 60);   // caller — fastest
+        AddResult(db, subsession, Bmw, carClass, custId: DemoData.DriverCustId, lapSeconds: 60);   // caller — fastest
         AddResult(db, subsession, Bmw, carClass, custId: 50, lapSeconds: 70);
         AddResult(db, subsession, Bmw, carClass, custId: 60, lapSeconds: 80);
         AddResult(db, subsession, Porsche, carClass, custId: 101, lapSeconds: 65);

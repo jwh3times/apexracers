@@ -18,6 +18,22 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
     public async Task<bool> HasAssociationAsync(Guid userId, CancellationToken ct = default) =>
         await db.Set<DriverAuthorizationGrant>().AnyAsync(g => g.UserId == userId && g.BindingActive, ct);
 
+    /// <summary>Identity profile mutations and verified grants share one primary serialization boundary.
+    /// The callback receives the current User and association state while that boundary remains held.</summary>
+    public async Task<T> UpdateUnverifiedProfileAsync<T>(Guid userId,
+        Func<ApplicationUser, bool, CancellationToken, Task<T>> update, CancellationToken ct = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await LockAsync(ct);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new InvalidOperationException("User not found.");
+        await db.Entry(user).ReloadAsync(ct);
+        var associated = await HasAssociationAsync(userId, ct);
+        var result = await update(user, associated, ct);
+        await transaction.CommitAsync(ct);
+        return result;
+    }
+
     public async Task<DriverAccess?> ResolveAsync(DriverScope scope, DriverConsentScope purpose, CancellationToken ct = default)
     {
         var grant = await FindGrantAsync(scope, ct);
@@ -38,6 +54,9 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         var enforcement = await journal.ReadAsync(proof.Scope, ct);
         if (!enforcement.Available || enforcement.PendingIntents.Count != 0)
             throw new InvalidOperationException("Driver enforcement is unavailable.");
+        if (await db.Set<DriverLifecycleOperation>().AnyAsync(o => o.Kind == DriverLifecycleKind.DeleteUser
+            && db.Set<DriverAuthorizationGrant>().Any(g => g.Id == o.GrantId && g.UserId == proof.Scope.UserId), ct))
+            throw new InvalidOperationException("Deleted User authorization cannot be reactivated.");
         // An unverified account claim is deliberately not read here. Historical verified ownership
         // is never silently transferred, even if its current binding is inactive.
         if (await db.Set<DriverAuthorizationGrant>().AnyAsync(g => g.Provenance == proof.Scope.Provenance
@@ -47,9 +66,6 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         var grant = await LoadGrantAsync(proof.Scope, ct);
         if (grant is not null && grant.Revision < enforcement.MinimumRevision)
             throw new InvalidOperationException("Driver enforcement requires reconciliation.");
-        if (grant is not null && await db.Set<DriverLifecycleOperation>().AnyAsync(o =>
-            o.GrantId == grant.Id && o.Kind == DriverLifecycleKind.DeleteUser, ct))
-            throw new InvalidOperationException("Deleted authorization cannot be reactivated.");
         if (grant?.SharingConsentVersion is not null && consent.SharingVersion is null)
             throw new InvalidOperationException("Consent withdrawal requires a durable lifecycle operation.");
         var changesGeneration = grant is not null && (grant.ProofReceiptId != proof.ReceiptId
@@ -109,6 +125,11 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             throw new ArgumentException("A durable lifecycle intent is required.");
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
+        // This bounded spine cannot acknowledge a User-wide deletion after associations changed.
+        // Refuse rather than falsely certify seven-day removal for only the selected Driver.
+        if (intent.Kind == DriverLifecycleKind.DeleteUser && await db.Set<DriverAuthorizationGrant>()
+            .AnyAsync(g => g.UserId == intent.Scope.UserId && g.Id != intent.GrantId, ct))
+            throw new InvalidOperationException("User-wide deletion requires all historical associations to be coordinated.");
         var existing = await db.Set<DriverLifecycleOperation>().AsNoTracking().SingleOrDefaultAsync(o => o.Id == intent.OperationId, ct);
         if (existing is not null)
         {
@@ -227,18 +248,16 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
         var now = timeProvider.GetUtcNow();
-        var work = await db.Set<DriverCopyCleanup>().Where(w => w.DueAt <= now && w.VerifiedRemovedAt == null).ToListAsync(ct);
-        foreach (var item in work)
-        {
-            // Active newer-generation copies are never erased by old cleanup work.
-            await db.Set<DriverTrackedCopy>().Where(c => c.GrantId == item.GrantId && c.Purpose == item.Purpose
-                && c.Revision <= item.ThroughRevision && c.UnavailableAt != null).ExecuteDeleteAsync(ct);
-            if (!await db.Set<DriverTrackedCopy>().AnyAsync(c => c.GrantId == item.GrantId && c.Purpose == item.Purpose
-                && c.Revision <= item.ThroughRevision && c.UnavailableAt != null, ct)) item.VerifiedRemovedAt = now;
-        }
-        await db.SaveChangesAsync(ct);
+        var work = db.Set<DriverCopyCleanup>().Where(w => w.DueAt <= now && w.VerifiedRemovedAt == null);
+        // One correlated delete and one verification update cover every due association. Active
+        // copies and later generations remain outside old cleanup even when they share a grant.
+        await db.Set<DriverTrackedCopy>().Where(c => c.UnavailableAt != null && work.Any(w =>
+            w.GrantId == c.GrantId && w.Purpose == c.Purpose && c.Revision <= w.ThroughRevision)).ExecuteDeleteAsync(ct);
+        var completed = await work.Where(w => !db.Set<DriverTrackedCopy>().Any(c =>
+            c.GrantId == w.GrantId && c.Purpose == w.Purpose && c.Revision <= w.ThroughRevision && c.UnavailableAt != null))
+            .ExecuteUpdateAsync(update => update.SetProperty(w => w.VerifiedRemovedAt, now), ct);
         await transaction.CommitAsync(ct);
-        return work.Count;
+        return completed;
     }
 
     private async Task LockAsync(CancellationToken ct)

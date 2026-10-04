@@ -234,7 +234,7 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         Assert.Equal(2, await copies.ExecuteDueAsync(Ct));
         var retained = Assert.Single(await fixture.Db.Set<DriverTrackedCopy>().AsNoTracking().ToListAsync(Ct));
         Assert.Equal(freshId, retained.Id);
-        Assert.All(await fixture.Db.Set<DriverCopyCleanup>().ToListAsync(Ct), w => Assert.NotNull(w.VerifiedRemovedAt));
+        Assert.All(await fixture.Db.Set<DriverCopyCleanup>().AsNoTracking().ToListAsync(Ct), w => Assert.NotNull(w.VerifiedRemovedAt));
         Assert.Equal(0, await copies.ExecuteDueAsync(Ct));
     }
 
@@ -352,6 +352,83 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         Assert.Equal(fixture.Scope.UserId, grant.Scope.UserId);
         Assert.Equal(fixture.Scope.CustomerId, (await fixture.Db.Users.AsNoTracking().SingleAsync(u => u.Id == priorUser.Id, Ct)).IRacingCustomerId);
         Assert.False(await fixture.Store.HasAssociationAsync(priorUser.Id, Ct));
+    }
+
+    [Fact]
+    public async Task UserDeletionCannotBeBypassedWithFreshProofForADifferentDriver()
+    {
+        await using var fixture = await CreateAsync();
+        await fixture.Authority.GrantAsync(fixture.Scope, Personal, Ct);
+        var deletion = await fixture.Authority.TransitionAsync(fixture.Scope, DriverLifecycleKind.DeleteUser, Guid.NewGuid(), Ct);
+        Assert.True(deletion.Completed);
+        var otherScope = fixture.Scope with { CustomerId = fixture.Scope.CustomerId + 1 };
+        fixture.Proof.Receipt = fixture.OriginalProof with { ReceiptId = Guid.NewGuid(), Scope = otherScope };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Authority.GrantAsync(otherScope, Personal, Ct));
+        Assert.Single(await fixture.Db.DriverAuthorizationGrants.AsNoTracking().ToListAsync(Ct));
+        Assert.Null(await fixture.Authority.ResolveAsync(otherScope, DriverConsentScope.Personal, Ct));
+    }
+
+    [Fact]
+    public async Task UserDeletionWithHistoricalAssociationsRemainsUnacknowledgedUntilUserWideOrchestration()
+    {
+        await using var fixture = await CreateAsync();
+        var copies = new CopyLifecycle(fixture.Authority, fixture.Store, fixture.Journal);
+        await fixture.Authority.GrantAsync(fixture.Scope, Personal, Ct);
+        var first = (await fixture.Authority.ResolveAsync(fixture.Scope, DriverConsentScope.Personal, Ct))!;
+        var historicCopy = await copies.CommitAsync(first, "historic-synthetic-copy", Ct);
+        var unlink = await fixture.Authority.TransitionAsync(fixture.Scope, DriverLifecycleKind.Unlink, Guid.NewGuid(), Ct);
+        var oldCleanup = Assert.Single(await fixture.Db.DriverCopyCleanups.AsNoTracking()
+            .Where(w => w.Purpose == DriverConsentScope.Personal).ToListAsync(Ct));
+        var nextScope = fixture.Scope with { CustomerId = fixture.Scope.CustomerId + 1 };
+        fixture.Proof.Receipt = fixture.OriginalProof with { ReceiptId = Guid.NewGuid(), Scope = nextScope };
+        var nextAuthority = new DriverAuthorization(fixture.Store, new TestJournal(), fixture.Proof, fixture.Time);
+        await nextAuthority.GrantAsync(nextScope, Personal, Ct);
+        var deleteId = Guid.NewGuid();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => nextAuthority.TransitionAsync(nextScope,
+            DriverLifecycleKind.DeleteUser, deleteId, Ct));
+        Assert.False(await fixture.Db.DriverLifecycleOperations.AnyAsync(o => o.Id == deleteId, Ct));
+        Assert.True(await fixture.Db.DriverTrackedCopies.AnyAsync(c => c.Id == historicCopy, Ct));
+        var retained = await fixture.Db.DriverCopyCleanups.AsNoTracking().SingleAsync(w => w.Id == oldCleanup.Id, Ct);
+        Assert.Equal(unlink.OriginalLossAt, retained.OriginalLossAt);
+        Assert.Equal(oldCleanup.DueAt, retained.DueAt);
+        Assert.Null(retained.VerifiedRemovedAt);
+    }
+
+    [Fact]
+    public async Task BatchedCleanupPreservesLaterDeadlinesAndOriginalLossClocksAcrossScopes()
+    {
+        await using var fixture = await CreateAsync();
+        var originalLoss = fixture.Time.Now;
+        for (var i = 0; i < 3; i++)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = $"synthetic-batch-{i}",
+                DisplayName = "Synthetic User", EmailConfirmed = true };
+            fixture.Db.Users.Add(user);
+            await fixture.Db.SaveChangesAsync(Ct);
+            var scope = new DriverScope(user.Id, 200000 + i, DataProvenance.Demo);
+            var journal = new TestJournal();
+            var proof = new SyntheticProof { Receipt = fixture.OriginalProof with { ReceiptId = Guid.NewGuid(), Scope = scope } };
+            var authority = new DriverAuthorization(fixture.Store, journal, proof, fixture.Time);
+            var copies = new CopyLifecycle(authority, fixture.Store, journal);
+            var grant = await authority.GrantAsync(scope, Both, Ct);
+            await copies.CommitAsync(grant, "synthetic-personal-copy", Ct);
+            var sharing = (await authority.ResolveAsync(scope, DriverConsentScope.Sharing, Ct))!;
+            await copies.CommitAsync(sharing, "synthetic-sharing-copy", Ct);
+            await authority.TransitionAsync(scope, DriverLifecycleKind.WithdrawPersonal, Guid.NewGuid(), Ct);
+        }
+        var originalWork = await fixture.Db.DriverCopyCleanups.AsNoTracking().OrderBy(w => w.Id).ToListAsync(Ct);
+        fixture.Time.Now = originalLoss.AddHours(24);
+        Assert.Equal(3, await fixture.Store.RemoveDueCopiesAsync(Ct));
+        var remaining = await fixture.Db.DriverTrackedCopies.AsNoTracking().ToListAsync(Ct);
+        Assert.Equal(3, remaining.Count);
+        Assert.All(remaining, c => Assert.Equal(DriverConsentScope.Personal, c.Purpose));
+        var after = await fixture.Db.DriverCopyCleanups.AsNoTracking().OrderBy(w => w.Id).ToListAsync(Ct);
+        Assert.Equal(originalWork.Select(w => (w.Id, w.OriginalLossAt, w.DueAt, w.ThroughRevision)),
+            after.Select(w => (w.Id, w.OriginalLossAt, w.DueAt, w.ThroughRevision)));
+        Assert.All(after, w => Assert.Equal(w.Purpose == DriverConsentScope.Sharing, w.VerifiedRemovedAt is not null));
+        fixture.Time.Now = originalLoss.AddDays(97);
+        Assert.Equal(3, await fixture.Store.RemoveDueCopiesAsync(Ct));
+        Assert.Empty(await fixture.Db.DriverTrackedCopies.AsNoTracking().ToListAsync(Ct));
     }
 
     private async Task<Fixture> CreateAsync()

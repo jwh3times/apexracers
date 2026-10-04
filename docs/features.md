@@ -6,7 +6,8 @@ weekly-series data, personal telemetry, and synthetic/demo data for development.
 Driver authorization is being integrated. Eligible synthetic Demo views remain available; legacy
 Real Driver workflows return unavailable until they join protected authorization and publication.
 Telemetry upload and saved-lap routes are unavailable in both modes. Account, catalog, series and
-schedule routes retain independent access. These limits do not establish live proof, consent,
+schedule routes retain independent access; private upload presence does not personalize the schedule.
+These limits do not establish live proof, consent,
 publication safety or completed retention/restore validation.
 
 ## Core Workflows

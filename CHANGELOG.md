@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** Unintegrated Real Driver routes and legacy telemetry persistence/read workflows
   remain unavailable while authorization is implemented. Claimed identities no longer grant a
-  Real Subject Driver, and catalog pages omit private upload overlays. Demo Driver pages and
+  Real Subject Driver, and catalog pages and schedules omit private upload overlays. Demo Driver pages and
   independent catalog/account workflows retain their applicable behavior.
 - Legacy identity claims retain their values in a renamed physical column; new authorization
   stores start empty, and rollback refuses to discard enforcement history.

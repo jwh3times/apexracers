@@ -405,7 +405,9 @@ For lifecycle transitions, protected results, recovery or copy changes, read
 `LegacyDriverAccessGuard` runs before model binding. Auth, Admin, FeatureFlags, Cars, Tracks, Series
 and Schedule retain independent access; other legacy controllers require Demo provenance, and
 Telemetry is unavailable in every namespace. Denied workflows return `503` ProblemDetails with
-`no-store`. Catalog detail omits private upload overlays. The lifecycle migration creates empty
+`no-store`. Catalog detail and Schedule omit private upload overlays. Controlled User deletion
+refuses multi-association completion until User-wide journal orchestration exists; any recorded
+deletion tombstone prevents grants for that User across Customer IDs. The lifecycle migration creates empty
 authorization tables and fences old claim writers without promoting any stored claim to ownership;
 recovery is forward-only. Synthetic implementation evidence does not establish live authorization
 or the complete publication/copy/restore acceptance matrix.
@@ -506,7 +508,7 @@ marked **public**; iRacing-linked endpoints return a typed `409` (`IRACING_NOT_L
 | `AchievementsController`              | awards trophy case                                                                                                                                                                        |
 | `RaceHistoryController`               | recent official races                                                                                                                                                                     |
 | `SubsessionController`                | classified field for one subsession, with unrepresented-entry counts (**public**); per-lap pace trace (Authorize)                                                                         |
-| `ScheduleController`                  | active-season schedule + weather + BoP + caller's Uploaded Lap presence by Track (**public**)                                                                                             |
+| `ScheduleController`                  | active-season schedule + weather + BoP (**public**); private Uploaded Lap presence omitted pending protected personal integration                                                                                             |
 | `LeaderboardController`               | global top-200 by iRating for a category                                                                                                                                                  |
 | `StandingsController`                 | championship / TT / qualifying standings per car class (**public**); a supplied car class or race week index not in the season's current data is a typed `404`                            |
 | `RaceGuideController`                 | official sessions starting in the next ~3 h (**public**)                                                                                                                                  |
@@ -594,7 +596,7 @@ allowance or the high-water mark could be 0, since either would silently deny th
 - `RaceHistoryService` — recent official races (10 min); resolves car names and track configuration from the local catalog, keyed on the track identifier the payload carries (never the track name — see `docs/adr/0002-track-identity-follows-iracing-track-id.md`).
 - `SubsessionDetailService` — one ingested subsession from the DB; normalizes stored weather units.
 - `LapDataService` (+ pure `LapAnalysis`) — per-lap pace + pace stats (24 h).
-- `ScheduleService` — active-season schedule (Race Weeks + Track + weather/BoP) + caller's Uploaded Lap presence by Track.
+- `ScheduleService` — active-season schedule (Race Weeks + Track + weather/BoP); private Uploaded Lap presence omitted pending protected personal integration.
 - `WorldRecordService` — fastest car+track lap (24 h); null when iRacing unconfigured.
 - `LeaderboardService` (+ pure `LeaderboardCsvParser`) — category global top-200 (24 h).
 - `StandingsService` (+ pure `QualifyResultsParser`, `IChunkDownloader`) — driver/TT/qualifying standings (24 h). Qualifying is special-cased: the SDK omits the qual lap time, so it downloads + parses the chunk files itself. A caller-supplied `carClassId` or `raceWeekIndex` is validated against the season's own `SeasonCarClasses`/weeks before it reaches a cache key or an upstream fetch, throwing `KeyNotFoundException` (→ 404) for a value that isn't one of them; an omitted value still falls back to the week in progress (GHSA-jv96-89xc-98h2).
