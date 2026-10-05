@@ -156,8 +156,8 @@ Down refuses to remove the fences. Recovery is forward-only with current enforce
 After a post-migration teardown, ordinary seeders cannot reopen the old preview. Use
 `--new-preview --ci --demo` (or captured catalog inputs without `--ci`) and verify before enabling
 Demo. The [conditional operator handoff](https://github.com/jwh3times/apexracers-private/issues/35)
-and its [private procedure](https://github.com/jwh3times/apexracers-private/wiki/driver-copy-schema-cutover)
-must be fulfilled before the automatic main deployment. This branch does not change production.
+must be fulfilled before the automatic main deployment; its private execution instructions are
+linked from that issue. This branch does not change production.
 The 8-day name-backup ceiling, 7-day backup lifetime, 30-day operational-log retention and restored
 copy enforcement require separately observed topology/configuration/recovery evidence; local clock
 advancement and successful live-row cleanup do not certify them.

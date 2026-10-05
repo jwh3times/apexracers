@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [12.0.0] - 2026-10-05
+
 ### Added
 
 - Durable evidence purposes, copy generations and concrete source dependencies for mapped caches,
@@ -15,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Demo teardown fences delayed seeders; restarting a purged preview requires `--new-preview`.
+- **Breaking:** Demo teardown fences delayed seeders; restarting a purged preview requires `--new-preview`.
   The forward-only copy-fence migration requires stopped old writers and a disabled, purged Demo
   dataset before a controlled reseed. Unclassified legacy payloads are physically erased rather
   than assigned a guessed purpose; ordinary Real acquisition remains unavailable.
@@ -1514,7 +1518,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v11.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v12.0.0...HEAD
+[12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0
 [11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0
 [10.0.2]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v10.0.2
 [10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1

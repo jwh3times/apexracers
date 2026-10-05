@@ -438,7 +438,7 @@ managed in `Directory.Packages.props`.
 RFC-7807 `application/problem+json`, status from the pure `ExceptionStatusMapper`
 (`ArgumentException`/`InvalidOperationException` → 400, `KeyNotFoundException` → 404,
 `UnauthorizedAccessException` → 401, `IRacingNotLinkedException` / `ClaimedIdentityConflictException` → 409,
-`IRacingNotConfiguredException` → 503, else 500 with its message hidden). The not-linked exception is
+`IRacingNotConfiguredException` / `EvidenceCopyUnavailableException` → 503, else 500 with its message hidden). The not-linked exception is
 the deliberate format exception: middleware preserves the established exact JSON
 `{ code: "IRACING_NOT_LINKED", message: "…" }` instead of ProblemDetails. A claimed-identity conflict
 uses ordinary ProblemDetails with a non-disclosing `detail`. Services should just `throw`;
@@ -456,7 +456,7 @@ Error log. Browsers navigating away mid-request produce these constantly; withou
 as server faults (an E2E run logged 15).
 
 **Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `RequestLoggingMiddleware`
-(outermost — one structured log line per request: method, path, status code, elapsed ms, client IP;
+(outermost — one structured log line per request: bounded method, trusted route template, status code, elapsed ms, client IP;
 level scales with status; skips `/healthz` and `/ready`) → `ExceptionHandlingMiddleware`
 → `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
 referrer/permissions policy, full same-origin SPA CSP, HSTS over HTTPS). For asset or API-reference
@@ -483,9 +483,10 @@ HSTS's `Request.IsHttps` check) are correct behind a reverse proxy only once for
 processed; `ApexRacers.Api.Services.ForwardedHeadersPolicy` is the single place that trust decision is
 expressed (`Configure(ForwardedHeadersOptions)`; the host registers the middleware from it, gated on
 an app setting — see `dotnet-api` for the call rule and `azure-infrastructure` for the deployed
-value). The hosted API uses
-platform telemetry for requests, dependencies, exceptions, and `ILogger` traces; `RequestLoggingMiddleware`
-adds one structured per-request log line that flows into that telemetry pipeline and the console.
+value). `EvidenceOperationalLogging` suppresses payload-capable framework/provider log categories;
+application failure logs use bounded types instead of attached exceptions. Raw paths and queries
+are excluded. External automatic telemetry, access logs and sink retention require deployed
+observation; read the copy-writer inventory before changing these logging boundaries.
 
 ### Controllers — use-case-oriented, NOT entity-CRUD
 
@@ -705,7 +706,7 @@ persisted column this matters more than for the cache, since a cache row expires
 does not: an SDK rename doesn't just break a fresh fetch, it silently deserializes a historical row
 into a default-valued (zeroed) object with no exception.
 
-Every cache key and its TTL is authored once, as a `CacheSpec` factory on
+Every cache key, TTL, purpose and optional Season scope is authored once, as a `CacheSpec` factory on
 `IRacingCacheKeys` (`src/ApexRacers.Api/Services/IRacingCacheKeys.cs`) — that module is the single
 source of truth for key format and freshness window, not this prose; a new cache-backed read path adds
 a factory there rather than interpolating a key at the call site. **A factory that embeds unbounded

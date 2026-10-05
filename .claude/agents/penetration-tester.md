@@ -230,13 +230,11 @@ Policies in `Program.cs`:
 
 ## Unbounded query inputs and cache-key bypass (GHSA-jv96-89xc-98h2)
 
-An iRacing-backed read path that folds caller-controlled input into an `ExternalDataCache` key without
-its own bound turns into unmetered live iRacing traffic rather than a cache miss: a key over
-`ExternalDataCache.CacheKeyMaxLength` (200) fails to insert, and `CachedIRacingClient.GetOrFetchAsync`'s
-race-tolerant `catch (DbUpdateException) when (row is null)` (meant for a legitimate cold-start
-uniqueness race) can't tell that failure apart from the length violation — so the caller's fetch goes
-live to iRacing on *every* request for that key, forever, with nothing in the response distinguishing
-it from a normal cache miss.
+The historical bypass swallowed an unstorable-key insert failure and returned fresh provider data
+on every request. Current copy commits propagate failures, and ordinary Real acquisition remains
+closed. Probe input bounds before acquisition and verify that failed/stale commits cannot return
+fresh evidence; controlled synthetic tests are the positive authority fixtures. Driver-search keys
+hash normalized terms so stored key text does not retain raw name queries.
 
 - `GET /api/users/me/rivals/search?term=<...>` — the one iRacing-backed route taking free text. `term` is
   capped at `IRacingCacheKeys.MaxDriverSearchLength` (64) and refused with `400` above it; below
