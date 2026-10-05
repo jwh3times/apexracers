@@ -30,8 +30,16 @@ public class ScheduleService(AppDbContext db)
                 TrackName = w.Track.Name,
                 w.Track.ConfigName,
                 w.StartDate,
-                WeatherSummaryJson = db.Provenance == DataProvenance.Demo ? w.DemoWeatherSummaryJson
+                WeatherSummaryJson = db.Provenance == DataProvenance.Demo && db.EvidenceCopyMarkers.Any(c => c.Id == w.DemoWeatherEvidenceCopyId
+                    && c.Provenance == DataProvenance.Demo && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                    && db.EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Generation == c.Generation && p.OriginalEndedAt == null
+                        && p.Provenance == c.Provenance && (p.Kind == EvidencePurposeKind.SyntheticPreview
+                            || p.Kind == EvidencePurposeKind.IndependentOfficial || p.Kind == EvidencePurposeKind.AuthorizedHistory))) ? w.DemoWeatherSummaryJson
                     : db.Provenance == DataProvenance.Real && w.WeatherProvenance == DataProvenance.Real
+                        && db.EvidenceCopyMarkers.Any(c => c.Id == w.WeatherEvidenceCopyId && c.Provenance == DataProvenance.Real
+                            && c.UnavailableAt == null && c.VerifiedRemovedAt == null && db.EvidencePurposes.Any(p => p.Id == c.PurposeId
+                                && p.Generation == c.Generation && p.OriginalEndedAt == null && p.Provenance == c.Provenance
+                                && (p.Kind == EvidencePurposeKind.IndependentOfficial || p.Kind == EvidencePurposeKind.AuthorizedHistory)))
                         ? w.WeatherSummaryJson : null,
             })
             .ToListAsync(ct);

@@ -28,6 +28,7 @@ public class RivalService(AppDbContext db, CachedIRacingClient cached)
         if (custId <= 0)
             throw new ArgumentException("A valid iRacing customer id is required.", nameof(custId));
 
+        var writer = db.Provenance == DataProvenance.Demo ? await SyntheticEvidenceWriter.OpenAsync(db, ct) : null;
         var existing = await db.Rivals
             .FirstOrDefaultAsync(r => r.UserId == userId && r.RivalCustId == custId, ct);
         if (existing is not null)
@@ -49,17 +50,18 @@ public class RivalService(AppDbContext db, CachedIRacingClient cached)
             CreatedAt = DateTimeOffset.UtcNow,
         };
         db.Rivals.Add(rival);
-        await db.SaveChangesAsync(ct);
+        await (writer is null ? db.SaveChangesAsync(ct) : writer.SaveChangesAsync(ct));
         return new RivalDto(rival.RivalCustId, rival.DisplayName, rival.CreatedAt);
     }
 
     public async Task RemoveAsync(Guid userId, long custId, CancellationToken ct)
     {
+        var writer = db.Provenance == DataProvenance.Demo ? await SyntheticEvidenceWriter.OpenAsync(db, ct) : null;
         var rival = await db.Rivals
             .FirstOrDefaultAsync(r => r.UserId == userId && r.RivalCustId == custId, ct);
         if (rival is null) return;
         db.Rivals.Remove(rival);
-        await db.SaveChangesAsync(ct);
+        await (writer is null ? db.SaveChangesAsync(ct) : writer.SaveChangesAsync(ct));
     }
 
     /// <summary>Name search via iRacing, cached per normalized term. Short terms skip the API.</summary>

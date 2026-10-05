@@ -36,7 +36,7 @@ public class LapDataServiceTests
             });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new LapDataService(cached), client, db);
     }
 

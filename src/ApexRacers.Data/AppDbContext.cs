@@ -42,6 +42,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
     public DbSet<DriverPublicationAdmission> DriverPublicationAdmissions => Set<DriverPublicationAdmission>();
     public DbSet<DriverTrackedCopy> DriverTrackedCopies => Set<DriverTrackedCopy>();
     public DbSet<DriverCopyCleanup> DriverCopyCleanups => Set<DriverCopyCleanup>();
+    public DbSet<EvidencePurpose> EvidencePurposes => Set<EvidencePurpose>();
+    public DbSet<EvidenceCopyMarker> EvidenceCopyMarkers => Set<EvidenceCopyMarker>();
+    public DbSet<EvidenceCopyDependency> EvidenceCopyDependencies => Set<EvidenceCopyDependency>();
+    public DbSet<AuthorizedDriverNameCopy> AuthorizedDriverNameCopies => Set<AuthorizedDriverNameCopy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,16 +139,39 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        EntityConfigurations.ManagedEvidenceConfiguration.Configure(modelBuilder);
         modelBuilder.Entity<Subsession>().HasQueryFilter(s =>
-            Provenance != DataProvenance.Unknown && s.Provenance == Provenance);
+            Provenance != DataProvenance.Unknown && s.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == s.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
         modelBuilder.Entity<SubsessionResult>().HasQueryFilter(r =>
-            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
         modelBuilder.Entity<CarPercentileResult>().HasQueryFilter(r =>
-            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
         modelBuilder.Entity<Rival>().HasQueryFilter(r =>
-            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
         modelBuilder.Entity<SeasonCarBop>().HasQueryFilter(r =>
-            Provenance != DataProvenance.Unknown && r.Provenance == Provenance);
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
+        modelBuilder.Entity<ExternalDataCache>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
+        modelBuilder.Entity<AuthorizedDriverNameCopy>().HasQueryFilter(r =>
+            Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null
+                    && (p.Kind == EvidencePurposeKind.Personal || p.Kind == EvidencePurposeKind.Sharing)
+                    && DriverAuthorizationGrants.Any(g => g.Id == r.GrantId && g.Id == p.GrantId && g.Revision == p.GrantRevision
+                        && g.AuthorizedDriverName == r.DriverName && g.Provenance == Provenance && g.BindingActive && g.ProofValid
+                        && g.PersonalConsentVersion != null && (p.Kind != EvidencePurposeKind.Sharing || g.SharingConsentVersion != null)))));
         // Uploaded evidence is user-supplied, not a synthetic acquisition adapter. It cannot
         // enter a Demo Field even when its recorder ID happens to equal a Demo Driver ID.
         modelBuilder.Entity<UploadedLap>().HasQueryFilter(_ => Provenance != DataProvenance.Demo);
@@ -179,6 +206,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
             if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
             if (entry.Entity.Provenance is not (DataProvenance.Real or DataProvenance.Demo))
                 throw new InvalidOperationException("Unknown evidence provenance cannot be written.");
+            if (entry.Entity is IManagedEvidence { EvidenceCopyId: null })
+                throw new EvidenceCopyUnavailableException();
             if (entry.State == EntityState.Modified && entry.Property(nameof(IProvenancedData.Provenance)).IsModified)
                 throw new InvalidOperationException("Stored evidence provenance cannot be reassigned.");
             if (entry.Entity is SubsessionResult { Provenance: DataProvenance.Real } result)

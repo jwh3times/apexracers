@@ -20,40 +20,40 @@ public class StandingsServiceTests
 
     private static SeasonDriverStanding Standing(
         int rank, int custId, string name, int points, int wins) => new()
-    {
-        Rank = rank,
-        CustomerId = custId,
-        DisplayName = name,
-        Division = 1,
-        Starts = 12,
-        Wins = wins,
-        Top5 = 6,
-        Poles = 2,
-        Points = points,
-        AverageFinishPosition = 5.4m,
-        Incidents = 30,
-    };
+        {
+            Rank = rank,
+            CustomerId = custId,
+            DisplayName = name,
+            Division = 1,
+            Starts = 12,
+            Wins = wins,
+            Top5 = 6,
+            Poles = 2,
+            Points = points,
+            AverageFinishPosition = 5.4m,
+            Incidents = 30,
+        };
 
     private static SeasonTimeTrialStanding TtStanding(
         int rank, int custId, string name, int points, int ttRating) => new()
-    {
-        Rank = rank,
-        CustomerId = custId,
-        DisplayName = name,
-        Division = 2,
-        License = new License { TimeTrialRating = ttRating, iRating = 3000 },
-        WeeksCounted = 8,
-        Starts = 12,
-        Wins = 4,
-        Top5 = 7,
-        Poles = 1,
-        AverageStartPosition = 6.1m,
-        AverageFinishPosition = 5.5m,
-        Incidents = 20,
-        Points = points,
-        RawPoints = points,
-        WeekDropped = false,
-    };
+        {
+            Rank = rank,
+            CustomerId = custId,
+            DisplayName = name,
+            Division = 2,
+            License = new License { TimeTrialRating = ttRating, iRating = 3000 },
+            WeeksCounted = 8,
+            Starts = 12,
+            Wins = 4,
+            Top5 = 7,
+            Poles = 1,
+            AverageStartPosition = 6.1m,
+            AverageFinishPosition = 5.5m,
+            Incidents = 20,
+            Points = points,
+            RawPoints = points,
+            WeekDropped = false,
+        };
 
     private sealed class Harness
     {
@@ -123,7 +123,7 @@ public class StandingsServiceTests
         downloader.DownloadAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(qualifyChunks ?? []);
 
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return new Harness
         {
             Service = new StandingsService(db, cached, downloader),

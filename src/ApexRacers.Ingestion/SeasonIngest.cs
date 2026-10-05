@@ -48,8 +48,11 @@ public sealed class SeasonIngest(AppDbContext db)
     public async Task UpsertScheduleAsync(
         int seasonId,
         IReadOnlyCollection<SeasonScheduleItem> schedule,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        EvidenceWriteReceipt? preparation = null)
     {
+        var bops = new List<SeasonCarBop>();
+        var weather = new List<WeatherBatch>();
         foreach (var item in schedule)
         {
             var track = await db.Tracks.FindAsync([item.Track.TrackId], ct);
@@ -82,7 +85,7 @@ public sealed class SeasonIngest(AppDbContext db)
                     RaceWeekIndex = item.RaceWeekNum,
                 };
                 db.Weeks.Add(week);
-                PopulateWeek(week, item, weatherJson);
+                PopulateWeek(week, item, preparation is null ? weatherJson : null);
 
                 // Week.Id is generated on insert. Flush before continuing with this schedule item
                 // so later ingestion can safely resolve the persisted Week FK by season/week.
@@ -90,11 +93,19 @@ public sealed class SeasonIngest(AppDbContext db)
             }
             else
             {
-                PopulateWeek(week, item, weatherJson);
+                PopulateWeek(week, item, preparation is null ? weatherJson : null);
             }
+            if (preparation is not null && weatherJson is not null) weather.Add(new(week.Id, weatherJson));
 
             foreach (var restriction in item.CarRestrictions ?? [])
             {
+                if (preparation is not null)
+                {
+                    var mapped = new SeasonCarBop { SeasonId = seasonId, RaceWeekIndex = item.RaceWeekNum, CarId = restriction.CarId };
+                    PopulateBop(mapped, restriction);
+                    bops.Add(mapped);
+                    continue;
+                }
                 var bop = await db.SeasonCarBops.FindAsync(
                     [db.Provenance, seasonId, item.RaceWeekNum, restriction.CarId], ct);
                 if (bop is null)
@@ -135,6 +146,8 @@ public sealed class SeasonIngest(AppDbContext db)
         }
 
         await db.SaveChangesAsync(ct);
+        if (preparation is not null)
+            await new EvidenceCopyLifecycle(db, TimeProvider.System).CommitAsync(preparation, new ScheduleEvidenceBatch(bops, weather), ct);
     }
 
     private static void PopulateSeason(Season season, SeasonSeries source)

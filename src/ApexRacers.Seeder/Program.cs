@@ -12,9 +12,9 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var seedDemo       = args.Contains("--demo");
-var ciMode         = args.Contains("--ci");
-var verifyDemo     = args.Contains("--verify-demo");
+var seedDemo = args.Contains("--demo");
+var ciMode = args.Contains("--ci");
+var verifyDemo = args.Contains("--verify-demo");
 var verifyTeardown = args.Contains("--verify-teardown");
 
 var connectionString =
@@ -45,6 +45,10 @@ if (verifyDemo || verifyTeardown)
         : await ApexRacers.Seeder.Verification.DemoSeedVerifier.VerifyTeardownAsync(db, CancellationToken.None);
     return ReportVerification(checks) == 0 ? 0 : 1;
 }
+
+if (args.Contains("--new-preview"))
+    await new EvidenceCopyLifecycle(db, TimeProvider.System).StartFreshSyntheticPreviewAsync();
+var seedWriter = await SyntheticEvidenceWriter.OpenAsync(db);
 
 if (ciMode)
 {
@@ -136,34 +140,34 @@ var newTracks = trackCatalog.Values
         trackAssets.TryGetValue(t.TrackId.ToString(), out var a);
         return new Track
         {
-            Id                = t.TrackId,
-            Name              = t.TrackName,
-            ConfigName        = ConfigurationName.Normalize(t.ConfigName),
-            CategoryId        = t.CategoryId,
-            Category          = t.Category,
+            Id = t.TrackId,
+            Name = t.TrackName,
+            ConfigName = ConfigurationName.Normalize(t.ConfigName),
+            CategoryId = t.CategoryId,
+            Category = t.Category,
             TrackConfigLength = t.TrackConfigLength,
-            IsDirt            = t.IsDirt,
-            IsOval            = t.IsOval,
-            Location          = t.Location,
-            TimeZone          = t.TimeZone,
-            Retired           = t.Retired,
-            CornersPerLap     = t.CornersPerLap,
-            Latitude          = t.Latitude,
-            Longitude         = t.Longitude,
+            IsDirt = t.IsDirt,
+            IsOval = t.IsOval,
+            Location = t.Location,
+            TimeZone = t.TimeZone,
+            Retired = t.Retired,
+            CornersPerLap = t.CornersPerLap,
+            Latitude = t.Latitude,
+            Longitude = t.Longitude,
             PitRoadSpeedLimit = t.PitRoadSpeedLimit,
-            NumberPitstalls   = t.NumberPitstalls,
-            NightLighting     = t.NightLighting,
-            HasSvgMap         = t.HasSvgMap,
-            AssetFolder       = a?.Folder,
-            SmallImageFile    = a?.SmallImage,
-            LargeImageFile    = a?.LargeImage,
-            TrackMapUrl       = string.IsNullOrEmpty(a?.TrackMap) ? null : a.TrackMap,
+            NumberPitstalls = t.NumberPitstalls,
+            NightLighting = t.NightLighting,
+            HasSvgMap = t.HasSvgMap,
+            AssetFolder = a?.Folder,
+            SmallImageFile = a?.SmallImage,
+            LargeImageFile = a?.LargeImage,
+            TrackMapUrl = string.IsNullOrEmpty(a?.TrackMap) ? null : a.TrackMap,
         };
     })
     .ToList();
 
 db.Tracks.AddRange(newTracks);
-await db.SaveChangesAsync();
+await seedWriter.SaveChangesAsync();
 Console.WriteLine($"  {newTracks.Count:N0} tracks added ({existingTrackIds.Count:N0} already present).");
 
 // ── Step 2: Seed all cars from catalog ───────────────────────────────────────
@@ -177,29 +181,29 @@ var newCars = carCatalog.Values
         carAssets.TryGetValue(c.CarId.ToString(), out var a);
         return new Car
         {
-            Id                   = c.CarId,
-            Name                 = c.CarName,
-            NameAbbreviated      = c.CarNameAbbreviated,
-            Retired              = c.Retired,
+            Id = c.CarId,
+            Name = c.CarName,
+            NameAbbreviated = c.CarNameAbbreviated,
+            Retired = c.Retired,
             FreeWithSubscription = c.FreeWithSubscription,
-            PackageId            = c.PackageId,
-            Hp                   = c.Hp,
-            CarWeight            = c.CarWeight,
-            CarMake              = c.CarMake,
-            CarModel             = c.CarModel,
-            RainEnabled          = c.RainEnabled,
-            CategoriesJson       = SerializeList(c.Categories),
-            CarTypesJson         = SerializeList(c.CarTypes?.Select(t => t.CarType)),
-            AssetFolder          = a?.Folder,
-            SmallImageFile       = a?.SmallImage,
-            LargeImageFile       = a?.LargeImage,
-            LogoPath             = a?.Logo,
+            PackageId = c.PackageId,
+            Hp = c.Hp,
+            CarWeight = c.CarWeight,
+            CarMake = c.CarMake,
+            CarModel = c.CarModel,
+            RainEnabled = c.RainEnabled,
+            CategoriesJson = SerializeList(c.Categories),
+            CarTypesJson = SerializeList(c.CarTypes?.Select(t => t.CarType)),
+            AssetFolder = a?.Folder,
+            SmallImageFile = a?.SmallImage,
+            LargeImageFile = a?.LargeImage,
+            LogoPath = a?.Logo,
         };
     })
     .ToList();
 
 db.Cars.AddRange(newCars);
-await db.SaveChangesAsync();
+await seedWriter.SaveChangesAsync();
 Console.WriteLine($"  {newCars.Count:N0} cars added ({existingCarIds.Count:N0} already present).");
 
 // ── Step 3: Seed car classes and car-class membership ─────────────────────────
@@ -210,15 +214,15 @@ var newCarClasses = carClasses
     .Where(c => !existingCarClassIds.Contains(c.CarClassId))
     .Select(c => new CarClass
     {
-        Id            = c.CarClassId,
-        Name          = c.Name,
-        ShortName     = c.ShortName,
+        Id = c.CarClassId,
+        Name = c.Name,
+        ShortName = c.ShortName,
         RelativeSpeed = c.RelativeSpeed,
     })
     .ToList();
 
 db.CarClasses.AddRange(newCarClasses);
-await db.SaveChangesAsync();
+await seedWriter.SaveChangesAsync();
 Console.WriteLine($"  {newCarClasses.Count:N0} car classes added ({existingCarClassIds.Count:N0} already present).");
 
 var existingCarClassCarKeys = await db.CarClassCars
@@ -229,14 +233,14 @@ var newCarClassCars = carClasses
     .SelectMany(c => c.CarsInClass.Select(m => new CarClassCar
     {
         CarClassId = c.CarClassId,
-        CarId      = m.CarId,
+        CarId = m.CarId,
     }))
     .Where(cc => !existingCarClassCarKeys.Contains(new { cc.CarClassId, cc.CarId })
                  && existingCarIds.Union(newCars.Select(c => c.Id)).Contains(cc.CarId))
     .ToList();
 
 db.CarClassCars.AddRange(newCarClassCars);
-await db.SaveChangesAsync();
+await seedWriter.SaveChangesAsync();
 Console.WriteLine($"  {newCarClassCars.Count:N0} car-class memberships added.");
 
 // ── Step 4: Seed series, seasons, weeks, season-cars from schedules ───────────
@@ -263,21 +267,21 @@ foreach (var schedule in schedules)
     {
         db.Series.Add(new Series
         {
-            Id           = firstWeek.SeriesId,
-            Name         = firstWeek.SeriesName,
-            CategoryId   = seriesEntry?.CategoryId,
-            Category     = seriesEntry?.Category,
+            Id = firstWeek.SeriesId,
+            Name = firstWeek.SeriesName,
+            CategoryId = seriesEntry?.CategoryId,
+            Category = seriesEntry?.Category,
             LicenseGroup = minLicenseGroup,
-            Official     = seriesOfficial,
+            Official = seriesOfficial,
         });
     }
     else
     {
-        series.Name         = firstWeek.SeriesName;
-        series.CategoryId   ??= seriesEntry?.CategoryId;
-        series.Category     ??= seriesEntry?.Category;
+        series.Name = firstWeek.SeriesName;
+        series.CategoryId ??= seriesEntry?.CategoryId;
+        series.Category ??= seriesEntry?.Category;
         series.LicenseGroup ??= minLicenseGroup;
-        series.Official     ??= seriesOfficial;
+        series.Official ??= seriesOfficial;
     }
 
     // Season
@@ -288,29 +292,29 @@ foreach (var schedule in schedules)
     {
         db.Seasons.Add(new Season
         {
-            Id           = firstWeek.SeasonId,
-            SeriesId     = firstWeek.SeriesId,
-            Year         = year,
-            Quarter      = quarter,
-            Active       = true,
+            Id = firstWeek.SeasonId,
+            SeriesId = firstWeek.SeriesId,
+            Year = year,
+            Quarter = quarter,
+            Active = true,
             LicenseGroup = seasonEntry?.LicenseGroup,
-            Official     = seasonEntry?.Official,
-            Drops        = seasonEntry?.Drops,
-            FixedSetup   = seasonEntry?.FixedSetup,
-            Multiclass   = seasonEntry?.Multiclass,
+            Official = seasonEntry?.Official,
+            Drops = seasonEntry?.Drops,
+            FixedSetup = seasonEntry?.FixedSetup,
+            Multiclass = seasonEntry?.Multiclass,
         });
     }
     else
     {
-        season.Active       = true;
+        season.Active = true;
         season.LicenseGroup ??= seasonEntry?.LicenseGroup;
-        season.Official     ??= seasonEntry?.Official;
-        season.Drops        ??= seasonEntry?.Drops;
-        season.FixedSetup   ??= seasonEntry?.FixedSetup;
-        season.Multiclass   ??= seasonEntry?.Multiclass;
+        season.Official ??= seasonEntry?.Official;
+        season.Drops ??= seasonEntry?.Drops;
+        season.FixedSetup ??= seasonEntry?.FixedSetup;
+        season.Multiclass ??= seasonEntry?.Multiclass;
     }
 
-    await db.SaveChangesAsync();
+    await seedWriter.SaveChangesAsync();
 
     // SeasonCarClass
     if (seasonEntry is not null)
@@ -322,12 +326,12 @@ foreach (var schedule in schedules)
             {
                 db.SeasonCarClasses.Add(new SeasonCarClass
                 {
-                    SeasonId   = firstWeek.SeasonId,
+                    SeasonId = firstWeek.SeasonId,
                     CarClassId = carClassId,
                 });
             }
         }
-        await db.SaveChangesAsync();
+        await seedWriter.SaveChangesAsync();
     }
 
     // Collect distinct cars across all weeks
@@ -353,19 +357,19 @@ foreach (var schedule in schedules)
         if (existing is null)
             db.Weeks.Add(new Week
             {
-                SeasonId   = week.SeasonId,
+                SeasonId = week.SeasonId,
                 RaceWeekIndex = week.RaceWeekIndex,
-                TrackId    = week.Track.TrackId,
-                StartDate  = startDate,
+                TrackId = week.Track.TrackId,
+                StartDate = startDate,
             });
         else
         {
-            existing.TrackId   = week.Track.TrackId;
+            existing.TrackId = week.Track.TrackId;
             existing.StartDate = startDate;
         }
     }
 
-    await db.SaveChangesAsync();
+    await seedWriter.SaveChangesAsync();
 }
 
 // ── Step 5: Synthetic driver pool ─────────────────────────────────────────────
@@ -419,10 +423,10 @@ foreach (var schedule in schedules)
         // ID formula: -(seasonId * 10000 + raceWeekIndex * 100 + carIndex)
         for (int carIndex = 0; carIndex < carIds.Count; carIndex++)
         {
-            var carId     = carIds[carIndex];
-            var mph       = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
-            var baseLap   = trackLength / mph * 3600.0;
-            var stdDev    = Math.Max(1.0, baseLap * 0.02);
+            var carId = carIds[carIndex];
+            var mph = carSpeedMph.TryGetValue(carId, out var s) ? s : avgSpeedMph;
+            var baseLap = trackLength / mph * 3600.0;
+            var stdDev = Math.Max(1.0, baseLap * 0.02);
             var carOffset = SyntheticLaps.GetCarOffset(carId);
 
             carClassByCar.TryGetValue(carId, out var carClassId);
@@ -435,22 +439,21 @@ foreach (var schedule in schedules)
 
             db.Subsessions.Add(new ApexRacers.Core.Models.Subsession
             {
-                Id                   = subsessionId,
-                SeasonId             = firstWeek.SeasonId,
-                RaceWeekIndex           = week.RaceWeekIndex,
-                WeekId               = weekRow.Id,
-                TrackId              = week.Track.TrackId,
-                OfficialSession      = true,
+                Id = subsessionId,
+                SeasonId = firstWeek.SeasonId,
+                RaceWeekIndex = week.RaceWeekIndex,
+                WeekId = weekRow.Id,
+                TrackId = week.Track.TrackId,
+                OfficialSession = true,
                 EventStrengthOfField = 1500,
                 // The sole Split of its Race Session, so index 0 of a count of 1.
-                SplitIndex           = 0,
-                SplitCount           = 1,
+                SplitIndex = 0,
+                SplitCount = 1,
                 // Every synthetic entry names one Driver, so the field is complete.
-                TeamEntryCount       = 0,
-                AiEntryCount         = 0,
-                StartTime            = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
+                TeamEntryCount = 0,
+                AiEntryCount = 0,
+                StartTime = DateTimeOffset.Parse(week.StartDate + "T14:00:00Z"),
             });
-            await db.SaveChangesAsync();
             totalSubsessions++;
 
             var driverLaps = driverSkillFactors
@@ -467,34 +470,34 @@ foreach (var schedule in schedules)
                 var (custId, lapSeconds) = driverLaps[pos];
                 db.SubsessionResults.Add(new ApexRacers.Core.Models.SubsessionResult
                 {
-                    SubsessionId            = subsessionId,
-                    CustId                  = custId,
-                    DisplayName             = DemoDriverName(custId),
-                    CarId                   = carId,
-                    CarClassId              = carClassId,
-                    BestLapSeconds          = lapSeconds,
-                    AverageLapSeconds       = lapSeconds * 1.01,
-                    FinishPosition          = pos,
-                    FinishPositionInClass   = pos,
-                    StartingPosition        = pos,
+                    SubsessionId = subsessionId,
+                    CustId = custId,
+                    DisplayName = DemoDriverName(custId),
+                    CarId = carId,
+                    CarClassId = carClassId,
+                    BestLapSeconds = lapSeconds,
+                    AverageLapSeconds = lapSeconds * 1.01,
+                    FinishPosition = pos,
+                    FinishPositionInClass = pos,
+                    StartingPosition = pos,
                     StartingPositionInClass = pos,
-                    Incidents               = 0,
-                    LapsComplete            = 30,
-                    LapsLead                = pos == 0 ? 30 : 0,
-                    ChampPoints             = Math.Max(0, 35 - pos),
-                    AggregateChampPoints    = Math.Max(0, 35 - pos),
-                    NewIRating              = 1500,
-                    OldIRating              = 1500,
-                    NewCpi                  = 2.0,
-                    OldCpi                  = 2.0,
-                    ReasonOutId             = 0,
-                    Division                = 1,
-                    DropRace                = false,
-                    Interval                = pos == 0 ? 0.0 : lapSeconds - driverLaps[0].LapSeconds,
+                    Incidents = 0,
+                    LapsComplete = 30,
+                    LapsLead = pos == 0 ? 30 : 0,
+                    ChampPoints = Math.Max(0, 35 - pos),
+                    AggregateChampPoints = Math.Max(0, 35 - pos),
+                    NewIRating = 1500,
+                    OldIRating = 1500,
+                    NewCpi = 2.0,
+                    OldCpi = 2.0,
+                    ReasonOutId = 0,
+                    Division = 1,
+                    DropRace = false,
+                    Interval = pos == 0 ? 0.0 : lapSeconds - driverLaps[0].LapSeconds,
                 });
             }
 
-            await db.SaveChangesAsync();
+            await seedWriter.SaveChangesAsync();
             totalResults += driverLaps.Count;
         }
     }
@@ -529,7 +532,7 @@ else
             r.CustId,
             r.CarId,
             r.BestLapSeconds,
-            WeekId   = r.Subsession.WeekId!.Value,
+            WeekId = r.Subsession.WeekId!.Value,
             SeriesId = r.Subsession.Season.SeriesId,
         })
         .ToListAsync();
@@ -553,7 +556,7 @@ else
             .ToList();
 
         var relevantWeekIds = userBestByGroup.Select(r => r.WeekId).Distinct().ToList();
-        var relevantCarIds  = userBestByGroup.Select(r => r.CarId).Distinct().ToList();
+        var relevantCarIds = userBestByGroup.Select(r => r.CarId).Distinct().ToList();
 
         // Back-date each percentile snapshot to the last day of its race week so
         // the analytics trend chart shows a meaningful time axis instead of all
@@ -589,42 +592,42 @@ else
             .ToDictionary(r => (r.UserId, r.CarId, r.SeriesId, r.WeekId));
 
         var custIdToUser = appUsers.ToDictionary(u => u.IRacingCustomerId!.Value);
-        int written      = 0;
+        int written = 0;
 
         foreach (var entry in userBestByGroup)
         {
             if (!custIdToUser.TryGetValue(entry.CustId, out var appUser)) continue;
             if (!fieldByCarWeek.TryGetValue((entry.CarId, entry.WeekId), out var fieldRows)) continue;
 
-            var otherLaps      = fieldRows.Where(r => r.CustId != entry.CustId).Select(r => r.BestLap).ToList();
-            var total          = FieldPercentile.FieldSize(otherLaps);
+            var otherLaps = fieldRows.Where(r => r.CustId != entry.CustId).Select(r => r.BestLap).ToList();
+            var total = FieldPercentile.FieldSize(otherLaps);
             var percentileRank = FieldPercentile.Rank(entry.BestLap, otherLaps);
-            var topShare       = FieldPercentile.TopSharePercent(entry.BestLap, otherLaps);
+            var topShare = FieldPercentile.TopSharePercent(entry.BestLap, otherLaps);
 
             // Simulate the timestamp as the final day of the race week at 20:00 UTC.
-            var weekStart  = weekStartDates.TryGetValue(entry.WeekId, out var sd) ? sd : DateOnly.FromDateTime(DateTime.UtcNow);
+            var weekStart = weekStartDates.TryGetValue(entry.WeekId, out var sd) ? sd : DateOnly.FromDateTime(DateTime.UtcNow);
             var computedAt = new DateTimeOffset(weekStart.AddDays(6).ToDateTime(new TimeOnly(20, 0)), TimeSpan.Zero);
 
             var key = (appUser.Id, entry.CarId, entry.SeriesId, entry.WeekId);
             if (existingLookup.TryGetValue(key, out var existing))
             {
-                existing.PercentileRank  = percentileRank;
+                existing.PercentileRank = percentileRank;
                 existing.TopSharePercent = topShare;
-                existing.SampleSize      = total;
-                existing.ComputedAt      = computedAt;
+                existing.SampleSize = total;
+                existing.ComputedAt = computedAt;
             }
             else
             {
                 var newRow = new CarPercentileResult
                 {
-                    UserId         = appUser.Id,
-                    CarId          = entry.CarId,
-                    SeriesId       = entry.SeriesId,
-                    WeekId         = entry.WeekId,
-                    PercentileRank  = percentileRank,
+                    UserId = appUser.Id,
+                    CarId = entry.CarId,
+                    SeriesId = entry.SeriesId,
+                    WeekId = entry.WeekId,
+                    PercentileRank = percentileRank,
                     TopSharePercent = topShare,
-                    SampleSize      = total,
-                    ComputedAt      = computedAt,
+                    SampleSize = total,
+                    ComputedAt = computedAt,
                 };
                 db.CarPercentileResults.Add(newRow);
                 existingLookup[key] = newRow;
@@ -632,7 +635,7 @@ else
             written++;
         }
 
-        await db.SaveChangesAsync();
+        await seedWriter.SaveChangesAsync();
         Console.WriteLine($"  {written:N0} percentile snapshots written for {appUsers.Count} user(s).");
     }
 }
@@ -714,7 +717,7 @@ static double GetAvgSpeedMph(int seasonId) => seasonId switch
     6099 => 83.0,  // GT4 Challenge
     6091 => 99.0,  // Ring Meister (Ligier LMP3)
     6124 => 90.0,  // IMSA (GT3 baseline; GTP cars get their own speed from carSpeedMph)
-    _    => 88.0,
+    _ => 88.0,
 };
 
 // Build a car_id → avg-speed-mph lookup from the car class catalog.
@@ -729,11 +732,11 @@ static Dictionary<int, double> BuildCarSpeedLookup(IReadOnlyList<CarClassApiEntr
         {
             >= 160 => 110.0,  // GTP, Indy, modern F1
             >= 120 => 105.0,  // LMP1, LMP2
-            >= 80  => 100.0,  // older prototypes, Riley DP
-            >= 65  => 95.0,   // LMP3, GTE
-            >= 48  => 90.0,   // GT3
-            >= 38  => 83.0,   // GT4, slower sports cars
-            _      => 75.0,
+            >= 80 => 100.0,  // older prototypes, Riley DP
+            >= 65 => 95.0,   // LMP3, GTE
+            >= 48 => 90.0,   // GT3
+            >= 38 => 83.0,   // GT4, slower sports cars
+            _ => 75.0,
         };
         foreach (var car in cls.CarsInClass)
             lookup.TryAdd(car.CarId, mph);
@@ -762,6 +765,6 @@ static (int Year, int Quarter) ParseSeasonYearQuarter(string seasonName)
 static string DemoDriverName(long custId) => custId switch
 {
     ApexRacers.Core.DemoData.DriverCustId => "Demo Driver",
-    ApexRacers.Core.DemoData.RivalCustId  => "Rival Racer",
+    ApexRacers.Core.DemoData.RivalCustId => "Rival Racer",
     _ => $"Driver {custId}",
 };

@@ -23,6 +23,8 @@ public class Week
     public string? WeatherSummaryJson { get; set; }   // serialized schedule weather_summary (2.1)
     public DataProvenance WeatherProvenance { get; set; }
     public string? DemoWeatherSummaryJson { get; set; }
+    public Guid? WeatherEvidenceCopyId { get; set; }
+    public Guid? DemoWeatherEvidenceCopyId { get; set; }
 
     public Season Season { get; set; } = null!;
     public Track Track { get; set; } = null!;

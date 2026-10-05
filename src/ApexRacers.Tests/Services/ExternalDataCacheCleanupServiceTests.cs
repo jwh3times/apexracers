@@ -3,6 +3,7 @@ using ApexRacers.Core.Models;
 using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Tests.Services;
 
@@ -22,7 +23,7 @@ public class ExternalDataCacheCleanupServiceTests(PostgreSqlFixture postgres)
         db.ExternalDataCaches.AddRange(demo, Row("real-expired", Now.AddDays(-5)));
         await db.SaveChangesAsync(Ct);
         await ExternalDataCacheCleanupService.PurgeExpiredAsync(db, Now, TimeSpan.Zero, Ct);
-        Assert.Equal("demo-expired", Assert.Single(db.ExternalDataCaches).CacheKey);
+        Assert.Equal("demo-expired", Assert.Single(db.ExternalDataCaches.IgnoreQueryFilters()).CacheKey);
     }
 
     private static ExternalDataCache Row(string key, DateTimeOffset expiresAt) => new()

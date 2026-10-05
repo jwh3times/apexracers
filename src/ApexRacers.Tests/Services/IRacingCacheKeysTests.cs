@@ -71,13 +71,15 @@ public class IRacingCacheKeysTests
     // asking the author to hand-lowercase every dictionary key, with nothing enforcing a match.
 
     [Theory]
-    [InlineData("jerry", "driversearch:jerry")]
-    [InlineData("Jerry", "driversearch:jerry")]
-    [InlineData("  JERRY  ", "driversearch:jerry")]
-    [InlineData("Van Der Berg", "driversearch:van der berg")]
+    [InlineData("jerry", "jerry")]
+    [InlineData("Jerry", "jerry")]
+    [InlineData("  JERRY  ", "jerry")]
+    [InlineData("Van Der Berg", "van der berg")]
     public void DriverSearch_TrimsAndLowercases(string raw, string expected)
     {
-        Assert.Equal(expected, IRacingCacheKeys.DriverSearch(raw)!.Value.Key);
+        var key = IRacingCacheKeys.DriverSearch(raw)!.Value.Key;
+        Assert.Equal(IRacingCacheKeys.DriverSearch(expected)!.Value.Key, key);
+        Assert.DoesNotContain(expected, key, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

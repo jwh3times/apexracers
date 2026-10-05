@@ -129,7 +129,7 @@ public static class DemoSeedVerifier
     public static async Task<List<VerificationCheck>> VerifyTeardownAsync(AppDbContext db, CancellationToken ct)
     {
         var checks = new List<VerificationCheck>();
-        var demoRows = await db.ExternalDataCaches.CountAsync(c => c.Provenance == DataProvenance.Demo, ct);
+        var demoRows = await db.ExternalDataCaches.IgnoreQueryFilters().CountAsync(c => c.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-demo-cache", demoRows == 0, $"{demoRows} Demo cache rows remain"));
         var demoSubs = await db.Subsessions.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-synthetic-races", demoSubs == 0, $"{demoSubs} Demo subsessions remain"));
@@ -141,6 +141,8 @@ public static class DemoSeedVerifier
         checks.Add(new("no-demo-percentiles", demoPercentiles == 0, $"{demoPercentiles} Demo percentile rows remain"));
         var demoFollows = await db.Rivals.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-demo-follows", demoFollows == 0, $"{demoFollows} Demo follows remain"));
+        var demoNames = await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        checks.Add(new("no-demo-authorized-names", demoNames == 0, $"{demoNames} Demo authorized names remain"));
         var demoWeather = await db.Weeks.CountAsync(w => w.DemoWeatherSummaryJson != null, ct);
         checks.Add(new("no-demo-weather", demoWeather == 0, $"{demoWeather} Demo weather copies remain"));
         var enabled = await db.FeatureFlags.AnyAsync(f => f.Key == "iracing-demo" && f.IsEnabled, ct);

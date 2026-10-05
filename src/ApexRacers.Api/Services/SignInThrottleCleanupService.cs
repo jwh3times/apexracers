@@ -93,7 +93,7 @@ public class SignInThrottleCleanupService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Sign-in throttle cleanup failed.");
+                logger.LogError("Sign-in throttle cleanup failed. Failure type: {FailureType}", ex.GetType().Name);
             }
 
             try

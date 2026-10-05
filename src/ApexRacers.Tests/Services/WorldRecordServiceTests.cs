@@ -18,12 +18,12 @@ public class WorldRecordServiceTests
 
     private static WorldRecordEntry Entry(
         double? qual = null, double? race = null, double? tt = null, double? practice = null) => new()
-    {
-        QualifyLapTime = qual is null ? null : TimeSpan.FromSeconds(qual.Value),
-        RaceLapTime = race is null ? null : TimeSpan.FromSeconds(race.Value),
-        TimeTrialLapTime = tt is null ? null : TimeSpan.FromSeconds(tt.Value),
-        PracticeLapTime = practice is null ? null : TimeSpan.FromSeconds(practice.Value),
-    };
+        {
+            QualifyLapTime = qual is null ? null : TimeSpan.FromSeconds(qual.Value),
+            RaceLapTime = race is null ? null : TimeSpan.FromSeconds(race.Value),
+            TimeTrialLapTime = tt is null ? null : TimeSpan.FromSeconds(tt.Value),
+            PracticeLapTime = practice is null ? null : TimeSpan.FromSeconds(practice.Value),
+        };
 
     // ── FastestLapSeconds (pure) ──────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ public class WorldRecordServiceTests
     public async Task GetWorldRecordLapSecondsAsync_NotConfigured_ReturnsNullWithoutFetch()
     {
         await using var db = DbContextFactory.Create();
-        var service = new WorldRecordService(new CachedIRacingClient(db, null));
+        var service = new WorldRecordService(new MappingEvidenceCache(db, null));
 
         Assert.Null(await service.GetWorldRecordLapSecondsAsync(132, 532, Ct));
     }
@@ -77,7 +77,7 @@ public class WorldRecordServiceTests
             {
                 Data = (new WorldRecordsHeader(), [Entry(qual: 66.3, race: 66.8), Entry(tt: 65.95)]),
             });
-        var service = new WorldRecordService(new CachedIRacingClient(db, client));
+        var service = new WorldRecordService(new MappingEvidenceCache(db, client));
 
         var first = await service.GetWorldRecordLapSecondsAsync(132, 532, Ct);
         var second = await service.GetWorldRecordLapSecondsAsync(132, 532, Ct);
@@ -100,7 +100,7 @@ public class WorldRecordServiceTests
             ExpiresAt = new DateTimeOffset(9999, 1, 1, 0, 0, 0, TimeSpan.Zero),
         });
         await db.SaveChangesAsync(Ct);
-        var service = new WorldRecordService(new CachedIRacingClient(db, null));
+        var service = new WorldRecordService(new MappingEvidenceCache(db, null));
 
         Assert.Equal(65.5, (await service.GetWorldRecordLapSecondsAsync(132, 532, Ct))!.Value, precision: 3);
     }

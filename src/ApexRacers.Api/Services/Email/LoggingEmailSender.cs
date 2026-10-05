@@ -10,8 +10,7 @@ public sealed class LoggingEmailSender(ILogger<LoggingEmailSender> logger) : IEm
     public Task SendAsync(OutboundEmail email, CancellationToken ct = default)
     {
         logger.LogWarning(
-            "Email delivery not configured (ACS_CONNECTION_STRING missing). Would have sent '{Subject}'.",
-            email.Subject);
+            "Email delivery not configured (ACS_CONNECTION_STRING missing). Message withheld.");
         return Task.CompletedTask;
     }
 }

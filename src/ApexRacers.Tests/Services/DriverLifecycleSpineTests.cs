@@ -124,7 +124,7 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         var work = await fixture.Db.Set<DriverCopyCleanup>().OrderBy(w => w.Purpose).ToListAsync(Ct);
         Assert.Equal(2, work.Count);
         Assert.All(work, item => Assert.Equal(first.OriginalLossAt, item.OriginalLossAt));
-        Assert.Equal(first.OriginalLossAt.AddDays(kind == DriverLifecycleKind.DeleteUser ? 7 : 97), work[0].DueAt);
+        Assert.Equal(first.OriginalLossAt.AddHours(24), work[0].DueAt);
         Assert.Equal(first.OriginalLossAt.AddHours(24), work[1].DueAt);
     }
 
@@ -269,12 +269,13 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         var freshCopy = await copies.CommitAsync(fresh, "new-generation", Ct);
         fixture.Time.Now += TimeSpan.FromDays(10);
         var nextLoss = await fixture.Authority.TransitionAsync(fixture.Scope, DriverLifecycleKind.WithdrawPersonal, Guid.NewGuid(), Ct);
-        fixture.Time.Now = firstLoss.OriginalLossAt.AddDays(97);
+        fixture.Time.Now = nextLoss.OriginalLossAt;
         await copies.ExecuteDueAsync(Ct);
         Assert.Equal(freshCopy, Assert.Single(await fixture.Db.Set<DriverTrackedCopy>().AsNoTracking().ToListAsync(Ct)).Id);
-        var pending = Assert.Single(await fixture.Db.Set<DriverCopyCleanup>().Where(w => w.VerifiedRemovedAt == null).ToListAsync(Ct));
-        Assert.Equal(nextLoss.OriginalLossAt.AddDays(97), pending.DueAt);
-        fixture.Time.Now = nextLoss.OriginalLossAt.AddDays(97);
+        var pending = Assert.Single(await fixture.Db.Set<DriverCopyCleanup>().Where(w => w.VerifiedRemovedAt == null
+            && w.Purpose == DriverConsentScope.Personal).ToListAsync(Ct));
+        Assert.Equal(nextLoss.OriginalLossAt.AddHours(24), pending.DueAt);
+        fixture.Time.Now = nextLoss.OriginalLossAt.AddHours(24);
         await copies.ExecuteDueAsync(Ct);
         Assert.Empty(await fixture.Db.Set<DriverTrackedCopy>().AsNoTracking().ToListAsync(Ct));
     }
@@ -344,8 +345,14 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
     public async Task VerifiedSyntheticProofSupersedesAnAssertedClaimWithoutTransferringData()
     {
         await using var fixture = await CreateAsync();
-        var priorUser = new ApplicationUser { Id = Guid.NewGuid(), UserName = "asserted", DisplayName = "Synthetic asserted User",
-            IRacingCustomerId = fixture.Scope.CustomerId, EmailConfirmed = true };
+        var priorUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "asserted",
+            DisplayName = "Synthetic asserted User",
+            IRacingCustomerId = fixture.Scope.CustomerId,
+            EmailConfirmed = true
+        };
         fixture.Db.Users.Add(priorUser);
         await fixture.Db.SaveChangesAsync(Ct);
         var grant = await fixture.Authority.GrantAsync(fixture.Scope, Personal, Ct);
@@ -401,8 +408,13 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         var originalLoss = fixture.Time.Now;
         for (var i = 0; i < 3; i++)
         {
-            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = $"synthetic-batch-{i}",
-                DisplayName = "Synthetic User", EmailConfirmed = true };
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = $"synthetic-batch-{i}",
+                DisplayName = "Synthetic User",
+                EmailConfirmed = true
+            };
             fixture.Db.Users.Add(user);
             await fixture.Db.SaveChangesAsync(Ct);
             var scope = new DriverScope(user.Id, 200000 + i, DataProvenance.Demo);
@@ -418,16 +430,15 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         }
         var originalWork = await fixture.Db.DriverCopyCleanups.AsNoTracking().OrderBy(w => w.Id).ToListAsync(Ct);
         fixture.Time.Now = originalLoss.AddHours(24);
-        Assert.Equal(3, await fixture.Store.RemoveDueCopiesAsync(Ct));
+        Assert.Equal(6, await fixture.Store.RemoveDueCopiesAsync(Ct));
         var remaining = await fixture.Db.DriverTrackedCopies.AsNoTracking().ToListAsync(Ct);
-        Assert.Equal(3, remaining.Count);
-        Assert.All(remaining, c => Assert.Equal(DriverConsentScope.Personal, c.Purpose));
+        Assert.Empty(remaining);
         var after = await fixture.Db.DriverCopyCleanups.AsNoTracking().OrderBy(w => w.Id).ToListAsync(Ct);
         Assert.Equal(originalWork.Select(w => (w.Id, w.OriginalLossAt, w.DueAt, w.ThroughRevision)),
             after.Select(w => (w.Id, w.OriginalLossAt, w.DueAt, w.ThroughRevision)));
-        Assert.All(after, w => Assert.Equal(w.Purpose == DriverConsentScope.Sharing, w.VerifiedRemovedAt is not null));
-        fixture.Time.Now = originalLoss.AddDays(97);
-        Assert.Equal(3, await fixture.Store.RemoveDueCopiesAsync(Ct));
+        Assert.All(after, w => Assert.NotNull(w.VerifiedRemovedAt));
+        fixture.Time.Now = originalLoss.AddHours(24);
+        Assert.Equal(0, await fixture.Store.RemoveDueCopiesAsync(Ct));
         Assert.Empty(await fixture.Db.DriverTrackedCopies.AsNoTracking().ToListAsync(Ct));
     }
 

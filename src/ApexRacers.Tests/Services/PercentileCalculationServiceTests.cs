@@ -41,27 +41,27 @@ public class PercentileCalculationServiceTests
     {
         db.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId            = subsession.Id,
-            CustId                  = custId,
-            CarId                   = car.Id,
-            CarClassId              = carClass.Id,
-            BestLapSeconds          = lapSeconds,
-            AverageLapSeconds       = lapSeconds * 1.01,
-            FinishPosition          = 0,
-            FinishPositionInClass   = 0,
-            StartingPosition        = 0,
+            SubsessionId = subsession.Id,
+            CustId = custId,
+            CarId = car.Id,
+            CarClassId = carClass.Id,
+            BestLapSeconds = lapSeconds,
+            AverageLapSeconds = lapSeconds * 1.01,
+            FinishPosition = 0,
+            FinishPositionInClass = 0,
+            StartingPosition = 0,
             StartingPositionInClass = 0,
-            Incidents               = 0,
-            LapsComplete            = 5,
-            LapsLead                = 0,
-            ChampPoints             = 0,
-            AggregateChampPoints    = 0,
-            NewIRating              = 1500,
-            OldIRating              = 1500,
-            NewCpi                  = 2.0,
-            OldCpi                  = 2.0,
-            ReasonOutId             = 0,
-            Division                = 1,
+            Incidents = 0,
+            LapsComplete = 5,
+            LapsLead = 0,
+            ChampPoints = 0,
+            AggregateChampPoints = 0,
+            NewIRating = 1500,
+            OldIRating = 1500,
+            NewCpi = 2.0,
+            OldCpi = 2.0,
+            ReasonOutId = 0,
+            Division = 1,
         });
     }
 
@@ -191,8 +191,14 @@ public class PercentileCalculationServiceTests
         if (existingCache)
             db.CarPercentileResults.Add(new CarPercentileResult
             {
-                UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id,
-                PercentileRank = 25, TopSharePercent = 100, SampleSize = 12, ComputedAt = previousTime,
+                UserId = userId,
+                CarId = 1,
+                SeriesId = 1,
+                WeekId = week.Id,
+                PercentileRank = 25,
+                TopSharePercent = 100,
+                SampleSize = 12,
+                ComputedAt = previousTime,
             });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -259,7 +265,10 @@ public class PercentileCalculationServiceTests
         db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = userId, RoleId = roleId });
         db.FeatureFlags.Add(new FeatureFlag
         {
-            Key = "iracing-demo", Name = "Demo", MinimumRole = "Alpha", IsEnabled = demoEnabled,
+            Key = "iracing-demo",
+            Name = "Demo",
+            MinimumRole = "Alpha",
+            IsEnabled = demoEnabled,
         });
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 90);
         AddResult(db, subsession, car, carClass, custId: DemoData.DriverCustId, lapSeconds: 70);
@@ -362,7 +371,7 @@ public class PercentileCalculationServiceTests
                 Data = (new Aydsko.iRacingData.Stats.WorldRecordsHeader(),
                     [new Aydsko.iRacingData.Stats.WorldRecordEntry { QualifyLapTime = TimeSpan.FromSeconds(66) }]),
             });
-        var worldRecords = new WorldRecordService(new CachedIRacingClient(db, client));
+        var worldRecords = new WorldRecordService(new MappingEvidenceCache(db, client));
 
         var result = await CreateService(db, worldRecords)
             .ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1,

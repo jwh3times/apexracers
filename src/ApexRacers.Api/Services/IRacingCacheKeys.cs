@@ -1,4 +1,7 @@
 using ApexRacers.Core.Models;
+using System.Security.Cryptography;
+using System.Text;
+using ApexRacers.Core;
 using Aydsko.iRacingData.Member;
 
 namespace ApexRacers.Api.Services;
@@ -9,7 +12,7 @@ namespace ApexRacers.Api.Services;
 /// data stays fresh is a property of the key family, not of the call site. Passing them as two
 /// parameters let a caller pick a key from one family and a TTL from another.
 /// </remarks>
-public readonly record struct CacheSpec(string Key, TimeSpan Ttl);
+public readonly record struct CacheSpec(string Key, TimeSpan Ttl, EvidencePurposeKind Purpose = EvidencePurposeKind.Personal, int? SeasonId = null);
 
 /// <summary>
 /// The single authority for every <see cref="ExternalDataCache"/> key the iRacing read paths use.
@@ -81,20 +84,20 @@ public static class IRacingCacheKeys
     // v2 separates ApexRacers' domain-specific Standing response field from legacy payloads
     // serialized with the ambiguous Rank field. Reusing those rows would deserialize Standing as 0.
     public static CacheSpec Leaderboard(int categoryId) =>
-        new($"leaderboard:v2:{categoryId}", ReferenceTtl);
+        new($"leaderboard:v2:{categoryId}", ReferenceTtl, EvidencePurposeKind.IndependentOfficial);
 
     public static CacheSpec Standings(int seasonId, int classId) =>
-        new($"standings:v2:{seasonId}:{classId}", ReferenceTtl);
+        new($"standings:v2:{seasonId}:{classId}", ReferenceTtl, EvidencePurposeKind.IndependentOfficial, seasonId);
 
     public static CacheSpec TimeTrialStandings(int seasonId, int classId) =>
-        new($"tt-standings:v2:{seasonId}:{classId}", ReferenceTtl);
+        new($"tt-standings:v2:{seasonId}:{classId}", ReferenceTtl, EvidencePurposeKind.IndependentOfficial, seasonId);
 
     // v3: qualifying rows expose RaceWeekIndex rather than the legacy Week member.
     public static CacheSpec QualifyResults(int seasonId, int classId, int raceWeekIndex) =>
-        new($"qual:v3:{seasonId}:{classId}:{raceWeekIndex}", ReferenceTtl);
+        new($"qual:v3:{seasonId}:{classId}:{raceWeekIndex}", ReferenceTtl, EvidencePurposeKind.IndependentOfficial, seasonId);
 
     public static CacheSpec WorldRecord(int carId, int trackId) =>
-        new($"wr:{carId}:{trackId}", ReferenceTtl);
+        new($"wr:{carId}:{trackId}", ReferenceTtl, EvidencePurposeKind.IndependentOfficial);
 
     // ── Volatile ──────────────────────────────────────────────────────────────
 
@@ -102,7 +105,7 @@ public static class IRacingCacheKeys
     /// A single global key: the race guide is the same board for every caller. v2 carries the
     /// canonical RaceWeekIndex member after the cached row contract changed.
     /// </summary>
-    public static CacheSpec RaceGuide => new("race-guide:v2", RaceGuideTtl);
+    public static CacheSpec RaceGuide => new("race-guide:v2", RaceGuideTtl, EvidencePurposeKind.IndependentOfficial);
 
     // ── Driver search ─────────────────────────────────────────────────────────
 
@@ -123,7 +126,8 @@ public static class IRacingCacheKeys
     {
         var normalized = (rawTerm ?? string.Empty).Trim();
         if (normalized.Length < MinDriverSearchLength) return null;
-        return new CacheSpec($"driversearch:{normalized.ToLowerInvariant()}", DriverSearchTtl);
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized.ToLowerInvariant())));
+        return new CacheSpec($"driversearch:v2:{digest}", DriverSearchTtl);
     }
 
     /// <summary>

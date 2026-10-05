@@ -22,6 +22,7 @@ public static class DemoCache
 
     public static async Task UpsertAsync<T>(AppDbContext db, string key, T value, CancellationToken ct)
     {
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, ct);
         MappedEvidenceContract.RequireOwned<T>();
         var json = JsonSerializer.Serialize(value);
         var row = await db.ExternalDataCaches.FirstOrDefaultAsync(
@@ -43,6 +44,6 @@ public static class DemoCache
             row.FetchedAt = DateTimeOffset.UtcNow;
             row.ExpiresAt = Sentinel;
         }
-        await db.SaveChangesAsync(ct);
+        await writer.SaveChangesAsync(ct);
     }
 }

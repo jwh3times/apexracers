@@ -1,5 +1,6 @@
 using ApexRacers.Api.Services;
 using ApexRacers.Data;
+using ApexRacers.Core;
 using Microsoft.AspNetCore.Http;
 
 namespace ApexRacers.Api.Middleware;
@@ -17,6 +18,7 @@ public static class ExceptionStatusMapper
         ClaimedIdentityConflictException => StatusCodes.Status409Conflict,
         IRacingNotConfiguredException => StatusCodes.Status503ServiceUnavailable,
         DemoTeardownRequiredException => StatusCodes.Status503ServiceUnavailable,
+        EvidenceCopyUnavailableException => StatusCodes.Status503ServiceUnavailable,
         ArgumentException => StatusCodes.Status400BadRequest,
         InvalidOperationException => StatusCodes.Status400BadRequest,
         KeyNotFoundException => StatusCodes.Status404NotFound,

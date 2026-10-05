@@ -59,7 +59,7 @@ public class DriverStatsServiceTests
         }
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new DriverStatsService(cached), client, db);
     }
 
@@ -180,7 +180,7 @@ public class DriverStatsServiceTests
             .Returns(new DataResponse<MemberRecap> { Data = recap });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new DriverStatsService(cached), client, db);
     }
 
@@ -361,7 +361,7 @@ public class DriverStatsServiceTests
         }
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new DriverStatsService(cached), client, db);
     }
 

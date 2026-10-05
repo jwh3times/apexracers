@@ -18,7 +18,7 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
 
 
     private static RivalService Build(AppDbContext db, IDataClient? client = null) =>
-        new(db, new CachedIRacingClient(db, client));
+        new(db, new MappingEvidenceCache(db, client));
 
     private static void SeedResult(AppDbContext db, int subsessionId, long custId, string name,
         int finish = 1, double bestLap = -1)
@@ -159,7 +159,11 @@ public class RivalServiceTests(PostgreSqlFixture postgres)
         var me = Guid.NewGuid();
         db.Rivals.Add(new Rival
         {
-            Id = Guid.NewGuid(), UserId = me, RivalCustId = 7, DisplayName = "Mine", CreatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            UserId = me,
+            RivalCustId = 7,
+            DisplayName = "Mine",
+            CreatedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync(Ct);
         var service = Build(db);

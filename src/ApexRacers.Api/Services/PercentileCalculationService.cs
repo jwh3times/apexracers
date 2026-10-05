@@ -18,6 +18,7 @@ public class PercentileCalculationService(
         Guid? callerUserId = null,
         CancellationToken ct = default)
     {
+        var writer = db.Provenance == DataProvenance.Demo ? await SyntheticEvidenceWriter.OpenAsync(db, ct) : null;
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
         if (seasonId is null) return null;
 
@@ -27,8 +28,8 @@ public class PercentileCalculationService(
             {
                 w.Id,
                 w.TrackId,
-                SeriesName      = w.Season.Series.Name,
-                TrackName       = (string?)w.Track.Name,
+                SeriesName = w.Season.Series.Name,
+                TrackName = (string?)w.Track.Name,
                 TrackConfigName = (string?)w.Track.ConfigName,
             })
             .FirstOrDefaultAsync(ct);
@@ -121,25 +122,25 @@ public class PercentileCalculationService(
             {
                 db.CarPercentileResults.Add(new CarPercentileResult
                 {
-                    UserId          = user.Id,
-                    CarId           = carId,
-                    SeriesId        = seriesId,
-                    WeekId          = week.Id,
-                    PercentileRank  = percentileRank,
+                    UserId = user.Id,
+                    CarId = carId,
+                    SeriesId = seriesId,
+                    WeekId = week.Id,
+                    PercentileRank = percentileRank,
                     TopSharePercent = topSharePercent,
-                    SampleSize      = total,
-                    ComputedAt      = computedAt,
+                    SampleSize = total,
+                    ComputedAt = computedAt,
                 });
             }
             else
             {
-                cached.PercentileRank  = percentileRank;
+                cached.PercentileRank = percentileRank;
                 cached.TopSharePercent = topSharePercent;
-                cached.SampleSize      = total;
-                cached.ComputedAt      = computedAt;
+                cached.SampleSize = total;
+                cached.ComputedAt = computedAt;
             }
 
-            await db.SaveChangesAsync(ct);
+            await (writer is null ? db.SaveChangesAsync(ct) : writer.SaveChangesAsync(ct));
         }
 
         // Field stats and distribution — over the same Field the rank was computed against, so a

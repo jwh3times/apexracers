@@ -39,7 +39,7 @@ public class RivalComparisonServiceTests
         client.GetMemberChartDataAsync(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<MemberChartType>(), Arg.Any<CancellationToken>())
             .Returns(new DataResponse<MemberChart> { Data = new MemberChart { CategoryId = 5, Points = [] } });
 
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return new RivalComparisonService(new DriverStatsService(cached), db);
     }
 

@@ -206,6 +206,20 @@ public class ExceptionHandlingMiddlewareTests
     }
 
     [Fact]
+    public async Task OperationalLogsDoNotAttachExceptionPayloads()
+    {
+        var logger = new FakeLogger<ExceptionHandlingMiddleware>();
+        await InvokeWith(new Exception("Driver 8123456 SyntheticName token=secret-token telemetry=private"), logger);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Contains("Exception", entry.Message);
+        Assert.DoesNotContain("8123456", entry.Message);
+        Assert.DoesNotContain("SyntheticName", entry.Message);
+        Assert.DoesNotContain("secret-token", entry.Message);
+        Assert.DoesNotContain("telemetry=private", entry.Message);
+        Assert.All(logger.Exceptions, exception => Assert.Null(exception));
+    }
+
+    [Fact]
     public async Task NoException_PassesThroughUntouched()
     {
         var context = new DefaultHttpContext();

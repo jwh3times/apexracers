@@ -10,6 +10,13 @@ schedule routes retain independent access; private upload presence does not pers
 These limits do not establish live proof, consent,
 publication safety or completed retention/restore validation.
 
+Evidence copies now carry explicit purpose, provenance and generation metadata. Synthetic seeding
+and Demo calculations use the same write boundary; source loss withdraws dependent copies.
+Historical collection has an explicit request lifetime, separate from continuing official evidence
+retention. Real collection issuers remain unavailable until their ownership/catalog integrations
+exist. [Copy-fence evidence](research/driver-copy-writer-inventory.md) records the implemented scope
+and the deployment checks still required.
+
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,

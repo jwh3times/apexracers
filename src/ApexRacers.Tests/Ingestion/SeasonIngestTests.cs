@@ -154,6 +154,7 @@ public class SeasonIngestTests
             .Options;
         await using var db = new AppDbContext(options, new ApexRacers.Core.IRacingDataScope(ApexRacers.Core.DataProvenance.Real));
         await db.Database.EnsureCreatedAsync(ct);
+        DbContextFactory.InstallStoredEvidenceFixtures(db); // Mapping/order fixture, not acquisition authority.
 
         var item = ScheduleItem();
         db.Tracks.Add(new Track { Id = item.Track.TrackId, Name = item.Track.TrackName });

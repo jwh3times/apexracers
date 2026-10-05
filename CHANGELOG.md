@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Durable evidence purposes, copy generations and concrete source dependencies for mapped caches,
+  complete official Fields, BoP/weather, authorized names and personal derivatives. Explicit
+  historical requests separate collection completion from continuing name-free official retention.
+
+### Changed
+
+- Demo teardown fences delayed seeders; restarting a purged preview requires `--new-preview`.
+  The forward-only copy-fence migration requires stopped old writers and a disabled, purged Demo
+  dataset before a controlled reseed. Unclassified legacy payloads are physically erased rather
+  than assigned a guessed purpose; ordinary Real acquisition remains unavailable.
+
+### Security
+
+- Reject stale, unscoped and cross-purpose evidence writes, including old binaries and bulk SQL;
+  invalidate derived copies on source removal and retain original cleanup deadlines through retries.
+- Remove unauthorized name copies within the 24-hour live-data ceiling, enforce mapped-expiry and
+  ended-purpose cleanup, expire explanatory proof details after twelve months, and sanitize
+  application/provider logging. Deployed backup expiry and log retention require separate verification.
 
 ## [11.0.0] - 2026-10-04
 

@@ -15,6 +15,7 @@ public class CarRecommendationService(AppDbContext db)
         PersonalBestEvidence evidence,
         CancellationToken ct = default)
     {
+        var writer = db.Provenance == DataProvenance.Demo ? await SyntheticEvidenceWriter.OpenAsync(db, ct) : null;
         var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
         if (seasonId is null) return [];
 
@@ -112,7 +113,7 @@ public class CarRecommendationService(AppDbContext db)
             if (driverHistorical.Count > 0)
             {
                 var histWeekIds = driverHistorical.Select(r => r.WeekId).Distinct().ToList();
-                var histCarIds  = driverHistorical.Select(r => r.CarId).Distinct().ToList();
+                var histCarIds = driverHistorical.Select(r => r.CarId).Distinct().ToList();
 
                 var fieldHistorical = await db.SubsessionResults
                     .Where(r => r.Subsession.WeekId.HasValue
@@ -214,7 +215,7 @@ public class CarRecommendationService(AppDbContext db)
                         carId, week.SeriesId, weekDbId, percentileRank, topShare, total, computedAt);
 
                 var plSortedLaps = carField.Select(r => r.BestLap).ToList();
-                var plProjected  = ProjectedLapTime(plSortedLaps, newAvg ?? percentileRank);
+                var plProjected = ProjectedLapTime(plSortedLaps, newAvg ?? percentileRank);
                 if (plProjected is null) continue;
 
                 results.Add(new CarRecommendationDto(
@@ -268,7 +269,7 @@ public class CarRecommendationService(AppDbContext db)
         }
 
         if (user is not null)
-            await db.SaveChangesAsync(ct);
+            await (writer is null ? db.SaveChangesAsync(ct) : writer.SaveChangesAsync(ct));
 
         return results
             .OrderBy(r => r.ProjectedLapSeconds)
@@ -396,23 +397,23 @@ public class CarRecommendationService(AppDbContext db)
 
         if (existingCacheThisWeek.TryGetValue(carId, out var cached))
         {
-            cached.PercentileRank  = percentileRank;
+            cached.PercentileRank = percentileRank;
             cached.TopSharePercent = topSharePercent;
-            cached.SampleSize      = sampleSize;
-            cached.ComputedAt      = computedAt;
+            cached.SampleSize = sampleSize;
+            cached.ComputedAt = computedAt;
         }
         else
         {
             db.CarPercentileResults.Add(new CarPercentileResult
             {
-                UserId          = user.Id,
-                CarId           = carId,
-                SeriesId        = seriesId,
-                WeekId          = weekDbId,
-                PercentileRank  = percentileRank,
+                UserId = user.Id,
+                CarId = carId,
+                SeriesId = seriesId,
+                WeekId = weekDbId,
+                PercentileRank = percentileRank,
                 TopSharePercent = topSharePercent,
-                SampleSize      = sampleSize,
-                ComputedAt      = computedAt,
+                SampleSize = sampleSize,
+                ComputedAt = computedAt,
             });
         }
     }
@@ -421,8 +422,8 @@ public class CarRecommendationService(AppDbContext db)
     {
         if (sortedLaps.Count == 0) return null;
         var n = sortedLaps.Count;
-        var pos  = (n - 1) * (1.0 - percentileRank / 100.0);
-        var low  = (int)Math.Floor(pos);
+        var pos = (n - 1) * (1.0 - percentileRank / 100.0);
+        var low = (int)Math.Floor(pos);
         var high = Math.Min((int)Math.Ceiling(pos), n - 1);
         return sortedLaps[low] + (pos - low) * (sortedLaps[high] - sortedLaps[low]);
     }

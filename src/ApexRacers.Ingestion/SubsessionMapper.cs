@@ -13,6 +13,21 @@ namespace ApexRacers.Ingestion;
 /// </summary>
 public static class SubsessionMapper
 {
+    /// <summary>Maps one complete classified Field. Explicit Demo provenance is only for synthetic
+    /// wire fixtures; the live worker always supplies Real and cannot issue its own purpose.</summary>
+    public static OfficialFieldBatch ToBatch(int subsessionId, WireSubsessionResult data, Guid? weekId,
+        SubsessionIndexer.SplitPosition? splitPosition, IReadOnlyList<Result> results,
+        DataProvenance provenance = DataProvenance.Real)
+    {
+        if (provenance is not (DataProvenance.Real or DataProvenance.Demo)) throw new EvidenceCopyUnavailableException();
+        var tally = SubsessionIndexer.TallyEntries(results.Select(r => SubsessionIndexer.ClassifyEntry(r.AI, r.CustomerId)));
+        var race = ToEntity(subsessionId, data, weekId, splitPosition, tally);
+        race.Provenance = provenance;
+        var mapped = results.Where(r => SubsessionIndexer.ClassifyEntry(r.AI, r.CustomerId) == SubsessionIndexer.EntryDisposition.Classified)
+            .Select(r => ToResult(subsessionId, r)).ToArray();
+        foreach (var row in mapped) row.Provenance = provenance;
+        return new(race, mapped);
+    }
     /// <summary>
     /// Maps the results payload's track block, where iRacing spells an absent Configuration Name
     /// as <c>N/A</c>, to the catalog's canonical empty storage value.

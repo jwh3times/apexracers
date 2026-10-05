@@ -20,6 +20,8 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+EvidenceOperationalLogging.Configure(builder.Logging);
+builder.Services.AddSingleton<IEvidencePurposeIssuer, UnavailableEvidencePurposeIssuer>();
 
 // Logging providers are left at the framework defaults on purpose: in Azure the App
 // Service Application Insights codeless agent injects its own ILogger provider, and
@@ -148,8 +150,8 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = globalPermitLimit,
-                Window      = TimeSpan.FromMinutes(1),
-                QueueLimit  = 0,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
             }));
 
     options.AddPolicy("auth", httpContext =>
@@ -158,8 +160,8 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = authPermitLimit,
-                Window      = TimeSpan.FromMinutes(1),
-                QueueLimit  = 0,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
             }));
 
     // Per-*user* window for driver search. The subject claim is the partition; an unauthenticated
@@ -174,8 +176,8 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = searchPermitLimit,
-                Window      = TimeSpan.FromMinutes(1),
-                QueueLimit  = 0,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
             }));
 });
 
@@ -193,16 +195,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly",     policy => policy.RequireClaim("role", "Admin"));
-    options.AddPolicy("AlphaOrAbove",  policy => policy.RequireClaim("role", "Alpha", "Admin"));
-    options.AddPolicy("BetaOrAbove",   policy => policy.RequireClaim("role", "Beta", "Alpha", "Admin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireClaim("role", "Admin"));
+    options.AddPolicy("AlphaOrAbove", policy => policy.RequireClaim("role", "Alpha", "Admin"));
+    options.AddPolicy("BetaOrAbove", policy => policy.RequireClaim("role", "Beta", "Alpha", "Admin"));
 });
 
 // Constructed by hand because IDataClient is registered only when all four credentials are
 // present (above); GetService returns null otherwise, which is exactly what the client's
 // nullable parameter means. Container auto-wiring would fail to resolve it instead.
 builder.Services.AddScoped(sp =>
-    new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>()));
+    new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>(),
+        purposeIssuer: sp.GetRequiredService<IEvidencePurposeIssuer>()));
 builder.Services.AddScoped<FeatureFlagEligibility>();
 builder.Services.AddScoped<SubjectDriverContext>();
 builder.Services.AddScoped<ApexRacers.Core.IRacingDataScope>();
