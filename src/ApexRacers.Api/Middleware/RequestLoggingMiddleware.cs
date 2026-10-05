@@ -68,9 +68,18 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
 
     // Neither unmatched URLs nor arbitrary HTTP method tokens belong in operational logs:
     // they can contain names, Customer IDs or credentials even when routing refuses the request.
+    // Return application-owned literals so no request string crosses the logging boundary.
     private static string SafeMethod(string method) => method switch
     {
-        "GET" or "HEAD" or "POST" or "PUT" or "DELETE" or "CONNECT" or "OPTIONS" or "TRACE" or "PATCH" => method,
+        "GET" => "GET",
+        "HEAD" => "HEAD",
+        "POST" => "POST",
+        "PUT" => "PUT",
+        "DELETE" => "DELETE",
+        "CONNECT" => "CONNECT",
+        "OPTIONS" => "OPTIONS",
+        "TRACE" => "TRACE",
+        "PATCH" => "PATCH",
         _ => "OTHER",
     };
 }
