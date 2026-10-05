@@ -23,7 +23,10 @@ public class DemoCacheSeederAllTests
         db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, RaceWeekIndex = 0, TrackId = 1 });
         db.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = -10, CustId = DemoData.DriverCustId, CarId = 132, BestLapSeconds = 90.0,
+            SubsessionId = -10,
+            CustId = DemoData.DriverCustId,
+            CarId = 132,
+            BestLapSeconds = 90.0,
         });
         await db.SaveChangesAsync(Ct);
 
@@ -34,7 +37,7 @@ public class DemoCacheSeederAllTests
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.RaceGuide.Key, Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "wr:132:1", Ct));
         Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.LapData(-10, DemoData.DriverCustId).Key, Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:rival", Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.DriverSearch("rival")!.Value.Key, Ct));
         // Every seeded cache row carries the far-future sentinel (purge marker + never-miss).
         Assert.All(await db.ExternalDataCaches.ToListAsync(Ct), r => Assert.Equal(DemoCache.Sentinel, r.ExpiresAt));
     }

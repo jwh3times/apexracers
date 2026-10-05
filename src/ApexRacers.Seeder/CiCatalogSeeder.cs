@@ -11,15 +11,15 @@ namespace ApexRacers.Seeder;
 /// </summary>
 public static class CiCatalog
 {
-    public const int SeriesId   = 9900;
-    public const int SeasonId   = 99001;
+    public const int SeriesId = 9900;
+    public const int SeasonId = 99001;
     public const int CarClassId = 9901;
-    public const int WeekCount  = 8;
+    public const int WeekCount = 8;
     public const int CurrentRaceWeekIndex = 4; // Race Week whose date window contains "today"
     public const long DriverStart = 100_001;   // includes DemoData.DriverCustId + RivalCustId
-    public const int DriverCount  = 60;
+    public const int DriverCount = 60;
 
-    public static readonly int[] CarIds   = [9911, 9912, 9913, 9914, 9915, 9916];
+    public static readonly int[] CarIds = [9911, 9912, 9913, 9914, 9915, 9916];
     public static readonly int[] TrackIds = [9951, 9952, 9953, 9954, 9955, 9956, 9957, 9958];
 }
 
@@ -48,8 +48,11 @@ public sealed class CiCatalogSeeder(AppDbContext db)
 
     private const double AvgSpeedMph = 90.0; // GT3-ish baseline
 
+    private SyntheticEvidenceWriter writer = null!;
+
     public async Task SeedAsync()
     {
+        writer = await SyntheticEvidenceWriter.OpenAsync(db);
         await SeedCatalogAsync();
         await SeedRacesAsync();
     }
@@ -139,7 +142,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
             });
         }
 
-        await db.SaveChangesAsync();
+        await writer.SaveChangesAsync();
 
         foreach (var carId in CiCatalog.CarIds)
             if (await db.CarClassCars.FindAsync(CiCatalog.CarClassId, carId) is null)
@@ -172,7 +175,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
             });
         }
 
-        await db.SaveChangesAsync();
+        await writer.SaveChangesAsync();
         Console.WriteLine($"  Catalog: 1 series, 1 season, {CiCatalog.WeekCount} weeks, "
             + $"{CiCatalog.CarIds.Length} cars, {CiCatalog.TrackIds.Length} tracks.");
     }
@@ -222,7 +225,6 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                     StartTime = new DateTimeOffset(
                         week.StartDate.ToDateTime(new TimeOnly(14, 0)), TimeSpan.Zero),
                 });
-                await db.SaveChangesAsync();
                 subsessions++;
 
                 var carOffset = SyntheticLaps.GetCarOffset(carId);
@@ -267,7 +269,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
                     });
                 }
 
-                await db.SaveChangesAsync();
+                await writer.SaveChangesAsync();
                 results += driverLaps.Count;
             }
         }
@@ -279,7 +281,7 @@ public sealed class CiCatalogSeeder(AppDbContext db)
     private static string DriverName(long custId) => custId switch
     {
         ApexRacers.Core.DemoData.DriverCustId => "Demo Driver",
-        ApexRacers.Core.DemoData.RivalCustId  => "Rival Racer",
+        ApexRacers.Core.DemoData.RivalCustId => "Rival Racer",
         _ => $"Driver {custId}",
     };
 }

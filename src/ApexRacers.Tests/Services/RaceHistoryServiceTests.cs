@@ -22,22 +22,22 @@ public class RaceHistoryServiceTests
         int subsessionId, string when, string seriesName, int trackId, string trackName,
         int carId, int start, int finish, int incidents,
         int oldIr, int newIr, int oldSub, int newSub, int sof, int points) => new()
-    {
-        SubsessionId = subsessionId,
-        SessionStartTime = DateTimeOffset.Parse(when),
-        SeriesName = seriesName,
-        Track = new Aydsko.iRacingData.Stats.Track { TrackId = trackId, TrackName = trackName },
-        CarId = carId,
-        StartPosition = start,
-        FinishPosition = finish,
-        Incidents = incidents,
-        OldiRating = oldIr,
-        NewiRating = newIr,
-        OldSubLevel = oldSub,
-        NewSubLevel = newSub,
-        StrengthOfField = sof,
-        Points = points,
-    };
+        {
+            SubsessionId = subsessionId,
+            SessionStartTime = DateTimeOffset.Parse(when),
+            SeriesName = seriesName,
+            Track = new Aydsko.iRacingData.Stats.Track { TrackId = trackId, TrackName = trackName },
+            CarId = carId,
+            StartPosition = start,
+            FinishPosition = finish,
+            Incidents = incidents,
+            OldiRating = oldIr,
+            NewiRating = newIr,
+            OldSubLevel = oldSub,
+            NewSubLevel = newSub,
+            StrengthOfField = sof,
+            Points = points,
+        };
 
     private static (RaceHistoryService Service, IDataClient Client, AppDbContext Db) Build(
         params Race[] races)
@@ -50,7 +50,7 @@ public class RaceHistoryServiceTests
             });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new RaceHistoryService(cached, db), client, db);
     }
 

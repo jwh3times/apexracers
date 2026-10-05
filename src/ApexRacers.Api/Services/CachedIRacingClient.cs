@@ -13,7 +13,7 @@ namespace ApexRacers.Api.Services;
 /// we stay within iRacing's rate limits. The underlying <see cref="IDataClient"/> is
 /// registered only when iRacing credentials are present (see Program.cs); when it is
 /// not, a cache miss throws <see cref="IRacingNotConfiguredException"/> (callers map
-/// that to a 503).
+/// that to a 503). Credentials also require an issued evidence purpose; the default issuer is closed.
 /// </summary>
 /// <remarks>
 /// <paramref name="client"/> is nullable rather than resolved from an <c>IServiceProvider</c>:
@@ -23,25 +23,26 @@ namespace ApexRacers.Api.Services;
 /// which had forced twelve test files to each declare an identical stub returning the same object
 /// for any requested type.
 /// </remarks>
-public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null)
+public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null,
+    IEvidencePurposeIssuer? purposeIssuer = null)
 {
+    protected static T MapEvidence<T>(T value) => NameFreeIRacingEvidence.Map(value);
     /// <summary>
-    /// Returns unexpired owned evidence in the selected namespace. A Real miss may invoke
-    /// <paramref name="fetch"/> after Demo teardown and stores name-free evidence for the
-    /// spec's TTL; a Demo miss remains unavailable without invoking the provider.
+    /// Returns unexpired eligible owned evidence in the selected namespace. A Real miss requires
+    /// Demo teardown and an issued purpose before capturing a receipt and invoking
+    /// <paramref name="fetch"/>. Fresh evidence is returned only after an accepted copy commit;
+    /// a Demo miss remains unavailable without invoking the provider.
     /// </summary>
-    public async Task<T> GetOrFetchAsync<T>(
+    public virtual async Task<T> GetOrFetchAsync<T>(
         CacheSpec spec,
         Func<IDataClient, Task<T>> fetch,
         CancellationToken ct)
     {
         var provenance = source ?? db.Provenance;
         MappedEvidenceContract.RequireOwned<T>();
-        // A key longer than the column is not a cache miss, it is a permanent cache *bypass*: the
-        // insert below throws, the catch treats that as a lost cold-start race, and every later
-        // request for the key repeats the live fetch. That is how unbounded user input reaching a
-        // key factory turned into unmetered iRacing traffic (GHSA-jv96-89xc-98h2). Key factories
-        // bound their inputs; this is the backstop that keeps a future one from failing silently.
+        // Reject unstorable keys before acquisition. Historically a broad cold-start race catch
+        // swallowed insert failures and allowed repeated provider fetches (GHSA-jv96-89xc-98h2).
+        // Key factories bound their inputs; this is the backstop for new factories.
         if (spec.Key.Length > ExternalDataCache.CacheKeyMaxLength)
             throw new ArgumentException(
                 $"Cache key exceeds the {ExternalDataCache.CacheKeyMaxLength}-character limit " +
@@ -61,9 +62,10 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProve
             var cleaned = JsonSerializer.Serialize(evidence);
             if (cleaned != row.Payload)
             {
-                row.Payload = cleaned;
-                // Repair a known owned contract without renewing freshness or its original clocks.
-                await db.SaveChangesAsync(ct);
+                // A name-bearing shared snapshot is not eligible for a warm-hit repair that could
+                // bypass copy generations. It is withdrawn and physically removed by reconciliation.
+                await new EvidenceCopyLifecycle(db, TimeProvider.System).WithdrawNameBearingCacheAsync(row.EvidenceCopyId!.Value, ct);
+                throw new IRacingNotConfiguredException();
             }
             return evidence;
         }
@@ -73,45 +75,23 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProve
             throw new IRacingNotConfiguredException();
         var live = client ?? throw new IRacingNotConfiguredException();
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
+        var purposeId = await (purposeIssuer ?? new UnavailableEvidencePurposeIssuer()).ResolveAsync(
+            new(provenance, spec.Purpose, spec.SeasonId), ct) ?? throw new IRacingNotConfiguredException();
+        var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
+        var receipt = await lifecycle.CaptureAsync(purposeId, EvidenceCopyKind.MappedCache, spec.Key, ct: ct);
 
         var fresh = NameFreeIRacingEvidence.Map(await fetch(live));
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
         var json = JsonSerializer.Serialize(fresh);
 
-        if (row is null)
+        await lifecycle.CommitAsync(receipt, new MappedCacheBatch(new ExternalDataCache
         {
-            db.ExternalDataCaches.Add(new ExternalDataCache
-            {
-                CacheKey = spec.Key,
-                Provenance = provenance,
-                Payload = json,
-                FetchedAt = now,
-                ExpiresAt = now + spec.Ttl,
-            });
-        }
-        else
-        {
-            row.Payload = json;
-            row.FetchedAt = now;
-            row.ExpiresAt = now + spec.Ttl;
-        }
-
-        try
-        {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException) when (row is null)
-        {
-            // Cold-start race: two concurrent misses on a key with no row both reach the insert,
-            // and CacheKey is unique, so the loser takes a 23505. Nothing maps DbUpdateException,
-            // so it surfaced as a 500 — most exposed on /live, whose single global "race-guide"
-            // key is public and uncached on a cold or freshly-purged cache.
-            //
-            // The winner already wrote the value we were about to write, so detach our losing
-            // insert and hand back the fetched value. An expiry is an *update*, not an insert,
-            // which is why this only needs the row-is-null case.
-            db.ChangeTracker.Clear();
-        }
+            CacheKey = spec.Key,
+            Provenance = provenance,
+            Payload = json,
+            FetchedAt = receipt.OriginalAcquiredAt,
+            ExpiresAt = receipt.OriginalAcquiredAt + spec.Ttl,
+        }), ct);
 
         return fresh;
     }

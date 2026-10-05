@@ -6,8 +6,9 @@ namespace ApexRacers.Core.Models;
 /// mapped contract; Real Driver evidence omits names. Backs <c>CachedIRacingClient</c>'s
 /// get-or-fetch so repeated reads come from Postgres and we stay within rate limits.
 /// </summary>
-public class ExternalDataCache : IProvenancedData
+public class ExternalDataCache : IManagedEvidence
 {
+    public Guid? EvidenceCopyId { get; set; }
     /// <summary>
     /// Storage limit on <see cref="CacheKey"/>, shared by the EF configuration that enforces it
     /// and by the cache client that refuses to build a key it could never persist. A key over this

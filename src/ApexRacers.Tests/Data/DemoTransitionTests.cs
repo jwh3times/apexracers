@@ -29,11 +29,15 @@ public class DemoTransitionTests(PostgreSqlFixture postgres)
         var synthetic = await demo.Subsessions.FirstAsync(Ct);
         var syntheticDriver = await demo.SubsessionResults.FirstAsync(r => r.SubsessionId == synthetic.Id, Ct);
         await using var real = new AppDbContext(options, new IRacingDataScope(DataProvenance.Real));
+        DbContextFactory.InstallStoredEvidenceFixtures(real);
         Assert.Empty(await real.Subsessions.ToListAsync(Ct));
         real.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = synthetic.Id, CustId = syntheticDriver.CustId,
-            CarId = syntheticDriver.CarId, CarClassId = syntheticDriver.CarClassId, BestLapSeconds = 87,
+            SubsessionId = synthetic.Id,
+            CustId = syntheticDriver.CustId,
+            CarId = syntheticDriver.CarId,
+            CarClassId = syntheticDriver.CarClassId,
+            BestLapSeconds = 87,
         });
         var rejected = await Assert.ThrowsAsync<DbUpdateException>(() => real.SaveChangesAsync(Ct));
         Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, Assert.IsType<PostgresException>(rejected.InnerException).SqlState);
@@ -42,13 +46,18 @@ public class DemoTransitionTests(PostgreSqlFixture postgres)
         real.ChangeTracker.Clear();
         real.Subsessions.Add(new Subsession
         {
-            Id = synthetic.Id, SeasonId = synthetic.SeasonId, TrackId = synthetic.TrackId,
+            Id = synthetic.Id,
+            SeasonId = synthetic.SeasonId,
+            TrackId = synthetic.TrackId,
             StartTime = synthetic.StartTime,
         });
         real.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = synthetic.Id, CustId = syntheticDriver.CustId,
-            CarId = syntheticDriver.CarId, CarClassId = syntheticDriver.CarClassId, BestLapSeconds = 87,
+            SubsessionId = synthetic.Id,
+            CustId = syntheticDriver.CustId,
+            CarId = syntheticDriver.CarId,
+            CarClassId = syntheticDriver.CarClassId,
+            BestLapSeconds = 87,
         });
         await real.SaveChangesAsync(Ct);
         Assert.Equal(87, (await real.SubsessionResults.SingleAsync(Ct)).BestLapSeconds);
@@ -62,21 +71,30 @@ public class DemoTransitionTests(PostgreSqlFixture postgres)
     {
         var options = await postgres.CreateOptionsAsync(Ct);
         await using var real = new AppDbContext(options, new IRacingDataScope(DataProvenance.Real));
+        DbContextFactory.InstallStoredEvidenceFixtures(real);
         await using var demo = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
         demo.FeatureFlags.Add(new FeatureFlag
         {
-            Key = "iracing-demo", Name = "Demo", IsEnabled = true, MinimumRole = "Standard",
+            Key = "iracing-demo",
+            Name = "Demo",
+            IsEnabled = true,
+            MinimumRole = "Standard",
         });
         await demo.SaveChangesAsync(Ct);
         var spec = IRacingCacheKeys.Profile(DemoData.DriverCustId);
         var future = new DateTimeOffset(9999, 1, 1, 0, 0, 0, TimeSpan.Zero);
         real.ExternalDataCaches.Add(new ExternalDataCache
         {
-            CacheKey = spec.Key, Payload = "17", ExpiresAt = future, FetchedAt = DateTimeOffset.UtcNow,
+            CacheKey = spec.Key,
+            Payload = "17",
+            ExpiresAt = future,
+            FetchedAt = DateTimeOffset.UtcNow,
         });
         real.QuarantinedDataCaches.Add(new QuarantinedDataCache
         {
-            CacheKey = "profile:legacy", Payload = "{\"unclassified\":true}", ExpiresAt = future,
+            CacheKey = "profile:legacy",
+            Payload = "{\"unclassified\":true}",
+            ExpiresAt = future,
             FetchedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
         });
         await real.SaveChangesAsync(Ct);
@@ -110,13 +128,9 @@ public class DemoTransitionTests(PostgreSqlFixture postgres)
         Assert.Equal(1, await real.ExternalDataCaches.CountAsync(Ct));
         Assert.Equal(1, await real.QuarantinedDataCaches.CountAsync(Ct));
         Assert.Equal(future, (await real.ExternalDataCaches.AsNoTracking().SingleAsync(Ct)).ExpiresAt);
-        Assert.Equal(23, await client.GetOrFetchAsync(cold, _ =>
-        {
-            providerReached = true;
-            return Task.FromResult(23);
-        }, Ct));
-        Assert.True(providerReached);
-        Assert.Equal(DataProvenance.Real, (await real.ExternalDataCaches.SingleAsync(c => c.CacheKey == cold.Key, Ct)).Provenance);
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => client.GetOrFetchAsync<int>(cold,
+            _ => throw new InvalidOperationException("Ordinary Real collection remains closed"), Ct));
+        Assert.False(providerReached);
     }
 
     [Fact]
@@ -124,25 +138,21 @@ public class DemoTransitionTests(PostgreSqlFixture postgres)
     {
         var options = await postgres.CreateOptionsAsync(Ct);
         await using var real = new AppDbContext(options, new IRacingDataScope(DataProvenance.Real));
+        DbContextFactory.InstallStoredEvidenceFixtures(real);
         await using var demo = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
         var spec = IRacingCacheKeys.Profile(DemoData.DriverCustId);
         var fetched = DateTimeOffset.UtcNow.AddDays(-2);
         real.ExternalDataCaches.Add(new ExternalDataCache
         {
-            CacheKey = spec.Key, Payload = "17", FetchedAt = fetched, ExpiresAt = fetched.AddHours(1),
+            CacheKey = spec.Key,
+            Payload = "17",
+            FetchedAt = fetched,
+            ExpiresAt = fetched.AddHours(1),
         });
         await real.SaveChangesAsync(Ct);
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var complete = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var fetch = new CachedIRacingClient(real, Substitute.For<IDataClient>()).GetOrFetchAsync(spec, _ =>
-        {
-            entered.SetResult();
-            return complete.Task;
-        }, Ct);
-        await entered.Task.WaitAsync(Ct);
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => new CachedIRacingClient(real, Substitute.For<IDataClient>())
+            .GetOrFetchAsync<int>(spec, _ => throw new InvalidOperationException("No purpose was issued"), Ct));
         await DemoCache.UpsertAsync(demo, spec.Key, 91, Ct);
-        complete.SetResult(23);
-        await Assert.ThrowsAsync<DemoTeardownRequiredException>(() => fetch);
         var realRow = await real.ExternalDataCaches.AsNoTracking().SingleAsync(c => c.Provenance == DataProvenance.Real, Ct);
         Assert.Equal("17", realRow.Payload);
         Assert.Equal(fetched.ToUnixTimeMilliseconds(), realRow.FetchedAt.ToUnixTimeMilliseconds());

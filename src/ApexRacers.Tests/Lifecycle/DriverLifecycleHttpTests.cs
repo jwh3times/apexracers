@@ -7,6 +7,7 @@ using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Api.Services;
 using ApexRacers.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ApexRacers.Tests.Lifecycle;
@@ -88,13 +89,12 @@ public sealed class DriverLifecycleHttpTests(PostgreSqlFixture fixture)
             await using (var db = test.OpenPrimary())
             {
                 // Deliberately permissive pre-spine cache marker, not provider data or new admitted evidence.
-                db.ExternalDataCaches.Add(new ExternalDataCache
-                {
-                    Provenance = DataProvenance.Real, CacheKey = IRacingCacheKeys.Standings(1, 1).Key,
-                    Payload = "[{\"driverName\":\"forbidden-legacy-marker\",\"customerId\":123456}]",
-                    FetchedAt = DateTimeOffset.UtcNow, ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
-                });
-                await db.SaveChangesAsync(test.CancellationToken);
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO iracing."MappedDataCaches" ("Provenance", "CacheKey", "Payload", "FetchedAt", "ExpiresAt")
+                    VALUES ({DataProvenance.Real}, {IRacingCacheKeys.Standings(1, 1).Key},
+                        {"[{\"driverName\":\"forbidden-legacy-marker\",\"customerId\":123456}]"},
+                        {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow.AddDays(1)})
+                    """, test.CancellationToken);
             }
             using var forgedGrant = new HttpRequestMessage(HttpMethod.Post, "/grant-real");
             forgedGrant.Headers.Add("X-ApexRacers-Provenance", "Demo");
@@ -212,7 +212,7 @@ public sealed class DriverLifecycleHttpTests(PostgreSqlFixture fixture)
             Assert.Equal(2, final.Cleanup.Length);
             Assert.All(final.Cleanup, cleanup => Assert.Equal(recovered.OriginalLossAt, cleanup.OriginalLossAt));
             Assert.Equal(recovered.OriginalLossAt.AddHours(24), final.Cleanup.Single(c => c.Purpose == DriverConsentScope.Sharing).DueAt);
-            Assert.Equal(recovered.OriginalLossAt.AddDays(97), final.Cleanup.Single(c => c.Purpose == DriverConsentScope.Personal).DueAt);
+            Assert.Equal(recovered.OriginalLossAt.AddHours(24), final.Cleanup.Single(c => c.Purpose == DriverConsentScope.Personal).DueAt);
             Assert.Empty((await test.Journal.ReadAsync(SyntheticLifecycleActors.Scope, test.CancellationToken)).PendingIntents);
             using var closed = await test.ReadAsync("after-recovery");
             await AssertUnavailableAsync(closed);

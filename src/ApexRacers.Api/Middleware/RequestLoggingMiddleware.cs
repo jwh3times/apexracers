@@ -1,9 +1,10 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Routing;
 
 namespace ApexRacers.Api.Middleware;
 
 /// <summary>
-/// Emits one structured log entry per request (method, path, status code, elapsed time,
+/// Emits one structured log entry per request (method, route template, status code, elapsed time,
 /// client IP) so hosted environments get request-level observability without a new
 /// dependency. Health probes (<c>/healthz</c>, <c>/ready</c>) are skipped — the platform
 /// polls them every few seconds and they carry no useful signal. Registered outermost
@@ -49,8 +50,9 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             logger.Log(
                 level,
                 "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs}ms from {ClientIp}",
-                StripNewlines(context.Request.Method),
-                StripNewlines(context.Request.Path.ToString()),
+                SafeMethod(context.Request.Method),
+                context.GetEndpoint() is RouteEndpoint { RoutePattern.RawText: { } template }
+                    ? StripNewlines(template) : "unmatched",
                 statusCode,
                 Math.Round(elapsedMs, 1),
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
@@ -63,4 +65,21 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
     // stores these as structured dimensions; the console/Log Analytics sink renders text.
     private static string StripNewlines(string value) =>
         value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
+    // Neither unmatched URLs nor arbitrary HTTP method tokens belong in operational logs:
+    // they can contain names, Customer IDs or credentials even when routing refuses the request.
+    // Return application-owned literals so no request string crosses the logging boundary.
+    private static string SafeMethod(string method) => method switch
+    {
+        "GET" => "GET",
+        "HEAD" => "HEAD",
+        "POST" => "POST",
+        "PUT" => "PUT",
+        "DELETE" => "DELETE",
+        "CONNECT" => "CONNECT",
+        "OPTIONS" => "OPTIONS",
+        "TRACE" => "TRACE",
+        "PATCH" => "PATCH",
+        _ => "OTHER",
+    };
 }

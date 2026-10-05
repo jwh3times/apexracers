@@ -15,13 +15,13 @@ public class RaceGuideServiceTests
 
     private static Aydsko.iRacingData.Series.RaceGuideSession Session(
         int seriesId, double startOffsetMin, double endOffsetMin, int entries = 40) => new()
-    {
-        SeriesId = seriesId,
-        StartTime = DateTime.UtcNow.AddMinutes(startOffsetMin),
-        EndTime = DateTime.UtcNow.AddMinutes(endOffsetMin),
-        EntryCount = entries,
-        RaceWeekNumber = 5,
-    };
+        {
+            SeriesId = seriesId,
+            StartTime = DateTime.UtcNow.AddMinutes(startOffsetMin),
+            EndTime = DateTime.UtcNow.AddMinutes(endOffsetMin),
+            EntryCount = entries,
+            RaceWeekNumber = 5,
+        };
 
     private static (RaceGuideService Service, IDataClient Client, AppDbContext Db) Build(
         params Aydsko.iRacingData.Series.RaceGuideSession[] sessions)
@@ -37,7 +37,7 @@ public class RaceGuideServiceTests
                 Data = new Aydsko.iRacingData.Series.RaceGuideResults { Sessions = sessions },
             });
 
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new RaceGuideService(cached, db), client, db);
     }
 

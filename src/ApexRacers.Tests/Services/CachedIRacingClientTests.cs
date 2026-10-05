@@ -18,26 +18,16 @@ public class CachedIRacingClientTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task GetOrFetchAsync_CacheMiss_FetchesStoresAndReturns()
+    public async Task GetOrFetchAsync_CacheMiss_WithoutPurposeNeverFetchesOrStores()
     {
         await using var db = DbContextFactory.Create();
         var sut = new CachedIRacingClient(db, Substitute.For<IDataClient>());
-        var value = new Sample(42, "fresh");
-        var fetchCount = 0;
-
-        var result = await sut.GetOrFetchAsync<Sample>(
-            Spec,
-            _ => { fetchCount++; return Task.FromResult(value); }, Ct);
-
-        Assert.Equal(value, result);
-        Assert.Equal(1, fetchCount);
-
-        var row = Assert.Single(db.ExternalDataCaches);
-        Assert.Equal("sample:1", row.CacheKey);
-        Assert.Equal(value, JsonSerializer.Deserialize<Sample>(row.Payload));
-        Assert.True(row.ExpiresAt > DateTimeOffset.UtcNow);
+        var reached = false;
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => sut.GetOrFetchAsync<Sample>(Spec,
+            _ => { reached = true; return Task.FromResult(new Sample(42, "fresh")); }, Ct));
+        Assert.False(reached);
+        Assert.Empty(db.ExternalDataCaches);
     }
-
     [Fact]
     public async Task GetOrFetchAsync_UnexpiredCacheHit_ReturnsStoredWithoutFetchingOrClient()
     {
@@ -64,36 +54,26 @@ public class CachedIRacingClientTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_ExpiredEntry_RefetchesAndUpdatesInPlace()
+    public async Task GetOrFetchAsync_ExpiredEntry_WithoutPurposeDoesNotRenewOriginalClocks()
     {
         await using var db = DbContextFactory.Create();
-        var stale = new Sample(1, "stale");
+        var fetched = DateTimeOffset.UtcNow.AddHours(-7);
+        var expired = DateTimeOffset.UtcNow.AddHours(-1);
         db.ExternalDataCaches.Add(new ExternalDataCache
         {
-            CacheKey = "sample:1",
-            Payload = JsonSerializer.Serialize(stale),
-            FetchedAt = DateTimeOffset.UtcNow.AddHours(-7),
-            ExpiresAt = DateTimeOffset.UtcNow.AddHours(-1), // already expired
+            CacheKey = Spec.Key,
+            Payload = "{\"N\":1,\"S\":\"stale\"}",
+            FetchedAt = fetched,
+            ExpiresAt = expired
         });
         await db.SaveChangesAsync(Ct);
-
         var sut = new CachedIRacingClient(db, Substitute.For<IDataClient>());
-        var fresh = new Sample(2, "fresh");
-        var fetchCount = 0;
-
-        var result = await sut.GetOrFetchAsync<Sample>(
-            Spec,
-            _ => { fetchCount++; return Task.FromResult(fresh); }, Ct);
-
-        Assert.Equal(fresh, result);
-        Assert.Equal(1, fetchCount);
-
-        // Same row updated in place, not duplicated.
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => sut.GetOrFetchAsync<Sample>(Spec,
+            _ => throw new InvalidOperationException("Unapproved fetch must not run"), Ct));
         var row = Assert.Single(db.ExternalDataCaches);
-        Assert.Equal(fresh, JsonSerializer.Deserialize<Sample>(row.Payload));
-        Assert.True(row.ExpiresAt > DateTimeOffset.UtcNow);
+        Assert.Equal(fetched, row.FetchedAt);
+        Assert.Equal(expired, row.ExpiresAt);
     }
-
     [Fact]
     public async Task GetOrFetchAsync_NotConfigured_ThrowsAndStoresNothing()
     {
@@ -119,40 +99,16 @@ public class CachedIRacingClientTests
     /// bug needs — a null row read, now stale.
     /// </summary>
     [Fact]
-    public async Task GetOrFetchAsync_ConcurrentColdMiss_LoserStillReturnsAndOnlyOneRowExists()
+    public async Task GetOrFetchAsync_ConcurrentColdMissesWithoutPurposeCannotAcquire()
     {
         await using var shared = DbContextFactory.CreateShared();
-        await using var dbSlow = shared.NewContext();
-        await using var dbFast = shared.NewContext();
-
-        var slowMayFinish = new TaskCompletionSource();
-        var slow = new CachedIRacingClient(dbSlow, Substitute.For<IDataClient>());
-        var fast = new CachedIRacingClient(dbFast, Substitute.For<IDataClient>());
-
-        var slowCall = slow.GetOrFetchAsync<Sample>(
-            Spec,
-            async _ =>
-            {
-                await slowMayFinish.Task;
-                return new Sample(1, "slow");
-            },
-            Ct);
-
-        // The winner commits the row the loser is about to try to insert.
-        var fastResult = await fast.GetOrFetchAsync<Sample>(
-            Spec, _ => Task.FromResult(new Sample(2, "fast")), Ct);
-        slowMayFinish.SetResult();
-
-        var slowResult = await slowCall;
-
-        // Both callers get the value they fetched — neither sees an exception.
-        Assert.Equal(new Sample(2, "fast"), fastResult);
-        Assert.Equal(new Sample(1, "slow"), slowResult);
-
-        await using var verify = shared.NewContext();
-        Assert.Single(verify.ExternalDataCaches);
+        await using var one = shared.NewContext();
+        await using var two = shared.NewContext();
+        foreach (var db in new[] { one, two })
+            await Assert.ThrowsAsync<IRacingNotConfiguredException>(() => new CachedIRacingClient(db, Substitute.For<IDataClient>())
+                .GetOrFetchAsync<Sample>(Spec, _ => throw new InvalidOperationException("No purpose"), Ct));
+        Assert.Empty(one.ExternalDataCaches);
     }
-
     // ── Over-long keys (GHSA-jv96-89xc-98h2) ─────────────────────────────────
 
     [Fact]
@@ -187,8 +143,15 @@ public class CachedIRacingClientTests
         var atLimit = new CacheSpec(
             new string('k', ExternalDataCache.CacheKeyMaxLength), TimeSpan.FromHours(1));
 
-        var result = await sut.GetOrFetchAsync<Sample>(
-            atLimit, _ => Task.FromResult(new Sample(9, "edge")), Ct);
+        db.ExternalDataCaches.Add(new ExternalDataCache
+        {
+            CacheKey = atLimit.Key,
+            Payload = "{\"N\":9,\"S\":\"edge\"}",
+            FetchedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+        });
+        await db.SaveChangesAsync(Ct);
+        var result = await sut.GetOrFetchAsync<Sample>(atLimit, _ => throw new InvalidOperationException("Warm hit"), Ct);
 
         Assert.Equal(new Sample(9, "edge"), result);
         Assert.Single(db.ExternalDataCaches);

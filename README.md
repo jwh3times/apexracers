@@ -131,6 +131,17 @@ dotnet run --project src/ApexRacers.Seeder -- --ci --demo
 
 The seeder is idempotent — safe to run multiple times.
 
+After a completed Demo teardown, ordinary seeders stay fenced against reopening the old preview.
+Start a fresh synthetic collection explicitly, then verify it before enabling Demo:
+
+```bash
+dotnet run --project src/ApexRacers.Seeder -- --new-preview --ci --demo
+```
+
+For captured catalog inputs, omit `--ci`. Keep Demo disabled during purge and reseeding. Controlled
+synthetic Driver grants must first be unlinked and their response writers drained through the
+lifecycle; the purge refuses to erase an active association directly.
+
 Before enabling the `iracing-demo` feature flag in an environment (or after purging the demo dataset
 with `src/ApexRacers.Data/Seeds/purge_demo_data.sql`), run the mechanical verification gate instead of
 eyeballing the DB:
@@ -153,6 +164,13 @@ Existing databases require a controlled Demo reseed after the provenance migrati
 copies remain unavailable pending reconciliation. Read the
 [migration and verification evidence](docs/research/demo-acquisition-provenance.md) before
 changing caches, seeding, teardown or recovery.
+
+Migration `20261005162541_EvidenceCopyFencing` requires Demo disabled and physically purged before
+it applies. Stop old API, ingestion and seeder writers before deployment; after migration, deploy
+only the new writers, seed a fresh Demo dataset and verify it before restoring Demo. Existing
+Real/Unknown copies receive no inferred purpose. Read the
+[writer inventory and copy-fence evidence](docs/research/driver-copy-writer-inventory.md) for the
+forward-only cutover, expiry/dependency checks and limits on backup/log-retention claims.
 
 ### 7. Run the ingestion worker (optional)
 

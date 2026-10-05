@@ -90,15 +90,26 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             throw new InvalidOperationException("Ownership proof does not match its original binding.");
         if (receipt is null)
         {
-            db.Add(new DriverProofReceipt { Id = proof.ReceiptId, UserId = proof.Scope.UserId,
-                CustomerId = proof.Scope.CustomerId, Provenance = proof.Scope.Provenance,
-                VerifiedAt = proof.VerifiedAt, Authority = proof.Authority });
+            db.Add(new DriverProofReceipt
+            {
+                Id = proof.ReceiptId,
+                UserId = proof.Scope.UserId,
+                CustomerId = proof.Scope.CustomerId,
+                Provenance = proof.Scope.Provenance,
+                VerifiedAt = proof.VerifiedAt,
+                Authority = proof.Authority
+            });
             await db.SaveChangesAsync(ct);
         }
         if (grant is null)
         {
-            grant = new DriverAuthorizationGrant { Id = Guid.NewGuid(), UserId = proof.Scope.UserId,
-                CustomerId = proof.Scope.CustomerId, Provenance = proof.Scope.Provenance };
+            grant = new DriverAuthorizationGrant
+            {
+                Id = Guid.NewGuid(),
+                UserId = proof.Scope.UserId,
+                CustomerId = proof.Scope.CustomerId,
+                Provenance = proof.Scope.Provenance
+            };
             db.Add(grant);
         }
         else if (changesGeneration)
@@ -113,6 +124,7 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         // generations retains its original clock and can never be renewed by this grant.
         grant.PersonalClosedAt = null;
         if (consent.SharingVersion is not null) grant.SharingClosedAt = null;
+        if (changesGeneration) await new EvidenceCopyLifecycle(db, timeProvider).RefreshGrantGenerationAsync(grant, ct);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return Access(grant, DriverConsentScope.Personal);
@@ -160,16 +172,33 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             if (intent.Kind is DriverLifecycleKind.Unlink or DriverLifecycleKind.DeleteUser)
                 grant.BindingActive = false;
         }
-        var operation = new DriverLifecycleOperation { Id = intent.OperationId, GrantId = grant.Id,
-            Kind = intent.Kind, OriginalLossAt = intent.OriginalLossAt, AppliedRevision = grant.Revision,
-            PrimaryAppliedAt = timeProvider.GetUtcNow() };
+        var operation = new DriverLifecycleOperation
+        {
+            Id = intent.OperationId,
+            GrantId = grant.Id,
+            Kind = intent.Kind,
+            OriginalLossAt = intent.OriginalLossAt,
+            AppliedRevision = grant.Revision,
+            PrimaryAppliedAt = timeProvider.GetUtcNow()
+        };
         db.Add(operation);
+        await new EvidenceCopyLifecycle(db, timeProvider).ApplyGrantLossAsync(grant, intent, ct);
         foreach (var purpose in Enum.GetValues<DriverConsentScope>().Where(p => DriverAuthorizationPolicy.Affects(intent.Kind, p)))
         {
-            var dueAt = DriverAuthorizationPolicy.CleanupDueAt(intent.Kind, purpose, intent.OriginalLossAt);
-            db.Add(new DriverCopyCleanup { Id = Guid.NewGuid(), OperationId = operation.Id, GrantId = grant.Id,
-                Purpose = purpose, ThroughRevision = grant.Revision - 1,
-                OriginalLossAt = intent.OriginalLossAt, DueAt = dueAt });
+            // The bounded prototype payload is opaque and may include an authorized name.
+            // It is not the typed private-upload store (#372), so its ceiling is always 24 hours.
+            var dueAt = EvidenceRetention.Earliest(DriverAuthorizationPolicy.CleanupDueAt(intent.Kind, purpose, intent.OriginalLossAt),
+                EvidenceRetention.NameRemovalDueAt(intent.OriginalLossAt));
+            db.Add(new DriverCopyCleanup
+            {
+                Id = Guid.NewGuid(),
+                OperationId = operation.Id,
+                GrantId = grant.Id,
+                Purpose = purpose,
+                ThroughRevision = grant.Revision - 1,
+                OriginalLossAt = intent.OriginalLossAt,
+                DueAt = dueAt
+            });
             await db.Set<DriverTrackedCopy>().Where(c => c.GrantId == grant.Id && c.Purpose == purpose && c.UnavailableAt == null)
                 .ExecuteUpdateAsync(update => update.SetProperty(c => c.UnavailableAt, intent.OriginalLossAt), ct);
         }
@@ -190,9 +219,16 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose))
             return null;
         var now = timeProvider.GetUtcNow();
-        var admission = new DriverPublicationAdmission { Id = Guid.NewGuid(), GrantId = grant.Id,
-            Revision = grant.Revision, Purpose = access.Purpose, Incarnation = incarnation,
-            AdmittedAt = now, LeaseUntil = now.AddMinutes(1) };
+        var admission = new DriverPublicationAdmission
+        {
+            Id = Guid.NewGuid(),
+            GrantId = grant.Id,
+            Revision = grant.Revision,
+            Purpose = access.Purpose,
+            Incarnation = incarnation,
+            AdmittedAt = now,
+            LeaseUntil = now.AddMinutes(1)
+        };
         db.Add(admission);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -235,8 +271,15 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         var grant = await LoadGrantAsync(access.Scope, ct);
         if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose))
             throw new InvalidOperationException("Driver authorization is unavailable.");
-        var copy = new DriverTrackedCopy { Id = Guid.NewGuid(), GrantId = grant.Id, Revision = grant.Revision,
-            Purpose = access.Purpose, Payload = payload, CreatedAt = timeProvider.GetUtcNow() };
+        var copy = new DriverTrackedCopy
+        {
+            Id = Guid.NewGuid(),
+            GrantId = grant.Id,
+            Revision = grant.Revision,
+            Purpose = access.Purpose,
+            Payload = payload,
+            CreatedAt = timeProvider.GetUtcNow()
+        };
         db.Add(copy);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -248,7 +291,7 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
         var now = timeProvider.GetUtcNow();
-        var work = db.Set<DriverCopyCleanup>().Where(w => w.DueAt <= now && w.VerifiedRemovedAt == null);
+        var work = db.Set<DriverCopyCleanup>().Where(w => w.DueAt <= now.AddMinutes(30) && w.VerifiedRemovedAt == null);
         // One correlated delete and one verification update cover every due association. Active
         // copies and later generations remain outside old cleanup even when they share a grant.
         await db.Set<DriverTrackedCopy>().Where(c => c.UnavailableAt != null && work.Any(w =>
@@ -258,6 +301,19 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             .ExecuteUpdateAsync(update => update.SetProperty(w => w.VerifiedRemovedAt, now), ct);
         await transaction.CommitAsync(ct);
         return completed;
+    }
+
+    /// <summary>Explanatory proof authority expires after twelve calendar months. The receipt's
+    /// minimal binding and original timestamp remain as enforcement history, without a profile/name.</summary>
+    public async Task<int> RemoveExpiredExplanationsAsync(CancellationToken ct = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await LockAsync(ct);
+        var cutoff = timeProvider.GetUtcNow().AddMonths(-12).AddMinutes(30);
+        var removed = await db.DriverProofReceipts.Where(r => r.VerifiedAt <= cutoff && r.Authority != string.Empty)
+            .ExecuteUpdateAsync(u => u.SetProperty(r => r.Authority, string.Empty), ct);
+        await transaction.CommitAsync(ct);
+        return removed;
     }
 
     private async Task LockAsync(CancellationToken ct)

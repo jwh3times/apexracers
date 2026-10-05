@@ -21,11 +21,17 @@ public class DemoCacheSeederCompletionTests
         db.Subsessions.Add(new Subsession { Id = -10, SeasonId = 6115, RaceWeekIndex = 0, TrackId = 532 });
         db.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = -10, CustId = DemoData.DriverCustId, CarId = 132, BestLapSeconds = 90.0,
+            SubsessionId = -10,
+            CustId = DemoData.DriverCustId,
+            CarId = 132,
+            BestLapSeconds = 90.0,
         });
         db.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = -10, CustId = 100_050, CarId = 132, BestLapSeconds = 88.0, // field best
+            SubsessionId = -10,
+            CustId = 100_050,
+            CarId = 132,
+            BestLapSeconds = 88.0, // field best
         });
         await db.SaveChangesAsync(Ct);
         return db;
@@ -68,9 +74,9 @@ public class DemoCacheSeederCompletionTests
 
         await new DemoCacheSeeder(db).SeedDriverSearchAsync(Ct);
 
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:rival", Ct));
-        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == "driversearch:demo", Ct));
-        var row = await db.ExternalDataCaches.SingleAsync(c => c.CacheKey == "driversearch:rival", Ct);
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.DriverSearch("rival")!.Value.Key, Ct));
+        Assert.True(await db.ExternalDataCaches.AnyAsync(c => c.CacheKey == IRacingCacheKeys.DriverSearch("demo")!.Value.Key, Ct));
+        var row = await db.ExternalDataCaches.SingleAsync(c => c.CacheKey == IRacingCacheKeys.DriverSearch("rival")!.Value.Key, Ct);
         var hits = JsonSerializer.Deserialize<List<ApexRacers.Api.Dtos.DriverSearchResultDto>>(row.Payload)!;
         Assert.Contains(hits, h => h.CustomerId == DemoData.RivalCustId);
         Assert.Equal(DemoCache.Sentinel, row.ExpiresAt);

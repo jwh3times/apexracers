@@ -52,7 +52,7 @@ public sealed class OutboundEmailQueue(ILogger<OutboundEmailQueue> logger) : IOu
     public void Enqueue(OutboundEmail email)
     {
         if (!_channel.Writer.TryWrite(email))
-            logger.LogWarning("Outbound email queue is full; dropped message (subject {Subject}).", email.Subject);
+            logger.LogWarning("Outbound email queue is full; dropped message.");
     }
 }
 
@@ -83,7 +83,7 @@ public sealed class OutboundEmailDispatcher(
             {
                 // Never rethrow: a failed send must not take the dispatcher down, and there is no
                 // caller left to tell anyway.
-                logger.LogError(ex, "Failed to send queued email (subject {Subject}).", email.Subject);
+                logger.LogError("Failed to send queued email. Failure type: {FailureType}", ex.GetType().Name);
             }
         }
     }

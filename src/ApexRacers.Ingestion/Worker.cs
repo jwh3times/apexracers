@@ -10,7 +10,8 @@ namespace ApexRacers.Ingestion;
 public sealed class Worker(
     ILogger<Worker> logger,
     IServiceScopeFactory scopeFactory,
-    IConfiguration configuration) : BackgroundService
+    IConfiguration configuration,
+    ApexRacers.Core.IEvidencePurposeIssuer? purposeIssuer = null) : BackgroundService
 {
     private readonly TimeSpan _interval =
         TimeSpan.FromMinutes(configuration.GetValue("INGESTION_INTERVAL_MINUTES", 60));
@@ -29,7 +30,7 @@ public sealed class Worker(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Ingestion run failed — will retry after interval");
+                logger.LogError("Ingestion run failed ({FailureType}) — will retry after interval", ex.GetType().Name);
             }
 
             await Task.Delay(_interval, stoppingToken);
@@ -41,7 +42,7 @@ public sealed class Worker(
     private async Task RunAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var client = scope.ServiceProvider.GetRequiredService<IDataClient>();
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
 
@@ -60,11 +61,11 @@ public sealed class Worker(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Catalog refresh failed — skipping");
+            logger.LogWarning("Catalog refresh failed ({FailureType}) — skipping", ex.GetType().Name);
         }
 
-        var seriesProcessed       = 0;
-        var subsessionsIndexed    = 0;
+        var seriesProcessed = 0;
+        var subsessionsIndexed = 0;
 
         // Steps 2–4 — Process each active season independently so one failure
         // doesn't abort the whole run.
@@ -74,14 +75,14 @@ public sealed class Worker(
             {
                 var (series, subsessions) = await ProcessSeasonAsync(
                     db, client, seasonSeries, ct);
-                seriesProcessed       += series;
-                subsessionsIndexed    += subsessions;
+                seriesProcessed += series;
+                subsessionsIndexed += subsessions;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(ex,
-                    "Failed to process season {SeasonId} — skipping",
-                    seasonSeries.SeasonId);
+                logger.LogWarning(
+                    "Failed to process season {SeasonId} ({FailureType}) — skipping",
+                    seasonSeries.SeasonId, ex.GetType().Name);
             }
         }
 
@@ -141,6 +142,12 @@ public sealed class Worker(
 
         var seasonIngest = new SeasonIngest(db);
         await seasonIngest.UpsertHeaderAsync(seasonSeries, seriesName, ct);
+        var purpose = await (purposeIssuer ?? new ApexRacers.Core.UnavailableEvidencePurposeIssuer()).ResolveAsync(
+            new(db.Provenance, ApexRacers.Core.EvidencePurposeKind.IndependentOfficial, seasonSeries.SeasonId), ct)
+            ?? throw new ApexRacers.Core.EvidenceCopyUnavailableException();
+        var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
+        var scheduleReceipt = await lifecycle.CaptureAsync(purpose, ApexRacers.Core.EvidenceCopyKind.Weather,
+            $"schedule:{seasonSeries.SeasonId}", ct: ct);
 
         // ── Step 3: Fetch full schedule → upsert Weeks, Cars, SeasonCars ─────────
         // GetSeasonScheduleAsync gives us SeasonScheduleItem[] with per-week car lists.
@@ -152,10 +159,10 @@ public sealed class Worker(
         }
 
         await seasonIngest.UpsertScheduleAsync(
-            seasonSeries.SeasonId, scheduleResponse.Data.Schedules, ct);
+            seasonSeries.SeasonId, scheduleResponse.Data.Schedules, ct, scheduleReceipt);
 
         // ── Step 4: Index new race subsessions ────────────────────────────────────
-        var indexed = await IndexNewSubsessionsAsync(db, client, seasonSeries, ct);
+        var indexed = await IndexNewSubsessionsAsync(db, client, seasonSeries, purpose, ct);
 
         // Upsert SeasonCarClass entries after indexing so new CarClass rows created
         // during subsession indexing are available for the FK guard.
@@ -166,7 +173,7 @@ public sealed class Worker(
             {
                 db.SeasonCarClasses.Add(new SeasonCarClass
                 {
-                    SeasonId   = seasonSeries.SeasonId,
+                    SeasonId = seasonSeries.SeasonId,
                     CarClassId = carClassId,
                 });
             }
@@ -178,7 +185,7 @@ public sealed class Worker(
     }
 
     private async Task<int> IndexNewSubsessionsAsync(
-        AppDbContext db, IDataClient client, SeasonSeries seasonSeries, CancellationToken ct)
+        AppDbContext db, IDataClient client, SeasonSeries seasonSeries, Guid purpose, CancellationToken ct)
     {
         // Narrow the search to sessions starting after the last indexed one (minus a
         // 1-hour buffer for concurrent splits). Null on first run → full season fetch.
@@ -190,11 +197,11 @@ public sealed class Worker(
 
         var searchResponse = await client.SearchOfficialResultsAsync(new OfficialSearchParameters
         {
-            SeriesId        = seasonSeries.SeriesId,
-            SeasonYear      = seasonSeries.SeasonYear,
-            SeasonQuarter   = seasonSeries.SeasonQuarter,
-            EventTypes      = new[] { 5 },  // Race only
-            OfficialOnly    = true,
+            SeriesId = seasonSeries.SeriesId,
+            SeasonYear = seasonSeries.SeasonYear,
+            SeasonQuarter = seasonSeries.SeasonQuarter,
+            EventTypes = new[] { 5 },  // Race only
+            OfficialOnly = true,
             StartRangeBegin = searchRangeBegin,
         }, ct);
 
@@ -216,6 +223,9 @@ public sealed class Worker(
         {
             try
             {
+                var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
+                var receipt = await lifecycle.CaptureAsync(purpose, ApexRacers.Core.EvidenceCopyKind.OfficialField,
+                    $"field:{subsessionId}", ct: ct);
                 var resultResponse = await client.GetSubSessionResultAsync(subsessionId, includeLicenses: false, ct);
                 if (resultResponse?.Data is null) continue;
 
@@ -274,11 +284,6 @@ public sealed class Worker(
                         subsessionId, entryTally.Classified, entryTally.TeamEntries, entryTally.AiEntries);
                 }
 
-                var subsession = SubsessionMapper.ToEntity(
-                    subsessionId, data, weekId, splitPosition, entryTally);
-                db.Subsessions.Add(subsession);
-                await db.SaveChangesAsync(ct);
-
                 foreach (var r in raceSession.Results)
                 {
                     // Only an entry naming one Driver becomes a Race Result; the rest are
@@ -291,8 +296,8 @@ public sealed class Worker(
                     {
                         db.Cars.Add(new Car
                         {
-                            Id              = r.CarId,
-                            Name            = r.CarName,
+                            Id = r.CarId,
+                            Name = r.CarName,
                             NameAbbreviated = r.CarName,
                         });
                     }
@@ -302,17 +307,17 @@ public sealed class Worker(
                     {
                         db.CarClasses.Add(new CarClass
                         {
-                            Id            = r.CarClassId,
-                            Name          = r.CarClassName,
-                            ShortName     = r.CarClassShortName,
+                            Id = r.CarClassId,
+                            Name = r.CarClassName,
+                            ShortName = r.CarClassShortName,
                             RelativeSpeed = 0,
                         });
                     }
 
-                    db.SubsessionResults.Add(SubsessionMapper.ToResult(subsessionId, r));
                 }
 
-                await db.SaveChangesAsync(ct);
+                await lifecycle.CommitAsync(receipt, SubsessionMapper.ToBatch(subsessionId, data, weekId,
+                    splitPosition, raceSession.Results, ApexRacers.Core.DataProvenance.Real), ct);
 
                 // A season can contain thousands of result rows. Detach the stored subsession graph
                 // after each successful write so EF does not retain every prior race and driver in
@@ -326,8 +331,8 @@ public sealed class Worker(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(ex,
-                    "Failed to index subsession {SubsessionId} — skipping", subsessionId);
+                logger.LogWarning(
+                    "Failed to index subsession {SubsessionId} ({FailureType}) — skipping", subsessionId, ex.GetType().Name);
             }
         }
 

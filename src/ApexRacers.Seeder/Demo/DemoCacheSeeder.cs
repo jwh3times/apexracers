@@ -127,6 +127,7 @@ public sealed class DemoCacheSeeder(AppDbContext context)
     /// Only fills weeks/cars that don't already have data (idempotent; never clobbers real data).</summary>
     public async Task SeedBopAndWeatherAsync(CancellationToken ct)
     {
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, ct);
         var activeSeasonIds = await db.Seasons.Where(s => s.Active).Select(s => s.Id).ToListAsync(ct);
 
         foreach (var seasonId in activeSeasonIds)
@@ -149,7 +150,7 @@ public sealed class DemoCacheSeeder(AppDbContext context)
             }
         }
 
-        await db.SaveChangesAsync(ct);
+        await writer.SaveChangesAsync(ct);
     }
 
     /// <summary>wr:{carId}:{trackId} = the fastest synthetic field lap for that car+track × 0.98

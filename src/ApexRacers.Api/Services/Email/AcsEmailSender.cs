@@ -28,7 +28,7 @@ public sealed class AcsEmailSender(EmailClient client, IConfiguration config, IL
         }
         catch (RequestFailedException ex)
         {
-            logger.LogError(ex, "ACS email send failed (subject {Subject}); error {Code}", email.Subject, ex.ErrorCode);
+            logger.LogError("ACS email send failed. Failure type: {FailureType}", ex.GetType().Name);
             throw;
         }
     }

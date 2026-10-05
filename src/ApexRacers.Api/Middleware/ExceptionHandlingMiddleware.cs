@@ -34,7 +34,7 @@ public class ExceptionHandlingMiddleware(
             // Information) — this only carries the exception detail for anyone who wants it.
             if (ClientDisconnectDetector.IsClientDisconnect(ex, context.RequestAborted.IsCancellationRequested))
             {
-                logger.LogDebug(ex, "Client disconnected before the response completed.");
+                logger.LogDebug("Client disconnected before the response completed ({FailureType}).", ex.GetType().Name);
 
                 if (!context.Response.HasStarted)
                     context.Response.StatusCode = ClientDisconnectDetector.StatusClientClosedRequest;
@@ -44,7 +44,7 @@ public class ExceptionHandlingMiddleware(
 
             if (context.Response.HasStarted)
             {
-                logger.LogError(ex, "Exception thrown after the response started; cannot write ProblemDetails.");
+                logger.LogError("Exception thrown after the response started; cannot write ProblemDetails ({FailureType}).", ex.GetType().Name);
                 throw;
             }
 
@@ -62,9 +62,9 @@ public class ExceptionHandlingMiddleware(
 
             var statusCode = ExceptionStatusMapper.MapStatusCode(ex);
             if (statusCode >= StatusCodes.Status500InternalServerError)
-                logger.LogError(ex, "Unhandled exception");
+                logger.LogError("Unhandled exception ({FailureType}).", ex.GetType().Name);
             else
-                logger.LogWarning(ex, "Request failed with status {StatusCode}", statusCode);
+                logger.LogWarning("Request failed with status {StatusCode} ({FailureType}).", statusCode, ex.GetType().Name);
 
             var problem = new ProblemDetails
             {

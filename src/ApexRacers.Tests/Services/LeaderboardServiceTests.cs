@@ -30,7 +30,7 @@ public class LeaderboardServiceTests
                 CategoryId = 2,
                 ContentBytes = Encoding.UTF8.GetBytes(Csv),
             });
-        var service = new LeaderboardService(new CachedIRacingClient(db, client));
+        var service = new LeaderboardService(new MappingEvidenceCache(db, client));
 
         var first = await service.GetLeaderboardAsync(2, Ct);
         var second = await service.GetLeaderboardAsync(2, Ct);
@@ -52,7 +52,7 @@ public class LeaderboardServiceTests
         var client = Substitute.For<IDataClient>();
         client.GetDriverStatisticsByCategoryCsvAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new DriverStatisticsCsvFile { CategoryId = 3, ContentBytes = null! });
-        var service = new LeaderboardService(new CachedIRacingClient(db, client));
+        var service = new LeaderboardService(new MappingEvidenceCache(db, client));
 
         Assert.Empty(await service.GetLeaderboardAsync(3, Ct));
     }

@@ -63,9 +63,9 @@ public class AuthService(
         var email = request.Email?.Trim() ?? string.Empty;
         var user = new ApplicationUser
         {
-            Id          = Guid.NewGuid(),
-            UserName    = email,
-            Email       = email,
+            Id = Guid.NewGuid(),
+            UserName = email,
+            Email = email,
             DisplayName = email.Split('@')[0],
         };
 
@@ -323,10 +323,10 @@ public class AuthService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Could not remember the signing-in device; continuing without the exemption.");
+            logger.LogWarning("Could not remember the signing-in device; continuing without the exemption. Failure type: {FailureType}", ex.GetType().Name);
         }
 
-        var jwt     = await GenerateJwtAsync(user);
+        var jwt = await GenerateJwtAsync(user);
         var refresh = await refreshTokens.IssueAsync(user.Id, ct);
         return new SignInOutcome(
             new AuthResultDto(jwt, user.Id, user.DisplayName, refresh),
@@ -715,7 +715,7 @@ public class AuthService(
     private async Task SendEmailConfirmationAsync(ApplicationUser user, CancellationToken ct)
     {
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        var url   = $"{BaseUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+        var url = $"{BaseUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
         await emailSender.SendAsync(AccountEmailTemplates.EmailConfirmation(user.Email!, url), ct);
     }
 
@@ -730,7 +730,7 @@ public class AuthService(
         var creds = jwt.IssuingCredentials();
 
         var roles = await userManager.GetRolesAsync(user);
-        var role  = roles.FirstOrDefault() ?? "Standard";
+        var role = roles.FirstOrDefault() ?? "Standard";
 
         var claims = new List<Claim>
         {
@@ -744,10 +744,10 @@ public class AuthService(
         claims.Add(new Claim("theme_preference", user.ThemePreference));
 
         var token = new JwtSecurityToken(
-            issuer:             jwt.Issuer,
-            audience:           jwt.Audience,
-            claims:             claims,
-            expires:            DateTime.UtcNow.AddMinutes(AccessTokenMinutes),
+            issuer: jwt.Issuer,
+            audience: jwt.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(AccessTokenMinutes),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

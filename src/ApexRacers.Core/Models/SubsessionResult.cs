@@ -1,7 +1,8 @@
 namespace ApexRacers.Core.Models;
 
-public class SubsessionResult : IProvenancedData
+public class SubsessionResult : IManagedEvidence
 {
+    public Guid? EvidenceCopyId { get; set; }
     public DataProvenance Provenance { get; set; }
     public int SubsessionId { get; set; }
     public long CustId { get; set; }

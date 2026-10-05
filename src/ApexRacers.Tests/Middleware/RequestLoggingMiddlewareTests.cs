@@ -1,5 +1,7 @@
 using ApexRacers.Api.Middleware;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -12,6 +14,7 @@ namespace ApexRacers.Tests.Middleware;
 public class FakeLogger<T> : ILogger<T>
 {
     public List<(LogLevel Level, string Message)> Entries { get; } = [];
+    public List<Exception?> Exceptions { get; } = [];
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NoopScope.Instance;
 
@@ -25,6 +28,7 @@ public class FakeLogger<T> : ILogger<T>
         Func<TState, Exception?, string> formatter)
     {
         Entries.Add((logLevel, formatter(state, exception)));
+        Exceptions.Add(exception);
     }
 
     private sealed class NoopScope : IDisposable
@@ -45,6 +49,7 @@ public class RequestLoggingMiddlewareTests
         var context = new DefaultHttpContext();
         context.Request.Method = method;
         context.Request.Path = path;
+        context.SetEndpoint(new RouteEndpoint(next, RoutePatternFactory.Parse("/api/foo"), 0, EndpointMetadataCollection.Empty, "test"));
 
         var middleware = new RequestLoggingMiddleware(next, logger);
         middleware.InvokeAsync(context).GetAwaiter().GetResult();
@@ -157,8 +162,8 @@ public class RequestLoggingMiddlewareTests
         var entry = Assert.Single(logger.Entries);
         Assert.DoesNotContain('\r', entry.Message);
         Assert.DoesNotContain('\n', entry.Message);
-        // Only the newlines are removed; the surrounding content is preserved.
-        Assert.Contains("GETInjected-Line: evil", entry.Message);
+        Assert.Contains("OTHER", entry.Message);
+        Assert.DoesNotContain("Injected-Line", entry.Message);
     }
 
     [Fact]
@@ -176,6 +181,28 @@ public class RequestLoggingMiddlewareTests
 
         var entry = Assert.Single(logger.Entries);
         Assert.Contains("GET", entry.Message);
-        Assert.Contains("/api/boom", entry.Message);
+        Assert.Contains("unmatched", entry.Message);
+        Assert.DoesNotContain("/api/boom", entry.Message);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DriverIdentifiersNamesAndTokensNeverEnterRequestLogs(bool matched)
+    {
+        var logger = new FakeLogger<RequestLoggingMiddleware>();
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/rivals/8123456/Synthetic%20Name/secret-token";
+        context.Request.QueryString = new QueryString("?driverName=SyntheticName&token=secret-token");
+        RequestDelegate next = _ => Task.CompletedTask;
+        if (matched)
+            context.SetEndpoint(new RouteEndpoint(next, RoutePatternFactory.Parse("/api/rivals/{customerId}/{name}/{reference}"),
+                0, EndpointMetadataCollection.Empty, "rivals"));
+        await new RequestLoggingMiddleware(next, logger).InvokeAsync(context);
+        var entry = Assert.Single(logger.Entries);
+        Assert.DoesNotContain("8123456", entry.Message);
+        Assert.DoesNotContain("Synthetic", entry.Message);
+        Assert.DoesNotContain("secret-token", entry.Message);
+        Assert.Contains(matched ? "/api/rivals/{customerId}/{name}/{reference}" : "unmatched", entry.Message);
     }
 }

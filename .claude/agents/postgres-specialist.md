@@ -47,8 +47,12 @@ Two schemas in one database:
 | `DriverPublicationAdmissions` | Guid PK | Purpose/revision/incarnation-bound writer admission; `TerminalAt`, not `LeaseUntil`, determines drain |
 | `DriverTrackedCopies` | Guid PK | Purpose/revision-bound payload (16 KiB runtime bound), creation and unavailability time; restricted grant FK |
 | `DriverCopyCleanups` | Guid PK | Unique `(OperationId, Purpose)`; original loss, due and verified-removal time; restricted operation/grant FKs |
+| `EvidencePurposes` | Guid PK | Issued namespace/kind/Season scope, optional grant revision or publication/historical request binding; generation concurrency token, original collection/termination clocks and evidence version |
+| `EvidenceCopyMarkers` | Guid PK | Payload-free purpose/generation/kind/key-hash/version fence; original acquisition, expiry, withdrawal, removal deadline and verified-removal clocks; restricted purpose FK |
+| `EvidenceCopyDependencies` | composite PK `(CopyId, SourceCopyId)` | Contributing source version; both marker FKs restricted |
+| `AuthorizedDriverNameCopies` | Guid PK | Namespace, grant ID, bounded Driver name and restricted marker FK; reads require the current grant revision, matching name authority and applicable consent |
 
-The lifecycle migration creates these six tables empty and renames the physical legacy claim column
+The earlier lifecycle migration creates the six `Driver*` tables empty and renames the physical legacy claim column
 to `identity.Users.ClaimedIRacingCustomerId`, preserving values and the named claim uniqueness
 constraint. The C# property remains `IRacingCustomerId`. No claim is backfilled as proof or consent;
 Down refuses to discard the fences/history. Driver authority requires real PostgreSQL coordination.
@@ -57,6 +61,15 @@ Down refuses to discard the fences/history. Driver authority requires real Postg
 migrations, read docs/research/demo-acquisition-provenance.md first. Mutable evidence table names
 are deliberately fenced from older binaries. Use the current EF configurations for physical
 names and composite namespace keys; preserve Unknown legacy evidence and original clocks.
+
+**Copy storage:** before changing evidence writes, dependencies, cleanup or copy-schema deployment,
+read docs/research/driver-copy-writer-inventory.md. Managed cache, Field, BoP, derivative, Follow and
+name rows have nullable restricted `EvidenceCopyId` FKs for unavailable legacy rows; new writes require
+classified metadata. `Weeks` has separate `WeatherEvidenceCopyId` and `DemoWeatherEvidenceCopyId`
+restricted FKs for its Real/Demo weather payloads. PostgreSQL triggers fence raw SQL and bulk writes,
+bind marker changes to the current transaction, preserve original clocks and withdraw descendants
+on source deletion or weather replacement. Markers survive payload erasure. Unknown purpose is
+unavailable and reconciled by physical erasure, never inferred from a key, ID or timestamp.
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
 known devices:
@@ -88,7 +101,11 @@ future persisted JSON column: define an owned Core record and a pure, tested map
 
 ## Week.Id is a Guid
 
-`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to `Weeks` use `Guid`. Every other single-column entity PK is an `int` (database sequence), except `UploadedLap` (Guid), `RefreshToken` (Guid), `Rival` (Guid), `SignInAddressFailure` (Guid), and `KnownDevice` (Guid). `SignInAccountFailure` is the odd one out: its PK is `UserId` itself, not a generated value — one row per account, reused rather than inserted fresh. Do not switch these PKs without a migration plan.
+`Week.Id` is application-generated (`Guid.NewGuid()`) not a database sequence. All foreign keys to
+`Weeks` use `Guid`. Identity, lifecycle and copy entities also use Guid keys; consult the schema table
+and current entity configuration rather than assuming every other entity uses an integer sequence.
+`SignInAccountFailure` uses `UserId` itself as its PK — one row per account. Do not switch these PKs
+without a migration plan.
 
 ## Critical indexes
 
@@ -97,6 +114,12 @@ by `(Provenance, CustomerId)` and `(Provenance, UserId)`. `DriverPublicationAdmi
 `(GrantId, Purpose, TerminalAt)` and `Incarnation`; expiry is excluded from drain authority.
 `DriverTrackedCopies` indexes `(GrantId, Purpose, UnavailableAt)`; cleanup indexes
 `(VerifiedRemovedAt, DueAt)` and lifecycle work indexes `(GrantId, CompletedAt)`.
+
+`EvidencePurposes` indexes `(Provenance, Kind, SeasonId)`. `EvidenceCopyMarkers` is unique by
+`(PurposeId, Kind, KeyHash, Version)` and indexes `(VerifiedRemovedAt, RemovalDueAt)` for reconciliation.
+`EvidenceCopyDependencies` indexes `SourceCopyId` for descendant invalidation;
+`AuthorizedDriverNameCopies` indexes `GrantId`. Managed rows and both Week weather marker FKs
+are indexed by their copy IDs.
 
 `QuarantinedDataCache.CacheKey` is unique within quarantined legacy evidence; its index never authorizes a live-cache fallback.
 
@@ -112,7 +135,12 @@ Percentile queries use indexes on both sides of the `SubsessionResult` → `Subs
 
 `FeatureFlag.Key` has a unique index — enforced at DB level, not just application level.
 
-`ExternalDataCache` has a unique index on (`Provenance`, `CacheKey`) (max length 200, sourced from the `ExternalDataCache.CacheKeyMaxLength` constant the EF configuration's `HasMaxLength` reads) — the only lookup path for `CachedIRacingClient`'s get-or-fetch. Two concurrent misses on the same missing key both read null and both attempt an insert; the loser hits this unique index and `SaveChangesAsync` throws `DbUpdateException`, which `GetOrFetchAsync` catches (only when its own read was null, so a genuine update failure still surfaces) and returns the value it fetched rather than re-querying — the winner's row is already correct. That catch used to also swallow an insert that failed for a different reason — a key over the 200-character column limit — turning an unbounded caller input into a permanent cache bypass rather than a lost race (GHSA-jv96-89xc-98h2); `GetOrFetchAsync` now checks the length itself and throws `ArgumentException` before ever reaching this insert, so the catch is unambiguously the concurrency case again.
+`ExternalDataCache` has a unique index on `(Provenance, CacheKey)` (max length 200, sourced from
+`ExternalDataCache.CacheKeyMaxLength`). Cache commits serialize through the copy lifecycle and
+recheck their preparation receipt; stale or failed commits propagate instead of returning freshly
+acquired evidence. Key factories bound caller input and `GetOrFetchAsync` rejects over-length keys
+before acquisition (GHSA-jv96-89xc-98h2). A cache TTL alone does not authorize a read: current
+purpose/generation and an available marker are also required.
 
 `Rival` has a unique index on `(Provenance, UserId, RivalCustId)` — makes the follow endpoint idempotent (re-adding an existing rival is a no-op, not a duplicate row).
 
@@ -142,21 +170,28 @@ Rules:
 
 ## Migrations
 
-The `dotnet ef migrations add` / `database update` commands are in AGENTS.md (Commands); auto-apply-at-startup and the `DesignTimeDbContextFactory` fallback are the `dotnet-api` agent's. The DB-side concern that's yours: for **additive** changes (new columns with defaults, new tables) migrations are safe to run while the app starts; for **destructive** changes (column drops, renames), coordinate a deployment window.
+The migration commands and startup behavior are in the project guide. Assess deployment compatibility
+from the write contract, not only whether DDL is additive. `EvidenceCopyFencing` requires disabled,
+physically purged Demo and stopped old writers before deployment. Its Down refuses to remove fences;
+recovery preserves enforcement history and proceeds forward. Follow the copy-writer inventory's
+cutover gates before any startup that auto-applies this migration.
 
 ## Query patterns in services
 
-Services query `AppDbContext` directly via LINQ — no raw SQL, no stored procedures. The exceptions are
+Feature services query `AppDbContext` directly via LINQ. The two service exceptions are
 `SignInThrottleStore.ClaimAttemptAsync` and `KnownDeviceStore.ClaimAttemptAsync` (both below); EF has
-no upsert and no `UPDATE ... RETURNING`, so both are deliberate raw SQL, not a precedent for reaching
-for `SqlQueryRaw` elsewhere.
+no upsert and no `UPDATE ... RETURNING`. Lifecycle/copy modules separately own PostgreSQL coordination
+and database fences; those focused boundaries do not justify raw SQL in feature services.
 
 Key access patterns to be aware of:
 
 - **Percentile query** (`PercentileCalculationService`): resolves `Week.Id` (Guid) via `Season` join on `SeriesId`, then queries `SubsessionResults` (joined through `Subsession`) for driver best and field distribution. The caller's `UserId` (from JWT sub) is used for cache writes and personal lap lookup; the public `customerId` (iRacing customer ID query param) is used only for race field lookup.
 - **Recommendations** (`CarRecommendationService`): joins `Seasons → SeasonCars → Cars` to find cars available in a series this week, then cross-references `CarPercentileResults` for the authenticated user.
 - **Analytics** (`UserAnalyticsService`): loads `CarPercentileResults` joined with `Car` and `Week` for a user's history across series.
-- **CarPercentileResult upsert**: check-then-insert-or-update pattern; not a true SQL UPSERT but safe for single-instance API.
+- **CarPercentileResult writes**: Demo calculations open a `SyntheticEvidenceWriter` before reading
+  contributing Fields, then save through its atomic source-version check. Check-then-insert-or-update
+  alone is not an evidence write contract; ordinary Real derivative persistence remains unavailable
+  until its feature authority is integrated.
 - **Refresh token rotation**: consumption is a conditional `ExecuteUpdateAsync` (`Where(t => t.Id == id && t.RevokedAt == null)`, setting `RevokedAt`) rather than a tracked-entity update, so the database — not an earlier read — picks exactly one winner when two requests present the same token concurrently (GHSA-87m2-6r5g-9q47); an explicit transaction wraps that update and the new row's insert so both still land atomically. `RevokeAllActiveAsync` is likewise a set-based `ExecuteUpdateAsync`, re-run in a loop until a pass revokes zero rows rather than a single sweep, so a `RefreshToken` inserted mid-revocation is still caught.
 - **Uploaded Best projection** (`UploadedBestQuery`): groups `UploadedLap` rows by `{ CarId, TrackId }` — identifiers, not the `Car.Name`/`Track.Name`/`Track.ConfigName` labels (a Track's `Name` belongs to the venue and is shared by every layout there, so a label-keyed group merges layouts the moment iRacing's labelling stops disambiguating them). Those labels still ride along via `g.First()`, and selecting them from navigation properties alongside the `Min`/`Count`/`Max` aggregates is a shape neither Npgsql nor SQLite translates. It runs `.ToListAsync()` first and groups in memory rather than pushing the `GroupBy` into SQL; the same untranslatable-shape family as the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section (positional-record DTO properties don't translate as `ORDER BY`/`SELECT` targets either). Follow this pattern for any new query that selects a navigation-property-derived label alongside aggregates.
 - **Race Week window scoping** (`PercentileCalculationService`, `CarRecommendationService`,

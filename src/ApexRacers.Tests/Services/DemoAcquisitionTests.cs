@@ -19,7 +19,7 @@ public class DemoAcquisitionTests
     public async Task RealMappedArraysRemainTypedAndNameFreeOnFreshAndWarmReads()
     {
         await using var db = DbContextFactory.Create();
-        var cache = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var cache = new MappingEvidenceCache(db, Substitute.For<IDataClient>());
         var spec = IRacingCacheKeys.DriverSearch("fixture")!.Value;
         var fresh = await cache.GetOrFetchAsync(spec,
             _ => Task.FromResult(new[] { new DriverSearchResultDto(100001, "Upstream Private Name") }), Ct);
@@ -53,7 +53,7 @@ public class DemoAcquisitionTests
     public async Task RemainingMappedDriverContractsAreNameFree(string family)
     {
         await using var db = DbContextFactory.Create();
-        var cache = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var cache = new MappingEvidenceCache(db, Substitute.For<IDataClient>());
         object result = family switch
         {
             "leaderboard" => await cache.GetOrFetchAsync<IReadOnlyList<GlobalLeaderboardEntryDto>>(
@@ -77,7 +77,7 @@ public class DemoAcquisitionTests
     public async Task RealStandingEvidenceRetainsResultsWithoutProviderNames()
     {
         await using var db = DbContextFactory.Create();
-        var cache = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var cache = new MappingEvidenceCache(db, Substitute.For<IDataClient>());
         var result = await cache.GetOrFetchAsync<IReadOnlyList<SeasonStandingDto>>(
             IRacingCacheKeys.Standings(7, 1), _ => Task.FromResult<IReadOnlyList<SeasonStandingDto>>(
                 [new(3, 100001, "Upstream Private Name", 1, 5, 1, 2, 0, 42, 3.5, 2)]), Ct);
@@ -92,7 +92,7 @@ public class DemoAcquisitionTests
     public async Task RealMappedProfileCannotPersistOrReturnTheProviderName()
     {
         await using var db = DbContextFactory.Create();
-        var cache = new CachedIRacingClient(db, Substitute.For<IDataClient>());
+        var cache = new MappingEvidenceCache(db, Substitute.For<IDataClient>());
         var result = await cache.GetOrFetchAsync(IRacingCacheKeys.Profile(100001),
             _ => Task.FromResult(new ProfileSnapshot("Upstream Private Name", null, null, null, [])), Ct);
         Assert.Equal(string.Empty, result.DisplayName);
@@ -106,7 +106,10 @@ public class DemoAcquisitionTests
         await using var demo = shared.NewContext(DataProvenance.Demo);
         demo.SubsessionResults.Add(new SubsessionResult
         {
-            SubsessionId = 7, CustId = 100001, CarId = 1, BestLapSeconds = 91,
+            SubsessionId = 7,
+            CustId = 100001,
+            CarId = 1,
+            BestLapSeconds = 91,
         });
         await demo.SaveChangesAsync(Ct);
         await using var real = shared.NewContext(DataProvenance.Real);
@@ -117,14 +120,22 @@ public class DemoAcquisitionTests
     [Fact]
     public async Task SameCustomerIdHasIndependentDemoAndRealWarmCaches()
     {
-        await using var db = DbContextFactory.Create();
+        await using var shared = DbContextFactory.CreateShared();
+        await using var db = shared.NewContext();
+        await using var demoDb = shared.NewContext(DataProvenance.Demo);
         var spec = IRacingCacheKeys.Profile(100001);
         var real = new CachedIRacingClient(db, Substitute.For<IDataClient>(), DataProvenance.Real);
-        var demo = new CachedIRacingClient(db, Substitute.For<IDataClient>(), DataProvenance.Demo);
+        var demo = new CachedIRacingClient(demoDb, Substitute.For<IDataClient>(), DataProvenance.Demo);
 
-        Assert.Equal(new Evidence(87), await real.GetOrFetchAsync(spec,
-            _ => Task.FromResult(new Evidence(87)), Ct));
-        await DemoCache.UpsertAsync(db, spec.Key, new Evidence(91), Ct);
+        db.ExternalDataCaches.Add(new ExternalDataCache
+        {
+            CacheKey = spec.Key,
+            Payload = "{\"Lap\":87}",
+            FetchedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+        });
+        await db.SaveChangesAsync(Ct);
+        await DemoCache.UpsertAsync(demoDb, spec.Key, new Evidence(91), Ct);
         Assert.Equal(new Evidence(91), await demo.GetOrFetchAsync<Evidence>(spec,
             _ => throw new InvalidOperationException("Demo must not fetch real evidence"), Ct));
         Assert.Equal(new Evidence(87), await real.GetOrFetchAsync<Evidence>(spec,
@@ -143,8 +154,10 @@ public class DemoAcquisitionTests
         {
             db.ExternalDataCaches.Add(new ExternalDataCache
             {
-                Provenance = DataProvenance.Demo, CacheKey = IRacingCacheKeys.Profile(100001).Key,
-                Payload = "{\"Lap\":91}", FetchedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                Provenance = DataProvenance.Demo,
+                CacheKey = IRacingCacheKeys.Profile(100001).Key,
+                Payload = "{\"Lap\":91}",
+                FetchedAt = DateTimeOffset.UtcNow.AddDays(-2),
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1),
             });
             await db.SaveChangesAsync(Ct);

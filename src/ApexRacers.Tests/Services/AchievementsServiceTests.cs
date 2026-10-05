@@ -31,7 +31,7 @@ public class AchievementsServiceTests
             .Returns(new DataResponse<MemberAward[]> { Data = awards });
 
         var db = DbContextFactory.Create();
-        var cached = new CachedIRacingClient(db, client);
+        var cached = new MappingEvidenceCache(db, client);
         return (new AchievementsService(cached), client);
     }
 

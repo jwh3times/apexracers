@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [12.0.0] - 2026-10-05
+
+### Added
+
+- Durable evidence purposes, copy generations and concrete source dependencies for mapped caches,
+  complete official Fields, BoP/weather, authorized names and personal derivatives. Explicit
+  historical requests separate collection completion from continuing name-free official retention.
+
+### Changed
+
+- **Breaking:** Demo teardown fences delayed seeders; restarting a purged preview requires `--new-preview`.
+  The forward-only copy-fence migration requires stopped old writers and a disabled, purged Demo
+  dataset before a controlled reseed. Unclassified legacy payloads are physically erased rather
+  than assigned a guessed purpose; ordinary Real acquisition remains unavailable.
+
+### Security
+
+- Reject stale, unscoped and cross-purpose evidence writes, including old binaries and bulk SQL;
+  invalidate derived copies on source removal and retain original cleanup deadlines through retries.
+- Remove unauthorized name copies within the 24-hour live-data ceiling, enforce mapped-expiry and
+  ended-purpose cleanup, expire explanatory proof details after twelve months, and sanitize
+  application/provider logging. Deployed backup expiry and log retention require separate verification.
+
 ## [11.0.0] - 2026-10-04
 
 ### Added
@@ -1495,7 +1518,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v11.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v12.0.0...HEAD
+[12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0
 [11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0
 [10.0.2]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v10.0.2
 [10.0.1]: https://github.com/jwh3times/apexracers/compare/v10.0.0...v10.0.1
