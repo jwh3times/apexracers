@@ -17,6 +17,13 @@ retention. Real collection issuers remain unavailable until their ownership/cata
 exist. [Copy-fence evidence](research/driver-copy-writer-inventory.md) records the implemented scope
 and the deployment checks still required.
 
+Whole-cohort publication candidates can now be exercised offline with controlled synthetic inputs.
+They prepare supported joint lap/rating ranges, permitted named variants and the unchanged exact
+owner Percentile Rank for catalog risk review. These artifacts do not open product endpoints or
+admit a production catalog; combined-release admission remains separate.
+[Candidate evidence](research/whole-cohort-publication-candidates.md) declares the fixed fields,
+audience/owner variants and remaining review obligations.
+
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,

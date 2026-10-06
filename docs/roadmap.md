@@ -28,6 +28,8 @@ using the `<major>.<minor>.<build>` format.
   integrations, restore verification and deployed retention observations still gate live use.
   Controlled private upload attribution, dormant recovery and User-wide deletion now have synthetic
   PostgreSQL/HTTP evidence; ordinary real private workflows remain closed.
+  Whole-cohort publication candidates add synthetic band/support and adversarial review evidence;
+  actual catalog admission and atomic combined-release accounting still precede product publication.
 - **Live iRacing data readiness:** keep the iRacing-backed surface gated until required
   service credentials and rollout checks are complete.
 - **Sign in with iRacing:** replace self-entered customer IDs with a verified OAuth

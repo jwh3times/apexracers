@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Controlled synthetic whole-cohort publication candidates with fixed nested lap/rating bands,
+  distinct hidden-Driver support, permitted named and exact owner variants, and versioned risk-review
+  artifacts. Unknown or unreviewed contexts remain unavailable; actual catalog admission,
+  combined-release accounting and product dispatch integration remain separate gates.
 
 ## [13.0.0] - 2026-10-06
 
