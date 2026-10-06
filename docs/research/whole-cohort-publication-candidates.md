@@ -140,7 +140,9 @@ distinguishes a large `TIME_WAIT` population from confirmation that available po
 
 Ship-time review subsequently found decimal division could round an extremely precise value into
 the next half-open band. Remainder arithmetic now computes exact boundaries, with four additional
-regressions for positive values just below a boundary and negative values close to zero. The local
+regressions for positive values just below a boundary and negative values close to zero. A further
+regression verifies unrepresentable endpoints close the candidate. All 51 focused cases passed.
+The local
 full-run coverage above belongs to the earlier source hashes; corrected-source full-suite and
 coverage verification belongs to PR CI. The historical Windows failure remains tracked in #391.
 
