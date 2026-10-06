@@ -138,6 +138,12 @@ publication acceptance.
 [Microsoft's troubleshooting guidance](https://learn.microsoft.com/en-us/troubleshoot/windows-client/networking/tcp-ip-port-exhaustion-troubleshooting)
 distinguishes a large `TIME_WAIT` population from confirmation that available ports are exhausted.
 
+Ship-time review subsequently found decimal division could round an extremely precise value into
+the next half-open band. Remainder arithmetic now computes exact boundaries, with four additional
+regressions for positive values just below a boundary and negative values close to zero. The local
+full-run coverage above belongs to the earlier source hashes; corrected-source full-suite and
+coverage verification belongs to PR CI. The historical Windows failure remains tracked in #391.
+
 The candidate tests contribute bounded evidence to PUB-01–06 and PUB-09. A useful controlled fixture
 supports the engineering portion of PUB-10; it does not satisfy that row's actual catalog-admission
 requirement. #374 owns atomic combined-release review/reservation. #380 owns the complete integrated

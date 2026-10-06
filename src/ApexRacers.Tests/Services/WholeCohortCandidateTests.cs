@@ -22,6 +22,8 @@ public sealed class WholeCohortCandidateTests
     [InlineData("2500", "2500", "3000")]
     [InlineData("3000", "3000", "3500")]
     [InlineData("-0.001", "-500", "0")]
+    [InlineData("2249.9999999999999999999999999", "2000", "2250")]
+    [InlineData("-0.0000000000000000000000000001", "-500", "0")]
     public void BaseAbsoluteRatingHasExactHalfOpenZeroOrigin(string value, string lower, string upper) =>
         Assert.Equal(new CandidateRange(D(lower), D(upper)), WholeCohortBands.RatingRange(D(value), 0));
 
@@ -32,6 +34,8 @@ public sealed class WholeCohortCandidateTests
     [InlineData(2, "92", "92", "94")]
     [InlineData(3, "92", "92", "96")]
     [InlineData(4, "96", "96", "104")]
+    [InlineData(3, "3.9999999999999999999999999999", "0", "4")]
+    [InlineData(0, "-0.0000000000000000000000000001", "-0.5", "0")]
     public void LapBandsHaveExactBoundaries(int level, string value, string lower, string upper) =>
         Assert.Equal(new CandidateRange(D(lower), D(upper)), WholeCohortBands.LapRange(D(value), level));
 

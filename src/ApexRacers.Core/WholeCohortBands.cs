@@ -24,8 +24,15 @@ public static class WholeCohortBands
 
     public static CandidateRange Range(decimal value, decimal width)
     {
-        var lower = decimal.Floor(value / width) * width;
-        return new(lower, lower + width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        // Division can round an exact decimal just below a boundary onto that boundary.
+        // Remainder retains the fractional displacement; adjust negative truncation to floor.
+        var remainder = value % width;
+        var lower = value - remainder;
+        if (remainder < 0) lower -= width;
+        var upper = lower + width;
+        if (upper <= lower) throw new OverflowException("Band boundaries are not representable.");
+        return new(lower, upper);
     }
 
     public static CandidateRange LapRange(decimal value, int level) => Range(value, Width(level) / 1000m);
