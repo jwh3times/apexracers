@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [13.0.0] - 2026-10-05
+
 ### Added
 
 - Controlled synthetic private uploads with verified personal attribution, protected all-time
   Uploaded Best reads, and exact owner percentile arithmetic tied to retained sources.
+
+### Changed
+
+- **Breaking:** Telemetry upload previews now return persistence status, lap counts and best time
+  without recorder identity or catalog labels. Private persistence requires verified ownership and
+  current Personal consent. Forward-only migrations separate retained enforcement history from
+  accounts and require completed User-wide withdrawal and drained writers before account erasure.
 
 ### Security
 
@@ -1533,7 +1544,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v12.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.0...HEAD
+[13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0
 [12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0
 [11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0
 [10.0.2]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v10.0.2

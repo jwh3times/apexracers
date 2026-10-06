@@ -224,7 +224,8 @@ Policies in `Program.cs`:
   "Your pct" overlay and recommendations with someone else's numbers. The eligible Demo Driver path
   (`SubjectDriverContext` resolving to `DemoData.DriverCustId`) must remain able to write.
 - `GET /api/users/me/analytics` — `/me/` in path should return only the authenticated user's data. Verify the service resolves user from JWT `sub` claim, not from a query parameter.
-- `GET /api/telemetry/laps` — verify data is scoped to the authenticated user.
+- `GET /api/telemetry/laps` — verify ordinary denial even under Demo; a bare authenticated User ID
+  must not release legacy owned laps.
 
 ## Unbounded query inputs and cache-key bypass (GHSA-jv96-89xc-98h2)
 
@@ -277,9 +278,12 @@ forged Demo headers and unknown catalog IDs must not reach parsing or persistenc
 cases in web/e2e/telemetry.spec.ts check unavailable upload and My Laps responses.
 
 The retained `TelemetryUploadService` and `IbtParser` implementation is exercised directly by
-service/parser tests. Apply the following upload validation cases to an HTTP workflow only after
-verified attribution and protected access are implemented; current denial does not establish that
-the legacy `400`/`413` upload outcomes were executed.
+service/parser tests. Controlled synthetic HTTP upload/owner reads are exercised by
+`PrivateUploadHttpTests`; apply docs/research/private-upload-lifecycle.md to probe stale authority,
+other-owner attribution, dormant cutoff, historical-association deletion, unsent output and active
+writer drain. These fixtures must not be selectable in ordinary startup. Apply the following
+transport validation cases to product HTTP only after its verified attribution/protected access
+integration; current production denial does not establish legacy `400`/`413` outcomes.
 
 Content validation in `IbtParser.Parse()`:
 
