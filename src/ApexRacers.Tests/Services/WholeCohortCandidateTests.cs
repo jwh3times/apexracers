@@ -54,6 +54,15 @@ public sealed class WholeCohortCandidateTests
         }
     }
 
+    [Fact]
+    public void RoundedDecimalEndpointCannotExpandTheReviewedBandWidth()
+    {
+        var lap = decimal.MaxValue - 2m;
+        Assert.Throws<OverflowException>(() => WholeCohortBands.LapRange(lap, 0));
+        var snapshot = Snapshot(Members(5).Select(m => m with { LapSeconds = Measured(lap) }).ToImmutableArray());
+        Assert.Null(Candidate(snapshot));
+    }
+
     [Theory]
     [InlineData(4, false)]
     [InlineData(5, true)]

@@ -31,7 +31,7 @@ public static class WholeCohortBands
         var lower = value - remainder;
         if (remainder < 0) lower -= width;
         var upper = lower + width;
-        if (upper <= lower) throw new OverflowException("Band boundaries are not representable.");
+        if (upper - lower != width) throw new OverflowException("Band boundaries are not representable.");
         return new(lower, upper);
     }
 
