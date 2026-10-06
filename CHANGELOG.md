@@ -25,6 +25,8 @@ No unreleased changes.
 
 ### Security
 
+- Update the frontend toolchain's transitive `source-map-js` dependency to 1.2.2 to address
+  the indexed source-map denial-of-service advisory GHSA-68fv-2mgg-jv7q.
 - End dormant recovery at day 90 and physically reconcile removal by day 97; preserve original
   clocks across fresh proof, retries and restart. User deletion vetoes all historical associations,
   drains their writers and removes account/private live copies within the seven-day ceiling while
