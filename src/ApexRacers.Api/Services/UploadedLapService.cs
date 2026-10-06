@@ -1,15 +1,12 @@
 using ApexRacers.Api.Dtos;
-using ApexRacers.Data;
-using Microsoft.EntityFrameworkCore;
+using ApexRacers.Core;
 
 namespace ApexRacers.Api.Services;
 
-public class UploadedLapService(AppDbContext db)
+/// <summary>The legacy User-ID-only interface cannot establish private Driver authority.
+/// Controlled owner reads use DriverPublication and PrivateUploadStore with protected dispatch.</summary>
+public sealed class UploadedLapService
 {
     public Task<List<UploadedBestDto>> GetUploadedBestsAsync(Guid userId, CancellationToken ct = default) =>
-        UploadedBestQuery.RunAsync(
-            // This is the User's upload inventory, outside synthetic Driver aggregates.
-            db.UploadedLaps.IgnoreQueryFilters().Where(l => l.UserId == userId),
-            UploadedBestOrder.MostRecentFirst,
-            ct);
+        Task.FromException<List<UploadedBestDto>>(new EvidenceCopyUnavailableException());
 }

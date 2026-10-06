@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Controlled synthetic private uploads with verified personal attribution, protected all-time
+  Uploaded Best reads, and exact owner percentile arithmetic tied to retained sources.
+
+### Security
+
+- End dormant recovery at day 90 and physically reconcile removal by day 97; preserve original
+  clocks across fresh proof, retries and restart. User deletion vetoes all historical associations,
+  drains their writers and removes account/private live copies within the seven-day ceiling while
+  reporting the fourteen-day backup deadline separately from unverified backup expiry.
+- Claims and recorder IDs cannot authorize persistence or private reads. Unverified previews
+  contain no identifying fields, raw streams are disposed, and PostgreSQL fences typed personal
+  sources against stale writes, attribution changes and source-derived reuse. New contributions
+  invalidate older owner summaries. Ordinary Telemetry
+  HTTP access remains unavailable pending real proof/journal integration.
 
 ## [12.0.0] - 2026-10-05
 

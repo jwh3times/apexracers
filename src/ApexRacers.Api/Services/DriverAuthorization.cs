@@ -13,7 +13,13 @@ public sealed class DriverAuthorization(
     DriverAuthorityStore store, IDriverEnforcementJournal journal, IDriverOwnershipProof proof,
     TimeProvider timeProvider, IDriverLifecycleObserver? observer = null)
 {
-    public async Task<DriverAccess> GrantAsync(DriverScope scope, DriverConsent consent, CancellationToken ct = default)
+    public Task<DriverAccess> GrantAsync(DriverScope scope, DriverConsent consent, CancellationToken ct = default) =>
+        GrantCoreAsync(scope, consent, restoreDormant: true, ct);
+
+    public Task<DriverAccess> GrantFreshCollectionAsync(DriverScope scope, DriverConsent consent, CancellationToken ct = default) =>
+        GrantCoreAsync(scope, consent, restoreDormant: false, ct);
+
+    private async Task<DriverAccess> GrantCoreAsync(DriverScope scope, DriverConsent consent, bool restoreDormant, CancellationToken ct)
     {
         // No registered-client/provider ownership contract has been verified. Even a caller-supplied
         // synthetic adapter cannot turn this controlled evidence into Real authorization.
@@ -22,19 +28,20 @@ public sealed class DriverAuthorization(
         var receipt = await proof.VerifyAsync(scope, ct);
         if (receipt is null || receipt.Scope != scope)
             throw new InvalidOperationException("Verified Driver ownership is unavailable.");
-        var enforcement = await journal.ReadAsync(scope, ct);
+        var enforcement = await journal.ReadCurrentAsync(scope, ct);
         if (!enforcement.Available || enforcement.PendingIntents.Count != 0)
             throw new InvalidOperationException("Driver enforcement is unavailable.");
         var existing = await store.FindGrantAsync(scope, ct);
         if (existing is not null && existing.Revision < enforcement.MinimumRevision)
             throw new InvalidOperationException("Driver enforcement requires reconciliation.");
-        return await store.GrantAsync(receipt, consent, journal, ct);
+        return restoreDormant ? await store.GrantAsync(receipt, consent, journal, ct)
+            : await store.GrantFreshCollectionAsync(receipt, consent, journal, ct);
     }
 
     public async Task<DriverAccess?> ResolveAsync(DriverScope scope, DriverConsentScope purpose, CancellationToken ct = default)
     {
         if (scope.Provenance != DataProvenance.Demo) return null;
-        var enforcement = await journal.ReadAsync(scope, ct);
+        var enforcement = await journal.ReadCurrentAsync(scope, ct);
         if (!enforcement.Available) return null;
         var access = await store.ResolveAsync(scope, purpose, ct);
         return access is not null && enforcement.Allows(access.Revision, purpose) ? access : null;

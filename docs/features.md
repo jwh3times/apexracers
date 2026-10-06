@@ -42,9 +42,12 @@ and the deployment checks still required.
   Undersized readings do not influence expected-percentile history or driver analytics.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
-- **Telemetry:** the `.ibt` parser and persisted Uploaded Laps remain implemented internally.
-  Upload and saved-lap API access is currently unavailable while verified attribution and protected
-  personal publication are integrated; requests are denied before the legacy upload binds its body.
+- **Telemetry:** controlled synthetic uploads now require verified ownership and personal opt-in;
+  their protected all-time bests and percentile calculations use typed, tracked sources. Unverified
+  previews are transient and non-identifying. Production upload and saved-lap API access remains
+  unavailable pending real proof/journal integration; requests are denied before body binding.
+  [Private-upload evidence](research/private-upload-lifecycle.md) records recovery/deletion boundaries
+  and the distinction between live erasure and unverified backup expiry.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.

@@ -41,7 +41,7 @@ Two schemas in one database:
 | `ScopedRivals` | Guid PK     | A driver a user follows; unique index on (Provenance, UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
 | `QuarantinedDataCaches` | int PK | Unclassified pre-cutover payload and original clocks; unique CacheKey; unavailable as a cache fallback |
 | `ProvenanceMigrationInventory` | string PK | Observed Unknown row counts by StorageKind, with RecordedAt as observation time |
-| `DriverProofReceipts` | Guid PK | Original User/Customer ID/provenance proof binding; composite alternate key `(Id, UserId, CustomerId, Provenance)`; restricted FK to Users |
+| `DriverProofReceipts` | Guid PK | Original User/Customer ID/provenance proof binding; composite alternate key `(Id, UserId, CustomerId, Provenance)`; minimal enforcement survives physical User erasure without a User FK |
 | `DriverAuthorizationGrants` | Guid PK | Revision concurrency token, proof binding and versioned personal/sharing consent; composite receipt FK preserves original association |
 | `DriverLifecycleOperations` | Guid PK | Applied revision, original loss time and completion; alternate key `(Id, GrantId, OriginalLossAt)` binds cleanup to its original operation |
 | `DriverPublicationAdmissions` | Guid PK | Purpose/revision/incarnation-bound writer admission; `TerminalAt`, not `LeaseUntil`, determines drain |
@@ -51,6 +51,7 @@ Two schemas in one database:
 | `EvidenceCopyMarkers` | Guid PK | Payload-free purpose/generation/kind/key-hash/version fence; original acquisition, expiry, withdrawal, removal deadline and verified-removal clocks; restricted purpose FK |
 | `EvidenceCopyDependencies` | composite PK `(CopyId, SourceCopyId)` | Contributing source version; both marker FKs restricted |
 | `AuthorizedDriverNameCopies` | Guid PK | Namespace, grant ID, bounded Driver name and restricted marker FK; reads require the current grant revision, matching name authority and applicable consent |
+| `PrivateUploadSessions` / `PrivateUploadedLaps` | Guid PKs | Typed personal source, original verified User/Driver/provenance and restricted marker/catalog FKs; laps cascade with their source. Unique original session and Lap Number identities fence retries. |
 
 The earlier lifecycle migration creates the six `Driver*` tables empty and renames the physical legacy claim column
 to `identity.Users.ClaimedIRacingCustomerId`, preserving values and the named claim uniqueness
@@ -70,6 +71,14 @@ restricted FKs for its Real/Demo weather payloads. PostgreSQL triggers fence raw
 bind marker changes to the current transaction, preserve original clocks and withdraw descendants
 on source deletion or weather replacement. Markers survive payload erasure. Unknown purpose is
 unavailable and reconciled by physical erasure, never inferred from a key, ID or timestamp.
+
+**Private storage:** before changing typed uploads, dormant recovery or account erasure, read
+docs/research/private-upload-lifecycle.md. Kind-8 markers bind private sources; recovery creates a
+new authorized generation without changing old marker clocks. User-wide journal deletion precedes
+atomic all-association closure. Minimal receipts have no User FK so account/credential erasure can
+complete without dropping enforcement history; grant issuance explicitly requires a current User.
+The User-delete SQL fence requires all-association closure/completion and terminal admissions before
+physical account erasure; removing the receipt FK must never reopen a direct Identity-writer bypass.
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
 known devices:

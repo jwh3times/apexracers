@@ -7,6 +7,19 @@ namespace ApexRacers.Tests.Lifecycle;
 /// <summary>Test-only enforcement in a separately persisted database, never a grant authority.</summary>
 internal sealed class PersistedSyntheticJournal(string connectionString, LifecycleGates gates) : IDriverEnforcementJournal
 {
+    public async Task<DriverUserEnforcement> ReadUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (gates.IsFaulted("journal-read")) return new(false);
+        await using var connection = await OpenAsync(ct);
+        await using var command = new NpgsqlCommand("""
+            SELECT intent::text FROM lifecycle_journal
+            WHERE user_id=@user AND (intent->>'Kind')::integer=5
+            ORDER BY (intent->>'OriginalLossAt')::timestamptz LIMIT 1
+            """, connection);
+        command.Parameters.AddWithValue("user", userId);
+        var value = await command.ExecuteScalarAsync(ct);
+        return new(true, value is string json ? JsonSerializer.Deserialize<DriverLifecycleIntent>(json) : null);
+    }
     public async Task InitializeAsync(CancellationToken ct)
     {
         await using var connection = await OpenAsync(ct);

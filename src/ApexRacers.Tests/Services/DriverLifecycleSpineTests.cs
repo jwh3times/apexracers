@@ -376,7 +376,7 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
-    public async Task UserDeletionWithHistoricalAssociationsRemainsUnacknowledgedUntilUserWideOrchestration()
+    public async Task UserDeletionClosesEveryHistoricalAssociationWithoutExtendingEarlierWork()
     {
         await using var fixture = await CreateAsync();
         var copies = new CopyLifecycle(fixture.Authority, fixture.Store, fixture.Journal);
@@ -391,9 +391,15 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
         var nextAuthority = new DriverAuthorization(fixture.Store, new TestJournal(), fixture.Proof, fixture.Time);
         await nextAuthority.GrantAsync(nextScope, Personal, Ct);
         var deleteId = Guid.NewGuid();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => nextAuthority.TransitionAsync(nextScope,
-            DriverLifecycleKind.DeleteUser, deleteId, Ct));
-        Assert.False(await fixture.Db.DriverLifecycleOperations.AnyAsync(o => o.Id == deleteId, Ct));
+        var deletion = await nextAuthority.TransitionAsync(nextScope, DriverLifecycleKind.DeleteUser, deleteId, Ct);
+        Assert.True(deletion.Completed);
+        Assert.True(await fixture.Db.DriverLifecycleOperations.AnyAsync(o => o.Id == deleteId, Ct));
+        Assert.All(await fixture.Db.DriverAuthorizationGrants.AsNoTracking().ToListAsync(Ct), grant =>
+        {
+            Assert.False(grant.BindingActive);
+            Assert.False(grant.ProofValid);
+            Assert.Null(grant.PersonalConsentVersion);
+        });
         Assert.True(await fixture.Db.DriverTrackedCopies.AnyAsync(c => c.Id == historicCopy, Ct));
         var retained = await fixture.Db.DriverCopyCleanups.AsNoTracking().SingleAsync(w => w.Id == oldCleanup.Id, Ct);
         Assert.Equal(unlink.OriginalLossAt, retained.OriginalLossAt);
@@ -488,6 +494,9 @@ public sealed class DriverLifecycleSpineTests(PostgreSqlFixture postgres)
     }
     private sealed class TestJournal : IDriverEnforcementJournal
     {
+        public Task<DriverUserEnforcement> ReadUserAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(new DriverUserEnforcement(Available, Intents.Values.FirstOrDefault(i =>
+                i.Scope.UserId == userId && i.Kind == DriverLifecycleKind.DeleteUser)));
         public bool Available { get; set; } = true;
         public Dictionary<Guid, DriverLifecycleIntent> Intents { get; } = [];
         private Dictionary<Guid, long> Reconciled { get; } = [];

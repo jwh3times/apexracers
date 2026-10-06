@@ -147,7 +147,7 @@ internal sealed class LifecycleTopology(
         var journal = await CreateDatabaseAsync(fixture, "apexracers_lifecycle_journal_", ct);
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options))
         {
-            await db.Database.EnsureCreatedAsync(ct);
+            await db.Database.MigrateAsync(ct);
             db.Users.AddRange(new ApplicationUser { Id = SyntheticLifecycleActors.Owner, DisplayName = "Synthetic owner", EmailConfirmed = true },
                 new ApplicationUser { Id = SyntheticLifecycleActors.Other, DisplayName = "Synthetic recipient", EmailConfirmed = true });
             await db.SaveChangesAsync(ct);
@@ -179,9 +179,16 @@ internal sealed class LifecycleTopology(
                 state = new
                 {
                     GrantCount = snapshot.Grants.Length,
-                    Grants = snapshot.Grants.Select(g => new { g.Revision, g.BindingActive, g.ProofValid,
+                    Grants = snapshot.Grants.Select(g => new
+                    {
+                        g.Revision,
+                        g.BindingActive,
+                        g.ProofValid,
                         HasPersonalConsent = g.PersonalConsentVersion is not null,
-                        HasSharingConsent = g.SharingConsentVersion is not null, g.PersonalClosedAt, g.SharingClosedAt }),
+                        HasSharingConsent = g.SharingConsentVersion is not null,
+                        g.PersonalClosedAt,
+                        g.SharingClosedAt
+                    }),
                     Operations = snapshot.Operations.Select(o => new { o.Id, o.Kind, o.OriginalLossAt, o.AppliedRevision, o.PrimaryAppliedAt, o.CompletedAt }),
                     Cleanup = snapshot.Cleanup.Select(w => new { w.OperationId, w.Purpose, w.OriginalLossAt, w.DueAt, w.VerifiedRemovedAt }),
                     Admissions = snapshot.Admissions.Select(a => new { a.Id, a.Revision, a.Purpose, a.Incarnation, a.AdmittedAt, a.LeaseUntil, a.TerminalAt }),
@@ -199,18 +206,28 @@ internal sealed class LifecycleTopology(
             Directory.CreateDirectory(directory);
             await File.WriteAllTextAsync(Path.Combine(directory, scenario + ".json"), JsonSerializer.Serialize(new
             {
-                SchemaVersion = 1, Scenario = scenario, Result = passed ? "passed" : "failed", EvidenceIds = evidenceIds,
-                Started = started, Finished = DateTimeOffset.UtcNow,
+                SchemaVersion = 1,
+                Scenario = scenario,
+                Result = passed ? "passed" : "failed",
+                EvidenceIds = evidenceIds,
+                Started = started,
+                Finished = DateTimeOffset.UtcNow,
                 Commit = typeof(LifecycleTopology).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
-                Runtime = RuntimeInformation.FrameworkDescription, Platform = RuntimeInformation.OSDescription,
-                PostgreSqlImage = "postgres:18.0-alpine", Provenance = "Demo; controlled synthetic identities only",
-                ProofAuthority = "controlled-synthetic-proof-v1; never provider ownership", PersonalConsentVersion = DriverAuthorizationPolicy.PersonalConsentVersion,
+                Runtime = RuntimeInformation.FrameworkDescription,
+                Platform = RuntimeInformation.OSDescription,
+                PostgreSqlImage = "postgres:18.0-alpine",
+                Provenance = "Demo; controlled synthetic identities only",
+                ProofAuthority = "controlled-synthetic-proof-v1; never provider ownership",
+                PersonalConsentVersion = DriverAuthorizationPolicy.PersonalConsentVersion,
                 SharingConsentVersion = DriverAuthorizationPolicy.SharingConsentVersion,
                 Modules = new[] { "DriverAuthorization", "DriverAuthorityStore", "DriverPublication protected IActionResult" },
                 Journal = "Separate PostgreSQL database persists intents independently of primary and both processes",
                 Catalog = "No publication catalog admitted; bounded synthetic owner/name-only artifact",
                 Hosts = topology.hosts.Select(h => new { h.ProcessId, h.Incarnation, Address = h.Client.BaseAddress }).ToArray(),
-                Writers = topology.histories, Transitions = topology.outcomes, Faults = topology.faults, State = state,
+                Writers = topology.histories,
+                Transitions = topology.outcomes,
+                Faults = topology.faults,
+                State = state,
                 Boundary = "Actual Kestrel writes/flush/completion; no sleeps used as terminal evidence. No deployed retention/restore certification."
             }, new JsonSerializerOptions { WriteIndented = true }), CancellationToken.None);
         }

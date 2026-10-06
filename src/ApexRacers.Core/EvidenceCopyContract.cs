@@ -3,7 +3,7 @@ using ApexRacers.Core.Models;
 namespace ApexRacers.Core;
 
 public enum EvidencePurposeKind { SyntheticPreview = 1, IndependentOfficial = 2, AuthorizedHistory = 3, Personal = 4, Sharing = 5 }
-public enum EvidenceCopyKind { MappedCache = 1, OfficialField = 2, Bop = 3, Weather = 4, PersonalDerivative = 5, Follow = 6, AuthorizedName = 7 }
+public enum EvidenceCopyKind { MappedCache = 1, OfficialField = 2, Bop = 3, Weather = 4, PersonalDerivative = 5, Follow = 6, AuthorizedName = 7, PrivateUpload = 8 }
 
 /// <summary>Captured before preparation; a receipt is neither a consent grant nor a publication admission.</summary>
 public sealed record EvidenceWriteReceipt(Guid PurposeId, long Generation, long PurposeVersion, EvidenceCopyKind Kind,

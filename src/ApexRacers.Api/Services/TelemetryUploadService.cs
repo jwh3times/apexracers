@@ -1,105 +1,50 @@
 using ApexRacers.Api.Telemetry;
 using ApexRacers.Core;
-using ApexRacers.Core.Models;
 using ApexRacers.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
-public class TelemetryUploadService(AppDbContext db)
+/// <summary>Owns the submitted stream for this operation. Ordinary uploads can only produce a
+/// transient non-identifying preview. The controlled synthetic seam requires current proof/consent
+/// before parsing and rechecks the captured generation when committing typed personal laps.</summary>
+public sealed class TelemetryUploadService(AppDbContext db, DriverAuthorization? authority = null,
+    PrivateUploadStore? privateUploads = null)
 {
-    public async Task<TelemetryUploadResult> ProcessAsync(Stream ibtStream, Guid userId, CancellationToken ct)
+    public Task<PrivateUploadOutcome> ProcessAsync(Stream ibtStream, Guid userId, CancellationToken ct = default) =>
+        ProcessCoreAsync(ibtStream, null, ct);
+
+    public Task<PrivateUploadOutcome> ProcessSyntheticAsync(Stream ibtStream, DriverScope owner, CancellationToken ct = default) =>
+        ProcessCoreAsync(ibtStream, owner, ct);
+
+    private async Task<PrivateUploadOutcome> ProcessCoreAsync(Stream ibtStream, DriverScope? owner, CancellationToken ct)
     {
-        var session = IbtParser.Parse(ibtStream);
-
-        // A file that names no driver parses to 0 — treat that as "not established" rather than
-        // as customer 0, so it is never compared against or stored as a real Customer ID.
-        var recordedBy = session.DriverCustomerId > 0 ? session.DriverCustomerId : (long?)null;
-
-        var claimedCustId = await db.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.IRacingCustomerId)
-            .FirstOrDefaultAsync(ct);
-
-        // Reject before anything is written. An accepted upload's laps become the uploader's own
-        // pace and are ranked against a field of real race laps, so telemetry driven by someone
-        // else must not reach the database at all.
-        // A caller with no Claimed Identity has nothing to check against and is let through; the
-        // recording Driver is still stored, so the lap says whose it is either way.
-        if (recordedBy is { } fileCustId && claimedCustId is { } claimed && fileCustId != claimed)
+        await using (ibtStream)
         {
-            throw new InvalidOperationException(
-                $"This telemetry was recorded by driver {fileCustId}, not by the iRacing account " +
-                $"linked to your profile ({claimed}). Upload telemetry you drove, or update your " +
-                "linked Customer ID in Settings.");
-        }
-
-        // Catalog ingestion and seeding own Car/Track metadata. An uploaded recording may
-        // reference existing IDs, but its untrusted YAML must never create public catalog rows.
-        if (!await db.Cars.AnyAsync(car => car.Id == session.IracingCarId, ct) ||
-            !await db.Tracks.AnyAsync(track => track.Id == session.IracingTrackId, ct))
-            throw new InvalidOperationException(
-                "This telemetry's car or track is not in the catalog yet. Try again after the catalog is updated.");
-
-        var validLaps = session.Laps.Where(l => l.IsValid).ToList();
-
-        // Deduplicate at the session level: re-uploading the same .ibt must not insert
-        // its laps again. A session is identified by user + car + track + session start
-        // timestamp; if any lap from it is already persisted, skip the insert entirely.
-        // (Keying on individual lap times instead would collapse legitimately-repeated
-        // identical times within a single session.)
-        var recordedAt = session.SessionDate;
-        // Import identity belongs to the User's uploads, including during Demo preview.
-        // The aggregate-only Demo filter must not hide an already imported session.
-        var alreadyImported = await db.UploadedLaps.IgnoreQueryFilters().AnyAsync(p =>
-            p.UserId == userId
-            && p.CarId == session.IracingCarId
-            && p.TrackId == session.IracingTrackId
-            && p.RecordedAt == recordedAt, ct);
-
-        if (!alreadyImported)
-        {
-            foreach (var lap in validLaps)
+            ct.ThrowIfCancellationRequested();
+            PrivateUploadReceipt? receipt = null;
+            if (owner is not null)
             {
-                db.UploadedLaps.Add(new UploadedLap
-                {
-                    UserId           = userId,
-                    DriverCustId     = recordedBy,
-                    CarId            = session.IracingCarId,
-                    TrackId          = session.IracingTrackId,
-                    LapTimeSeconds   = lap.LapTimeSeconds,
-                    SessionType      = session.SessionType,
-                    AirTempCelsius   = session.AirTempCelsius,
-                    TrackTempCelsius = session.TrackTempCelsius,
-                    TrackWetness     = session.TrackWetness,
-                    RecordedAt       = recordedAt,
-                });
+                if (db.Provenance != DataProvenance.Demo || owner.Provenance != DataProvenance.Demo
+                    || authority is null || privateUploads is null
+                    || await authority.ResolveAsync(owner, DriverConsentScope.Personal, ct) is not { } access)
+                    throw new EvidenceCopyUnavailableException();
+                receipt = await privateUploads.CaptureAsync(access, ct);
             }
+            if (!ibtStream.CanSeek || ibtStream.Length > TelemetryUpload.MaxFileSizeBytes)
+                throw new ArgumentException("The telemetry stream is unsupported or exceeds the upload limit.");
+            ParsedIbtSession session;
+            try { session = IbtParser.Parse(ibtStream); }
+            catch (InvalidDataException) { throw new ArgumentException("The telemetry file could not be processed."); }
+            ct.ThrowIfCancellationRequested();
+            if (owner is not null && session.DriverCustomerId != owner.CustomerId)
+                throw new InvalidOperationException("This telemetry cannot be attributed to this account.");
+            var laps = session.Laps.Where(l => l.IsValid && double.IsFinite(l.LapTimeSeconds) && l.LapTimeSeconds > 0).ToList();
+            if (receipt is not null && laps.Count != 0)
+                await privateUploads!.CommitAsync(receipt, new(session.IracingCarId, session.IracingTrackId,
+                    session.SessionDate, session.SessionType, laps.Select(l => new PrivateLap(l.LapNumber, l.LapTimeSeconds)).ToArray()), ct);
+            // No recorder ID, name, recording YAML, raw file or untrusted catalog label leaves this seam.
+            return new(receipt is not null && laps.Count != 0, session.Laps.Count, laps.Count,
+                laps.Count == 0 ? null : laps.Min(l => l.LapTimeSeconds));
         }
-
-        await db.SaveChangesAsync(ct);
-
-        return new TelemetryUploadResult(
-            TotalLaps: session.Laps.Count,
-            ValidLaps: validLaps.Count,
-            BestLapSeconds: validLaps.Count > 0
-                ? validLaps.Min(l => l.LapTimeSeconds)
-                : null,
-            TrackName:  session.TrackName,
-            ConfigName: ConfigurationName.Normalize(session.ConfigName),
-            CarName:    session.CarName,
-            CustomerId: session.DriverCustomerId,
-            DriverName: session.DriverName
-        );
     }
-
-    public record TelemetryUploadResult(
-        int TotalLaps,
-        int ValidLaps,
-        double? BestLapSeconds,
-        string TrackName,
-        string ConfigName,
-        string CarName,
-        long CustomerId,
-        string DriverName);
 }

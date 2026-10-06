@@ -407,8 +407,10 @@ For lifecycle transitions, protected results, recovery or copy changes, read
 and Schedule retain independent access; other legacy controllers require Demo provenance, and
 Telemetry is unavailable in every namespace. Denied workflows return `503` ProblemDetails with
 `no-store`. Catalog detail and Schedule omit private upload overlays. Controlled User deletion
-refuses multi-association completion until User-wide journal orchestration exists; any recorded
-deletion tombstone prevents grants for that User across Customer IDs. The lifecycle migration creates empty
+records a User-wide independent veto, atomically closes all historical associations, and drains every
+affected writer; the tombstone prevents grants across Customer IDs. For upload attribution, dormant
+recovery, account erasure or owner analytics, read `docs/research/private-upload-lifecycle.md`.
+The lifecycle migration creates empty
 authorization tables and fences old claim writers without promoting any stored claim to ownership;
 recovery is forward-only. Synthetic implementation evidence does not establish live authorization
 or the complete publication/copy/restore acceptance matrix.

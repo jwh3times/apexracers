@@ -214,21 +214,50 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         try
         {
             await LockAsync(ct);
-            var copies = await db.EvidenceCopyMarkers.Where(c => c.VerifiedRemovedAt == null).ToListAsync(ct);
+            // Database fences can invalidate sources/descendants through another context or raw
+            // SQL. Refresh tracked metadata in one query before making any erasure decision.
+            var tracked = db.ChangeTracker.Entries<EvidenceCopyMarker>().ToDictionary(e => e.Entity.Id);
+            var copies = await db.EvidenceCopyMarkers.AsNoTracking().Where(c => c.VerifiedRemovedAt == null).ToListAsync(ct);
+            for (var index = 0; index < copies.Count; index++)
+            {
+                var copy = copies[index];
+                if (tracked.TryGetValue(copy.Id, out var entry))
+                {
+                    entry.CurrentValues.SetValues(copy);
+                    entry.OriginalValues.SetValues(copy);
+                    entry.State = EntityState.Unchanged;
+                    copies[index] = entry.Entity;
+                }
+                else db.EvidenceCopyMarkers.Attach(copy);
+            }
             foreach (var copy in copies.Where(c => c.ExpiresAt <= Now))
             {
                 MarkUnavailable(copy, copy.ExpiresAt!.Value, EvidenceRetention.MappedRemovalDueAt(copy.ExpiresAt.Value));
                 await InvalidateDependentsAsync(copy.Id, copy.ExpiresAt.Value, ct);
             }
             // Invalidation may discover descendants not in the initial tracked state; reload the pending set.
-            var pending = db.ChangeTracker.Entries<EvidenceCopyMarker>().Select(e => e.Entity)
-                .Where(c => c.VerifiedRemovedAt is null && c.UnavailableAt is not null).ToArray();
+            var pending = copies
+                .Where(c => c.VerifiedRemovedAt is null && c.UnavailableAt is not null
+                    && !(c.Kind == EvidenceCopyKind.PrivateUpload && c.RemovalDueAt >= c.UnavailableAt.Value.AddDays(90)
+                        && Now < c.UnavailableAt.Value.AddDays(90))).ToArray();
             if (pending.Length != 0)
             {
                 // Remove promptly, rather than treating a maximum deadline as a mandatory grace period.
                 await db.SaveChangesAsync(ct);
                 await RemovePhysicalAsync(pending.Select(c => c.Id).ToArray(), ct);
                 foreach (var copy in pending) copy.VerifiedRemovedAt = Now;
+            }
+            // User deletion also removes ordinary account/profile/credential stores and legacy
+            // uploads. Minimal proof/grant/journal metadata has no cascading User relationship.
+            var deletedUsers = await db.DriverAuthorizationGrants.Where(g => db.DriverLifecycleOperations
+                .Any(o => o.GrantId == g.Id && o.Kind == DriverLifecycleKind.DeleteUser && o.CompletedAt != null))
+                .Select(g => g.UserId).Distinct().ToArrayAsync(ct);
+            if (deletedUsers.Length != 0)
+            {
+                await db.UploadedLaps.IgnoreQueryFilters().Where(l => deletedUsers.Contains(l.UserId)).ExecuteDeleteAsync(ct);
+                await db.DriverProofReceipts.Where(p => deletedUsers.Contains(p.UserId))
+                    .ExecuteUpdateAsync(u => u.SetProperty(p => p.Authority, string.Empty), ct);
+                await db.Users.Where(u => deletedUsers.Contains(u.Id)).ExecuteDeleteAsync(ct);
             }
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -256,7 +285,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         if (purpose.Provenance != db.Provenance || purpose.Provenance != DataProvenance.Demo || purpose.OriginalEndedAt is not null
             || !Enum.IsDefined(purpose.Kind)) throw new EvidenceCopyUnavailableException();
         if (purpose.Kind == EvidencePurposeKind.IndependentOfficial
-            && (kind is EvidenceCopyKind.PersonalDerivative or EvidenceCopyKind.Follow or EvidenceCopyKind.AuthorizedName
+            && (kind is EvidenceCopyKind.PersonalDerivative or EvidenceCopyKind.Follow or EvidenceCopyKind.AuthorizedName or EvidenceCopyKind.PrivateUpload
                 || collection && !await db.Seasons.AnyAsync(s => s.Id == purpose.SeasonId && s.Active, ct)))
             throw new EvidenceCopyUnavailableException();
         if (purpose.Kind == EvidencePurposeKind.AuthorizedHistory && kind is not (EvidenceCopyKind.OfficialField or EvidenceCopyKind.Bop or EvidenceCopyKind.Weather))
@@ -273,8 +302,10 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         }
         if (kind == EvidenceCopyKind.AuthorizedName && purpose.Kind is not (EvidencePurposeKind.Personal or EvidencePurposeKind.Sharing))
             throw new EvidenceCopyUnavailableException();
+        if (kind == EvidenceCopyKind.PrivateUpload && purpose.Kind != EvidencePurposeKind.Personal)
+            throw new EvidenceCopyUnavailableException();
         if (purpose.Kind == EvidencePurposeKind.Personal && kind is not (EvidenceCopyKind.MappedCache
-                or EvidenceCopyKind.PersonalDerivative or EvidenceCopyKind.Follow or EvidenceCopyKind.AuthorizedName)
+                or EvidenceCopyKind.PersonalDerivative or EvidenceCopyKind.Follow or EvidenceCopyKind.AuthorizedName or EvidenceCopyKind.PrivateUpload)
             || purpose.Kind == EvidencePurposeKind.Sharing && kind != EvidenceCopyKind.AuthorizedName)
             throw new EvidenceCopyUnavailableException();
         return purpose;
@@ -282,7 +313,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
 
     private async Task CheckAccessAsync(DriverAccess access, CancellationToken ct)
     {
-        if (journal is null || !(await journal.ReadAsync(access.Scope, ct)).Allows(access.Revision, access.Purpose)
+        if (journal is null || !(await journal.ReadCurrentAsync(access.Scope, ct)).Allows(access.Revision, access.Purpose)
             || await new DriverAuthorityStore(db, clock).ResolveAsync(access.Scope, access.Purpose, ct) is not { } current
             || current.GrantId != access.GrantId || current.Revision != access.Revision)
             throw new EvidenceCopyUnavailableException();
@@ -306,7 +337,9 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 retainedPurposes[marker.PurposeId] = retained;
             }
             if (retained.Generation != marker.Generation
-                || retained.Id != target.Id && retained.Kind is not (EvidencePurposeKind.IndependentOfficial or EvidencePurposeKind.AuthorizedHistory))
+                || retained.Id != target.Id && retained.Kind is not (EvidencePurposeKind.IndependentOfficial or EvidencePurposeKind.AuthorizedHistory)
+                    && !(retained.Kind == EvidencePurposeKind.Personal && target.Kind == EvidencePurposeKind.Personal
+                        && retained.GrantId == target.GrantId && retained.GrantRevision == target.GrantRevision))
                 throw new EvidenceCopyUnavailableException(); // A new purpose cannot launder a private source into shared evidence.
         }
     }
@@ -447,7 +480,8 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
 
     internal async Task ApplyGrantLossAsync(DriverAuthorizationGrant grant, DriverLifecycleIntent intent, CancellationToken ct)
     {
-        var purposes = await db.EvidencePurposes.Where(p => p.GrantId == grant.Id && p.OriginalEndedAt == null).ToListAsync(ct);
+        var purposes = await db.EvidencePurposes.Where(p => p.GrantId == grant.Id
+            && (p.OriginalEndedAt == null || intent.Kind == DriverLifecycleKind.DeleteUser)).ToListAsync(ct);
         foreach (var purpose in purposes)
         {
             if (purpose.Kind == EvidencePurposeKind.AuthorizedHistory) continue; // Collection closes through the original grant revision; independent retention is separate.
@@ -457,7 +491,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 purpose.EvidenceVersion++; // Retain Personal copies, but reject preparation under the old revision.
                 continue;
             }
-            purpose.Generation++;
+            if (purpose.OriginalEndedAt is null) purpose.Generation++;
             purpose.OriginalEndedAt = Earliest(purpose.OriginalEndedAt, intent.OriginalLossAt);
             var copies = await db.EvidenceCopyMarkers.Where(c => c.PurposeId == purpose.Id && c.VerifiedRemovedAt == null).ToListAsync(ct);
             foreach (var copy in copies)
@@ -495,6 +529,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         await db.Subsessions.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.SeasonCarBops.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.CarPercentileResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
+        await db.PrivateUploadSessions.Where(c => ids.Contains(c.EvidenceCopyId)).ExecuteDeleteAsync(ct);
         await db.Rivals.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.Weeks.Where(w => w.DemoWeatherEvidenceCopyId != null && ids.Contains(w.DemoWeatherEvidenceCopyId.Value)).ExecuteUpdateAsync(u => u

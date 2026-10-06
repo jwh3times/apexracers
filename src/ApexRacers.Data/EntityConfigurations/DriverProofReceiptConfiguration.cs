@@ -13,6 +13,8 @@ public sealed class DriverProofReceiptConfiguration : IEntityTypeConfiguration<D
         builder.HasKey(p => p.Id);
         builder.HasAlternateKey(p => new { p.Id, p.UserId, p.CustomerId, p.Provenance });
         builder.Property(p => p.Authority).HasMaxLength(128).IsRequired();
-        builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        // Minimal enforcement bindings must survive physical account erasure. Current User
+        // existence is checked when issuing a grant, never by retaining a profile forever.
+        builder.HasIndex(p => p.UserId);
     }
 }

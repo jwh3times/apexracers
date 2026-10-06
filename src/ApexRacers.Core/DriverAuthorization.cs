@@ -8,6 +8,7 @@ public sealed record DriverConsent(string PersonalVersion, string? SharingVersio
 public sealed record DriverAccess(DriverScope Scope, Guid GrantId, long Revision, DriverConsentScope Purpose, string? DriverName);
 public sealed record DriverLifecycleIntent(Guid OperationId, Guid GrantId, DriverScope Scope, DriverLifecycleKind Kind, DateTimeOffset OriginalLossAt);
 public sealed record DriverLifecycleOutcome(Guid OperationId, bool Completed, int PendingWriters, DateTimeOffset OriginalLossAt);
+public sealed record DriverUserEnforcement(bool Available, DriverLifecycleIntent? Deletion = null);
 public sealed record DriverJournalState(bool Available, long MinimumRevision, IReadOnlyList<DriverLifecycleIntent> PendingIntents)
 {
     public bool Allows(long revision, DriverConsentScope purpose) => Available && revision >= MinimumRevision
@@ -17,9 +18,28 @@ public sealed record DriverJournalState(bool Available, long MinimumRevision, IR
 /// <summary>The separately protected journal vetoes; no entry can grant access.</summary>
 public interface IDriverEnforcementJournal
 {
+    // A deletion veto covers every historical and future Driver association of the User.
+    // Adapters without this contract cannot authorize personal acquisition/publication.
+    Task<DriverUserEnforcement> ReadUserAsync(Guid userId, CancellationToken ct = default) =>
+        Task.FromResult(new DriverUserEnforcement(false));
     Task<DriverJournalState> ReadAsync(DriverScope scope, CancellationToken ct = default);
     Task<DriverLifecycleIntent> AppendAsync(DriverLifecycleIntent intent, CancellationToken ct = default);
     Task ReconcileAsync(DriverLifecycleIntent intent, long revision, CancellationToken ct = default);
+}
+
+public static class DriverEnforcement
+{
+    public static async Task<DriverJournalState> ReadCurrentAsync(this IDriverEnforcementJournal journal,
+        DriverScope scope, CancellationToken ct = default)
+    {
+        var user = await journal.ReadUserAsync(scope.UserId, ct);
+        if (user is not { Available: true }) return new(false, 0, []);
+        var state = await journal.ReadAsync(scope, ct);
+        return user.Deletion is null ? state : state with { PendingIntents = [.. state.PendingIntents, user.Deletion] };
+    }
+
+    public static Guid AssociationOperationId(Guid rootOperationId, Guid grantId) =>
+        new(System.Security.Cryptography.SHA256.HashData(rootOperationId.ToByteArray().Concat(grantId.ToByteArray()).ToArray()).AsSpan(0, 16));
 }
 
 public interface IDriverOwnershipProof

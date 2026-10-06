@@ -37,11 +37,18 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
     public async Task<DriverAccess?> ResolveAsync(DriverScope scope, DriverConsentScope purpose, CancellationToken ct = default)
     {
         var grant = await FindGrantAsync(scope, ct);
-        return grant is not null && IsAuthorized(grant, purpose) ? Access(grant, purpose) : null;
+        return grant is not null && IsAuthorized(grant, purpose) && await db.Users.AnyAsync(u => u.Id == scope.UserId, ct)
+            ? Access(grant, purpose) : null;
     }
 
-    public async Task<DriverAccess> GrantAsync(VerifiedDriverProof proof, DriverConsent consent,
-        IDriverEnforcementJournal journal, CancellationToken ct = default)
+    public Task<DriverAccess> GrantAsync(VerifiedDriverProof proof, DriverConsent consent,
+        IDriverEnforcementJournal journal, CancellationToken ct = default) => GrantCoreAsync(proof, consent, journal, true, ct);
+
+    public Task<DriverAccess> GrantFreshCollectionAsync(VerifiedDriverProof proof, DriverConsent consent,
+        IDriverEnforcementJournal journal, CancellationToken ct = default) => GrantCoreAsync(proof, consent, journal, false, ct);
+
+    private async Task<DriverAccess> GrantCoreAsync(VerifiedDriverProof proof, DriverConsent consent,
+        IDriverEnforcementJournal journal, bool restoreDormant, CancellationToken ct)
     {
         ValidateSyntheticProof(proof);
         proof = proof with { VerifiedAt = DriverAuthorizationPolicy.DurableTime(proof.VerifiedAt) };
@@ -51,9 +58,11 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             throw new ArgumentException("The current consent versions must be affirmatively accepted.");
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
-        var enforcement = await journal.ReadAsync(proof.Scope, ct);
+        var enforcement = await journal.ReadCurrentAsync(proof.Scope, ct);
         if (!enforcement.Available || enforcement.PendingIntents.Count != 0)
             throw new InvalidOperationException("Driver enforcement is unavailable.");
+        if (!await db.Users.AnyAsync(u => u.Id == proof.Scope.UserId, ct))
+            throw new InvalidOperationException("Driver authorization is unavailable.");
         if (await db.Set<DriverLifecycleOperation>().AnyAsync(o => o.Kind == DriverLifecycleKind.DeleteUser
             && db.Set<DriverAuthorizationGrant>().Any(g => g.Id == o.GrantId && g.UserId == proof.Scope.UserId), ct))
             throw new InvalidOperationException("Deleted User authorization cannot be reactivated.");
@@ -73,7 +82,7 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             || grant.AuthorizedDriverName != proof.DriverName || !grant.ProofValid || !grant.BindingActive);
         if (changesGeneration && await db.Set<DriverPublicationAdmission>().AnyAsync(a => a.GrantId == grant!.Id && a.TerminalAt == null, ct))
             throw new InvalidOperationException("Authorization generation change requires writer drain.");
-        if (grant?.PersonalClosedAt is { } lossAt && !IsAuthorized(grant, DriverConsentScope.Personal)
+        if (restoreDormant && grant?.PersonalClosedAt is { } lossAt && !IsAuthorized(grant, DriverConsentScope.Personal)
             && timeProvider.GetUtcNow() >= lossAt.AddDays(90))
             throw new InvalidOperationException("The retained association is no longer eligible for reactivation.");
         if (grant is not null && (!grant.BindingActive || !grant.ProofValid || grant.PersonalConsentVersion is null
@@ -125,6 +134,11 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         grant.PersonalClosedAt = null;
         if (consent.SharingVersion is not null) grant.SharingClosedAt = null;
         if (changesGeneration) await new EvidenceCopyLifecycle(db, timeProvider).RefreshGrantGenerationAsync(grant, ct);
+        if (changesGeneration)
+        {
+            await db.SaveChangesAsync(ct); // New grant generation must be visible to relational writer fences.
+            if (restoreDormant) await PrivateUploadStore.RestoreAsync(db, grant, timeProvider, ct);
+        }
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return Access(grant, DriverConsentScope.Personal);
@@ -137,11 +151,28 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
             throw new ArgumentException("A durable lifecycle intent is required.");
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
-        // This bounded spine cannot acknowledge a User-wide deletion after associations changed.
-        // Refuse rather than falsely certify seven-day removal for only the selected Driver.
-        if (intent.Kind == DriverLifecycleKind.DeleteUser && await db.Set<DriverAuthorizationGrant>()
-            .AnyAsync(g => g.UserId == intent.Scope.UserId && g.Id != intent.GrantId, ct))
-            throw new InvalidOperationException("User-wide deletion requires all historical associations to be coordinated.");
+        var operation = await ApplyAssociationIntentAsync(intent, ct);
+        if (intent.Kind == DriverLifecycleKind.DeleteUser)
+        {
+            // The independent User-wide veto is already durable. Closure and copy work for every
+            // association commit together; retries retain deterministic identities and original clocks.
+            var associations = await db.DriverAuthorizationGrants.AsNoTracking()
+                .Where(g => g.UserId == intent.Scope.UserId && g.Id != intent.GrantId).ToListAsync(ct);
+            foreach (var association in associations)
+                await ApplyAssociationIntentAsync(intent with
+                {
+                    OperationId = DriverEnforcement.AssociationOperationId(intent.OperationId, association.Id),
+                    GrantId = association.Id,
+                    Scope = new(association.UserId, association.CustomerId, association.Provenance)
+                }, ct);
+        }
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return operation;
+    }
+
+    private async Task<DriverLifecycleOperation> ApplyAssociationIntentAsync(DriverLifecycleIntent intent, CancellationToken ct)
+    {
         var existing = await db.Set<DriverLifecycleOperation>().AsNoTracking().SingleOrDefaultAsync(o => o.Id == intent.OperationId, ct);
         if (existing is not null)
         {
@@ -203,7 +234,6 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
                 .ExecuteUpdateAsync(update => update.SetProperty(c => c.UnavailableAt, intent.OriginalLossAt), ct);
         }
         await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
         return operation;
     }
 
@@ -213,10 +243,11 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         if (incarnation == Guid.Empty) throw new ArgumentException("A host incarnation is required.");
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
-        var enforcement = await journal.ReadAsync(access.Scope, ct);
+        var enforcement = await journal.ReadCurrentAsync(access.Scope, ct);
         if (!enforcement.Allows(access.Revision, access.Purpose)) return null;
         var grant = await LoadGrantAsync(access.Scope, ct);
-        if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose))
+        if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose)
+            || !await db.Users.AnyAsync(u => u.Id == access.Scope.UserId, ct))
             return null;
         var now = timeProvider.GetUtcNow();
         var admission = new DriverPublicationAdmission
@@ -245,6 +276,9 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
 
     public async Task<int> PendingWritersAsync(DriverLifecycleIntent intent, CancellationToken ct = default)
     {
+        if (intent.Kind == DriverLifecycleKind.DeleteUser)
+            return await db.DriverPublicationAdmissions.CountAsync(a => a.TerminalAt == null
+                && db.DriverAuthorizationGrants.Any(g => g.Id == a.GrantId && g.UserId == intent.Scope.UserId), ct);
         var revision = await db.Set<DriverLifecycleOperation>().Where(o => o.Id == intent.OperationId && o.GrantId == intent.GrantId)
             .Select(o => o.AppliedRevision).SingleAsync(ct);
         return await db.Set<DriverPublicationAdmission>().CountAsync(a => a.GrantId == intent.GrantId
@@ -254,6 +288,16 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
 
     public async Task CompleteOperationAsync(DriverLifecycleIntent intent, CancellationToken ct = default)
     {
+        if (intent.Kind == DriverLifecycleKind.DeleteUser)
+        {
+            var grants = await db.DriverAuthorizationGrants.AsNoTracking().Where(g => g.UserId == intent.Scope.UserId)
+                .Select(g => g.Id).ToListAsync(ct);
+            var ids = grants.Select(id => id == intent.GrantId ? intent.OperationId
+                : DriverEnforcement.AssociationOperationId(intent.OperationId, id)).ToArray();
+            await db.DriverLifecycleOperations.Where(o => ids.Contains(o.Id))
+                .ExecuteUpdateAsync(update => update.SetProperty(o => o.CompletedAt, timeProvider.GetUtcNow()), ct);
+            return;
+        }
         var rows = await db.Set<DriverLifecycleOperation>().Where(o => o.Id == intent.OperationId && o.GrantId == intent.GrantId)
             .ExecuteUpdateAsync(update => update.SetProperty(o => o.CompletedAt, timeProvider.GetUtcNow()), ct);
         if (rows != 1) throw new InvalidOperationException("Lifecycle completion has no matching primary operation.");
@@ -265,11 +309,12 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         if (Encoding.UTF8.GetByteCount(payload) > 16_384) throw new ArgumentException("The tracked copy exceeds its bounded size.");
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
-        var enforcement = await journal.ReadAsync(access.Scope, ct);
+        var enforcement = await journal.ReadCurrentAsync(access.Scope, ct);
         if (!enforcement.Allows(access.Revision, access.Purpose))
             throw new InvalidOperationException("Driver enforcement is unavailable.");
         var grant = await LoadGrantAsync(access.Scope, ct);
-        if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose))
+        if (grant is null || grant.Id != access.GrantId || grant.Revision != access.Revision || !IsAuthorized(grant, access.Purpose)
+            || !await db.Users.AnyAsync(u => u.Id == access.Scope.UserId, ct))
             throw new InvalidOperationException("Driver authorization is unavailable.");
         var copy = new DriverTrackedCopy
         {
