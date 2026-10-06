@@ -633,6 +633,10 @@ allowance or the high-water mark could be 0, since either would silently deny th
   (`MinimumRole` level ≤ user level), shared by `AdminService` and `SubjectDriverContext`. Unknown or role-less
   users receive Standard eligibility; an unknown `MinimumRole` fails closed.
 - `CachedIRacingClient` — mapped get-or-fetch over `IDataClient`; a miss requires an issued purpose and a preparation receipt captured before acquisition. Ordinary Real issuers remain unavailable. Commit failures propagate and cannot return fresh evidence. Over-length keys fail before fetching; input bounds belong on the `IRacingCacheKeys` factory (GHSA-jv96-89xc-98h2).
+- `WholeCohortCandidates` / `Core.WholeCohortBands` — offline synthetic review artifacts with joint
+  ranges and declared audience/owner variants. Before changing candidate grouping or review inputs,
+  read `docs/research/whole-cohort-publication-candidates.md`. These artifacts confer no catalog
+  admission, release reservation or protected dispatch.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
   a stored Real claim yields no authorized Subject Driver. Optional callers use
   `GetSubjectDriverCustIdAsync`; required callers use

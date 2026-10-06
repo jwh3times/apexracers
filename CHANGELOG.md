@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [13.0.2] - 2026-10-06
+
+### Added
+
+- Controlled synthetic whole-cohort publication candidates with fixed nested lap/rating bands,
+  distinct hidden-Driver support, permitted named and exact owner variants, and versioned risk-review
+  artifacts. Unknown or unreviewed contexts remain unavailable; actual catalog admission,
+  combined-release accounting and product dispatch integration remain separate gates.
+
 ## [13.0.0] - 2026-10-06
 
 ### Added
@@ -1547,7 +1556,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.2...HEAD
+[13.0.2]: https://github.com/jwh3times/apexracers/compare/v13.0.1...v13.0.2
 [13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0
 [12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0
 [11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0

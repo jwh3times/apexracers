@@ -1,0 +1,159 @@
+{
+  "artifactVersion": 1,
+  "catalogId": "synthetic-lap-rating-v1",
+  "schemaVersion": "whole-cohort-candidate-v1",
+  "scope": "synthetic-single-field-v1",
+  "status": "controlled-review-fixture-only",
+  "maintainerAdmission": "not-recorded",
+  "provenance": "Demo",
+  "cohortId": "catalog-v1-useful-synthetic-field",
+  "cohortRevision": 1,
+  "catalogRevision": 1,
+  "enforcementRevision": 1,
+  "source": "fabricated normalized measurements; no provider or external racing dataset",
+  "contributionUnit": "one Driver's normalized Race Best; owner variant separately declares its ranked Personal Best",
+  "fields": {
+    "hiddenGroups": [
+      "lapSeconds.range",
+      "absoluteRating.range"
+    ],
+    "namedRows": [
+      "driverName",
+      "lapSeconds.range",
+      "absoluteRating.range"
+    ],
+    "ownerAnalytics": [
+      "percentileRank"
+    ],
+    "range": [
+      "lowerInclusive",
+      "upperExclusive"
+    ]
+  },
+  "variants": [
+    {
+      "audience": "Visitor"
+    },
+    {
+      "audience": "SignedInPreview"
+    },
+    {
+      "audience": "SignedInPreview",
+      "ownerCustomerId": 1,
+      "ownerPersonalBestLapSeconds": "89.90"
+    }
+  ],
+  "internalFixtureMembers": [
+    {
+      "customerId": 1,
+      "lapSeconds": "90.10",
+      "absoluteRating": "1250",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 2,
+      "lapSeconds": "90.11",
+      "absoluteRating": "1251",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 3,
+      "lapSeconds": "90.12",
+      "absoluteRating": "1252",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 4,
+      "lapSeconds": "90.13",
+      "absoluteRating": "1253",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 5,
+      "lapSeconds": "90.14",
+      "absoluteRating": "1254",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 6,
+      "lapSeconds": "90.15",
+      "absoluteRating": "1255",
+      "sharingAudiences": [],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    },
+    {
+      "customerId": 7,
+      "driverName": "Synthetic Consenting Driver",
+      "lapSeconds": "90.20",
+      "absoluteRating": "1350",
+      "sharingAudiences": [
+        "SignedInPreview"
+      ],
+      "authorityRevision": 1,
+      "evidenceRevision": 1
+    }
+  ],
+  "expectedCandidate": {
+    "globalLevel": 0,
+    "hiddenGroups": [
+      {
+        "lapSeconds": {
+          "lowerInclusive": "90.0",
+          "upperExclusive": "90.5"
+        },
+        "absoluteRating": {
+          "lowerInclusive": "1250",
+          "upperExclusive": "1500"
+        }
+      }
+    ],
+    "visitorNamedRows": [],
+    "signedInPreviewNamedDriverNames": [
+      "Synthetic Consenting Driver"
+    ],
+    "ownerPercentileRank": "92.85714285714286",
+    "reviewOnly": true,
+    "admitted": false
+  },
+  "riskReview": {
+    "fieldsScopeAudience": "controlled synthetic supported; fixed fields and declared variants only",
+    "externalLinkage": "isolated fabricated fixture; no external named classification. A proposed real or externally linkable context remains unavailable pending its own review",
+    "priorAndOverlappingReleases": "isolated initial fixture; overlapping, pending and possibly dispatched publication accounting is unimplemented here and remains #374",
+    "totalsAndOwnerVariants": "no published totals/counts/positions; all declared owner/audience outputs assessed together. Exact owner percentile remains a composition input",
+    "invalidation": "any cohort, evidence, authority, catalog, enforcement or declared variant change requires a new assessment",
+    "negativeContexts": [
+      "unknown catalog/scope",
+      "unreviewed audience/owner",
+      "unsafe external linkage",
+      "unreviewed overlapping releases",
+      "stale dependency",
+      "Real or Unknown provenance",
+      "unsupported hidden support"
+    ]
+  },
+  "remainingGates": [
+    "maintainer catalog risk decision",
+    "atomic combined-release admission #374",
+    "current protected dispatch integration",
+    "integrated evidence #380",
+    "applicable live prerequisites and explicit activation"
+  ],
+  "claimsExcluded": [
+    "anonymity proof",
+    "processing permission",
+    "production catalog admission",
+    "live activation",
+    "complete PUB-10 acceptance"
+  ]
+}
