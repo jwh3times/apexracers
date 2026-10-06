@@ -36,14 +36,14 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         services.AddScoped(_ => new AppDbContext(dbOptions));
         services.AddIdentityCore<ApplicationUser>(o =>
         {
-            o.Password.RequireDigit          = false;
-            o.Password.RequiredLength        = 4;
+            o.Password.RequireDigit = false;
+            o.Password.RequiredLength = 4;
             o.Password.RequireNonAlphanumeric = false;
-            o.Password.RequireUppercase      = false;
-            o.User.RequireUniqueEmail        = true;
+            o.Password.RequireUppercase = false;
+            o.User.RequireUniqueEmail = true;
             // Identity's account-wide lockout stays off here exactly as it is in Program.cs.
             // Throttling is SignInThrottleStore's job now, and it counts per source address.
-            o.Lockout.AllowedForNewUsers      = false;
+            o.Lockout.AllowedForNewUsers = false;
         })
         .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<AppDbContext>()
@@ -84,12 +84,12 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         SignInThrottleOptions? throttleOptions = null)
     {
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
-        var db          = provider.GetRequiredService<AppDbContext>();
-        var config      = new ConfigurationBuilder()
+        var db = provider.GetRequiredService<AppDbContext>();
+        var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["JWT_SIGNING_KEY"] = "unit-test-signing-key-minimum-32-bytes-long!",
-                ["APP_BASE_URL"]    = "https://test.apexracers.gg"
+                ["APP_BASE_URL"] = "https://test.apexracers.gg"
             })
             .Build();
         // Bound the same way production binds it, so the tests exercise the real defaults rather
@@ -122,7 +122,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
     /// <summary>A stranger's address, and the account owner's. Distinct so a test can show that
     /// exhausting one leaves the other untouched.</summary>
     private const string Guesser = "203.0.113.7";
-    private const string Owner   = "198.51.100.20";
+    private const string Owner = "198.51.100.20";
 
     private static string FreshAddress(int i) => "10.0.0." + i;
 
@@ -333,9 +333,9 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var result = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Sub   && Guid.TryParse(c.Value, out _));
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Sub && Guid.TryParse(c.Value, out _));
         Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "driver@example.com");
-        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name  && c.Value == "driver");
+        Assert.Contains(jwt.Claims, c => c.Type == JwtRegisteredClaimNames.Name && c.Value == "driver");
         Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Standard");
     }
 
@@ -1022,13 +1022,21 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         var proofId = Guid.NewGuid();
         db.DriverProofReceipts.Add(new ApexRacers.Core.Models.DriverProofReceipt
         {
-            Id = proofId, UserId = user.Id, CustomerId = 100, Provenance = DataProvenance.Demo,
-            VerifiedAt = DateTimeOffset.UtcNow, Authority = "controlled-synthetic-proof",
+            Id = proofId,
+            UserId = user.Id,
+            CustomerId = 100,
+            Provenance = DataProvenance.Demo,
+            VerifiedAt = DateTimeOffset.UtcNow,
+            Authority = "controlled-synthetic-proof",
         });
         db.DriverAuthorizationGrants.Add(new ApexRacers.Core.Models.DriverAuthorizationGrant
         {
-            Id = Guid.NewGuid(), UserId = user.Id, CustomerId = 100, Provenance = DataProvenance.Demo,
-            ProofReceiptId = proofId, ProofValid = true,
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CustomerId = 100,
+            Provenance = DataProvenance.Demo,
+            ProofReceiptId = proofId,
+            ProofValid = true,
             PersonalConsentVersion = DriverAuthorizationPolicy.PersonalConsentVersion,
         });
         await db.SaveChangesAsync(ct);
@@ -1560,7 +1568,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var originalRefresh = reg.RefreshToken!;
 
         var refreshed = await svc.RefreshAsync(originalRefresh, TestContext.Current.CancellationToken);
@@ -1580,7 +1588,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
 
-        var reg     = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
+        var reg = await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
         var oldRefresh = reg.RefreshToken!;
 
         // Rotate once — this revokes oldRefresh
@@ -1648,7 +1656,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
@@ -1669,7 +1677,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         await RegisterAndSignInAsync(provider, svc, "driver@example.com", "Pass1234", TestContext.Current.CancellationToken);
 
@@ -2111,7 +2119,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         await RegisterAndSignInAsync(provider, svc, "revoke-email@example.com", "OldPass1", TestContext.Current.CancellationToken);
         var login = await svc.LoginAsync(new LoginRequest("revoke-email@example.com", "OldPass1"), null, TestContext.Current.CancellationToken);
@@ -2192,6 +2200,8 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
 
     private sealed class ControlledGrantJournal(bool hold) : IDriverEnforcementJournal
     {
+        public Task<DriverUserEnforcement> ReadUserAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult(new DriverUserEnforcement(true));
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async Task<DriverJournalState> ReadAsync(DriverScope scope, CancellationToken ct = default)
@@ -2212,7 +2222,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         // Register issues one token; six more logins is seven issuances total,
         // two past the cap of five.
@@ -2231,7 +2241,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         // One register + three logins = four active tokens, one under the cap.
         await RegisterAndSignInAsync(provider, svc, "under@example.com", "Pass1234", TestContext.Current.CancellationToken);
@@ -2248,7 +2258,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
         await using var provider = BuildProvider();
         await SeedRolesAsync(provider);
         var svc = BuildService(provider);
-        var db  = provider.GetRequiredService<AppDbContext>();
+        var db = provider.GetRequiredService<AppDbContext>();
 
         // Get to exactly the cap (five active tokens).
         await RegisterAndSignInAsync(provider, svc, "oldest@example.com", "Pass1234", TestContext.Current.CancellationToken);

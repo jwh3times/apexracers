@@ -116,14 +116,10 @@ public record FeatureFlagDto(
     DateTime UpdatedAt);
 
 public record TelemetryUploadResultDto(
+    bool Persisted,
     int TotalLaps,
     int ValidLaps,
-    double? BestLapSeconds,
-    string TrackName,
-    string? ConfigName,
-    string CarName,
-    long CustomerId,
-    string DriverName);
+    double? BestLapSeconds);
 
 /// <summary>
 /// One driver's best uploaded lap for a car at a track. Identified by <c>CarId</c> and

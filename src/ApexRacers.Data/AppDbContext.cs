@@ -21,6 +21,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
     public DbSet<Subsession> Subsessions => Set<Subsession>();
     public DbSet<SubsessionResult> SubsessionResults => Set<SubsessionResult>();
     public DbSet<UploadedLap> UploadedLaps => Set<UploadedLap>();
+    public DbSet<PrivateUploadSession> PrivateUploadSessions => Set<PrivateUploadSession>();
+    public DbSet<PrivateUploadedLap> PrivateUploadedLaps => Set<PrivateUploadedLap>();
     public DbSet<CarPercentileResult> CarPercentileResults => Set<CarPercentileResult>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<Track> Tracks => Set<Track>();

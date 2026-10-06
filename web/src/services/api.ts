@@ -35,14 +35,10 @@ export interface Series {
 }
 
 export interface TelemetryUploadResult {
+  persisted: boolean;
   totalLaps: number;
   validLaps: number;
   bestLapSeconds: number | null;
-  trackName: string;
-  configName: string | null;
-  carName: string;
-  customerId: number;
-  driverName: string;
 }
 
 export interface WeeklyPercentile {

@@ -26,6 +26,8 @@ using the `<major>.<minor>.<build>` format.
   the complete acceptance matrix; legacy Real Driver workflows remain unavailable meanwhile.
   Evidence writers now bind durable purpose/generation and source dependencies; remaining feature
   integrations, restore verification and deployed retention observations still gate live use.
+  Controlled private upload attribution, dormant recovery and User-wide deletion now have synthetic
+  PostgreSQL/HTTP evidence; ordinary real private workflows remain closed.
 - **Live iRacing data readiness:** keep the iRacing-backed surface gated until required
   service credentials and rollout checks are complete.
 - **Sign in with iRacing:** replace self-entered customer IDs with a verified OAuth

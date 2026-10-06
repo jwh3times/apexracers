@@ -107,6 +107,32 @@ internal static class LifecycleHost
                 new DriverConsent(DriverAuthorizationPolicy.PersonalConsentVersion), context.RequestAborted);
             return Results.Ok();
         });
+        AppDbContext UploadDb() => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options,
+            new IRacingDataScope(DataProvenance.Demo));
+        app.MapPost("/upload", async (HttpContext context, string? actor) =>
+        {
+            await using var db = UploadDb();
+            var scope = actor == "other" ? SyntheticLifecycleActors.Scope with { UserId = SyntheticLifecycleActors.Other }
+                : SyntheticLifecycleActors.Scope;
+            var authority = new DriverAuthorization(new(db, TimeProvider.System), journal, proof, TimeProvider.System);
+            var upload = new TelemetryUploadService(db, authority, new(db, TimeProvider.System, journal));
+            var form = await context.Request.ReadFormAsync(context.RequestAborted);
+            var file = form.Files.GetFile("file") ?? throw new ArgumentException("A synthetic file is required.");
+            var result = await upload.ProcessSyntheticAsync(file.OpenReadStream(), scope, context.RequestAborted);
+            context.Response.Headers.CacheControl = "no-store";
+            return Results.Json(result);
+        });
+        app.MapGet("/uploaded-bests/{id}", async (string id, string? actor, HttpContext context) =>
+        {
+            await using var db = UploadDb();
+            var scope = actor == "other" ? SyntheticLifecycleActors.Scope with { UserId = SyntheticLifecycleActors.Other }
+                : SyntheticLifecycleActors.Scope;
+            var store = new DriverAuthorityStore(db, TimeProvider.System);
+            var authority = new DriverAuthorization(store, journal, proof, TimeProvider.System);
+            var publication = new DriverPublication(authority, store, journal, incarnation, new HttpPublicationObserver(gates, id, admissions));
+            var result = await publication.ReadSyntheticUploadedBestsAsync(scope, new(db, TimeProvider.System, journal), context.RequestAborted);
+            await result.ExecuteResultAsync(new ActionContext { HttpContext = context });
+        });
         app.MapGet("/private/{id}", async (string id, string? actor, HttpContext context) =>
         {
             var scope = actor == "other" ? SyntheticLifecycleActors.Scope with { UserId = SyntheticLifecycleActors.Other }

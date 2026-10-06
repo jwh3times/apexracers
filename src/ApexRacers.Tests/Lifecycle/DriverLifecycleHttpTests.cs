@@ -8,6 +8,7 @@ using ApexRacers.Core.Models;
 using ApexRacers.Api.Services;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Xunit;
 
 namespace ApexRacers.Tests.Lifecycle;
@@ -88,13 +89,13 @@ public sealed class DriverLifecycleHttpTests(PostgreSqlFixture fixture)
             await test.GrantAsync();
             await using (var db = test.OpenPrimary())
             {
-                // Deliberately permissive pre-spine cache marker, not provider data or new admitted evidence.
-                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                // The migrated database also refuses an old writer without purpose metadata.
+                await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
                     INSERT INTO iracing."MappedDataCaches" ("Provenance", "CacheKey", "Payload", "FetchedAt", "ExpiresAt")
                     VALUES ({DataProvenance.Real}, {IRacingCacheKeys.Standings(1, 1).Key},
                         {"[{\"driverName\":\"forbidden-legacy-marker\",\"customerId\":123456}]"},
                         {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow.AddDays(1)})
-                    """, test.CancellationToken);
+                    """, test.CancellationToken));
             }
             using var forgedGrant = new HttpRequestMessage(HttpMethod.Post, "/grant-real");
             forgedGrant.Headers.Add("X-ApexRacers-Provenance", "Demo");

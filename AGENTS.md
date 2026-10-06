@@ -407,8 +407,10 @@ For lifecycle transitions, protected results, recovery or copy changes, read
 and Schedule retain independent access; other legacy controllers require Demo provenance, and
 Telemetry is unavailable in every namespace. Denied workflows return `503` ProblemDetails with
 `no-store`. Catalog detail and Schedule omit private upload overlays. Controlled User deletion
-refuses multi-association completion until User-wide journal orchestration exists; any recorded
-deletion tombstone prevents grants for that User across Customer IDs. The lifecycle migration creates empty
+records a User-wide independent veto, atomically closes all historical associations, and drains every
+affected writer; the tombstone prevents grants across Customer IDs. For upload attribution, dormant
+recovery, account erasure or owner analytics, read `docs/research/private-upload-lifecycle.md`.
+The lifecycle migration creates empty
 authorization tables and fences old claim writers without promoting any stored claim to ownership;
 recovery is forward-only. Synthetic implementation evidence does not establish live authorization
 or the complete publication/copy/restore acceptance matrix.
@@ -608,10 +610,10 @@ allowance or the high-water mark could be 0, since either would silently deny th
 - `RivalService` — follow/search (30 min/term)/suggestions (from shared `SubsessionResult` rows). A search term over `IRacingCacheKeys.MaxDriverSearchLength` (64) throws `ArgumentException` (→ 400) rather than searching, since the term is the only unbounded caller input reaching a cache key (GHSA-jv96-89xc-98h2); the endpoint is also rate-limited per user (see Rate limiting above).
 - `RivalComparisonService` (+ pure `SharedRaceAnalysis`) — assembles the head-to-head DTO.
 - `CarCatalogService` / `TrackCatalogService` (+ pure `CarCatalogMapper` / `TrackCatalogMapper`) — catalog read from the **persisted** `Car`/`Track` tables; no creds at read time. Lists omit retired entries, while ID-based detail keeps them reachable with their class relationships. Private Uploaded Best overlays are omitted pending protected Driver integration.
-- `UploadedBestQuery` — shared per-car-and-track Uploaded Best projection (fastest or most-recent
-  order), used by `UploadedLapService` and the catalog services' overlays instead of each holding
-  its own copy. It sees Uploaded Laps only — a Personal Best also weighs the Race Best. See
-  `dotnet-api` for the two invariants it enforces.
+- `UploadedBestQuery` — retained legacy per-car-and-track Uploaded Best projection (fastest or
+  most-recent order). Its raw `UploadedLap` scope establishes no private read authority; current
+  owner reads use `PrivateUploadStore` through protected `DriverPublication` dispatch. See
+  `dotnet-api` for the legacy projection invariants.
 - `ExternalDataCacheCleanupService` — reconciles durable copy deadlines, erases unclassified payloads and expires explanatory proof authority every thirty minutes; see the copy-writer inventory below.
 - `AuthService` — registration, login, JWT issuance, profile/password/email-change, and reset; delegates the refresh-token lifecycle to `RefreshTokenStore`, known-device recognition to `KnownDeviceStore`, and sign-in brute-force protection to `SignInThrottleStore`/`Core.SignInThrottle` (per (account, source address) or per known device — Identity's own lockout is off; see `dotnet-api`). `LoginAsync` is a thin wrapper over `SignInAsync`, which also resolves a caller-presented known-device cookie (issue #314) and returns a `SignInOutcome` carrying the cookie value to set; that value is deliberately not a field on `AuthResultDto`, so it can only reach the client as the `HttpOnly` cookie `AuthController` writes, never through the response body. Password change, password reset, and email-change forget every known device (`KnownDeviceStore.ForgetAllAsync`) alongside revoking refresh tokens. Needs `AddDefaultTokenProviders()`. Registration returns **nothing** and emails a confirmation link; sign-in is refused until the address is confirmed, with the same generic result an unknown address gets, so neither the response nor a follow-up sign-in reveals whether an address already has an account. Anything that creates an account outside registration must set `EmailConfirmed` — see `dotnet-api` for the full rule set. The JWT contract (signing key, issuer, audience) is bound once as `JwtSettings` (`Program.cs`), which builds both the issuing side's `SigningCredentials` (used by `AuthService`) and the validating side's `TokenValidationParameters` and enforces a minimum signing-key length at startup — see `dotnet-api` for the rule.
 - `AdminSeedService` — startup promotion from `ADMIN_SEED_EMAILS` requires a confirmed account email; missing or unconfirmed accounts are skipped and existing Admin memberships are preserved. Role replacement is transactional; failed Identity operations abort startup. Ordinary registration now satisfies the confirmation requirement, since an account cannot sign in until its address is confirmed.
@@ -619,11 +621,12 @@ allowance or the high-water mark could be 0, since either would silently deny th
 - `SignInThrottleStore` — the persistence half of the sixth shared boundary rule above: reads and records the failure counters `Core.SignInThrottle` decides on. `ClaimAttemptAsync` claims one attempt with a single atomic upsert **before** the password is checked, so a concurrent burst against one address gets distinct counts rather than every request reading the same stale one and all passing the gate; a refused attempt records nothing, so a caller can't hold its own window open by continuing to knock. `NoteFailureAsync` takes a nullable address — null when the attempt was throttled against a known device instead, in which case it takes the device's own exhaustion flag since this store cannot see a device's counter — and paces the owner's "someone is guessing" notice to one per account per `SignInThrottleOptions.NoticeInterval`. `SignInThrottleCleanupService` purges address/account rows once their window plus a grace period has passed, and known-device rows once their own `ExpiresAt` passes (no grace period — recognition has genuinely lapsed).
 - `KnownDeviceStore` (+ `KnownDeviceCookie`) — the persistence half of the known-device exemption (issue #314). `RecogniseAsync` resolves a presented cookie value to a device by its hash alone, **before** any account lookup, so recognition cost never varies with whether the named address has an account; `ClaimAttemptAsync` is a single atomic `UPDATE … RETURNING`, mirroring `SignInThrottleStore.ClaimAttemptAsync`'s reasoning; `RememberAsync` renews an existing device in place or mints a new one only after a password has actually been verified, then evicts this account's least-recently-seen device past the 10-device cap. `KnownDeviceCookie` is the single owner of the cookie's name (`__Host-apexracers_device`, `Secure`/`HttpOnly`/`SameSite=Strict`/root `Path` wherever the environment can be secure; the unprefixed `apexracers_device` only in Development over plain HTTP) and is the only reader/writer — see `dotnet-api` for why the `__Host-` prefix and the environment-keyed `Secure` flag are load-bearing rather than cosmetic.
 - `IEmailSender` / `AcsEmailSender` / `LoggingEmailSender` / `FileDropEmailSender` (+ pure `AccountEmailTemplates`, `EmailDelivery`) — transactional email over the `OutboundEmail` DTO; links built from `APP_BASE_URL`. `AccountEmailTemplates` also owns the account-confirmation and duplicate-registration messages, which are how a registration outcome the HTTP response withholds reaches the mailbox owner. `EmailDelivery.Select` owns which sender binds: a `DEV_MAIL_DROP_PATH` directory wins (each email written there as JSON — Development only, and startup **fails** if it is set anywhere else), else ACS when configured, else bounded delivery-status logging. Account links carry single-use credentials and are never logged, and no endpoint ever returns one — see `dotnet-api` for the rule. The one exception to sending inline: `AccountEmailTemplates.SuspiciousSignInAttempts` (the sign-in throttle's owner notice) goes through `IOutboundEmailQueue`/`OutboundEmailQueue`, drained outside the request by `OutboundEmailDispatcher` — an inline send there would cost real accounts a mail round trip that unknown addresses never pay, reopening the account-existence oracle by latency or by a 500 on mail failure.
-- `TelemetryUploadService`, `UploadedLapService` — retained internal parsing/persistence and
-  Uploaded Best queries; HTTP access is fenced before model binding. Internal recorder/claim and
-  catalog checks precede persistence, but do not establish verified attribution or consent. The
-  retained controller file-size check and multipart bounds are defense layers for a future
-  authorized workflow, not reachable upload outcomes under the current guard.
+- `TelemetryUploadService` — transient non-identifying preview; its controlled synthetic seam
+  requires verified Personal authority before parsing and persists through `PrivateUploadStore`.
+  `UploadedLapService` refuses legacy User-ID-only reads. HTTP access remains fenced before model
+  binding; retained controller size/multipart bounds apply only if an authorized workflow reopens.
+- `PrivateUploadStore` — typed verified-owner persistence, dormant recovery and source-backed owner
+  analytics under Driver/copy coordination; protected publication belongs to `DriverPublication`.
 - `AdminService` — role + flag CRUD; delegates active-flag resolution to `FeatureFlagEligibility`.
   Users are **single-role** (`Standard` < `Beta` < `Alpha` < `Admin`).
 - `FeatureFlagEligibility` — single owner of the role hierarchy and active-flag eligibility
@@ -659,7 +662,8 @@ indexes, FK/`OnDelete` behavior).
 | `DriverTrackedCopy` / `DriverCopyCleanup` | Purpose/generation-bound copies and durable earliest-deadline cleanup work |
 | `EvidencePurpose` / `EvidenceCopyMarker` / `EvidenceCopyDependency` | Issued purpose scope, durable copy versions/original clocks, and contributing-source bindings |
 | `AuthorizedDriverNameCopy` | Name material bound to a current authorization grant and its revision |
-| `UploadedLap`                                                        | one Uploaded Lap — every timed lap of a Telemetry Upload; `DriverCustId` is the Driver the file named (null = not established)                                                                                                                            |
+| `PrivateUploadSession` / `PrivateUploadedLap` | Typed verified-owner source and cascading Timed Laps, bound to original User/Driver/provenance and an evidence-copy marker |
+| `UploadedLap`                                                        | Legacy claim-attributed Uploaded Lap; `DriverCustId` is the Driver the file named (null = not established); not promoted into verified private sources |
 | `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
 | `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
@@ -693,7 +697,9 @@ Three ways iRacing data reaches a read path. Pick deliberately:
 2. **On-demand cache** (`CachedIRacingClient` → `ExternalDataCache`): fetch live per request, memoize
    **mapped DTOs** as JSON with a per-call TTL. Backs progression, profile, race history, lap data,
    world records, leaderboards, standings, race guide, driver search.
-3. **Persisted user-owned data** (not from iRacing): `UploadedLap`, `Rival`, `CarPercentileResult`, Identity.
+3. **Persisted user-owned data**: typed `PrivateUploadSession` / `PrivateUploadedLap` under verified
+   Personal authority, legacy `UploadedLap`, `Rival`, `CarPercentileResult`, Identity. Stored User or
+   Driver identifiers alone do not authorize reading this material.
 
 Choose **persist (#1)** if you need to query/filter/aggregate/join it in SQL, it's canonical/shared, or
 you need point-in-time history. Choose **cache (#2)** for read-mostly, staleness-tolerant, per-user/-query

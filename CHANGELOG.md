@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [13.0.0] - 2026-10-06
+
+### Added
+
+- Controlled synthetic private uploads with verified personal attribution, protected all-time
+  Uploaded Best reads, and exact owner percentile arithmetic tied to retained sources.
+
+### Changed
+
+- **Breaking:** Telemetry upload previews now return persistence status, lap counts and best time
+  without recorder identity or catalog labels. Private persistence requires verified ownership and
+  current Personal consent. Forward-only migrations separate retained enforcement history from
+  accounts and require completed User-wide withdrawal and drained writers before account erasure.
+
+### Security
+
+- Update the frontend toolchain's transitive `source-map-js` dependency to 1.2.2 to address
+  the indexed source-map denial-of-service advisory GHSA-68fv-2mgg-jv7q.
+- End dormant recovery at day 90 and physically reconcile removal by day 97; preserve original
+  clocks across fresh proof, retries and restart. User deletion vetoes all historical associations,
+  drains their writers and removes account/private live copies within the seven-day ceiling while
+  reporting the fourteen-day backup deadline separately from unverified backup expiry.
+- Claims and recorder IDs cannot authorize persistence or private reads. Unverified previews
+  contain no identifying fields, raw streams are disposed, and PostgreSQL fences typed personal
+  sources against stale writes, attribution changes and source-derived reuse. New contributions
+  invalidate older owner summaries and suppress best/percentile output prepared before an
+  intervening upload, including previously empty inventories. Ordinary Telemetry
+  HTTP access remains unavailable pending real proof/journal integration.
+
 ## [12.0.0] - 2026-10-05
 
 ### Added
@@ -1518,7 +1547,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v12.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.0...HEAD
+[13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0
 [12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0
 [11.0.0]: https://github.com/jwh3times/apexracers/compare/v10.0.2...v11.0.0
 [10.0.2]: https://github.com/jwh3times/apexracers/compare/v10.0.1...v10.0.2

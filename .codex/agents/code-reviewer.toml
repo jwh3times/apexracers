@@ -59,9 +59,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 
 **Uploaded Best projection**
 
-- Flag any hand-rolled per-car-and-track Uploaded Best grouping (`UploadedLap` grouped by car/track with `Min`/`Count`/`Max`) instead of a call to `UploadedBestQuery.RunAsync`.
+- Flag any hand-rolled legacy per-car-and-track grouping (`UploadedLap` grouped by car/track with `Min`/`Count`/`Max`) instead of `UploadedBestQuery.RunAsync`. This rule does not substitute that raw projection for authorized typed-private reads.
 - Flag any validity/timed predicate applied to an `UploadedLap` scope. Every persisted Uploaded Lap is
-  already a Timed Lap because the upload service rejects untimed parser rows before insertion; the
+  already a Timed Lap because the historical upload writer rejected untimed parser rows before insertion; the
   removed `IsValidLap` flag and a replacement constant predicate both misrepresent that invariant.
 
 **Track identity**
@@ -211,6 +211,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag claim/schema rollback that restores old writers, claim-to-proof backfill, or direct profile
   reassignment around an active authorization binding. Independent catalog output intentionally
   omits private upload overlays while their integration is unavailable.
+- For typed private upload or User-deletion changes, apply docs/research/private-upload-lifecycle.md:
+  flag recorder-only attribution, a refreshed dormant clock, partial historical-association drain,
+  a raw User deletion bypass, or live erasure reported as verified backup expiry. Legacy projection
+  helpers must not bypass current authority/source checks and protected owner dispatch.
 
 ## Frontend checks
 

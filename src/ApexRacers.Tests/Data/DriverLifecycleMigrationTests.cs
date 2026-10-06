@@ -99,51 +99,79 @@ public sealed class DriverLifecycleMigrationTests(PostgreSqlFixture postgres)
         var loss = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var operation = new DriverLifecycleOperation
         {
-            Id = Guid.NewGuid(), GrantId = grant.Id, Kind = DriverLifecycleKind.Unlink,
-            OriginalLossAt = loss, AppliedRevision = 2, PrimaryAppliedAt = loss.AddDays(1),
+            Id = Guid.NewGuid(),
+            GrantId = grant.Id,
+            Kind = DriverLifecycleKind.Unlink,
+            OriginalLossAt = loss,
+            AppliedRevision = 2,
+            PrimaryAppliedAt = loss.AddDays(1),
         };
         db.DriverLifecycleOperations.Add(operation);
         db.DriverPublicationAdmissions.Add(new DriverPublicationAdmission
         {
-            Id = Guid.NewGuid(), GrantId = grant.Id, Revision = 1, Purpose = DriverConsentScope.Personal,
-            Incarnation = Guid.NewGuid(), AdmittedAt = loss.AddMinutes(-5), LeaseUntil = loss,
+            Id = Guid.NewGuid(),
+            GrantId = grant.Id,
+            Revision = 1,
+            Purpose = DriverConsentScope.Personal,
+            Incarnation = Guid.NewGuid(),
+            AdmittedAt = loss.AddMinutes(-5),
+            LeaseUntil = loss,
         });
         await db.SaveChangesAsync(Ct);
 
         db.DriverCopyCleanups.Add(new DriverCopyCleanup
         {
-            Id = Guid.NewGuid(), OperationId = operation.Id, GrantId = otherGrant.Id,
-            Purpose = DriverConsentScope.Personal, OriginalLossAt = loss, DueAt = loss.AddDays(97),
+            Id = Guid.NewGuid(),
+            OperationId = operation.Id,
+            GrantId = otherGrant.Id,
+            Purpose = DriverConsentScope.Personal,
+            OriginalLossAt = loss,
+            DueAt = loss.AddDays(97),
         });
         await AssertSqlStateAsync(db, PostgresErrorCodes.ForeignKeyViolation);
 
         db.DriverCopyCleanups.Add(new DriverCopyCleanup
         {
-            Id = Guid.NewGuid(), OperationId = operation.Id, GrantId = grant.Id,
-            Purpose = DriverConsentScope.Personal, ThroughRevision = 0,
-            OriginalLossAt = loss, DueAt = loss.AddDays(97),
+            Id = Guid.NewGuid(),
+            OperationId = operation.Id,
+            GrantId = grant.Id,
+            Purpose = DriverConsentScope.Personal,
+            ThroughRevision = 0,
+            OriginalLossAt = loss,
+            DueAt = loss.AddDays(97),
         });
         await AssertSqlStateAsync(db, PostgresErrorCodes.CheckViolation);
 
         db.DriverCopyCleanups.Add(new DriverCopyCleanup
         {
-            Id = Guid.NewGuid(), OperationId = operation.Id, GrantId = grant.Id,
-            Purpose = DriverConsentScope.Personal, OriginalLossAt = loss.AddDays(1), DueAt = loss.AddDays(98),
+            Id = Guid.NewGuid(),
+            OperationId = operation.Id,
+            GrantId = grant.Id,
+            Purpose = DriverConsentScope.Personal,
+            OriginalLossAt = loss.AddDays(1),
+            DueAt = loss.AddDays(98),
         });
         await AssertSqlStateAsync(db, PostgresErrorCodes.ForeignKeyViolation);
 
         db.DriverCopyCleanups.Add(new DriverCopyCleanup
         {
-            Id = Guid.NewGuid(), OperationId = operation.Id, GrantId = grant.Id,
-            Purpose = DriverConsentScope.Personal, OriginalLossAt = loss, DueAt = loss.AddDays(97),
+            Id = Guid.NewGuid(),
+            OperationId = operation.Id,
+            GrantId = grant.Id,
+            Purpose = DriverConsentScope.Personal,
+            OriginalLossAt = loss,
+            DueAt = loss.AddDays(97),
         });
         await db.SaveChangesAsync(Ct);
         Assert.Equal(loss, (await db.DriverCopyCleanups.SingleAsync(Ct)).OriginalLossAt);
         Assert.Null((await db.DriverPublicationAdmissions.SingleAsync(Ct)).TerminalAt);
         Assert.Null((await db.DriverLifecycleOperations.SingleAsync(Ct)).CompletedAt);
-        var accountRemoval = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+        var erase = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
             "DELETE FROM identity.\"Users\" WHERE \"Id\" = {0}", [user.Id], Ct));
-        Assert.Equal(PostgresErrorCodes.RestrictViolation, accountRemoval.SqlState);
+        Assert.Equal(PostgresErrorCodes.CheckViolation, erase.SqlState);
+        Assert.True(await db.Users.AnyAsync(u => u.Id == user.Id, Ct));
+        Assert.Equal(2, await db.DriverProofReceipts.CountAsync(Ct));
+        Assert.Null((await db.DriverPublicationAdmissions.SingleAsync(Ct)).TerminalAt);
         Assert.Single(await db.DriverLifecycleOperations.ToListAsync(Ct));
     }
 
@@ -158,13 +186,22 @@ public sealed class DriverLifecycleMigrationTests(PostgreSqlFixture postgres)
     private static ApplicationUser NewUser() => new() { Id = Guid.NewGuid(), DisplayName = "Synthetic owner" };
     private static DriverProofReceipt Receipt(Guid userId, int customerId, DataProvenance provenance) => new()
     {
-        Id = Guid.NewGuid(), UserId = userId, CustomerId = customerId, Provenance = provenance,
-        VerifiedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero), Authority = "synthetic-test",
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        CustomerId = customerId,
+        Provenance = provenance,
+        VerifiedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        Authority = "synthetic-test",
     };
     private static DriverAuthorizationGrant Grant(Guid receiptId, Guid userId, int customerId, DataProvenance provenance) => new()
     {
-        Id = Guid.NewGuid(), ProofReceiptId = receiptId, UserId = userId, CustomerId = customerId,
-        Provenance = provenance, ProofValid = true, PersonalConsentVersion = "synthetic-v1",
+        Id = Guid.NewGuid(),
+        ProofReceiptId = receiptId,
+        UserId = userId,
+        CustomerId = customerId,
+        Provenance = provenance,
+        ProofValid = true,
+        PersonalConsentVersion = "synthetic-v1",
     };
     private static async Task AssertSqlStateAsync(AppDbContext db, string state)
     {

@@ -55,16 +55,15 @@ describe('TelemetryPage', () => {
     expect(screen.getByText(/parsing telemetry/i)).toBeInTheDocument();
   });
 
-  it('shows upload result with driver name and lap count', async () => {
+  it.each([
+    [true, 'Saved to your private laps'],
+    [false, 'Preview only — laps were not saved'],
+  ])('shows persistence status %s without recorder identity', async (persisted, message) => {
     mockUpload.mockResolvedValue({
+      persisted,
       totalLaps: 15,
       validLaps: 12,
       bestLapSeconds: 131.5,
-      trackName: 'Spa-Francorchamps',
-      configName: 'Full',
-      carName: 'Porsche 992 GT3',
-      customerId: 99999,
-      driverName: 'Jerry Holland',
     });
     await renderPage();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -72,7 +71,7 @@ describe('TelemetryPage', () => {
     await userEvent.upload(input, file);
     await waitFor(() => {
       expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
-      expect(screen.getByText(/jerry holland/i)).toBeInTheDocument();
+      expect(screen.getByText(message)).toBeInTheDocument();
       expect(screen.getByText(/12 valid/i)).toBeInTheDocument();
     });
   });
@@ -102,14 +101,10 @@ describe('TelemetryPage', () => {
 
   it('still uploads the acceptable files alongside an oversized one', async () => {
     mockUpload.mockResolvedValue({
+      persisted: false,
       totalLaps: 3,
       validLaps: 3,
       bestLapSeconds: 90.5,
-      trackName: 'Watkins Glen',
-      configName: null,
-      carName: 'Ferrari 296 GT3',
-      customerId: 12345,
-      driverName: 'Jerry Holland',
     });
     await renderPage();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;

@@ -19,6 +19,7 @@ This directory contains public, contributor-safe project documentation.
 | [research/driver-publication-drain-rehearsal.md](research/driver-publication-drain-rehearsal.md) | Executable two-process Kestrel/PostgreSQL transport rehearsal, failure outcomes, reproduction commands and limits of its synthetic evidence. |
 | [research/driver-lifecycle-admission-spine.md](research/driver-lifecycle-admission-spine.md) | Implemented journal-first lifecycle, protected-writer admission, legacy route fences and forward-only schema boundary, with synthetic evidence and remaining integration limits. |
 | [research/driver-copy-writer-inventory.md](research/driver-copy-writer-inventory.md) | Participating evidence writers, durable purpose/generation/source fences, historical collection and synthetic cleanup evidence, with controlled cutover and deployed retention limits. |
+| [research/private-upload-lifecycle.md](research/private-upload-lifecycle.md) | Verified synthetic upload attribution, dormant recovery and User-wide deletion, typed source/derivative fences, protected owner HTTP evidence and remaining real/backup limits. |
 | [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |

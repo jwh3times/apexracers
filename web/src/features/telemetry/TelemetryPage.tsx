@@ -66,11 +66,9 @@ function FileRow({ item }: { item: FileStatus }) {
       {item.status === 'done' && item.result && (
         <div className="ml-6 flex flex-col gap-1">
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {item.result.driverName} &mdash; {item.result.carName}
-          </p>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {item.result.trackName}
-            {item.result.configName ? ` — ${item.result.configName}` : ''}
+            {item.result.persisted
+              ? 'Saved to your private laps'
+              : 'Preview only — laps were not saved'}
           </p>
           <div className="flex items-center gap-4 mt-0.5">
             <span className="font-body-sm text-body-sm text-on-surface-variant">

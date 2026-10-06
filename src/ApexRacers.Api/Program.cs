@@ -240,6 +240,7 @@ builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipP
 builder.Services.AddSingleton<IDriverEnforcementJournal, UnavailableDriverEnforcementJournal>();
 builder.Services.AddScoped<DriverAuthorityStore>();
 builder.Services.AddScoped<DriverAuthorization>();
+builder.Services.AddScoped<PrivateUploadStore>();
 builder.Services.AddScoped<CopyLifecycle>();
 var driverHostIncarnation = Guid.NewGuid();
 builder.Services.AddScoped(sp => new DriverPublication(

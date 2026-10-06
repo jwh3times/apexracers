@@ -63,6 +63,7 @@ public sealed class EvidenceCopyLifecycleTests(PostgreSqlFixture postgres)
         db.Users.Add(user);
         await db.SaveChangesAsync(Ct);
         var journal = Substitute.For<IDriverEnforcementJournal>();
+        journal.ReadUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new DriverUserEnforcement(true));
         journal.ReadAsync(Arg.Any<DriverScope>(), Arg.Any<CancellationToken>()).Returns(new DriverJournalState(true, 0, []));
         var store = new DriverAuthorityStore(db, clock);
         var scope = new DriverScope(user.Id, 42001, DataProvenance.Demo);
@@ -136,6 +137,7 @@ public sealed class EvidenceCopyLifecycleTests(PostgreSqlFixture postgres)
         await using var db = Demo(options);
         await CatalogAsync(db);
         var journal = Substitute.For<IDriverEnforcementJournal>();
+        journal.ReadUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new DriverUserEnforcement(true));
         journal.ReadAsync(Arg.Any<DriverScope>(), Arg.Any<CancellationToken>()).Returns(new DriverJournalState(true, 0, []));
         var user = new ApplicationUser { Id = Guid.NewGuid(), DisplayName = "Synthetic owner" };
         db.Users.Add(user);

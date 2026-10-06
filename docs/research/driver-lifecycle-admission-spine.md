@@ -45,9 +45,10 @@ proof/revocation and explicit deletion close both scopes. Routine provider expir
 manufacture a withdrawal. Regrant requires current proof/consent, cannot contract scope outside
 the journal-first lifecycle, cannot restore explicit deletion, and cannot restore dormant personal
 data at or after day 90. A deletion tombstone prevents grants for the same User across Customer IDs.
-The controlled deletion transition is unavailable when the User has multiple historical associations;
-it cannot acknowledge only one association as a completed User deletion. User-wide journal orchestration
-remains required before that account workflow becomes available. New generations do not reset old cleanup clocks. Old cleanup is bounded
+The subsequent [private upload lifecycle](private-upload-lifecycle.md) implements controlled User-wide
+journal orchestration across all historical associations. Its User deletion drains every association
+and permanently vetoes grants across Customer IDs, including after journal reconciliation. Explicit
+fresh collection after day 90 restores no dormant copies. New generations do not reset old cleanup clocks. Old cleanup is bounded
 to its affected copy revisions and cannot erase later authorized generations.
 
 ## Legacy paths and migration
@@ -56,8 +57,9 @@ Legacy Driver routes that have not joined protected dispatch are unavailable for
 scope, including warm-cache and arbitrary-ID calls. A global MVC resource filter applies before
 binding. Demo Driver routes retain their synthetic behavior. The legacy telemetry upload/lap
 workflow remains unavailable because recorder IDs and claims cannot establish attributed
-persistence or personal use; its full integration belongs to #372. Independent catalog/account
-routes remain available. Car/Track metadata and Schedule exclude private upload overlays pending integration.
+persistence or personal use. #372 adds a separate verified synthetic upload store and protected owner
+publication seam; ordinary product Telemetry routes remain closed. Independent catalog/account
+routes remain available. Car/Track metadata and Schedule exclude private upload overlays pending product integration.
 Schedule's retained `HasUploadedLapAtTrack` field is always false and does not query private laps.
 The old Subject Driver resolver no longer derives Real permission from a stored claim. Changing a
 claim while an active verified association exists requires the lifecycle rather than a profile edit.

@@ -489,14 +489,10 @@ describe('api', () => {
   describe('uploadTelemetry', () => {
     it('calls POST /api/telemetry/upload with FormData containing the file', async () => {
       const result = {
+        persisted: false,
         totalLaps: 10,
         validLaps: 8,
         bestLapSeconds: 130.5,
-        trackName: 'Spa',
-        configName: 'Full',
-        carName: 'Porsche',
-        customerId: 12345,
-        driverName: 'Jerry',
       };
       mockFetchOk(result);
       const file = new File(['data'], 'session.ibt');
@@ -505,7 +501,7 @@ describe('api', () => {
         '/api/telemetry/upload',
         expect.objectContaining({ method: 'POST', body: expect.any(FormData) })
       );
-      expect(output.driverName).toBe('Jerry');
+      expect(output).toEqual(result);
     });
 
     it('throws with server error body on failure', async () => {

@@ -48,25 +48,8 @@ public class TelemetryController(
         if (userId is null)
             return Unauthorized();
 
-        try
-        {
-            using var stream = file.OpenReadStream();
-            var result = await uploadService.ProcessAsync(stream, userId.Value, ct);
-
-            return Ok(new TelemetryUploadResultDto(
-                result.TotalLaps,
-                result.ValidLaps,
-                result.BestLapSeconds,
-                result.TrackName,
-                ConfigurationName.NullIfAbsent(result.ConfigName),
-                result.CarName,
-                result.CustomerId,
-                result.DriverName));
-        }
-        catch (InvalidDataException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await uploadService.ProcessAsync(file.OpenReadStream(), userId.Value, ct);
+        return Ok(new TelemetryUploadResultDto(result.Persisted, result.TotalLaps, result.ValidLaps, result.BestLapSeconds));
     }
 
     [HttpGet("laps")]

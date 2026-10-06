@@ -34,6 +34,16 @@ public sealed class DriverPublication(
         return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer);
     }
 
+    public async Task<IActionResult> ReadSyntheticUploadedBestsAsync(DriverScope scope, PrivateUploadStore uploads,
+        CancellationToken ct = default)
+    {
+        if (scope.Provenance != DataProvenance.Demo) return Unavailable();
+        var access = await authority.ResolveAsync(scope, DriverConsentScope.Personal, ct);
+        if (access is null) return Unavailable();
+        var snapshot = await uploads.ReadSnapshotAsync(access, ct);
+        return new ProtectedPrivateUploadResult(access, snapshot, uploads, store, journal, incarnation, observer);
+    }
+
     private static ObjectResult Unavailable() => new UnavailableDriverResult();
 
     private sealed class UnavailableDriverResult() : ObjectResult(new ProblemDetails
@@ -51,6 +61,43 @@ public sealed class DriverPublication(
     }
 }
 
+internal sealed class ProtectedPrivateUploadResult(DriverAccess access, PrivateUploadSnapshot snapshot, PrivateUploadStore uploads,
+    DriverAuthorityStore store, IDriverEnforcementJournal journal, Guid incarnation, IDriverPublicationObserver? observer) : IActionResult
+{
+    public async Task ExecuteResultAsync(ActionContext context)
+    {
+        var http = context.HttpContext;
+        var ct = http.RequestAborted;
+        http.Response.Headers.CacheControl = "no-store";
+        var payload = JsonSerializer.SerializeToUtf8Bytes(snapshot.Bests, JsonSerializerOptions.Web);
+        if (payload.Length > 262_144) throw new InvalidOperationException("Protected output exceeds its bound.");
+        await PhaseAsync("before-admission", Guid.Empty, ct);
+        var admission = await store.AdmitAsync(access, incarnation, journal, ct);
+        if (admission is null) { http.Response.StatusCode = 503; return; }
+        try
+        {
+            await PhaseAsync("admitted", admission.Id, ct);
+            if (!(await journal.ReadCurrentAsync(access.Scope, ct)).Allows(access.Revision, access.Purpose)
+                || !await uploads.SnapshotCurrentAsync(access, snapshot, ct))
+            { http.Response.StatusCode = 503; return; }
+            http.Response.ContentType = "application/json";
+            await http.Response.Body.WriteAsync(payload, ct);
+            await http.Response.Body.FlushAsync(ct);
+            await PhaseAsync("first-written", admission.Id, ct);
+            await http.Response.CompleteAsync();
+        }
+        catch { http.Abort(); throw; }
+        finally
+        {
+            using var terminalTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await PhaseAsync("transport-ended", admission.Id, terminalTimeout.Token);
+            await store.CheckpointAsync(admission.Id, incarnation, terminalTimeout.Token);
+            await PhaseAsync("checkpointed", admission.Id, terminalTimeout.Token);
+        }
+    }
+    private Task PhaseAsync(string phase, Guid id, CancellationToken ct) => observer?.PhaseAsync(phase, id, ct) ?? Task.CompletedTask;
+}
+
 internal sealed class ProtectedDriverResult(
     DriverAccess access, DriverAuthorityStore store, IDriverEnforcementJournal journal,
     Guid incarnation, IDriverPublicationObserver? observer) : IActionResult
@@ -61,7 +108,7 @@ internal sealed class ProtectedDriverResult(
         var ct = http.RequestAborted;
         http.Response.Headers.CacheControl = "no-store";
         await PhaseAsync("before-admission", Guid.Empty, ct);
-        var state = await journal.ReadAsync(access.Scope, ct);
+        var state = await journal.ReadCurrentAsync(access.Scope, ct);
         if (!state.Allows(access.Revision, access.Purpose)) { http.Response.StatusCode = 503; return; }
         var admission = await store.AdmitAsync(access, incarnation, journal, ct);
         if (admission is null) { http.Response.StatusCode = 503; return; }
@@ -70,7 +117,7 @@ internal sealed class ProtectedDriverResult(
             await PhaseAsync("admitted", admission.Id, ct);
             // Journal-first intent can appear before primary closure. Recheck at the final unsent
             // boundary; already admitted active transport remains part of the drain protocol.
-            state = await journal.ReadAsync(access.Scope, ct);
+            state = await journal.ReadCurrentAsync(access.Scope, ct);
             var current = await store.ResolveAsync(access.Scope, access.Purpose, ct);
             if (!state.Allows(access.Revision, access.Purpose) || current is null || current.Revision != access.Revision)
             { http.Response.StatusCode = 503; return; }
