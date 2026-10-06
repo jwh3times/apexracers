@@ -176,6 +176,7 @@ internal sealed class LifecycleTopology(
             try
             {
                 var snapshot = await topology.SnapshotAsync();
+                await using var copies = topology.OpenPrimary();
                 state = new
                 {
                     GrantCount = snapshot.Grants.Length,
@@ -194,6 +195,8 @@ internal sealed class LifecycleTopology(
                     Admissions = snapshot.Admissions.Select(a => new { a.Id, a.Revision, a.Purpose, a.Incarnation, a.AdmittedAt, a.LeaseUntil, a.TerminalAt }),
                     CopyCount = snapshot.Copies.Length,
                     UnavailableCopyCount = snapshot.Copies.Count(c => c.UnavailableAt is not null),
+                    PrivateUploadSessionCount = await copies.PrivateUploadSessions.CountAsync(ct),
+                    PrivateUploadedLapCount = await copies.PrivateUploadedLaps.CountAsync(ct),
                 };
             }
             catch (Exception error) when (!passed && error is NpgsqlException or OperationCanceledException)
@@ -220,9 +223,13 @@ internal sealed class LifecycleTopology(
                 ProofAuthority = "controlled-synthetic-proof-v1; never provider ownership",
                 PersonalConsentVersion = DriverAuthorizationPolicy.PersonalConsentVersion,
                 SharingConsentVersion = DriverAuthorizationPolicy.SharingConsentVersion,
-                Modules = new[] { "DriverAuthorization", "DriverAuthorityStore", "DriverPublication protected IActionResult" },
+                Modules = scenario.StartsWith("private-upload-", StringComparison.Ordinal)
+                    ? new[] { "DriverAuthorization", "DriverAuthorityStore", "TelemetryUploadService", "PrivateUploadStore", "DriverPublication protected IActionResult" }
+                    : new[] { "DriverAuthorization", "DriverAuthorityStore", "DriverPublication protected IActionResult" },
                 Journal = "Separate PostgreSQL database persists intents independently of primary and both processes",
-                Catalog = "No publication catalog admitted; bounded synthetic owner/name-only artifact",
+                Catalog = scenario.StartsWith("private-upload-", StringComparison.Ordinal)
+                    ? "No Real publication catalog admitted; bounded synthetic original-owner Uploaded Bests"
+                    : "No publication catalog admitted; bounded synthetic owner/name-only artifact",
                 Hosts = topology.hosts.Select(h => new { h.ProcessId, h.Incarnation, Address = h.Client.BaseAddress }).ToArray(),
                 Writers = topology.histories,
                 Transitions = topology.outcomes,
