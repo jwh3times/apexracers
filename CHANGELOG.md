@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
-## [13.0.0] - 2026-10-05
+## [13.0.0] - 2026-10-06
 
 ### Added
 
@@ -34,7 +34,8 @@ No unreleased changes.
 - Claims and recorder IDs cannot authorize persistence or private reads. Unverified previews
   contain no identifying fields, raw streams are disposed, and PostgreSQL fences typed personal
   sources against stale writes, attribution changes and source-derived reuse. New contributions
-  invalidate older owner summaries. Ordinary Telemetry
+  invalidate older owner summaries and suppress best/percentile output prepared before an
+  intervening upload, including previously empty inventories. Ordinary Telemetry
   HTTP access remains unavailable pending real proof/journal integration.
 
 ## [12.0.0] - 2026-10-05

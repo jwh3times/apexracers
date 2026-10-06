@@ -15,7 +15,7 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
         await CheckOwnerAsync(owner, ct);
-        var purpose = await db.EvidencePurposes.FirstOrDefaultAsync(p => p.GrantId == owner.GrantId
+        var purpose = await db.EvidencePurposes.AsNoTracking().FirstOrDefaultAsync(p => p.GrantId == owner.GrantId
             && p.Kind == EvidencePurposeKind.Personal && p.OriginalEndedAt == null && p.GrantRevision == owner.Revision, ct);
         if (purpose is null)
         {
@@ -116,30 +116,39 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
 
     public async Task<PrivateUploadSnapshot> ReadSnapshotAsync(DriverAccess owner, CancellationToken ct = default)
     {
-        await CheckOwnerAsync(owner, ct);
+        var preparation = await CaptureAsync(owner, ct);
+        var sources = await (from session in AvailableSessions(owner)
+                             join marker in db.EvidenceCopyMarkers.AsNoTracking() on session.EvidenceCopyId equals marker.Id
+                             select new EvidenceSourceVersion(marker.Id, marker.Version)).ToListAsync(ct);
         var sessions = await AvailableSessions(owner).Include(s => s.Laps).ToListAsync(ct);
         var cars = await db.Cars.Where(c => sessions.Select(s => s.CarId).Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
         var tracks = await db.Tracks.Where(t => sessions.Select(s => s.TrackId).Contains(t.Id)).ToDictionaryAsync(t => t.Id, ct);
-        var ids = sessions.Select(s => s.EvidenceCopyId).ToArray();
-        var sources = await db.EvidenceCopyMarkers.AsNoTracking().Where(c => ids.Contains(c.Id))
-            .Select(c => new EvidenceSourceVersion(c.Id, c.Version)).ToListAsync(ct);
-        return new(sessions.GroupBy(s => new { s.CarId, s.TrackId }).Select(g => new PrivateUploadedBest(g.Key.CarId,
+        if (sessions.Count != sources.Count || sessions.Any(s => !sources.Any(v => v.CopyId == s.EvidenceCopyId)))
+            throw new EvidenceCopyUnavailableException();
+        var snapshot = new PrivateUploadSnapshot(preparation, sessions.GroupBy(s => new { s.CarId, s.TrackId }).Select(g => new PrivateUploadedBest(g.Key.CarId,
             g.Key.TrackId, cars[g.Key.CarId].Name, tracks[g.Key.TrackId].Name,
             ConfigurationName.NullIfAbsent(tracks[g.Key.TrackId].ConfigName), g.SelectMany(s => s.Laps).Min(l => l.LapTimeSeconds),
             g.Sum(s => s.Laps.Count), g.Max(s => s.RecordedAt))).OrderByDescending(b => b.LastRecordedAt).ToList(), sources);
+        if (!await SnapshotCurrentAsync(owner, snapshot, ct)) throw new EvidenceCopyUnavailableException();
+        return snapshot;
     }
 
-    public async Task<bool> SnapshotCurrentAsync(DriverAccess owner, IReadOnlyList<EvidenceSourceVersion> sources,
+    public async Task<bool> SnapshotCurrentAsync(DriverAccess owner, PrivateUploadSnapshot snapshot,
         CancellationToken ct = default)
     {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await LockAsync(ct);
         try { await CheckOwnerAsync(owner, ct); }
         catch (EvidenceCopyUnavailableException) { return false; }
-        var ids = sources.Select(s => s.CopyId).ToArray();
+        var receipt = snapshot.Preparation;
+        if (receipt.Owner != owner || !await db.EvidencePurposes.AsNoTracking().AnyAsync(p => p.Id == receipt.PurposeId
+            && p.GrantId == owner.GrantId && p.GrantRevision == owner.Revision && p.Kind == EvidencePurposeKind.Personal
+            && p.Provenance == owner.Scope.Provenance && p.OriginalEndedAt == null
+            && p.Generation == receipt.Generation && p.EvidenceVersion == receipt.PurposeVersion, ct)) return false;
         var current = await (from session in AvailableSessions(owner)
                              join marker in db.EvidenceCopyMarkers.AsNoTracking() on session.EvidenceCopyId equals marker.Id
-                             where ids.Contains(marker.Id)
                              select new EvidenceSourceVersion(marker.Id, marker.Version)).ToListAsync(ct);
-        return sources.Count == current.Count && sources.All(s => current.Contains(s));
+        return snapshot.Sources.Count == current.Count && snapshot.Sources.All(s => current.Contains(s));
     }
 
     internal IQueryable<PrivateUploadSession> AvailableSessions(DriverAccess owner) => db.PrivateUploadSessions.AsNoTracking()
@@ -153,6 +162,10 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
         CancellationToken ct = default)
     {
         await CheckOwnerAsync(owner, ct);
+        var copies = new EvidenceCopyLifecycle(db, clock, journal);
+        // Reconcile older invalidated summaries before freezing the preparation version:
+        // their physical deletion can itself advance the same purpose's evidence version.
+        await copies.ReconcileAsync(ct);
         // Capture before reading sources. A concurrent loss, source replacement or correction
         // invalidates the commit; freshly calculated output is never returned after a failed commit.
         var uploadReceipt = await CaptureAsync(owner, ct);
@@ -162,11 +175,22 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
             .Select(w => new { w.RaceWeekIndex, w.StartDate, w.EndTime }).ToListAsync(ct);
         var window = RaceWeekWindow.ForSeason(weeks.Select(w => (w.RaceWeekIndex, w.StartDate, w.EndTime)))
             .Single(w => w.RaceWeekIndex == week.RaceWeekIndex).Window;
-        var sessions = await AvailableSessions(owner).Include(s => s.Laps).Where(s => s.CarId == carId
-            && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End).ToListAsync(ct);
-        var results = await db.SubsessionResults.Where(r => r.CarId == carId && r.Subsession.SeasonId == week.SeasonId
+        var sessionQuery = AvailableSessions(owner).Where(s => s.CarId == carId
+            && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End);
+        var uploadSources = await (from session in sessionQuery
+                                   join marker in db.EvidenceCopyMarkers.AsNoTracking() on session.EvidenceCopyId equals marker.Id
+                                   select new EvidenceSourceVersion(marker.Id, marker.Version)).ToListAsync(ct);
+        var sessions = await sessionQuery.Include(s => s.Laps).ToListAsync(ct);
+        if (sessions.Count != uploadSources.Count || sessions.Any(s => !uploadSources.Any(v => v.CopyId == s.EvidenceCopyId)))
+            throw new EvidenceCopyUnavailableException();
+        // Read each official row and its immutable copy version together, so a replacement
+        // cannot drop an old input from the dependency set after the Field was calculated.
+        var results = await (from r in db.SubsessionResults.AsNoTracking()
+                             join marker in db.EvidenceCopyMarkers.AsNoTracking() on r.EvidenceCopyId equals marker.Id
+                             where r.CarId == carId && r.Subsession.SeasonId == week.SeasonId
             && r.Subsession.RaceWeekIndex == week.RaceWeekIndex && r.Subsession.OfficialSession
-            && r.BestLapSeconds > 0).ToListAsync(ct);
+            && r.BestLapSeconds > 0
+                             select new { r.CustId, r.BestLapSeconds, Source = new EvidenceSourceVersion(marker.Id, marker.Version) }).ToListAsync(ct);
         var byDriver = results.GroupBy(r => r.CustId).ToDictionary(g => g.Key, g => g.Min(r => r.BestLapSeconds));
         var uploaded = sessions.SelectMany(s => s.Laps).Select(l => (double?)l.LapTimeSeconds).DefaultIfEmpty().Min();
         var best = PersonalBest.Select(byDriver.TryGetValue(owner.Scope.CustomerId, out var raced) ? raced : (double?)null, uploaded);
@@ -175,16 +199,19 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
         var percentile = new PrivateOwnerPercentile(best.Value.LapSeconds, best.Value.Evidence,
             FieldPercentile.Rank(best.Value.LapSeconds, other), FieldPercentile.Position(best.Value.LapSeconds, other),
             FieldPercentile.TopSharePercent(best.Value.LapSeconds, other), FieldPercentile.FieldSize(other));
-        var sourceIds = sessions.Select(s => s.EvidenceCopyId).Concat(results.Select(r => r.EvidenceCopyId!.Value)).Distinct().ToArray();
-        var sources = await db.EvidenceCopyMarkers.AsNoTracking().Where(c => sourceIds.Contains(c.Id))
-            .Select(c => new EvidenceSourceVersion(c.Id, c.Version)).ToListAsync(ct);
-        var copies = new EvidenceCopyLifecycle(db, clock, journal);
+        var sources = uploadSources.Concat(results.Select(r => r.Source)).Distinct().ToArray();
         var seriesId = await db.Seasons.Where(s => s.Id == week.SeasonId).Select(s => s.SeriesId).SingleAsync(ct);
-        // The copy module atomically replaces this purpose/key. Reconcile withdrawn older
-        // purposes before rebuilding; original source clocks and dormant retention remain intact.
-        await copies.ReconcileAsync(ct);
+        // The copy module atomically replaces this purpose/key; source clocks stay intact.
         var receipt = await copies.CaptureAsync(uploadReceipt.PurposeId, EvidenceCopyKind.PersonalDerivative,
             $"private-percentile:{owner.Scope.UserId}:{weekId}:{carId}", sources, ct);
+        // Capture resolves the derivative's key and concrete dependencies. Its later purpose
+        // read must never authorize an input set prepared against an earlier version.
+        receipt = receipt with
+        {
+            Generation = uploadReceipt.Generation,
+            PurposeVersion = uploadReceipt.PurposeVersion,
+            OriginalAcquiredAt = uploadReceipt.OriginalAcquiredAt
+        };
         await copies.CommitAsync(receipt, new PercentileBatch(new CarPercentileResult
         {
             Id = Guid.NewGuid(),

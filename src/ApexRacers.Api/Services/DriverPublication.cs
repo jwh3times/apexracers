@@ -78,7 +78,7 @@ internal sealed class ProtectedPrivateUploadResult(DriverAccess access, PrivateU
         {
             await PhaseAsync("admitted", admission.Id, ct);
             if (!(await journal.ReadCurrentAsync(access.Scope, ct)).Allows(access.Revision, access.Purpose)
-                || !await uploads.SnapshotCurrentAsync(access, snapshot.Sources, ct))
+                || !await uploads.SnapshotCurrentAsync(access, snapshot, ct))
             { http.Response.StatusCode = 503; return; }
             http.Response.ContentType = "application/json";
             await http.Response.Body.WriteAsync(payload, ct);

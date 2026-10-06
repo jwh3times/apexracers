@@ -1,9 +1,11 @@
+using System.Data.Common;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Xunit;
 
@@ -298,6 +300,64 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NewContributionInvalidatesPreparedEmptyOrExistingBestSnapshot(bool hadUpload)
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        if (hadUpload) await f.UploadAsync(90);
+        var snapshot = await f.Uploads.ReadSnapshotAsync(owner, Ct);
+        f.Clock.Now = f.Clock.Now.AddSeconds(1);
+        await f.UploadAsync(85);
+        Assert.False(await f.Uploads.SnapshotCurrentAsync(owner, snapshot, Ct));
+        Assert.Equal(85, Assert.Single(await f.Uploads.ReadBestsAsync(owner, Ct)).BestLapSeconds);
+    }
+
+    [Fact]
+    public async Task NewContributionAfterPercentileSourceReadCannotCommitOldInputsUnderFreshPurposeVersion()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        await f.UploadAsync(90);
+        var weekId = await FieldAsync(f);
+        var gate = new AfterRead("PrivateUploadedLaps", async () =>
+        {
+            await using var writer = f.Restart();
+            var uploads = new PrivateUploadStore(writer, f.Clock, f.Journal);
+            await uploads.CommitAsync(await uploads.CaptureAsync(owner, Ct), f.Data(85, 0) with
+            { RecordedAt = f.Clock.Now.AddSeconds(1) }, Ct);
+        });
+        await using var reader = new AppDbContext(postgres.WithInterceptors(f.Options, gate), new IRacingDataScope(DataProvenance.Demo));
+        var calculating = new PrivateUploadStore(reader, f.Clock, f.Journal);
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => calculating.CalculatePercentileAsync(owner, weekId, 99, Ct));
+        Assert.True(gate.Reached);
+        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Equal(85, (await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct))!.LapSeconds);
+    }
+
+    [Fact]
+    public async Task OfficialSourceRemovalAfterFieldReadCannotDropItsDependencyAndCommitOldInputs()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        await f.UploadAsync(90);
+        var weekId = await FieldAsync(f);
+        var gate = new AfterRead("FROM iracing.\"RaceEvidenceResults\"", async () =>
+        {
+            await using var writer = f.Restart();
+            var official = await writer.EvidenceCopyMarkers.SingleAsync(c => c.Kind == EvidenceCopyKind.OfficialField, Ct);
+            await new EvidenceCopyLifecycle(writer, f.Clock, f.Journal).EndPurposeAsync(official.PurposeId, f.Clock.Now, Ct);
+            await new EvidenceCopyLifecycle(writer, f.Clock, f.Journal).ReconcileAsync(Ct);
+        });
+        await using var reader = new AppDbContext(postgres.WithInterceptors(f.Options, gate), new IRacingDataScope(DataProvenance.Demo));
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new PrivateUploadStore(reader, f.Clock, f.Journal)
+            .CalculatePercentileAsync(owner, weekId, 99, Ct));
+        Assert.True(gate.Reached);
+        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+    }
+
     [Fact]
     public async Task PhysicalSourceLossInvalidatesPreparedPublicationAndDerivativeWhileIndependentFieldSurvives()
     {
@@ -309,7 +369,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         var session = await f.Db.PrivateUploadSessions.AsNoTracking().SingleAsync(Ct);
         await using (var raw = f.Restart())
             await raw.PrivateUploadedLaps.Where(l => l.SessionId == session.Id).ExecuteDeleteAsync(Ct);
-        Assert.False(await f.Uploads.SnapshotCurrentAsync(owner, snapshot.Sources, Ct));
+        Assert.False(await f.Uploads.SnapshotCurrentAsync(owner, snapshot, Ct));
         Assert.Empty(await f.Db.CarPercentileResults.ToListAsync(Ct));
         await new EvidenceCopyLifecycle(f.Db, f.Clock).ReconcileAsync(Ct);
         Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
@@ -505,6 +565,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
 
     private sealed class Fixture(DbContextOptions<AppDbContext> options) : IAsyncDisposable
     {
+        public DbContextOptions<AppDbContext> Options => options;
         public AppDbContext Db { get; } = new(options, new IRacingDataScope(DataProvenance.Demo));
         public DriverScope Scope { get; } = new(Guid.NewGuid(), 12345, DataProvenance.Demo);
         public Clock Clock { get; } = new();
@@ -524,6 +585,20 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
             FakeIbtBuilder.Build(laps: 2, lapTime: seconds, customerId: Scope.CustomerId, sessionDate: Clock.Now.ToUnixTimeSeconds()), Scope, Ct);
         public PrivateUploadData Data(double seconds, int days) => new(99, 42, Clock.Now.AddDays(days), LapSessionType.Unknown, [new(1, seconds)]);
         public ValueTask DisposeAsync() => Db.DisposeAsync();
+    }
+    private sealed class AfterRead(string commandFragment, Func<Task> action) : DbCommandInterceptor
+    {
+        public bool Reached { get; private set; }
+        public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData,
+            DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (!Reached && command.CommandText.Contains(commandFragment, StringComparison.Ordinal))
+            {
+                Reached = true;
+                await action();
+            }
+            return result;
+        }
     }
     private sealed class Clock : TimeProvider
     {

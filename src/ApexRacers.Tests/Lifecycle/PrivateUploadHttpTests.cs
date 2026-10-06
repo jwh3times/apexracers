@@ -85,10 +85,43 @@ public sealed class PrivateUploadHttpTests(PostgreSqlFixture postgres)
             Assert.True((await test.TransitionAsync(id)).Completed);
         });
 
-    private static MultipartFormDataContent Multipart()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task NewUploadBeforeFirstPrivateResponseByteSuppressesPreparedEmptyOrOldBest(bool hadUpload) =>
+        LifecycleTopology.RunAsync(postgres, $"private-upload-unsent-new-source-{hadUpload}", ["UPLOAD-01", "COPY-03", "HTTP-01"], async test =>
+        {
+            await CatalogAsync(test);
+            await test.GrantAsync();
+            if (hadUpload)
+            {
+                using var original = Multipart();
+                using var uploaded = await test.Publisher.Client.PostAsync("/upload", original, test.CancellationToken);
+                uploaded.EnsureSuccessStatusCode();
+            }
+            await test.HoldAsync("unsent-old-inputs", "admitted");
+            var read = test.Publisher.Client.GetAsync("/uploaded-bests/unsent-old-inputs", test.CancellationToken);
+            await test.WaitAsync("unsent-old-inputs", "admitted");
+            using var faster = Multipart(85, 1_000_000);
+            using var upload = await test.Publisher.Client.PostAsync("/upload", faster, test.CancellationToken);
+            upload.EnsureSuccessStatusCode();
+            await test.ReleaseAsync("unsent-old-inputs", "admitted");
+            using var response = await read;
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+            Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync(test.CancellationToken));
+            await test.WaitAsync("unsent-old-inputs", "checkpointed");
+            using var current = await test.Publisher.Client.GetAsync("/uploaded-bests/current-inputs", test.CancellationToken);
+            current.EnsureSuccessStatusCode();
+            Assert.Equal(85, Assert.Single((await current.Content.ReadFromJsonAsync<PrivateUploadedBest[]>(test.CancellationToken))!).BestLapSeconds);
+            await test.WaitAsync("current-inputs", "checkpointed");
+        });
+
+    private static MultipartFormDataContent Multipart(float seconds = 90, long recordedAt = 0)
     {
         var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(FakeIbtBuilder.Build(laps: 2, lapTime: 90, customerId: SyntheticLifecycleActors.Scope.CustomerId)),
+        content.Add(new StreamContent(FakeIbtBuilder.Build(laps: 2, lapTime: seconds, customerId: SyntheticLifecycleActors.Scope.CustomerId,
+            sessionDate: recordedAt)),
             "file", "synthetic-only.ibt");
         return content;
     }

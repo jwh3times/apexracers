@@ -80,7 +80,11 @@ reuse and rebuild requires currently authorized inputs.
 
 A newly contributed upload invalidates affected existing owner derivatives and advances the purpose
 preparation version. Delayed upload/summary writers cannot commit an earlier input set after that
-change. Earlier private sources retain their original clocks and remain available while authorized.
+change. Snapshots retain the purpose generation/version captured before reading laps, and final
+dispatch compares the complete current authorized source set, including newly added sources.
+Percentile commits preserve that starting preparation version; official input rows and their copy
+versions are read together. Earlier private sources retain their original clocks and remain available
+while authorized.
 
 `DriverPublication.ReadSyntheticUploadedBestsAsync` owns preparation and a protected result with
 bounded JSON, `no-store`, final authority/source checks and actual writer admission/drain. A bare
@@ -105,7 +109,9 @@ forged scope and other owners, stale receipts and raw writes, original clocks, r
 before/at/after day 90, physical day-97 removal, separate fresh collection, historical Driver changes,
 User-wide journal interruption/restart, seven- and fourteen-day boundaries, overdue opaque payloads,
 pending writers on old/current associations, exact arithmetic,
-source invalidation, actual multipart transport, suppression of unsent prepared output and protected response terminality. HTTP artifacts
+source invalidation, uploads arriving during percentile preparation or before the first response
+byte (including an empty prior inventory), official input loss during calculation, actual multipart
+transport, suppression of unsent prepared output and protected response terminality. HTTP artifacts
 under `TestResults/driver-lifecycle/` contain synthetic outcome/context metadata; TRX owns pass/fail.
 
 This contributes UPLOAD-01, COPY-03–05 and AUTH-01–03 within the named synthetic boundaries. Real
