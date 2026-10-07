@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [13.0.3] - 2026-10-06
+
+### Added
+
+- Controlled synthetic publication reservations that bind whole-cohort dependencies and assess
+  completed, pending and possibly dispatched output together under PostgreSQL coordination.
+  Protected dispatch rechecks the complete representation; uncertain outcomes retain disclosure
+  accounting, and restored primary state stays closed until independent history is reconciled.
+  Production history adapters and actual catalog admission remain separate gates.
+
 ## [13.0.2] - 2026-10-06
 
 ### Added
@@ -1556,7 +1566,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.2...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.3...HEAD
+[13.0.3]: https://github.com/jwh3times/apexracers/compare/v13.0.2...v13.0.3
 [13.0.2]: https://github.com/jwh3times/apexracers/compare/v13.0.1...v13.0.2
 [13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0
 [12.0.0]: https://github.com/jwh3times/apexracers/compare/v11.0.0...v12.0.0

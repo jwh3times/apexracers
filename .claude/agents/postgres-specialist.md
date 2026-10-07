@@ -45,6 +45,8 @@ Two schemas in one database:
 | `DriverAuthorizationGrants` | Guid PK | Revision concurrency token, proof binding and versioned personal/sharing consent; composite receipt FK preserves original association |
 | `DriverLifecycleOperations` | Guid PK | Applied revision, original loss time and completion; alternate key `(Id, GrantId, OriginalLossAt)` binds cleanup to its original operation |
 | `DriverPublicationAdmissions` | Guid PK | Purpose/revision/incarnation-bound writer admission; `TerminalAt`, not `LeaseUntil`, determines drain |
+| `PublicationReleases` | Guid PK | Unique global sequence; restricted catalog/representation/dependency hashes, recipient/purpose, incarnation and original dispatch/terminal clocks; no User FK |
+| `PublicationReleaseDependencies` | composite PK `(ReleaseId, UserId, CustomerId, Provenance)` | Observed authority hash and revision, including absent grants; nullable restricted grant FK and restricted release FK; no User FK |
 | `DriverTrackedCopies` | Guid PK | Purpose/revision-bound payload (16 KiB runtime bound), creation and unavailability time; restricted grant FK |
 | `DriverCopyCleanups` | Guid PK | Unique `(OperationId, Purpose)`; original loss, due and verified-removal time; restricted operation/grant FKs |
 | `EvidencePurposes` | Guid PK | Issued namespace/kind/Season scope, optional grant revision or publication/historical request binding; generation concurrency token, original collection/termination clocks and evidence version |
@@ -78,7 +80,21 @@ new authorized generation without changing old marker clocks. User-wide journal 
 atomic all-association closure. Minimal receipts have no User FK so account/credential erasure can
 complete without dropping enforcement history; grant issuance explicitly requires a current User.
 The User-delete SQL fence requires all-association closure/completion and terminal admissions before
-physical account erasure; removing the receipt FK must never reopen a direct Identity-writer bypass.
+physical account erasure. It also blocks erasure while a known primary cohort release is nonterminal
+for that User as recipient or contributor; removing the receipt FK must never reopen a direct
+Identity-writer bypass.
+
+**Publication storage:** before changing composition reservations, restored accounting or cohort
+writer fences, read docs/research/atomic-publication-reservations.md. `PublicationReleaseStore`
+serializes with authority/copy work on advisory transaction lock `370`. Its primary tables carry
+restricted enforcement metadata, not names or raw lap/rating payloads. Release identity and existing
+dispatch/terminal checkpoints are immutable; dependencies cannot be updated/deleted, and their
+grant binding must match the original User/Customer ID/provenance. Release deletion is fenced and
+the migration refuses Down. Raw grant writes share the coordination lock and preserve the original
+association; authorization openings and revision-only changes require known cohort writers to drain,
+while closure can proceed to start that drain. Primary rows alone establish neither independently
+current history nor restored writer terminality; production restore verification remains a separate
+integration gate.
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
 known devices:
@@ -123,6 +139,10 @@ by `(Provenance, CustomerId)` and `(Provenance, UserId)`. `DriverPublicationAdmi
 `(GrantId, Purpose, TerminalAt)` and `Incarnation`; expiry is excluded from drain authority.
 `DriverTrackedCopies` indexes `(GrantId, Purpose, UnavailableAt)`; cleanup indexes
 `(VerifiedRemovedAt, DueAt)` and lifecycle work indexes `(GrantId, CompletedAt)`.
+
+`PublicationReleases.Sequence` is globally unique and `(TerminalAt, Incarnation)` indexes active
+executors. `PublicationReleaseDependencies` indexes `(UserId, CustomerId, Provenance)` and `GrantId`;
+the complete history remains shared across catalog, recipient and scope changes.
 
 `EvidencePurposes` indexes `(Provenance, Kind, SeasonId)`. `EvidenceCopyMarkers` is unique by
 `(PurposeId, Kind, KeyHash, Version)` and indexes `(VerifiedRemovedAt, RemovalDueAt)` for reconciliation.
