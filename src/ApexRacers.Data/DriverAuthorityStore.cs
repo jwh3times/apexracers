@@ -80,6 +80,16 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         var changesGeneration = grant is not null && (grant.ProofReceiptId != proof.ReceiptId
             || grant.PersonalConsentVersion != consent.PersonalVersion || grant.SharingConsentVersion != consent.SharingVersion
             || grant.AuthorizedDriverName != proof.DriverName || !grant.ProofValid || !grant.BindingActive);
+        if (journal is IPublicationHistoryAuthority independent)
+        {
+            var history = await independent.ReadAsync(ct);
+            if (!history.Available || (grant is null || changesGeneration) && history.Releases.Any(r => !r.Terminal
+                && r.Proposal.Dependencies.Any(d => d.Scope.CustomerId == proof.Scope.CustomerId && d.Scope.Provenance == proof.Scope.Provenance)))
+                throw new InvalidOperationException("Publication history requires reconciliation or writer drain.");
+        }
+        if ((grant is null || changesGeneration) && await db.Set<PublicationRelease>().AnyAsync(r => r.TerminalAt == null
+            && r.Dependencies.Any(d => d.CustomerId == proof.Scope.CustomerId && d.Provenance == proof.Scope.Provenance), ct))
+            throw new InvalidOperationException("Authorization generation change requires writer drain.");
         if (changesGeneration && await db.Set<DriverPublicationAdmission>().AnyAsync(a => a.GrantId == grant!.Id && a.TerminalAt == null, ct))
             throw new InvalidOperationException("Authorization generation change requires writer drain.");
         if (restoreDormant && grant?.PersonalClosedAt is { } lossAt && !IsAuthorized(grant, DriverConsentScope.Personal)
@@ -274,14 +284,30 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         if (rows != 1) throw new InvalidOperationException("The checkpoint does not match this writer incarnation.");
     }
 
-    public async Task<int> PendingWritersAsync(DriverLifecycleIntent intent, CancellationToken ct = default)
+    public Task<int> PendingWritersAsync(DriverLifecycleIntent intent, CancellationToken ct = default) => PendingWritersAsync(intent, null, ct);
+
+    public async Task<int> PendingWritersAsync(DriverLifecycleIntent intent, IDriverEnforcementJournal? journal, CancellationToken ct = default)
     {
+        var cohortIds = (await db.Set<PublicationRelease>().Where(r => r.TerminalAt == null
+            && (intent.Kind == DriverLifecycleKind.DeleteUser && r.RecipientUserId == intent.Scope.UserId
+                || r.Dependencies.Any(d => intent.Kind == DriverLifecycleKind.DeleteUser ? d.UserId == intent.Scope.UserId
+                    : d.CustomerId == intent.Scope.CustomerId && d.Provenance == intent.Scope.Provenance))).Select(r => r.Id).ToListAsync(ct)).ToHashSet();
+        var unknownHistory = 0;
+        if (journal is IPublicationHistoryAuthority independent)
+        {
+            var history = await independent.ReadAsync(ct);
+            if (!history.Available) unknownHistory = 1;
+            else foreach (var r in history.Releases.Where(r => !r.Terminal && (intent.Kind == DriverLifecycleKind.DeleteUser && r.Proposal.RecipientUserId == intent.Scope.UserId
+                || r.Proposal.Dependencies.Any(d => intent.Kind == DriverLifecycleKind.DeleteUser ? d.Scope.UserId == intent.Scope.UserId
+                    : d.Scope.CustomerId == intent.Scope.CustomerId && d.Scope.Provenance == intent.Scope.Provenance)))) cohortIds.Add(r.Proposal.Id);
+        }
+        var cohortWriters = cohortIds.Count + unknownHistory;
         if (intent.Kind == DriverLifecycleKind.DeleteUser)
-            return await db.DriverPublicationAdmissions.CountAsync(a => a.TerminalAt == null
+            return cohortWriters + await db.DriverPublicationAdmissions.CountAsync(a => a.TerminalAt == null
                 && db.DriverAuthorizationGrants.Any(g => g.Id == a.GrantId && g.UserId == intent.Scope.UserId), ct);
         var revision = await db.Set<DriverLifecycleOperation>().Where(o => o.Id == intent.OperationId && o.GrantId == intent.GrantId)
             .Select(o => o.AppliedRevision).SingleAsync(ct);
-        return await db.Set<DriverPublicationAdmission>().CountAsync(a => a.GrantId == intent.GrantId
+        return cohortWriters + await db.Set<DriverPublicationAdmission>().CountAsync(a => a.GrantId == intent.GrantId
             && a.Revision < revision && a.TerminalAt == null
             && (intent.Kind != DriverLifecycleKind.WithdrawSharing || a.Purpose == DriverConsentScope.Sharing), ct);
     }

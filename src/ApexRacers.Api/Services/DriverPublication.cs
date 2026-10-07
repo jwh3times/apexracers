@@ -16,8 +16,14 @@ public interface IDriverPublicationObserver
 /// This initial artifact is explicitly synthetic; it admits no Real query catalog or projection.</summary>
 public sealed class DriverPublication(
     DriverAuthorization authority, DriverAuthorityStore store, IDriverEnforcementJournal journal,
-    Guid incarnation, IDriverPublicationObserver? observer = null)
+    Guid incarnation, IDriverPublicationObserver? observer = null, ControlledCohortPublication? cohortPublication = null)
 {
+    public async Task<IActionResult> ReadControlledCohortAsync(CohortPublicationRequest request,
+        Guid? actualRecipientUserId, CancellationToken ct = default)
+    {
+        // No ordinary caller can substitute a controlled fixture through an HTTP request.
+        return cohortPublication is null ? Unavailable() : await cohortPublication.ReadAsync(request, actualRecipientUserId, ct);
+    }
     public async Task<IActionResult> ReadSyntheticOwnerAsync(DriverScope scope, CancellationToken ct = default)
     {
         if (scope.Provenance != DataProvenance.Demo) return Unavailable();

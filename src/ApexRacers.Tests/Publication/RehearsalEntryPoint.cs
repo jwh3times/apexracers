@@ -13,6 +13,12 @@ internal static class RehearsalEntryPoint
             return 0;
         }
 
+        if (args is ["--publication-ledger-host"])
+        {
+            await PublicationLedgerHost.RunAsync();
+            return 0;
+        }
+
         if (args is ["--publication-rehearsal-host"])
         {
             await RehearsalHost.RunAsync();
