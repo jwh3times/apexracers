@@ -113,7 +113,8 @@ internal sealed class PersistedSyntheticJournal(string connectionString, Lifecyc
     private async Task<NpgsqlConnection> OpenAsync(CancellationToken ct)
     {
         var database = new NpgsqlConnectionStringBuilder(connectionString).Database;
-        if (database is null || !database.StartsWith("apexracers_lifecycle_journal_", StringComparison.Ordinal))
+        if (database is null || (!database.StartsWith("apexracers_lifecycle_journal_", StringComparison.Ordinal)
+            && !database.StartsWith("apexracers_ledger_history_", StringComparison.Ordinal)))
             throw new InvalidOperationException("Independent synthetic journal database required.");
         var connection = new NpgsqlConnection(connectionString);
         try

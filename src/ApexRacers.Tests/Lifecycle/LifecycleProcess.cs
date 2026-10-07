@@ -19,7 +19,9 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
         Timeout = TimeSpan.FromSeconds(40),
     };
 
-    public static async Task<LifecycleProcess> StartAsync(string primary, string journal, CancellationToken ct)
+    public static Task<LifecycleProcess> StartAsync(string primary, string journal, CancellationToken ct) => StartCoreAsync(primary, journal, null, ct);
+    public static Task<LifecycleProcess> StartCohortAsync(string primary, string journal, Guid epoch, CancellationToken ct) => StartCoreAsync(primary, journal, epoch, ct);
+    private static async Task<LifecycleProcess> StartCoreAsync(string primary, string journal, Guid? epoch, CancellationToken ct)
     {
         var incarnation = Guid.NewGuid();
         var info = new ProcessStartInfo("dotnet")
@@ -30,7 +32,8 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
             RedirectStandardError = true,
         };
         info.ArgumentList.Add(typeof(LifecycleProcess).Assembly.Location);
-        info.ArgumentList.Add("--driver-lifecycle-host");
+        info.ArgumentList.Add(epoch is null ? "--driver-lifecycle-host" : "--publication-ledger-host");
+        if (epoch is { } known) info.Environment["PUBLICATION_HISTORY_EPOCH"] = known.ToString();
         info.Environment["DRIVER_LIFECYCLE_DATABASE"] = primary;
         info.Environment["DRIVER_LIFECYCLE_JOURNAL"] = journal;
         info.Environment["DRIVER_LIFECYCLE_INCARNATION"] = incarnation.ToString();

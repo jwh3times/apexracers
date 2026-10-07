@@ -70,7 +70,7 @@ public sealed class DriverAuthorization(
             throw new InvalidOperationException("Lifecycle recovery does not match the recorded intent.");
         var operation = await store.ApplyIntentAsync(recorded, ct);
         await PhaseAsync("primary-closed", recorded.OperationId, ct);
-        var pending = await store.PendingWritersAsync(recorded, ct);
+        var pending = await store.PendingWritersAsync(recorded, journal, ct);
         if (pending != 0) return new(recorded.OperationId, false, pending, recorded.OriginalLossAt);
         await PhaseAsync("drained", recorded.OperationId, ct);
         await journal.ReconcileAsync(recorded, operation.AppliedRevision, ct);

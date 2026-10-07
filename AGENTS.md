@@ -637,6 +637,11 @@ allowance or the high-water mark could be 0, since either would silently deny th
   ranges and declared audience/owner variants. Before changing candidate grouping or review inputs,
   read `docs/research/whole-cohort-publication-candidates.md`. These artifacts confer no catalog
   admission, release reservation or protected dispatch.
+- `ControlledCohortPublication` / `Data.PublicationReleaseStore` — controlled synthetic cohort
+  execution reached through `DriverPublication.ReadControlledCohortAsync`. Before changing
+  composition admission, whole-representation invalidation, writer drain or release-history
+  reconciliation, read `docs/research/atomic-publication-reservations.md`. Ordinary startup does not
+  enable this seam; controlled review fixtures confer no production catalog approval.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
   a stored Real claim yields no authorized Subject Driver. Optional callers use
   `GetSubjectDriverCustIdAsync`; required callers use
@@ -663,6 +668,7 @@ indexes, FK/`OnDelete` behavior).
 | `QuarantinedDataCache` / `ProvenanceMigrationInventory` | Unclassified pre-cutover cache copies and observed Unknown row counts; unavailable to ordinary evidence reads |
 | `DriverProofReceipt` / `DriverAuthorizationGrant` | Participating proof bindings and versioned personal/sharing authorization; no migration from legacy claims |
 | `DriverLifecycleOperation` / `DriverPublicationAdmission` | Original-clock lifecycle progress and incarnation-bound protected-writer terminal checkpoints |
+| `PublicationRelease` / `PublicationReleaseDependency` | Restricted composition-accounting bindings, original dispatch/terminal clocks and full-cohort authorization dependencies |
 | `DriverTrackedCopy` / `DriverCopyCleanup` | Purpose/generation-bound copies and durable earliest-deadline cleanup work |
 | `EvidencePurpose` / `EvidenceCopyMarker` / `EvidenceCopyDependency` | Issued purpose scope, durable copy versions/original clocks, and contributing-source bindings |
 | `AuthorizedDriverNameCopy` | Name material bound to a current authorization grant and its revision |
