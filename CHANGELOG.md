@@ -19,6 +19,11 @@ No unreleased changes.
   accounting, and restored primary state stays closed until independent history is reconciled.
   Production history adapters and actual catalog admission remain separate gates.
 
+### Security
+
+- Override the development runner's transitive shell-quote dependency to 1.11.0 to address
+  command injection in shell token quoting (GHSA-pqg4-j6r4-53mv).
+
 ## [13.0.2] - 2026-10-06
 
 ### Added
