@@ -131,15 +131,15 @@ jobs:
 
       - name: Run backend tests with coverage
         run: |
-          dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+          dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
             --configuration Release \
             --coverage \
             --coverage-output coverage.cobertura.xml \
             --coverage-output-format cobertura \
-            --coverage-settings coverage.runsettings \
+            --coverage-settings "$PWD/coverage.runsettings" \
             --report-xunit-trx \
             --report-xunit-trx-filename backend-tests.trx \
-            --results-directory ./TestResults \
+            --results-directory "$PWD/TestResults" \
             --output Normal
 
       - name: Upload backend test results
@@ -170,6 +170,17 @@ jobs:
             echo "::error::No coverage.cobertura.xml found under TestResults/."
             exit 1
           fi
+          # Some collection failures emit rate=1 with no modules or denominators.
+          # Such a report cannot establish coverage, even when tests passed.
+          python3 - "$report" <<'PYTHON'
+          import sys
+          import xml.etree.ElementTree as ET
+          root = ET.parse(sys.argv[1]).getroot()
+          if (not root.findall('packages/package')
+              or int(root.get('lines-valid', '0')) <= 0
+              or int(root.get('branches-valid', '0')) <= 0):
+              sys.exit('::error::Backend coverage report contains no measured product coverage.')
+          PYTHON
           rate=$(grep -m1 -oE 'branch-rate="[0-9.]+"' "$report" | grep -oE '[0-9.]+')
           pct=$(awk -v r="$rate" 'BEGIN { printf "%.2f", r * 100 }')
           echo "Backend branch coverage: ${pct}%"
@@ -193,6 +204,9 @@ jobs:
 
       - name: Run repository coordination tests
         run: npm run test:repo
+
+      - name: Test ingestion deployment pause preservation
+        run: node --test scripts/deploy-ingestion.test.mjs
 
       - name: Run frontend tests with coverage (>85%)
         run: npx vitest run --coverage
@@ -277,7 +291,10 @@ jobs:
 
       - name: Update Container App image
         run: |
-          az containerapp update \
-            --name ${{ secrets.INGESTION_APP_NAME }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
+          node scripts/deploy-ingestion.mjs
+        env:
+          INGESTION_APP_NAME: ${{ secrets.INGESTION_APP_NAME }}
+          RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          IMAGE: ${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
+          REVISION_SUFFIX: deploy-${{ github.run_id }}-${{ github.run_attempt }}

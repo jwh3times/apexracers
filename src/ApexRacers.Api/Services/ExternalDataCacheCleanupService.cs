@@ -65,6 +65,7 @@ public class ExternalDataCacheCleanupService(IServiceScopeFactory scopeFactory, 
                 await PurgeUnclassifiedAsync(db, stoppingToken);
                 var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
                 await lifecycle.ReconcileAsync(stoppingToken);
+                await new DriverReferenceStore(db, TimeProvider.System, scope.ServiceProvider.GetRequiredService<IDriverEnforcementJournal>()).ReconcileAsync(stoppingToken);
                 await new DriverAuthorityStore(db, TimeProvider.System).RemoveDueCopiesAsync(stoppingToken);
                 await new DriverAuthorityStore(db, TimeProvider.System).RemoveExpiredExplanationsAsync(stoppingToken);
                 var removed = await PurgeExpiredAsync(db, DateTimeOffset.UtcNow, Grace, stoppingToken);

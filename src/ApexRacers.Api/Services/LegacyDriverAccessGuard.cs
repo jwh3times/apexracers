@@ -13,7 +13,7 @@ public sealed class LegacyDriverAccessGuard(IRacingDataScope scope) : IAsyncReso
 {
     private static readonly HashSet<string> IndependentControllers = new(StringComparer.Ordinal)
     {
-        "Auth", "Admin", "FeatureFlags", "Cars", "Tracks", "Series", "Schedule",
+        "ScopedDrivers", "Auth", "Admin", "FeatureFlags", "Cars", "Tracks", "Series", "Schedule",
     };
 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)

@@ -20,6 +20,10 @@ BEGIN
             OR EXISTS (SELECT 1 FROM iracing."DriverPublicationAdmissions" a JOIN iracing."DriverAuthorizationGrants" g
                 ON g."Id" = a."GrantId" WHERE g."Provenance" = 2 AND a."TerminalAt" IS NULL)
         THEN RAISE EXCEPTION 'Unlink and drain controlled synthetic Driver scopes through the journal before teardown'; END IF;
+        IF to_regclass('iracing."ScopedDriverReferences"') IS NOT NULL THEN
+            DELETE FROM iracing."ScopedDriverReferences" WHERE "Provenance" = 2;
+            DELETE FROM iracing."PrivateDriverFollows" WHERE "Provenance" = 2;
+        END IF;
         DELETE FROM iracing."DriverTrackedCopies" WHERE "GrantId" IN (SELECT "Id" FROM iracing."DriverAuthorizationGrants" WHERE "Provenance" = 2);
     END IF;
 END $$;

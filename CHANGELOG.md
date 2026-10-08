@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [13.1.0] - 2026-10-08
+
+### Added
+
+- Controlled synthetic Driver discovery, detail, comparison and Follow using opaque references
+  bound to recipient, purpose, authorization generation and provenance. Protected dispatch
+  rechecks current evidence and composition accounting; ordinary startup remains unavailable.
+- Private Follow loss and cleanup clocks, short-lived hashed reference storage, and forward-only
+  PostgreSQL writer fences. Retained Follows and raw Customer IDs cannot authorize Driver output.
+
+### Fixed
+
+- Restore a verified paused ingestion deployment to zero active revisions after an image update,
+  including older revisions reactivated by the platform. Bind cleanup to observed app/revision/image
+  identities, verify the final inventory, and report uncertain outcomes as failed deployments.
+  Image updates can still cause transient activation before deactivation.
+- Reject empty backend coverage reports in CI and use explicit Microsoft Testing Platform project
+  and coverage-settings paths when collecting the required line/branch evidence.
+
 ## [13.0.3] - 2026-10-06
 
 ### Added
@@ -1571,7 +1590,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.1.0...HEAD
+[13.1.0]: https://github.com/jwh3times/apexracers/compare/v13.0.4...v13.1.0
 [13.0.3]: https://github.com/jwh3times/apexracers/compare/v13.0.2...v13.0.3
 [13.0.2]: https://github.com/jwh3times/apexracers/compare/v13.0.1...v13.0.2
 [13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0

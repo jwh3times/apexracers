@@ -675,3 +675,11 @@ public record WeekCarPercentileDto(
     double PercentileRank,
     int TopSharePercent,
     LapEvidence PersonalBestLapEvidence);
+
+// Recipient-scoped synthetic reference integration; no raw Customer IDs or Follow keys.
+public sealed record ScopedDriverDiscoveryDto(string DriverName, string DetailReference, string ComparisonReference,
+    string FollowReference, DateTimeOffset ExpiresAt, string Provenance);
+public sealed record ScopedDriverDetailDto(string DriverName, double OfficialBestLapSeconds, int IRating, string Provenance);
+public sealed record ScopedDriverComparisonDto(string DriverName, double SubjectOfficialBestLapSeconds,
+    double DriverOfficialBestLapSeconds, double LapDeltaSeconds, string Provenance);
+public sealed record ScopedDriverFollowDto(bool Followed, string Provenance);
