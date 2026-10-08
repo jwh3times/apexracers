@@ -218,12 +218,12 @@ line, `version.yml` and `/ship` compute the exact target from the same `scripts/
 dotnet build                                          # build the solution
 dotnet test                                           # run the full xUnit suite (Docker engine required for PostgreSQL integration tests)
 dotnet test --filter-class ApexRacers.Tests.Models.FieldPercentileTests  # run one test class
-dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
   --configuration Release \
   --coverage --coverage-output coverage.cobertura.xml --coverage-output-format cobertura \
-  --coverage-settings coverage.runsettings \
+  --coverage-settings "$PWD/coverage.runsettings" \
   --report-xunit-trx --report-xunit-trx-filename backend-tests.trx \
-  --results-directory ./TestResults                 # coverage + stable CI-style artifacts
+  --results-directory "$PWD/TestResults"                 # coverage + stable CI-style artifacts
 dotnet run --project src/ApexRacers.Api               # run the API (needs DATABASE_CONNECTION_STRING)
 dotnet run --project src/ApexRacers.Ingestion         # run the ingestion worker (needs iRacing + DB env vars)
 dotnet run --project src/ApexRacers.Seeder            # seed catalog + synthetic laps for 7 series (idempotent)
@@ -240,7 +240,8 @@ dotnet ef database update      --project src/ApexRacers.Data --startup-project s
 
 **Test filters go to the Microsoft Testing Platform, not VSTest.** `global.json` selects the MTP
 runner, so `dotnet test` forwards every option it doesn't own straight through to the test
-executable. Two consequences bite in practice:
+executable. Use `--project` when selecting a project explicitly; the 10.0.1xx SDK rejects a positional
+project path in this mode. Two other consequences bite in practice:
 
 - `--filter-class` takes a **fully qualified** type name — `ApexRacers.Tests.Models.FieldPercentileTests`,
   not `FieldPercentileTests`. A bare name matches nothing and reports `Zero tests ran` (exit code 8).
@@ -248,6 +249,10 @@ executable. Two consequences bite in practice:
   prints its help, and the run ends `Zero tests ran` / `error: 1` / exit code 5 — which reads as a
   broken filter rather than a bad flag. `--configuration`, `--no-build`, and `--verbosity` are
   `dotnet test`'s own options and stay safe.
+
+Coverage gates require a non-empty product report with positive line and branch denominators.
+Use the explicit SDK coverage command above for collection; an `N/A`/empty report does not
+establish the 85% gates.
 
 `dotnet test` is only a thin wrapper here: the test executable itself takes the same arguments, and
 `src/ApexRacers.Tests/bin/Debug/net10.0/ApexRacers.Tests.exe --help` lists every filter option the
@@ -415,6 +420,14 @@ authorization tables and fences old claim writers without promoting any stored c
 recovery is forward-only. Synthetic implementation evidence does not establish live authorization
 or the complete publication/copy/restore acceptance matrix.
 
+**Scoped Driver references:** `ScopedDriverPublication` owns discovery, detail, comparison and
+Follow output through a protected result executor; `DriverReferenceStore` owns opaque,
+recipient/purpose/revision/proof/provenance-bound references and private Follow clocks. Read
+`docs/research/driver-scoped-references.md` before changing these modules, their SQL fences or
+routes. Ordinary startup supplies no controlled reference catalog, so these routes remain
+unavailable. Controlled synthetic fixtures establish neither Live permission nor actual catalog
+admission; browser invalidation and the integrated acceptance matrix remain separate work.
+
 Controllers do no logic beyond binding inputs and returning `Ok(result)`. Services live in
 `src/ApexRacers.Api/Services/`; response shapes are `record` types in `Dtos/ResponseDtos.cs`. If an
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
@@ -514,6 +527,7 @@ contract when that identity is absent.
 | `AchievementsController`              | awards trophy case                                                                                                                                                                        |
 | `RaceHistoryController`               | recent official races                                                                                                                                                                     |
 | `SubsessionController`                | classified field for one subsession, with unrepresented-entry counts (**public**); per-lap pace trace (Authorize)                                                                         |
+| `ScopedDriversController` | authenticated scoped discovery/follows and reference-body detail/comparison/Follow; module-owned protected dispatch, unavailable under ordinary startup |
 | `ScheduleController`                  | active-season schedule + weather + BoP (**public**); private Uploaded Lap presence omitted pending protected personal integration                                                                                             |
 | `LeaderboardController`               | global top-200 by iRating for a category                                                                                                                                                  |
 | `StandingsController`                 | championship / TT / qualifying standings per car class (**public**); a supplied car class or race week index not in the season's current data is a typed `404`                            |
@@ -672,6 +686,7 @@ indexes, FK/`OnDelete` behavior).
 | `DriverTrackedCopy` / `DriverCopyCleanup` | Purpose/generation-bound copies and durable earliest-deadline cleanup work |
 | `EvidencePurpose` / `EvidenceCopyMarker` / `EvidenceCopyDependency` | Issued purpose scope, durable copy versions/original clocks, and contributing-source bindings |
 | `AuthorizedDriverNameCopy` | Name material bound to a current authorization grant and its revision |
+| `ScopedDriverReference` / `PrivateDriverFollow` | hashed short-lived reference bindings and private Follow original loss/reactivation/removal clocks; restricted grant FKs, separate from legacy Rivals |
 | `PrivateUploadSession` / `PrivateUploadedLap` | Typed verified-owner source and cascading Timed Laps, bound to original User/Driver/provenance and an evidence-copy marker |
 | `UploadedLap`                                                        | Legacy claim-attributed Uploaded Lap; `DriverCustId` is the Driver the file named (null = not established); not promoted into verified private sources |
 | `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |

@@ -127,18 +127,21 @@ dotnet test
 dotnet test --filter-class ApexRacers.Tests.Models.FieldPercentileTests
 
 # Measure coverage (line AND branch must stay above 85%)
-dotnet test src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
   --configuration Release \
   --coverage \
   --coverage-output coverage.cobertura.xml \
   --coverage-output-format cobertura \
-  --coverage-settings coverage.runsettings \
+  --coverage-settings "$PWD/coverage.runsettings" \
   --report-xunit-trx \
   --report-xunit-trx-filename backend-tests.trx \
-  --results-directory ./TestResults
+  --results-directory "$PWD/TestResults"
 reportgenerator -reports:TestResults/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:TextSummary
 ```
 
+- Coverage reports must contain measured product modules and positive line/branch denominators;
+  CI rejects empty reports even when they advertise a 100% rate. Use the explicit SDK command
+  above for collection.
 - The repository's `global.json` selects native Microsoft Testing Platform v2
   through the .NET 10 SDK. Use a current Visual Studio 2022/2026 Test Explorer,
   or VS Code with the current C# Dev Kit, for IDE discovery and debugging;

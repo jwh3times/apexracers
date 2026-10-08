@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Controlled synthetic Driver discovery, detail, comparison and Follow using opaque references
+  bound to recipient, purpose, authorization generation and provenance. Protected dispatch
+  rechecks current evidence and composition accounting; ordinary startup remains unavailable.
+- Private Follow loss and cleanup clocks, short-lived hashed reference storage, and forward-only
+  PostgreSQL writer fences. Retained Follows and raw Customer IDs cannot authorize Driver output.
+
+### Fixed
+
+- Restore a verified paused ingestion deployment to zero active revisions after an image update,
+  including older revisions reactivated by the platform. Bind cleanup to observed app/revision/image
+  identities, verify the final inventory, and report uncertain outcomes as failed deployments.
+  Image updates can still cause transient activation before deactivation.
+- Reject empty backend coverage reports in CI and use explicit Microsoft Testing Platform project
+  and coverage-settings paths when collecting the required line/branch evidence.
 
 ## [13.0.3] - 2026-10-06
 

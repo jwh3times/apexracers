@@ -224,6 +224,7 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         };
         db.Add(operation);
         await new EvidenceCopyLifecycle(db, timeProvider).ApplyGrantLossAsync(grant, intent, ct);
+        await DriverReferenceStore.LoseAsync(db, grant, intent, ct);
         foreach (var purpose in Enum.GetValues<DriverConsentScope>().Where(p => DriverAuthorizationPolicy.Affects(intent.Kind, p)))
         {
             // The bounded prototype payload is opaque and may include an authorized name.
@@ -401,12 +402,12 @@ public sealed class DriverAuthorityStore(AppDbContext db, TimeProvider timeProvi
         return grant;
     }
 
-    private static bool IsAuthorized(DriverAuthorizationGrant grant, DriverConsentScope purpose) =>
+    internal static bool IsAuthorized(DriverAuthorizationGrant grant, DriverConsentScope purpose) =>
         grant.Provenance == DataProvenance.Demo && grant.BindingActive && grant.ProofValid
         && grant.PersonalConsentVersion == DriverAuthorizationPolicy.PersonalConsentVersion
         && (purpose == DriverConsentScope.Personal || purpose == DriverConsentScope.Sharing
             && grant.SharingConsentVersion == DriverAuthorizationPolicy.SharingConsentVersion);
-    private static DriverAccess Access(DriverAuthorizationGrant grant, DriverConsentScope purpose) =>
+    internal static DriverAccess Access(DriverAuthorizationGrant grant, DriverConsentScope purpose) =>
         new(new(grant.UserId, grant.CustomerId, grant.Provenance), grant.Id, grant.Revision, purpose, grant.AuthorizedDriverName);
     private static DateTimeOffset Earliest(DateTimeOffset? previous, DateTimeOffset incoming) => previous < incoming ? previous.Value : incoming;
     private static void ValidateSyntheticProof(VerifiedDriverProof proof)

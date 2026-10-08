@@ -556,6 +556,39 @@ export interface SeasonQualifyResults {
 
 // ── Rival comparison (3.1) ──────────────────────────────────────────────────
 
+export interface ScopedDriverDiscovery {
+  driverName: string;
+  detailReference: string;
+  comparisonReference: string;
+  followReference: string;
+  expiresAt: string;
+  provenance: string;
+}
+
+export interface ScopedDriverDetail {
+  driverName: string;
+  officialBestLapSeconds: number;
+  iRating: number;
+  provenance: string;
+}
+
+export interface ScopedDriverComparison {
+  driverName: string;
+  subjectOfficialBestLapSeconds: number;
+  driverOfficialBestLapSeconds: number;
+  lapDeltaSeconds: number;
+  provenance: string;
+}
+
+export interface ScopedDriverFollow {
+  followed: boolean;
+  provenance: string;
+}
+
+export interface ScopedDriverReferenceRequest {
+  reference: string | null;
+}
+
 export interface Rival {
   customerId: number;
   driverName: string;
@@ -962,6 +995,41 @@ export const api = {
   /** GET /api/race-guide — official sessions starting in the next ~3h (race-now board) */
   getRaceGuide(signal?: AbortSignal): Promise<RaceGuideEntry[]> {
     return request('/api/race-guide', { signal });
+  },
+
+  /** GET /api/drivers/scoped/discovery — currently eligible Driver references */
+  getScopedDriverDiscovery(term?: string, signal?: AbortSignal): Promise<ScopedDriverDiscovery[]> {
+    const query = term === undefined ? '' : `?term=${encodeURIComponent(term)}`;
+    return request(`/api/drivers/scoped/discovery${query}`, { signal });
+  },
+
+  /** GET /api/drivers/scoped/follows — eligible private follows with fresh references */
+  getScopedDriverFollows(signal?: AbortSignal): Promise<ScopedDriverDiscovery[]> {
+    return request('/api/drivers/scoped/follows', { signal });
+  },
+
+  /** POST /api/drivers/scoped/detail — recipient-scoped reference in the request body */
+  getScopedDriverDetail(
+    body: ScopedDriverReferenceRequest,
+    signal?: AbortSignal
+  ): Promise<ScopedDriverDetail> {
+    return request('/api/drivers/scoped/detail', { method: 'POST', json: body, signal });
+  },
+
+  /** POST /api/drivers/scoped/comparison — comparison-scoped reference in the request body */
+  compareScopedDriver(
+    body: ScopedDriverReferenceRequest,
+    signal?: AbortSignal
+  ): Promise<ScopedDriverComparison> {
+    return request('/api/drivers/scoped/comparison', { method: 'POST', json: body, signal });
+  },
+
+  /** POST /api/drivers/scoped/follows — follow-scoped reference in the request body */
+  followScopedDriver(
+    body: ScopedDriverReferenceRequest,
+    signal?: AbortSignal
+  ): Promise<ScopedDriverFollow> {
+    return request('/api/drivers/scoped/follows', { method: 'POST', json: body, signal });
   },
 
   /** GET /api/users/me/rivals — drivers the caller follows for comparison (newest first) */
