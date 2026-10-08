@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [13.1.0] - 2026-10-08
+
 ### Added
 
 - Controlled synthetic Driver discovery, detail, comparison and Follow using opaque references
@@ -1586,7 +1590,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.0.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.1.0...HEAD
+[13.1.0]: https://github.com/jwh3times/apexracers/compare/v13.0.4...v13.1.0
 [13.0.3]: https://github.com/jwh3times/apexracers/compare/v13.0.2...v13.0.3
 [13.0.2]: https://github.com/jwh3times/apexracers/compare/v13.0.1...v13.0.2
 [13.0.0]: https://github.com/jwh3times/apexracers/compare/v12.0.0...v13.0.0

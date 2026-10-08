@@ -199,7 +199,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 **Tests**
 
 - Flag backend service logic additions that have no corresponding xUnit test in `src/ApexRacers.Tests/Services/`.
-- Flag tests that import or reference a controller — services are tested directly, never through the HTTP pipeline.
+- Flag ordinary service tests that import or reference a controller. Dedicated synthetic lifecycle,
+  publication and scoped-reference host tests are the deliberate transport-contract exception
+  described in the project guide; enforce their test-only topology boundary.
 - Flag tests that share a single `AppDbContext` instance across test methods.
 
 ## Driver lifecycle checks
@@ -215,6 +217,10 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   flag recorder-only attribution, a refreshed dormant clock, partial historical-association drain,
   a raw User deletion bypass, or live erasure reported as verified backup expiry. Legacy projection
   helpers must not bypass current authority/source checks and protected owner dispatch.
+- For scoped reference, discovery, comparison or Follow changes, apply
+  docs/research/driver-scoped-references.md. The controller's authenticated recipient extraction
+  and module-owned protected result are intentional binding/serialization exceptions; flag ordinary
+  DTO dispatch, retained association permission or synthetic catalog admission presented as Live permission.
 
 ## Frontend checks
 

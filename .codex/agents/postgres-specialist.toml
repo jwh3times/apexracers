@@ -155,6 +155,10 @@ the complete history remains shared across catalog, recipient and scope changes.
 `AuthorizedDriverNameCopies` indexes `GrantId`. Managed rows and both Week weather marker FKs
 are indexed by their copy IDs.
 
+`ScopedDriverReferences` indexes `ExpiresAt` and both grant FKs. `PrivateDriverFollows` has a unique
+`(RecipientGrantId, TargetGrantId)` index plus `TargetGrantId` and `RemoveBy` indexes; these support
+private membership lookup, grant-loss closure and original-deadline cleanup.
+
 `QuarantinedDataCache.CacheKey` is unique within quarantined legacy evidence; its index never authorizes a live-cache fallback.
 
 Percentile queries use indexes on both sides of the `SubsessionResult` → `Subsession` join:
