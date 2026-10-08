@@ -937,6 +937,47 @@ describe('api', () => {
     });
   });
 
+  describe('scoped Driver references', () => {
+    it.each([
+      ['getScopedDriverDetail', 'detail'],
+      ['compareScopedDriver', 'comparison'],
+      ['followScopedDriver', 'follows'],
+    ] as const)(
+      '%s keeps the opaque reference out of the URL and preserves cancellation',
+      async (method, route) => {
+        mockFetchOk({});
+        const controller = new AbortController();
+        const reference = 'A'.repeat(64);
+        await api[method]({ reference }, controller.signal);
+        expect(fetch).toHaveBeenCalledWith(
+          `/api/drivers/scoped/${route}`,
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ reference }),
+            signal: controller.signal,
+          })
+        );
+      }
+    );
+
+    it('encodes a discovery term without allowing additional query parameters', async () => {
+      mockFetchOk([]);
+      await api.getScopedDriverDiscovery('Driver &actor=other');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/drivers/scoped/discovery?term=Driver%20%26actor%3Dother',
+        expect.anything()
+      );
+    });
+
+    it('loads discovery and follows without an identity selector', async () => {
+      mockFetchOk([]);
+      await api.getScopedDriverDiscovery();
+      await api.getScopedDriverFollows();
+      expect(fetch).toHaveBeenNthCalledWith(1, '/api/drivers/scoped/discovery', expect.anything());
+      expect(fetch).toHaveBeenNthCalledWith(2, '/api/drivers/scoped/follows', expect.anything());
+    });
+  });
+
   describe('compareRival', () => {
     it('passes the comparison cancellation signal to the HTTP client', async () => {
       mockFetchOk({});

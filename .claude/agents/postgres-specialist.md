@@ -53,6 +53,8 @@ Two schemas in one database:
 | `EvidenceCopyMarkers` | Guid PK | Payload-free purpose/generation/kind/key-hash/version fence; original acquisition, expiry, withdrawal, removal deadline and verified-removal clocks; restricted purpose FK |
 | `EvidenceCopyDependencies` | composite PK `(CopyId, SourceCopyId)` | Contributing source version; both marker FKs restricted |
 | `AuthorizedDriverNameCopies` | Guid PK | Namespace, grant ID, bounded Driver name and restricted marker FK; reads require the current grant revision, matching name authority and applicable consent |
+| `ScopedDriverReferences` | SHA-256 TokenHash PK | Recipient/target grant, proof and revision bindings; purpose/provenance, original creation and at most 15-minute expiry; restricted grant FKs and expiry index |
+| `PrivateDriverFollows` | Guid PK | Unique recipient/target grant pair; private provenance and original loss/reactivation/removal clocks, restricted grant FKs and removal index |
 | `PrivateUploadSessions` / `PrivateUploadedLaps` | Guid PKs | Typed personal source, original verified User/Driver/provenance and restricted marker/catalog FKs; laps cascade with their source. Unique original session and Lap Number identities fence retries. |
 
 The earlier lifecycle migration creates the six `Driver*` tables empty and renames the physical legacy claim column
@@ -95,6 +97,12 @@ association; authorization openings and revision-only changes require known coho
 while closure can proceed to start that drain. Primary rows alone establish neither independently
 current history nor restored writer terminality; production restore verification remains a separate
 integration gate.
+
+**Reference storage:** before changing reference bindings, Follow retention or their forward-only
+migration, read docs/research/driver-scoped-references.md. `DriverReferenceStore` shares authority
+coordination; SQL fences preserve original bindings and clocks and close dependent associations.
+Legacy `ScopedRivals` do not become verified Follows. A stored hash or Follow row alone establishes
+no current authority, and scheduled cleanup evidence does not certify restored backups.
 
 **`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
 known devices:
@@ -149,6 +157,10 @@ the complete history remains shared across catalog, recipient and scope changes.
 `EvidenceCopyDependencies` indexes `SourceCopyId` for descendant invalidation;
 `AuthorizedDriverNameCopies` indexes `GrantId`. Managed rows and both Week weather marker FKs
 are indexed by their copy IDs.
+
+`ScopedDriverReferences` indexes `ExpiresAt` and both grant FKs. `PrivateDriverFollows` has a unique
+`(RecipientGrantId, TargetGrantId)` index plus `TargetGrantId` and `RemoveBy` indexes; these support
+private membership lookup, grant-loss closure and original-deadline cleanup.
 
 `QuarantinedDataCache.CacheKey` is unique within quarantined legacy evidence; its index never authorizes a live-cache fallback.
 

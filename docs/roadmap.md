@@ -29,7 +29,10 @@ using the `<major>.<minor>.<build>` format.
   Controlled private upload attribution, dormant recovery and User-wide deletion now have synthetic
   PostgreSQL/HTTP evidence; ordinary real private workflows remain closed.
   Whole-cohort publication candidates add synthetic band/support and adversarial review evidence;
-  actual catalog admission and atomic combined-release accounting still precede product publication.
+  controlled atomic combined-release accounting now protects synthetic dispatch; actual catalog
+  admission and production integration still precede product publication. Scoped synthetic
+  discovery/comparison/Follow uses revocable recipient-bound references; browser invalidation,
+  restore/pilot controls and the integrated acceptance matrix remain separate gates.
 - **Live iRacing data readiness:** keep the iRacing-backed surface gated until required
   service credentials and rollout checks are complete.
 - **Sign in with iRacing:** replace self-entered customer IDs with a verified OAuth

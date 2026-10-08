@@ -24,6 +24,14 @@ admit a production catalog; combined-release admission remains separate.
 [Candidate evidence](research/whole-cohort-publication-candidates.md) declares the fixed fields,
 audience/owner variants and remaining review obligations.
 
+Controlled synthetic Driver discovery, detail, comparison and Follow now use short-lived opaque
+references bound to the signed-in recipient and purpose. Each use and protected dispatch rechecks
+current ownership, consent and source/catalog evidence; raw Customer IDs and retained Follows
+cannot grant access. Follow loss preserves its original reactivation and cleanup deadlines.
+These API paths remain unavailable under ordinary startup, and no browser workflow is enabled by
+this slice. [Reference evidence](research/driver-scoped-references.md) records the controlled scope
+and the remaining browser, production and restore gates.
+
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,

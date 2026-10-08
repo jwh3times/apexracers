@@ -230,7 +230,7 @@ public sealed class PublicationReleaseStore(AppDbContext db, TimeProvider clock,
         };
     }
     private static bool Valid(PublicationProposal p) => p.Id != Guid.Empty && p.Incarnation != Guid.Empty
-        && p.CatalogId == "synthetic-lap-rating-v1" && p.CatalogRevision > 0 && p.Provenance == DataProvenance.Demo
+        && p.CatalogId is "synthetic-lap-rating-v1" or DriverReferences.CatalogId && p.CatalogRevision > 0 && p.Provenance == DataProvenance.Demo
         && Enum.IsDefined(p.Purpose) && (p.Purpose == PublicationPurpose.Aggregate ? p.RecipientUserId is null : p.RecipientUserId is { } id && id != Guid.Empty)
         && new[] { p.ContextHash, p.DependencyHash, p.RepresentationHash }.All(s => s.Length == 64 && s.All(char.IsAsciiHexDigit))
         && !p.Dependencies.IsDefaultOrEmpty;

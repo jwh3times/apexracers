@@ -97,12 +97,19 @@ Migrations run automatically at API startup via `db.Database.MigrateAsync()` —
 docker build -t "$REGISTRY/apexracers-ingestion:$IMAGE_TAG" -f ingestion.Dockerfile .
 docker push "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
 
-# Update Container App
-az containerapp update \
-  --name "$INGESTION_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --image "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
+# Update the image and restore an observed pause. Use a unique numeric run/attempt suffix.
+IMAGE="$REGISTRY/apexracers-ingestion:$IMAGE_TAG" \
+REVISION_SUFFIX="deploy-$DEPLOY_RUN_ID-$DEPLOY_ATTEMPT" \
+node scripts/deploy-ingestion.mjs
 ```
+
+Image updates and pause/enable changes must follow docs/ingestion-deployment.md. The helper
+requires INGESTION_APP_NAME, RESOURCE_GROUP and AZURE_SUBSCRIPTION_ID in the environment;
+private/ops/azure-deployment-runbook.md supplies the operator procedure when installed.
+Verify the final complete revision inventory, including the requested image and all baseline
+identities. Azure can transiently activate workers before deactivation, so independent acquisition
+fences remain necessary. Serialize operator changes with the deployment; reconcile failed or
+interrupted runs before claiming the pause is restored.
 
 ## Deploy authentication and workflow supply chain
 

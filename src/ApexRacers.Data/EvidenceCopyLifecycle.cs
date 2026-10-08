@@ -67,6 +67,8 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             || await db.SubsessionResults.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.CarPercentileResults.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.Rivals.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
+            || await db.Set<ScopedDriverReference>().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
+            || await db.Set<PrivateDriverFollow>().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.SeasonCarBops.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.Weeks.AnyAsync(w => w.DemoWeatherSummaryJson != null, ct)) throw new EvidenceCopyUnavailableException();
@@ -254,6 +256,9 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 .Select(g => g.UserId).Distinct().ToArrayAsync(ct);
             if (deletedUsers.Length != 0)
             {
+                var deletedGrantIds = await db.DriverAuthorizationGrants.Where(g => deletedUsers.Contains(g.UserId)).Select(g => g.Id).ToArrayAsync(ct);
+                await db.Set<ScopedDriverReference>().Where(r => deletedGrantIds.Contains(r.RecipientGrantId) || deletedGrantIds.Contains(r.TargetGrantId)).ExecuteDeleteAsync(ct);
+                await db.Set<PrivateDriverFollow>().Where(f => deletedGrantIds.Contains(f.RecipientGrantId) || deletedGrantIds.Contains(f.TargetGrantId)).ExecuteDeleteAsync(ct);
                 await db.UploadedLaps.IgnoreQueryFilters().Where(l => deletedUsers.Contains(l.UserId)).ExecuteDeleteAsync(ct);
                 await db.DriverProofReceipts.Where(p => deletedUsers.Contains(p.UserId))
                     .ExecuteUpdateAsync(u => u.SetProperty(p => p.Authority, string.Empty), ct);

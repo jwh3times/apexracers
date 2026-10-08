@@ -7,6 +7,12 @@ internal static class RehearsalEntryPoint
 {
     public static async Task<int> Main(string[] args)
     {
+        if (args is ["--driver-reference-host"])
+        {
+            await References.ReferenceHost.RunAsync();
+            return 0;
+        }
+
         if (args is ["--driver-lifecycle-host"])
         {
             await Lifecycle.LifecycleHost.RunAsync();

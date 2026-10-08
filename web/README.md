@@ -175,6 +175,11 @@ instead of presenting it as a current Field result.
 
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
 
+The scoped Driver methods use authenticated discovery/Follow lists and body-based, purpose-bound
+references for detail, comparison and Follow requests. They support `AbortSignal`; no browser
+workflow uses them yet, and ordinary API startup leaves their catalog unavailable. Read the
+[reference integration contract](../docs/research/driver-scoped-references.md) before connecting a UI.
+
 The telemetry preview response contains only `persisted`, lap counts and best time. Its page
 distinguishes saved private laps from an unsaved preview; recorder identity and untrusted catalog
 labels are not response fields. Production upload/My Laps routes remain unavailable while real

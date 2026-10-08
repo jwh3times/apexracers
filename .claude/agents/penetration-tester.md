@@ -205,6 +205,20 @@ Policies in `Program.cs`:
 - `PUT /api/admin/feature-flags/:id` — requires `AdminOnly`.
 - `DELETE /api/admin/feature-flags/:id` — requires `AdminOnly`.
 
+**Scoped Driver references**
+
+- Read docs/research/driver-scoped-references.md for the controlled synthetic test topology.
+  `GET /api/drivers/scoped/discovery` and `/follows`, and `POST /api/drivers/scoped/detail`,
+  `/comparison` and `/follows`, require the authenticated recipient. Ordinary startup has no
+  reference catalog and cannot produce protected output.
+- Replay another recipient's reference, swap purposes, supply a raw Customer ID, or use a reference
+  at/after its original expiry. Compare generic unavailable bodies and `no-store`; probe grant,
+  proof, consent, source/catalog and independently current history loss during held dispatch.
+  Visitors and hidden groups must never receive names or Driver-addressing references.
+- A retained Follow is no authorization. Verify immediate inactivity, unchanged original clocks,
+  reactivation strictly before day 90, physical removal by day 97 and User-delete private erasure.
+  Include raw SQL writers and alternate legacy Driver routes, not only normal service calls.
+
 **Cross-user data access**
 
 - Probe the resource-filter boundary before endpoint-specific validation: legacy Real Driver
