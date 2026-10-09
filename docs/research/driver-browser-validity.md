@@ -70,4 +70,7 @@ These checks establish neither production backup lifetime nor removal outside ap
 Local verification on 2026-10-08 passed 59 Reference HTTP cases, all 814 frontend tests,
 all six built-SPA cases, production build, Oxlint, whole-web Prettier, generated-agent parity
 and whitespace checks. The two new personal/withdrawal HTTP cases passed again after the
-final service review. Full integrated backend acceptance remains separate from this slice.
+final service review. Combined local validation for #376/#377 subsequently passed all 1,294
+Release backend cases with 96.03% line / 87.88% branch coverage; the final migration chain also
+passed all six built-SPA cases. The validation record is in
+`docs/research/driver-migration-restore.md`. Production/pilot and #380 acceptance remain separate.

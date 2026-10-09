@@ -118,3 +118,16 @@ the ordinary API processes. No current product code or child-process coverage is
 Accelerated local clocks prove deadline handling for these copies. They do not establish deployed
 backup lifetime, backup expiry, production restore safety, deletion outside application control,
 production log retention or recall of bytes already delivered/exported.
+
+## Local validation
+
+Final combined #376/#377 validation at compiled commit `bbb3935` passed all 1,294 Release backend
+cases, including all seven restore cases, with measured 96.03% line / 87.88% branch coverage.
+The report contains measured current product code and no archived legacy modules; both existing
+85% gates pass. All 814 frontend tests passed with 96.85% line / 91.04% branch coverage, and all
+six built-SPA privacy cases passed against the final migration chain. Production build, Oxlint,
+whole-web Prettier, generated-agent parity, changed-source whitespace and all 40 repository
+coordination cases passed. The matching EF tool reported no pending model changes.
+
+This is local implementation evidence. Shipping, PR CI and the production/pilot acceptance gates
+remain separate.
