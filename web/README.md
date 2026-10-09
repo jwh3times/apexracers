@@ -76,6 +76,14 @@ starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite
 Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow
 (`.github/workflows/e2e.yml`) — it is not yet a required check.
 
+**Browser privacy:** build the SPA, then run
+`npx playwright test --config playwright.privacy.config.ts`. This separate configuration starts
+dedicated synthetic protected hosts and an ordinary credential-free Demo host through the Tests
+executable; Docker and the repository's .NET SDK are required. The cases exercise actual built-page
+display expiry, withdrawal, resumption and useful Demo behavior. CI runs them after ordinary E2E.
+Read the [browser validity record](../docs/research/driver-browser-validity.md) for topology,
+commands and limits; these cases do not certify Live authorization or deployed backup expiry.
+
 **Accessibility audits:** `web/e2e/a11y.spec.ts` runs WCAG 2.1 A/AA axe-core checks across 5 public
 pages and 7 authenticated pages and asserts zero violations. The shared helper
 `web/e2e/helpers/a11y.ts` exports `auditA11y(page, opts?)` (runs `@axe-core/playwright` against the
@@ -133,15 +141,18 @@ src/
     auth/ series/ racing/ driver/ rivals/ catalog/ telemetry/ profile/ admin/
   pages/              ← public/static pages only (Home, Terms, Privacy, ComingSoon)
   pages/__tests__/    ← Vitest tests for the static pages
-  components/         ← shared UI (Sidebar, TopNav, Footer, ResourceView, …) + colocated *.test.tsx siblings
+  components/         ← shared UI (Sidebar, TopNav, Footer, ResourceView, DriverDisclosure, …)
+                          + colocated *.test.tsx siblings
   context/            ← AuthContext + AuthProvider, ThemeContext, FeatureFlagContext, PaceSourceContext
                           + provider components and colocated
                           *.test.tsx siblings
-  hooks/              ← useResource + resourceRequest (shared read lifecycle)
+  hooks/              ← useResource + resourceRequest (independent reads),
+                          useDriverResource + driverResource (bounded sensitive reads)
                           + colocated *.test.ts(x) siblings
   services/           ← api.ts (typed fetch client), http.ts (request core + error classes),
                           session.ts (signed-in session: tokens, claims, persistence, silent
-                          refresh), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
+                          refresh), driverDisclosure.ts (browser invalidation and pending
+                          withdrawal veto), db.ts (IndexedDB helpers) + colocated *.test.ts siblings
   utils/              ← formatLapTime, toTopPercent/topPercentLabel, deriveAlerts, breadcrumbs,
                           raceWeekNumber/raceWeekLabel (0-based Race Week Index → 1-based Race Week
                           Number), splitLabel (Split Index/Count → display label, null when unknown),
@@ -176,9 +187,11 @@ instead of presenting it as a current Field result.
 All fetch calls go through `src/services/api.ts`, which builds on the request core in `src/services/http.ts`. Never call `fetch()` directly in pages or components. Response types in `api.ts` must stay in sync with `ResponseDtos.cs` in `src/ApexRacers.Api/Dtos/`.
 
 The scoped Driver methods use authenticated discovery/Follow lists and body-based, purpose-bound
-references for detail, comparison and Follow requests. They support `AbortSignal`; no browser
-workflow uses them yet, and ordinary API startup leaves their catalog unavailable. Read the
-[reference integration contract](../docs/research/driver-scoped-references.md) before connecting a UI.
+references for detail, comparison and Follow requests. They support `AbortSignal`; Dashboard and
+Compare include protected personal/shared cards and own-User withdrawal. Ordinary API startup
+keeps their protected catalog unavailable. Read the
+[reference integration contract](../docs/research/driver-scoped-references.md) and
+[browser validity record](../docs/research/driver-browser-validity.md) before changing these flows.
 
 The telemetry preview response contains only `persisted`, lap counts and best time. Its page
 distinguishes saved private laps from an unsaved preview; recorder identity and untrusted catalog
@@ -189,18 +202,26 @@ Race-week response fields, request parameters, and route state use `raceWeekInde
 unchanged when calling the API and use `raceWeekNumber` / `raceWeekLabel` only for presentation. See
 [`CONTEXT.md`](../CONTEXT.md) for the canonical Race Week Index / Race Week Number vocabulary.
 
-The client includes a **401 interceptor**: on a 401 response, it silently exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries the original request. Concurrent 401s are deduplicated — only one refresh call is made regardless of how many requests fail simultaneously.
+The client requests `cache: 'no-store'`, including retries. Its **401 interceptor** silently
+exchanges the stored refresh token for a new JWT via `POST /api/auth/refresh`, then retries once
+only if the original User still owns the session. Concurrent 401s within one tab share one refresh.
 
-Read-only page requests use `src/hooks/useResource.ts`. Its fetcher receives an `AbortSignal`; pass
+Independent read-only page requests use `src/hooks/useResource.ts`. Its fetcher receives an `AbortSignal`; pass
 that signal through the matching `api` method so dependency changes and unmounts cancel the request.
 The hook owns loading, stale-result suppression, typed `IRACING_NOT_LINKED` classification, and generic
 errors. Render those non-data states with `ResourceView`, and declare deliberately optional overlays
 with the hook's typed `onNotLinked` / `onError` fallbacks. Mutation-owned lists, debounced searches,
-uploads, and domain workflows keep their focused local state machines. Both `useResource` and the
-rival comparison workflow reuse `src/hooks/resourceRequest.ts` for request replacement, cancellation,
-and outcome classification. `features/rivals/useRivalComparison.ts` owns the selected Customer ID,
-active comparison, and successful-removal invalidation together: the latest request wins, and a
-completed removal clears the comparison only when that rival is still selected.
+uploads, and domain workflows keep their focused local state machines.
+
+Sensitive Driver reads use `src/hooks/useDriverResource.ts` and `driverResource.ts`: each current
+read repeats at 15 seconds, and display expires within 30 seconds of its check start on wall and
+monotonic clocks. Selection/owner replacement, withdrawal, offline and browser suspension discard
+the current display; resumption rechecks. Stale success/error cannot publish and failed reads cannot
+substitute cached Driver data. `driverDisclosure.ts` coordinates those events across tabs. Its
+User-keyed pending withdrawal contains only the original operation UUID and scope, and remains a
+display veto across reload until confirmed. A frozen browser cannot erase pixels while no code
+runs; resume clears state before redisplay. `features/rivals/useRivalComparison.ts` uses the same
+bounded hook while owning selection and successful-removal invalidation.
 
 ## Authentication
 

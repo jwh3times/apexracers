@@ -1,7 +1,7 @@
 import { api, type CategoryProgression } from '../../services/api';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 
 function Kpi({
   label,
@@ -79,7 +79,7 @@ function CategoryCard({ cat }: { cat: CategoryProgression }) {
 }
 
 export default function ProgressionPage() {
-  const resource = useResource(signal => api.getProgression(signal), [], {
+  const resource = useDriverResource(signal => api.getProgression(signal), [], {
     fallbackMessage: 'Failed to load progression.',
   });
 

@@ -462,8 +462,12 @@ docs/research/driver-scoped-references.md. `ScopedDriverPublication` owns the pr
 executor; `DriverReferenceStore` owns bound references and original Follow clocks under the
 existing authority coordination. Returning an ordinary DTO from these paths would escape the
 final admission/dispatch checks. Keep positive adapters in the dedicated synthetic test topology;
-ordinary startup must retain unavailable proof/journal/catalog behavior. Browser invalidation and
-full restore acceptance remain separate integrations.
+ordinary startup must retain unavailable proof/journal/catalog behavior. For personal reads and
+withdrawal, preserve the project guide's browser contract: JWT `sub` selects the caller, stored
+association selects the Driver, and original operation replay retains its scope and association.
+Controllers return the module-owned result so protected dispatch and withdrawal status stay at the
+service boundary. Browser and physical restore implementation evidence now exists; production
+adapters and integrated acceptance remain separate.
 
 ## Tests
 

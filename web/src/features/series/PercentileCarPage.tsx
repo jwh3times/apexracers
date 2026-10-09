@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { api, ApiError, type DistributionBin, type PercentileResult } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -8,33 +8,8 @@ import { usePaceSource } from '../../context/PaceSourceContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { fieldSizeMessage } from '../../utils/fieldSize';
 import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { raceWeekNumber } from '../../utils/raceWeek';
-
-type FetchState = {
-  loading: boolean;
-  result: PercentileResult | null;
-  error: string | null;
-  notFound: boolean;
-};
-
-type FetchAction =
-  | { type: 'start' }
-  | { type: 'success'; result: PercentileResult }
-  | { type: 'not_found' }
-  | { type: 'error'; message: string };
-
-function fetchReducer(_: FetchState, action: FetchAction): FetchState {
-  switch (action.type) {
-    case 'start':
-      return { loading: true, result: null, error: null, notFound: false };
-    case 'success':
-      return { loading: false, result: action.result, error: null, notFound: false };
-    case 'not_found':
-      return { loading: false, result: null, error: null, notFound: true };
-    case 'error':
-      return { loading: false, result: null, error: action.message, notFound: false };
-  }
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -96,46 +71,32 @@ export default function PercentileCarPage() {
   const [customerId, setCustomerId] = useState('');
   const [lookedUpId, setLookedUpId] = useState<number | null>(null);
   const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
-  const [{ loading, result, error, notFound }, dispatch] = useReducer(fetchReducer, {
-    loading: false,
-    result: null,
-    error: null,
-    notFound: false,
-  });
-
   const profileId = user?.iRacingCustomerId ?? null;
   const effectiveId = profileId ?? lookedUpId;
-
-  useEffect(() => {
-    if (!effectiveId || !seriesId || !raceWeekIndex || !carId) return;
-    let active = true;
-    dispatch({ type: 'start' });
-    api
-      .getPercentile(
-        Number(seriesId),
-        Number(raceWeekIndex),
-        Number(carId),
-        effectiveId,
-        evidenceOptions
-      )
-      .then(data => {
-        if (active) dispatch({ type: 'success', result: data });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        // Branch on the status, not the message: a bare NotFound() is filled in by ASP.NET as
-        // ProblemDetails, so the thrown message is its title ("Not Found"), never a status line.
-        if (err instanceof ApiError && err.status === 404) dispatch({ type: 'not_found' });
-        else
-          dispatch({
-            type: 'error',
-            message: (err instanceof Error ? err.message : '') || 'Failed to load percentile.',
-          });
-      });
-    return () => {
-      active = false;
-    };
-  }, [effectiveId, seriesId, raceWeekIndex, carId, evidenceOptions]);
+  const enabled = !!(effectiveId && seriesId && raceWeekIndex && carId);
+  const resource = useDriverResource<PercentileResult | null>(
+    async signal => {
+      try {
+        return await api.getPercentile(
+          Number(seriesId),
+          Number(raceWeekIndex),
+          Number(carId),
+          effectiveId!,
+          evidenceOptions,
+          signal
+        );
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+    [effectiveId, seriesId, raceWeekIndex, carId, evidenceOptions],
+    { enabled, fallbackMessage: 'Failed to load percentile.' }
+  );
+  const loading = enabled && resource.status === 'loading';
+  const result = resource.status === 'ok' ? resource.data : null;
+  const notFound = resource.status === 'ok' && resource.data === null;
+  const error = resource.status === 'error' ? resource.message : null;
 
   function handleLookup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

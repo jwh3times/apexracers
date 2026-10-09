@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { raceWeekNumber } from '../../utils/raceWeek';
 
 function startLabel(iso: string): string {
@@ -21,7 +21,7 @@ function countdown(startMs: number, now: number): string {
 
 export default function LivePage() {
   const [now, setNow] = useState(() => Date.now());
-  const resource = useResource(signal => api.getRaceGuide(signal), [], {
+  const resource = useDriverResource(signal => api.getRaceGuide(signal), [], {
     fallbackMessage: 'Failed to load the race guide.',
   });
 

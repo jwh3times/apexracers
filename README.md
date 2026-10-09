@@ -12,6 +12,12 @@ values under a renamed physical column and creates empty authorization tables. S
 before applying it; an old binary/schema is not a supported recovery path. Ordinary startup has no
 usable provider-ownership or independent-journal adapter, and stored claims do not grant access.
 
+The current migration also moves legacy Uploaded Laps to `QuarantinedUploadedLaps`, preserving
+their original rows and dates while blocking older binary readers on the upgraded schema.
+[Migration/restore evidence](docs/research/driver-migration-restore.md) documents the forward-only
+chain and physical snapshot rehearsals. Restored primary state alone cannot authorize activation;
+independently current enforcement and release history remain required.
+
 ## Repo structure
 
 | Path                        | Description                                                                |

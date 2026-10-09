@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFeatureFlag, useIracingSurface } from '../../context/FeatureFlagContext';
 import type { Resource } from '../../hooks/useResource';
 import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { formatLapTime } from '../../utils/lapTime';
 
 function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
@@ -302,14 +303,14 @@ export default function ProfilePage() {
   const linked = !!user?.iRacingCustomerId;
   // Demo supplies the Subject Driver without asserting a User's Claimed Identity.
   const hasSubjectDriver = linked || demo;
-  const lapsResource = useResource(signal => api.getMyUploadedBests(signal), [], {
+  const lapsResource = useDriverResource(signal => api.getMyUploadedBests(signal), [], {
     onError: { fallback: [] },
   });
   const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
     enabled: showIracing,
     onError: { fallback: [] },
   });
-  const statsResource = useResource(
+  const statsResource = useDriverResource(
     signal => api.getProfileStats(signal),
     [hasSubjectDriver, demo, showIracing],
     {
@@ -317,7 +318,7 @@ export default function ProfilePage() {
       fallbackMessage: 'Failed to load driver stats.',
     }
   );
-  const achievementsResource = useResource(
+  const achievementsResource = useDriverResource(
     signal => api.getAchievements(signal),
     [hasSubjectDriver, demo, showIracing],
     {

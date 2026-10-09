@@ -1,54 +1,45 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { api, type DriverComparison } from '../../services/api';
-import { createResourceRequest, type Resource } from '../../hooks/resourceRequest';
+import { useDriverResource } from '../../hooks/useDriverResource';
+import type { Resource } from '../../hooks/resourceRequest';
 
 type ComparisonState =
   | { status: 'idle' }
   | { status: 'comparing' }
   | Exclude<Resource<DriverComparison>, { status: 'loading' }>;
-
 type ComparisonTransport = Pick<typeof api, 'compareRival' | 'removeRival'>;
 
-/** Owns selection, request replacement and successful-removal invalidation as one workflow. */
+/** Selection and successful removal invalidate the entire bounded comparison read. */
 export function useRivalComparison(transport: ComparisonTransport = api) {
-  const [state, setState] = useState<{
-    selected: number | null;
-    comparison: ComparisonState;
-  }>({ selected: null, comparison: { status: 'idle' } });
-  const selected = useRef<number | null>(null);
-  const [request] = useState(() => createResourceRequest<DriverComparison>());
-
-  useEffect(
-    () => () => {
-      selected.current = null;
-      request.cancel();
-    },
-    [request]
+  const [selection, setSelection] = useState<{ id: number | null; version: number }>({
+    id: null,
+    version: 0,
+  });
+  const selected = selection.id;
+  const resource = useDriverResource(
+    signal => transport.compareRival(selected!, signal),
+    [selected, selection.version, transport],
+    {
+      enabled: selected !== null,
+      fallbackMessage: 'Failed to load comparison.',
+    }
   );
-
-  const compare = (customerId: number) => {
-    selected.current = customerId;
-    setState({ selected: customerId, comparison: { status: 'comparing' } });
-    request.load(
-      signal => transport.compareRival(customerId, signal),
-      resource =>
-        setState({
-          selected: customerId,
-          comparison: resource.status === 'loading' ? { status: 'comparing' } : resource,
-        }),
-      { fallbackMessage: 'Failed to load comparison.' }
-    );
-  };
-
+  const comparison: ComparisonState =
+    selected === null
+      ? { status: 'idle' }
+      : resource.status === 'loading'
+        ? { status: 'comparing' }
+        : resource;
   const remove = async (customerId: number) => {
     await transport.removeRival(customerId);
-    // Check current selection after the write, not the selection when removal began.
-    if (selected.current === customerId) {
-      selected.current = null;
-      request.cancel();
-      setState({ selected: null, comparison: { status: 'idle' } });
-    }
+    setSelection(current =>
+      current.id === customerId ? { id: null, version: current.version + 1 } : current
+    );
   };
-
-  return { ...state, compare, remove };
+  return {
+    selected,
+    comparison,
+    compare: (id: number) => setSelection(current => ({ id, version: current.version + 1 })),
+    remove,
+  };
 }

@@ -35,7 +35,7 @@ Two schemas in one database:
 | `RaceEvidenceResults` | composite   | One Race Result per Driver (Provenance, SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …). The composite key assumes a Customer ID, so team entries are not representable                                     |
 | `ScopedSeasonCarBops` | composite   | Per-week BoP for one car (Provenance, SeasonId, RaceWeekIndex, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
 | `ScopedCarPercentileResults` | Guid PK   | Cache — one row per (Provenance, UserId, CarId, SeriesId, WeekId); upserted on each compute                                                                              |
-| `UploadedLaps`         | Guid PK     | One Uploaded Lap — every timed lap of a Telemetry Upload, never a per-car-and-track best; includes `SessionType`, `TrackTempCelsius`, `TrackWetness`, and nullable `DriverCustId` (the Driver the file named; null = not established, including every row written before the column existed) |
+| `QuarantinedUploadedLaps` | Guid PK | Physical table for legacy `UploadedLap` rows; original User/catalog FKs and telemetry dates preserved, recorder identity does not authorize attribution. Current cleanup uses the existing `UploadedLaps` DbSet through its fenced mapping. |
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
 | `MappedDataCaches` | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on (`Provenance`, `CacheKey`) (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
 | `ScopedRivals` | Guid PK     | A driver a user follows; unique index on (Provenance, UserId, RivalCustId) for idempotent add; cascade FK → `identity.Users`                                             |
@@ -61,6 +61,12 @@ The earlier lifecycle migration creates the six `Driver*` tables empty and renam
 to `identity.Users.ClaimedIRacingCustomerId`, preserving values and the named claim uniqueness
 constraint. The C# property remains `IRacingCustomerId`. No claim is backfilled as proof or consent;
 Down refuses to discard the fences/history. Driver authority requires real PostgreSQL coordination.
+
+For legacy-upload rollback and snapshot work, use the restore boundary linked from the project
+guide. A migration test must apply the real historical chain, preserve pre-cutover values, and
+probe an actual prepared old reader across upgrade; `EnsureCreated` cannot establish that fence.
+Independent journal/history state stays outside the primary snapshot, and reconciliation imports
+original identities/clocks rather than assigning new loss times or release budgets.
 
 **Provenance storage:** when changing Driver evidence tables, cache keys, seeding, teardown or
 migrations, read docs/research/demo-acquisition-provenance.md first. Mutable evidence table names

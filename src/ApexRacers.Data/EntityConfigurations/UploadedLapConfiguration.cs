@@ -8,6 +8,9 @@ public class UploadedLapConfiguration : IEntityTypeConfiguration<UploadedLap>
 {
     public void Configure(EntityTypeBuilder<UploadedLap> builder)
     {
+        // Legacy recorder IDs/claims establish no verified Driver attribution. Keep the
+        // payload for scoped erasure/inventory, but remove the old binary's physical route.
+        builder.ToTable("QuarantinedUploadedLaps");
         builder.HasKey(p => p.Id);
 
         builder.HasIndex(p => new { p.UserId, p.CarId, p.TrackId });

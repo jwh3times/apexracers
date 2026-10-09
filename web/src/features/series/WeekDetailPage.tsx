@@ -6,7 +6,7 @@ import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
 import PercentileBadge from '../../components/PercentileBadge';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
@@ -67,7 +67,7 @@ export default function WeekDetailPage() {
   const { user } = useAuth();
   const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
   const [sort, setSort] = useState<SortMode>('best');
-  const detailResource = useResource<WeekDetail>(
+  const detailResource = useDriverResource<WeekDetail>(
     signal => api.getWeekDetail(Number(seriesId), Number(raceWeekIndex), signal),
     [seriesId, raceWeekIndex],
     {
@@ -78,7 +78,7 @@ export default function WeekDetailPage() {
 
   // The caller's "Your pct" overlay — only when signed in. Failures (incl. not-linked) leave the
   // column blank rather than surfacing an error on this otherwise-public page.
-  const percentileResource = useResource(
+  const percentileResource = useDriverResource(
     signal =>
       api.getMyWeekPercentiles(Number(seriesId), Number(raceWeekIndex), evidenceOptions, signal),
     [seriesId, raceWeekIndex, user, evidenceOptions],

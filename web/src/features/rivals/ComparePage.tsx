@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import {
-  api,
-  ApiError,
-  type DriverSearchResult,
-  type DriverComparison,
-  type ComparisonSide,
-} from '../../services/api';
+import { api, type DriverComparison, type ComparisonSide } from '../../services/api';
 import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import IRatingCompareChart from '../../components/IRatingCompareChart';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
+import { SharedDriverCard } from '../../components/DriverDisclosure';
 import { formatLapTime } from '../../utils/lapTime';
 import { useRivalComparison } from './useRivalComparison';
 
@@ -293,14 +288,13 @@ export default function ComparePage() {
   const demoFlag = useFeatureFlag('iracing-demo');
   const [rivalVersion, setRivalVersion] = useState(0);
   const [term, setTerm] = useState('');
-  const [results, setResults] = useState<DriverSearchResult[]>([]);
-  const [searchUnavailable, setSearchUnavailable] = useState(false);
+  const [debouncedTerm, setDebouncedTerm] = useState('');
   const { selected, comparison, compare, remove: removeComparison } = useRivalComparison();
 
-  const rivalsResource = useResource(signal => api.getRivals(signal), [rivalVersion], {
+  const rivalsResource = useDriverResource(signal => api.getRivals(signal), [rivalVersion], {
     fallbackMessage: 'Failed to load rivals.',
   });
-  const suggestionsResource = useResource(
+  const suggestionsResource = useDriverResource(
     signal => api.getRivalSuggestions(signal),
     [rivalVersion],
     { onNotLinked: { fallback: [] }, onError: { fallback: [] } }
@@ -309,38 +303,22 @@ export default function ComparePage() {
   // Suggestions are an optional enhancement; the resource policy settles failures to an empty list.
   const suggestions = suggestionsResource.status === 'ok' ? suggestionsResource.data : [];
 
-  // Debounced driver name search. All state updates happen inside the timer (never
-  // synchronously in the effect body) so short/cleared terms also settle after the debounce.
   useEffect(() => {
-    const q = term.trim();
-    // `active` as well as clearTimeout: clearing only stops a timer that hasn't fired yet,
-    // so a search already in flight would still land its result after unmount.
-    let active = true;
-    const id = setTimeout(() => {
-      if (q.length < 2 || q.length > MaxSearchTermLength) {
-        setResults([]);
-        setSearchUnavailable(false);
-        return;
-      }
-      setSearchUnavailable(false);
-      api
-        .searchDrivers(q)
-        .then(rows => {
-          if (active) setResults(rows);
-        })
-        .catch((err: unknown) => {
-          if (!active) return;
-          setResults([]);
-          // 503 = search backend unavailable (live: no creds; demo: term not in the
-          // curated seed set) — worth telling apart from "no drivers matched".
-          if (err instanceof ApiError && err.status === 503) setSearchUnavailable(true);
-        });
-    }, 300);
-    return () => {
-      active = false;
-      clearTimeout(id);
-    };
+    const timer = setTimeout(() => setDebouncedTerm(term.trim()), 300);
+    return () => clearTimeout(timer);
   }, [term]);
+  const searchResource = useDriverResource(
+    signal => api.searchDrivers(debouncedTerm, signal),
+    [debouncedTerm, term],
+    {
+      enabled:
+        term.trim() === debouncedTerm &&
+        debouncedTerm.length >= 2 &&
+        debouncedTerm.length <= MaxSearchTermLength,
+    }
+  );
+  const results = searchResource.status === 'ok' ? searchResource.data : [];
+  const searchUnavailable = searchResource.status === 'error';
 
   const followedIds = useMemo(
     () => new Set(rivalsResource.status === 'ok' ? rivalsResource.data.map(r => r.customerId) : []),
@@ -350,7 +328,6 @@ export default function ComparePage() {
   const add = async (customerId: number, driverName: string) => {
     await api.addRival(customerId, driverName);
     setRivalVersion(version => version + 1);
-    setResults(rs => rs.filter(r => r.customerId !== customerId));
   };
 
   const remove = async (custId: number) => {
@@ -365,6 +342,7 @@ export default function ComparePage() {
         <h1 className="text-page-title text-on-surface mt-2">Driver Comparison</h1>
       </div>
 
+      <SharedDriverCard />
       <div className="mb-6">
         <ResourceView
           resource={rivalsResource}

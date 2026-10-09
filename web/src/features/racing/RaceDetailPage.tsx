@@ -11,7 +11,7 @@ import { splitLabel } from '../../utils/split';
 import { unrepresentedEntriesNote } from '../../utils/fieldCompleteness';
 import LapTraceChart from '../../components/LapTraceChart';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 
 const SKIES = ['Clear', 'Partly Cloudy', 'Mostly Cloudy', 'Overcast'];
 
@@ -131,7 +131,7 @@ function ClassifiedTable({ rows, meCustId }: { rows: SubsessionResultRow[]; meCu
 }
 
 function PaceCard({ subsessionId, customerId }: { subsessionId: number; customerId: number }) {
-  const resource = useResource<DriverLaps | null>(
+  const resource = useDriverResource<DriverLaps | null>(
     signal => api.getDriverLaps(subsessionId, customerId, signal),
     [subsessionId, customerId],
     { onNotLinked: { fallback: null }, onError: { fallback: null } }
@@ -168,9 +168,13 @@ export default function RaceDetailPage() {
   const { subsessionId } = useParams<{ subsessionId: string }>();
   const id = Number(subsessionId);
   const { user } = useAuth();
-  const resource = useResource<SubsessionDetail>(signal => api.getSubsession(id, signal), [id], {
-    fallbackMessage: 'Failed to load race.',
-  });
+  const resource = useDriverResource<SubsessionDetail>(
+    signal => api.getSubsession(id, signal),
+    [id],
+    {
+      fallbackMessage: 'Failed to load race.',
+    }
+  );
 
   return (
     <main className="page-wrap">

@@ -21,8 +21,8 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
 
     public static Task<LifecycleProcess> StartAsync(string primary, string journal, CancellationToken ct) => StartCoreAsync(primary, journal, null, ct);
     public static Task<LifecycleProcess> StartCohortAsync(string primary, string journal, Guid epoch, CancellationToken ct) => StartCoreAsync(primary, journal, epoch, ct);
-    public static Task<LifecycleProcess> StartReferenceAsync(string primary, string journal, Guid epoch, CancellationToken ct) => StartCoreAsync(primary, journal, epoch, ct, reference: true);
-    private static async Task<LifecycleProcess> StartCoreAsync(string primary, string journal, Guid? epoch, CancellationToken ct, bool reference = false)
+    public static Task<LifecycleProcess> StartReferenceAsync(string primary, string journal, Guid epoch, CancellationToken ct, bool browser = false, int port = 0) => StartCoreAsync(primary, journal, epoch, ct, reference: true, browser: browser, port: port);
+    private static async Task<LifecycleProcess> StartCoreAsync(string primary, string journal, Guid? epoch, CancellationToken ct, bool reference = false, bool browser = false, int port = 0)
     {
         var incarnation = Guid.NewGuid();
         var info = new ProcessStartInfo("dotnet")
@@ -33,11 +33,12 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
             RedirectStandardError = true,
         };
         info.ArgumentList.Add(typeof(LifecycleProcess).Assembly.Location);
-        info.ArgumentList.Add(reference ? "--driver-reference-host" : epoch is null ? "--driver-lifecycle-host" : "--publication-ledger-host");
+        info.ArgumentList.Add(browser ? "--driver-browser-host" : reference ? "--driver-reference-host" : epoch is null ? "--driver-lifecycle-host" : "--publication-ledger-host");
         if (epoch is { } known) info.Environment["PUBLICATION_HISTORY_EPOCH"] = known.ToString();
         info.Environment["DRIVER_LIFECYCLE_DATABASE"] = primary;
         info.Environment["DRIVER_LIFECYCLE_JOURNAL"] = journal;
         info.Environment["DRIVER_LIFECYCLE_INCARNATION"] = incarnation.ToString();
+        info.Environment["DRIVER_BROWSER_PORT"] = port.ToString();
         var process = Process.Start(info) ?? throw new InvalidOperationException("Synthetic lifecycle host did not start.");
         var stderr = process.StandardError.ReadToEndAsync(ct);
         try

@@ -8,6 +8,7 @@ import { topShareLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 
@@ -232,7 +233,7 @@ export default function AnalyticsPage() {
   const seriesResource = useResource(signal => api.getSeries(signal), []);
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];
   const selectedSeriesId = seriesSelection ?? series[0]?.id ?? null;
-  const analyticsResource = useResource(
+  const analyticsResource = useDriverResource(
     signal => api.getMyAnalytics(selectedSeriesId, evidenceOptions, signal),
     [user, viewMode, selectedSeriesId, refreshVersion, evidenceOptions],
     {
@@ -240,7 +241,7 @@ export default function AnalyticsPage() {
       fallbackMessage: 'Failed to load analytics.',
     }
   );
-  const allAnalyticsResource = useResource(
+  const allAnalyticsResource = useDriverResource(
     signal => api.getMyAnalytics(undefined, evidenceOptions, signal),
     [user, viewMode, evidenceOptions],
     {

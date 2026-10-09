@@ -8,7 +8,7 @@ import {
 } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { raceWeekLabel } from '../../utils/raceWeek';
 
@@ -48,7 +48,7 @@ export default function StandingsPage() {
     setRaceWeekIndex(null);
   }
 
-  const resource = useResource<Payload>(
+  const resource = useDriverResource<Payload>(
     signal => {
       const cls = carClassId ?? undefined;
       return view === 'championship'

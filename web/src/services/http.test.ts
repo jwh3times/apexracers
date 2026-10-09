@@ -50,6 +50,33 @@ function harness(responses: Response[], refreshResult = false) {
 }
 
 describe('createHttpClient', () => {
+  it('never replays a withdrawal under a different User after session refresh', async () => {
+    let owner = 'original-user';
+    const fetchMock = vi.fn<HttpDeps['fetch']>().mockResolvedValue(response({ status: 401 }));
+    const client = createHttpClient({
+      fetch: fetchMock,
+      getAccessToken: () => 'token',
+      getOwner: () => owner,
+      refresh: () => {
+        owner = 'different-user';
+        return Promise.resolve(true);
+      },
+    });
+    await expect(
+      client.request('/api/drivers/privacy/withdrawal', {
+        method: 'POST',
+        json: { operationId: 'original-operation', scope: 'personal' },
+      })
+    ).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it('bypasses the browser cache on both an authenticated read and its refresh retry', async () => {
+    const h = harness([response({ status: 401 }), response({ json: { permitted: true } })], true);
+    h.setToken('synthetic-token');
+    await h.client.request('/api/drivers/scoped/personal');
+    expect(h.initOf(0).cache).toBe('no-store');
+    expect(h.initOf(1).cache).toBe('no-store');
+  });
   // ── Request shaping ─────────────────────────────────────────────────────────
 
   describe('request shaping', () => {

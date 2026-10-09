@@ -113,8 +113,9 @@ not only `EnsureCreated`. Stored claims and legacy Rivals are never promoted or 
 historical loss times.
 
 This additive migration requires no new Demo purge/reseed or live activation. Existing legacy fences
-remain. Future mixed-version/restore and deployed verification belong to #377 and the applicable
-conditional operator procedure; this local work makes no production observation or erasure claim.
+remain. #377's [physical migration/restore evidence](driver-migration-restore.md) now exercises
+mixed-version rollback and current independent enforcement/history. Deployed verification remains
+separate; this local work makes no production observation or erasure claim.
 
 ## Controlled execution and limits
 
@@ -171,5 +172,6 @@ The installed SDK is 10.0.112. Direct apphost execution passed the earlier suite
 empty `N/A` coverage report; it is not coverage evidence. The SDK command above produced measured
 coverage using the same settings. CI rejects reports without product packages and positive
 line/branch denominators. Controlled evidence contributes REF-01–02, AUTH-02/06–07 and HTTP-01/03
-within these named boundaries. #376 browser state, #377 complete restore, #378 real adapters, #379
-pilot scope, #380 integrated acceptance and actual catalog review retain their distinct scope.
+within these named boundaries. [#376 browser evidence](driver-browser-validity.md) and
+[#377 restore evidence](driver-migration-restore.md) add separate controlled scenarios. #378 real
+adapters, #379 pilot scope, #380 integrated acceptance and actual catalog review remain distinct.

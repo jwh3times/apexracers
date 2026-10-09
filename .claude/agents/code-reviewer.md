@@ -223,6 +223,14 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   docs/research/driver-scoped-references.md. The controller's authenticated recipient extraction
   and module-owned protected result are intentional binding/serialization exceptions; flag ordinary
   DTO dispatch, retained association permission or synthetic catalog admission presented as Live permission.
+- Apply the project guide's browser boundary to sensitive reads: flag old-data fallbacks, delayed
+  response deadlines measured from receipt, owner-changing refresh replay or withdrawal that waits
+  for the server before clearing. Privacy/personal controllers deliberately return service-owned
+  `IActionResult`; withdrawal reports original intent and drain separately from verified erasure.
+- Apply the restore boundary to migrations/tests: flag compatibility aliases that reopen old
+  upload readers, permissive activation of restored primary state, or fabricated loss/acquisition
+  clocks. The archived insecure binary is test input and is intentionally excluded from current
+  product coverage; current assemblies and child processes must remain measured.
 
 ## Frontend checks
 
