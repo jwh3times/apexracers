@@ -1,9 +1,11 @@
 import { Link } from 'react-router';
+import { PersonalDriverCard } from '../../components/DriverDisclosure';
 import { api, type DriverProfile, type UploadedBest } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useIracingSurface } from '../../context/FeatureFlagContext';
 import { NotLinkedCard } from '../../components/ResourceView';
 import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topShareLabel } from '../../utils/percentile';
 import { raceWeekLabel, raceWeekNumber } from '../../utils/raceWeek';
@@ -19,14 +21,14 @@ export default function DashboardPage() {
   const { enabled: showIracing } = useIracingSurface();
   const { evidenceOptions } = usePaceSource();
 
-  const lapsResource = useResource(signal => api.getMyUploadedBests(signal), [], {
+  const lapsResource = useDriverResource(signal => api.getMyUploadedBests(signal), [], {
     onError: { fallback: [] },
   });
   const seriesResource = useResource(signal => api.getSeries(signal), [showIracing], {
     enabled: showIracing,
     onError: { fallback: [] },
   });
-  const profileResource = useResource<DriverProfile | null>(
+  const profileResource = useDriverResource<DriverProfile | null>(
     signal => api.getProfileStats(signal),
     [showIracing],
     {
@@ -34,7 +36,7 @@ export default function DashboardPage() {
       onError: { fallback: null },
     }
   );
-  const analyticsResource = useResource(
+  const analyticsResource = useDriverResource(
     signal => api.getMyAnalytics(undefined, evidenceOptions, signal),
     [showIracing, evidenceOptions],
     {
@@ -110,6 +112,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <PersonalDriverCard />
       {showIracing && notLinked && (
         <div className="mb-6">
           <NotLinkedCard reason="Link your iRacing account to personalize the Race Center." />

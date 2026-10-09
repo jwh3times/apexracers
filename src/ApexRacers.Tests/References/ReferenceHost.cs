@@ -24,7 +24,7 @@ namespace ApexRacers.Tests.References;
 /// No product startup/configuration can instantiate this synthetic proof/catalog/history fixture.</summary>
 internal static class ReferenceHost
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(bool browser = false)
     {
         var primary = Environment.GetEnvironmentVariable("DRIVER_LIFECYCLE_DATABASE")!;
         var independent = Environment.GetEnvironmentVariable("DRIVER_LIFECYCLE_JOURNAL")!;
@@ -48,20 +48,31 @@ internal static class ReferenceHost
             var p = await db.EvidencePurposes.SingleAsync(p => p.Id == m.PurposeId);
             genesis = new(m.Id, m.Version, p.Id, p.Generation, p.EvidenceVersion, m.OriginalAcquiredAt, p.CreatedAt);
         }
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [] });
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], WebRootPath = browser ? Environment.GetEnvironmentVariable("DRIVER_BROWSER_WEBROOT") : null });
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, 0));
+        builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, browser ? int.Parse(Environment.GetEnvironmentVariable("DRIVER_BROWSER_PORT") ?? "0") : 0));
         builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(primary));
         builder.Services.AddScoped(sp => new AppDbContext(sp.GetRequiredService<DbContextOptions<AppDbContext>>(), new IRacingDataScope(DataProvenance.Demo)));
         builder.Services.AddSingleton(new IRacingDataScope(DataProvenance.Real));
         builder.Services.AddSingleton<TimeProvider>(clock);
         builder.Services.AddSingleton<IDriverEnforcementJournal>(history);
+        builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipProof>();
+        builder.Services.AddScoped<DriverAuthorityStore>();
+        builder.Services.AddScoped<DriverAuthorization>();
+        builder.Services.AddScoped<DriverPrivacy>();
+        builder.Services.AddSingleton<IDriverLifecycleObserver>(new HttpLifecycleObserver(gates));
+        if (browser)
+        {
+            builder.Services.AddIdentityCore<ApplicationUser>().AddRoles<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>();
+            builder.Services.AddScoped<FeatureFlagEligibility>();
+            builder.Services.AddScoped<AdminService>();
+        }
         builder.Services.AddScoped<DriverReferenceStore>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<LegacyDriverAccessGuard>();
         builder.Services.AddScoped(sp => new ScopedDriverPublication(sp.GetRequiredService<DriverReferenceStore>(), history, incarnation,
-            new ReferenceCatalog(sp.GetRequiredService<AppDbContext>(), genesis, gates),
-            new PublicationReleaseStore(sp.GetRequiredService<AppDbContext>(), clock, history, new ReferenceCompositionReview(), epoch),
+            new ReferenceCatalog(sp.GetRequiredService<AppDbContext>(), genesis, gates, browser),
+            new PublicationReleaseStore(sp.GetRequiredService<AppDbContext>(), clock, history, browser ? new BrowserCompositionReview() : new ReferenceCompositionReview(), epoch),
             new HttpPublicationObserver(gates, sp.GetRequiredService<IHttpContextAccessor>().HttpContext!.Request.Headers["X-Rehearsal-Writer"].ToString(), admissions)));
         builder.Services.AddControllers(o => o.Filters.AddService<LegacyDriverAccessGuard>()).AddApplicationPart(typeof(ScopedDriversController).Assembly);
         builder.Services.AddAuthentication("Bearer").AddJwtBearer(o => { o.MapInboundClaims = false; o.TokenValidationParameters = JwtSettings.FromConfiguration(ReferenceActors.Configuration).ValidationParameters(); });
@@ -80,6 +91,30 @@ internal static class ReferenceHost
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
         app.MapControllers();
+        if (browser)
+        {
+            app.UseStaticFiles();
+            app.MapFallbackToFile("index.html");
+            app.MapGet("/control/session/{user}", (Guid user) => user == ReferenceActors.Recipient || user == ReferenceActors.Target
+                ? Results.Json(new { token = ReferenceActors.Token(user) }) : Results.BadRequest());
+            app.MapPost("/control/browser/renew", async (HttpContext http) =>
+            {
+                var store = http.RequestServices.GetRequiredService<DriverAuthorityStore>();
+                var authorization = http.RequestServices.GetRequiredService<DriverAuthorization>();
+                foreach (var user in new[] { ReferenceActors.Recipient, ReferenceActors.Target })
+                {
+                    var current = await history.ReadCurrentAsync(ReferenceActors.Scope(user), http.RequestAborted);
+                    foreach (var intent in current.PendingIntents)
+                        if (!(await authorization.RecoverAsync(intent, http.RequestAborted)).Completed) return Results.Conflict();
+                }
+                clock.Set(clock.GetUtcNow().AddSeconds(10));
+                foreach (var user in new[] { ReferenceActors.Recipient, ReferenceActors.Target })
+                    await store.GrantFreshCollectionAsync(new(Guid.NewGuid(), ReferenceActors.Scope(user), clock.GetUtcNow().AddSeconds(-1),
+                        "controlled376-synthetic-proof", user == ReferenceActors.Target ? "Synthetic Reference Driver" : "Synthetic Reference Owner"),
+                        new(DriverAuthorizationPolicy.PersonalConsentVersion, user == ReferenceActors.Target ? DriverAuthorizationPolicy.SharingConsentVersion : null), history, http.RequestAborted);
+                return Results.Ok();
+            });
+        }
         app.MapPost("/control/time", (DateTimeOffset at) => { clock.Set(at); return Results.Ok(); });
         app.MapPost("/control/hold/{id}/{phase}", (string id, string phase) => { gates.Hold(id, phase); return Results.Ok(); });
         app.MapPost("/control/release/{id}/{phase}", (string id, string phase) => gates.Release(id, phase) ? Results.Ok() : Results.BadRequest());

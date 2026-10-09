@@ -426,12 +426,22 @@ recipient/purpose/revision/proof/provenance-bound references and private Follow 
 `docs/research/driver-scoped-references.md` before changing these modules, their SQL fences or
 routes. Ordinary startup supplies no controlled reference catalog, so these routes remain
 unavailable. Controlled synthetic fixtures establish neither Live permission nor actual catalog
-admission; browser invalidation and the integrated acceptance matrix remain separate work.
+admission or the integrated acceptance matrix.
+
+**Browser and restore boundaries:** sensitive page reads use `useDriverResource` and
+`driverDisclosure`; `DriverPrivacy` resolves own-User withdrawal and reports durable intent/drain.
+Read `docs/research/driver-browser-validity.md` before changing sensitive display, browser
+invalidation, withdrawal or refresh replay. Read `docs/research/driver-migration-restore.md` before
+changing rollback fences, snapshot activation, independent history reconciliation or restore tests.
+Legacy `UploadedLap` maps to `iracing.QuarantinedUploadedLaps`; the forward-only migration removes
+the older binary's physical reader/writer route without inventing attribution or original clocks.
 
 Controllers do no logic beyond binding inputs and returning `Ok(result)`. Services live in
 `src/ApexRacers.Api/Services/`; response shapes are `record` types in `Dtos/ResponseDtos.cs`. If an
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
 command/query handlers, no `IRepository<T>` (use `AppDbContext` directly).
+Scoped Driver and privacy controllers return the service-owned `IActionResult` to preserve
+protected dispatch and lifecycle outcome status.
 
 ApexRacers-owned response fields identify a Driver with `CustomerId` and `DriverName` (serialized as
 `customerId` / `driverName`). `ApplicationUser.DisplayName` is the local User's account label and is
@@ -527,7 +537,8 @@ contract when that identity is absent.
 | `AchievementsController`              | awards trophy case                                                                                                                                                                        |
 | `RaceHistoryController`               | recent official races                                                                                                                                                                     |
 | `SubsessionController`                | classified field for one subsession, with unrepresented-entry counts (**public**); per-lap pace trace (Authorize)                                                                         |
-| `ScopedDriversController` | authenticated scoped discovery/follows and reference-body detail/comparison/Follow; module-owned protected dispatch, unavailable under ordinary startup |
+| `ScopedDriversController` | authenticated personal read, scoped discovery/follows and reference-body detail/comparison/Follow; module-owned protected dispatch, unavailable under ordinary startup |
+| `DriverPrivacyController` | authenticated own-User `POST /api/drivers/privacy/withdrawal`; original operation replay, durable intent and writer-drain status; unavailable without current independent journal |
 | `ScheduleController`                  | active-season schedule + weather + BoP (**public**); private Uploaded Lap presence omitted pending protected personal integration                                                                                             |
 | `LeaderboardController`               | global top-200 by iRating for a category                                                                                                                                                  |
 | `StandingsController`                 | championship / TT / qualifying standings per car class (**public**); a supplied car class or race week index not in the season's current data is a typed `404`                            |
@@ -823,6 +834,8 @@ Two tiers. **Public** (no AppShell): `/`, `/login`, `/forgot-password`, `/reset-
   `deriveAlerts`), `DemoBanner` (shows while `iracing-demo` on), `Footer`, and the SVG charts
   `Sparkline` / `PercentileBadge` / `LapTraceChart` / `IRatingCompareChart` (each returns `null` below
   its minimum data points — guard the wrapper).
+  `DriverDisclosure` supplies bounded protected personal/shared cards and own-User withdrawal;
+  positive protected output remains limited to the controlled synthetic topology.
 - **Contexts** (`web/src/context/`): `AuthContext` (signed-in user, login/logout, `alertsEnabled` — a
   thin React binding over the session module, which owns the token pair, claims, persistence, and
   silent refresh), `ThemeContext` (auto/light/dark, persists via `PUT /api/auth/theme`),
@@ -861,6 +874,11 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   and authenticated pages (zero-violation gate, `web/e2e/a11y.spec.ts`). A non-blocking per-PR CI workflow
   (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
   in the `react-frontend` agent.
+- **Browser privacy and restore rehearsals:** `web/playwright.privacy.config.ts` runs the built SPA
+  against dedicated synthetic hosts after ordinary E2E. Actual PostgreSQL snapshot/legacy-binary
+  tests live in `src/ApexRacers.Tests/Restore/` and require the pinned legacy Git commit documented in
+  `docs/research/driver-migration-restore.md`; CI fetches full history. These establish local
+  implementation evidence, not production restore or backup certification.
 - **Workflow supply chain:** every `uses:` step across `.github/workflows/` (including
   `irongut/CodeCoverageSummary` above) is pinned to a full commit SHA with a trailing `# vX.Y.Z`
   comment rather than a mutable tag — GHSA-j6j2-8f7p-qv9r; the deploy jobs hold `id-token: write`

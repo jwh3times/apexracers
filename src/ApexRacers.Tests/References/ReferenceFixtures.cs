@@ -23,7 +23,8 @@ internal static class ReferenceActors
     public static IConfiguration Configuration => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
     {
         ["JWT_SIGNING_KEY"] = "controlled375-synthetic-only-key-32bytes-long",
-        ["JWT_ISSUER"] = "controlled-reference-host", ["JWT_AUDIENCE"] = "controlled-reference-clients"
+        ["JWT_ISSUER"] = "controlled-reference-host",
+        ["JWT_AUDIENCE"] = "controlled-reference-clients"
     }).Build();
     public static string Token(Guid user)
     {
@@ -39,7 +40,9 @@ internal static class ReferenceActors
         var receipt = await lifecycle.CaptureAsync(purpose, EvidenceCopyKind.MappedCache, Key, ct: ct);
         await lifecycle.CommitAsync(receipt, new MappedCacheBatch(new ExternalDataCache
         {
-            CacheKey = Key, Payload = JsonSerializer.Serialize(Details), FetchedAt = receipt.OriginalAcquiredAt,
+            CacheKey = Key,
+            Payload = JsonSerializer.Serialize(Details),
+            FetchedAt = receipt.OriginalAcquiredAt,
             ExpiresAt = receipt.OriginalAcquiredAt.AddDays(200)
         }), ct);
         if (!initializeGenesis) return;
@@ -54,7 +57,7 @@ internal sealed class ReferenceClock : TimeProvider
     public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref ticks), TimeSpan.Zero);
     public void Set(DateTimeOffset time) => Interlocked.Exchange(ref ticks, time.UtcTicks);
 }
-internal sealed class ReferenceCatalog(AppDbContext db, ControlledCohortEvidence genesis, LifecycleGates gates) : IControlledDriverReferenceCatalog
+internal sealed class ReferenceCatalog(AppDbContext db, ControlledCohortEvidence genesis, LifecycleGates gates, bool browser = false) : IControlledDriverReferenceCatalog
 {
     public async Task<ControlledDriverReferenceSource?> LoadAsync(CancellationToken ct = default)
     {
@@ -72,7 +75,7 @@ internal sealed class ReferenceCatalog(AppDbContext db, ControlledCohortEvidence
         // Original source/receipt, full exact fabricated values, schema and generation remain bound.
         return Task.FromResult<string?>(!gates.IsFaulted("reference-catalog-unavailable")
             && JsonSerializer.Serialize(source) == JsonSerializer.Serialize(expected)
-            ? "controlled-reference-template-v1:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(expected))) : null);
+            ? (browser ? "controlled-browser-template-v1:" : "controlled-reference-template-v1:") + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(expected))) : null);
     }
 }
 internal sealed class ReferenceCompositionReview : IPublicationCompositionReview
@@ -85,6 +88,22 @@ internal sealed class ReferenceCompositionReview : IPublicationCompositionReview
             && p.Provenance == DataProvenance.Demo && p.Purpose == PublicationPurpose.SignedIn && p.RecipientUserId == ReferenceActors.Recipient
             && p.Dependencies.Length == 2 && p.Dependencies.Any(d => d.Scope == ReferenceActors.Scope(ReferenceActors.Recipient) && d.RequiredPurpose == DriverConsentScope.Personal)
             && p.Dependencies.Any(d => d.Scope == ReferenceActors.Scope(ReferenceActors.Target) && d.RequiredPurpose == DriverConsentScope.Sharing);
+        return Task.FromResult(Declared(proposal) && history.Where(h => !h.ProvenUnsent).All(h => Declared(h.Proposal)));
+    }
+}
+
+/// <summary>Separate, explicitly fabricated browser template. Does not widen the #375 review.</summary>
+internal sealed class BrowserCompositionReview : IPublicationCompositionReview
+{
+    public Task<bool> AssessAsync(PublicationProposal proposal, ImmutableArray<PublicationAccounting> history, CancellationToken ct = default)
+    {
+        bool Declared(PublicationProposal p) => p.CatalogId == DriverReferences.CatalogId && p.CatalogRevision == 1
+            && p.Provenance == DataProvenance.Demo && p.Purpose == PublicationPurpose.SignedIn
+            && p.RecipientUserId is { } user && (user == ReferenceActors.Recipient || user == ReferenceActors.Target)
+            && (p.Dependencies.Length == 1 && p.Dependencies[0].Scope == ReferenceActors.Scope(user) && p.Dependencies[0].RequiredPurpose == DriverConsentScope.Personal
+                || user == ReferenceActors.Recipient && p.Dependencies.Length == 2
+                && p.Dependencies.Any(d => d.Scope == ReferenceActors.Scope(user) && d.RequiredPurpose == DriverConsentScope.Personal)
+                && p.Dependencies.Any(d => d.Scope == ReferenceActors.Scope(ReferenceActors.Target) && d.RequiredPurpose == DriverConsentScope.Sharing));
         return Task.FromResult(Declared(proposal) && history.Where(h => !h.ProvenUnsent).All(h => Declared(h.Proposal)));
     }
 }

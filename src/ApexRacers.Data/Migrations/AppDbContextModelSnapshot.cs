@@ -1653,7 +1653,7 @@ namespace ApexRacers.Data.Migrations
 
                     b.HasIndex("UserId", "CarId", "TrackId");
 
-                    b.ToTable("UploadedLaps", "iracing");
+                    b.ToTable("QuarantinedUploadedLaps", "iracing");
                 });
 
             modelBuilder.Entity("ApexRacers.Core.Models.Week", b =>

@@ -147,6 +147,12 @@ Validation on 2026-10-05:
 
 ## Controlled migration and deployment
 
+The later [migration/restore rehearsal](driver-migration-restore.md) exercises actual primary
+snapshots against current independent enforcement/history, including typed private sources,
+derivatives, tracked owner/name payloads and references/Follows. Its forward-only legacy upload
+table rename closes an actual old-binary reader leak without inventing verified attribution or
+historic loss clocks. Local restore evidence does not establish deployed storage expiry.
+
 Migration `20261005162541_EvidenceCopyFencing` refuses enabled or physically populated Demo. Stop
 all old writers and disable Demo/Live before the reviewed purge and migration. Existing Real/Unknown
 rows receive no permissive purpose metadata. Legacy non-Demo name snapshots are cleared, and original

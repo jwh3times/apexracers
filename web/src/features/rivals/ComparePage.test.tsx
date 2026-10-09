@@ -439,7 +439,9 @@ describe('ComparePage', () => {
       target: { value: 'a'.repeat(64) },
     });
 
-    await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('a'.repeat(64)));
+    await waitFor(() =>
+      expect(mockSearch).toHaveBeenCalledWith('a'.repeat(64), expect.any(AbortSignal))
+    );
   });
 
   it('marks an already-followed driver as Following in search results', async () => {
@@ -484,8 +486,8 @@ describe('ComparePage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search drivers/i), { target: { value: 'apex' } });
     await waitFor(() => expect(mockSearch).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /add lee apex/i })).not.toBeInTheDocument();
-    // A plain (non-503) error stays silent — no "unavailable" hint.
-    expect(screen.queryByText(/isn't available right now/i)).not.toBeInTheDocument();
+    // Uncertain authorization clears data and reports unavailability.
+    expect(screen.getByText(/isn't available right now/i)).toBeInTheDocument();
   });
 
   // ── Guided empty state for unavailable driver search (T17) ─────────────────

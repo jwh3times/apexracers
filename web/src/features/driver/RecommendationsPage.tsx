@@ -7,7 +7,7 @@ import { raceWeekLabel } from '../../utils/raceWeek';
 import CalculationSource from '../../components/CalculationSource';
 import { usePaceSource } from '../../context/PaceSourceContext';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { fieldSizeMessage } from '../../utils/fieldSize';
 
 // A percentile is a share, not a placement — rendering 92.3 as "92.3th" read as an ordinal the
@@ -213,7 +213,7 @@ export default function RecommendationsPage() {
   const seriesIdParam = searchParams.get('seriesId');
 
   const { value: paceSource, setValue: setPaceSource, evidenceOptions } = usePaceSource();
-  const seriesResource = useResource(signal => api.getSeries(signal), []);
+  const seriesResource = useDriverResource(signal => api.getSeries(signal), []);
   const allSeries = useMemo(
     () =>
       seriesResource.status === 'ok'
@@ -227,7 +227,7 @@ export default function RecommendationsPage() {
   const selectedSeries = allSeries.find(s => s.id === selectedSeriesId) ?? null;
   const raceWeekIndex = selectedSeries?.currentRaceWeekIndex ?? null;
 
-  const recommendations = useResource(
+  const recommendations = useDriverResource(
     signal => api.getRecommendations(selectedSeriesId, raceWeekIndex!, evidenceOptions, signal),
     [selectedSeriesId, raceWeekIndex, evidenceOptions],
     {

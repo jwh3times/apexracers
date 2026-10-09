@@ -13,13 +13,14 @@ public sealed class LegacyDriverAccessGuard(IRacingDataScope scope) : IAsyncReso
 {
     private static readonly HashSet<string> IndependentControllers = new(StringComparer.Ordinal)
     {
-        "ScopedDrivers", "Auth", "Admin", "FeatureFlags", "Cars", "Tracks", "Series", "Schedule",
+        "ScopedDrivers", "DriverPrivacy", "Auth", "Admin", "FeatureFlags", "Cars", "Tracks", "Series", "Schedule",
     };
 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         var controller = (context.ActionDescriptor as ControllerActionDescriptor)?.ControllerName;
         var independent = controller is not null && IndependentControllers.Contains(controller);
+        if (!independent) context.HttpContext.Response.Headers.CacheControl = "no-store";
         // The old upload workflow establishes attribution from claims and recorder IDs. Demo
         // cannot turn its real uploads into synthetic evidence or grant real personal access.
         if (!independent && (controller == "Telemetry" || scope.Provenance != DataProvenance.Demo))
@@ -29,7 +30,8 @@ public sealed class LegacyDriverAccessGuard(IRacingDataScope scope) : IAsyncReso
             {
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = "This Driver workflow is unavailable while authorization is being implemented.",
-            }) { StatusCode = StatusCodes.Status503ServiceUnavailable };
+            })
+            { StatusCode = StatusCodes.Status503ServiceUnavailable };
             return;
         }
         await next();
