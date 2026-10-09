@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Bound Driver browser display to fresh protected reads every 15 seconds and expiry within
+  30 seconds of check start. Withdrawal, uncertainty, offline/suspended pages and obsolete
+  responses clear display; reload cannot restore a pending withdrawal as authorization.
+
+### Added
+
+- Protected personal Driver reads and authenticated own-User consent withdrawal, with distinct
+  recorded-withdrawal, writer-drain, live-erasure and backup-expiry wording. Ordinary startup
+  retains unavailable Real proof/journal/catalog adapters and useful synthetic Demo workflows.
+- Built-SPA privacy rehearsals using actual JWT/controller dispatch, two API processes,
+  independent PostgreSQL history, delayed HTTP responses and ordinary credential-free Demo.
 
 ## [13.1.0] - 2026-10-08
 

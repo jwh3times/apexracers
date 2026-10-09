@@ -14,6 +14,12 @@ namespace ApexRacers.Api.Controllers;
 [Authorize]
 public sealed class ScopedDriversController(ScopedDriverPublication publication) : ControllerBase
 {
+    [HttpGet("personal")]
+    public async Task<IActionResult> PersonalAsync(CancellationToken ct)
+    {
+        if (!TryUser(out var userId)) return Unauthorized();
+        return await publication.ReadOwnerAsync(userId, ct);
+    }
     [HttpGet("discovery")]
     [EnableRateLimiting("iracing-search")]
     public async Task<IActionResult> DiscoveryAsync([FromQuery] string? term, CancellationToken ct)

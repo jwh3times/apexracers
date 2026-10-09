@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, type UploadedBest } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { formatLapTime } from '../../utils/lapTime';
 
 function formatDate(iso: string): string {
@@ -66,7 +66,7 @@ function StatCard({
 }
 
 export default function MyLapsPage() {
-  const resource = useResource(signal => api.getMyUploadedBests(signal), [], {
+  const resource = useDriverResource(signal => api.getMyUploadedBests(signal), [], {
     fallbackMessage: 'Failed to load laps.',
   });
   const laps = resource.status === 'ok' ? resource.data : [];

@@ -2,6 +2,9 @@ using ApexRacers.Core.Models;
 
 namespace ApexRacers.Api.Dtos;
 
+public sealed record DriverWithdrawalDto(Guid OperationId, bool WithdrawalRecorded, bool WritersDrained,
+    DateTimeOffset OriginalLossAt, bool LiveErasureVerified, bool BackupExpiryVerified);
+
 internal sealed record SyntheticDriverArtifact(string? DriverName, string Audience, string Provenance);
 
 public record SeriesDto(

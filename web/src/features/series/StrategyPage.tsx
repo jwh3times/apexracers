@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router';
 import { api, type CarStrategy } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 import { formatLapTime } from '../../utils/lapTime';
 import { topShareLabel } from '../../utils/percentile';
 import { fieldSizeMessage } from '../../utils/fieldSize';
@@ -214,7 +214,7 @@ export default function StrategyPage() {
   }>();
   const id = Number(seriesId);
   const parsedRaceWeekIndex = Number(raceWeekIndex);
-  const resource = useResource(
+  const resource = useDriverResource(
     signal => api.getWeekStrategy(id, parsedRaceWeekIndex, signal),
     [id, parsedRaceWeekIndex],
     {

@@ -126,6 +126,8 @@ export type HttpDeps = {
   fetch: typeof globalThis.fetch;
   /** Current access token, or null when signed out. Read per request, never cached. */
   getAccessToken: () => string | null;
+  /** Session owner at request start; refresh may rotate the token but cannot change this User. */
+  getOwner?: () => string | null;
   /** Attempts a silent refresh; `true` means the request is worth replaying. */
   refresh: () => Promise<boolean>;
 };
@@ -133,6 +135,7 @@ export type HttpDeps = {
 export function createHttpClient(deps: HttpDeps): HttpClient {
   return {
     async request<T>(path: string, init: ReqInit = {}): Promise<T> {
+      const owner = deps.getOwner?.();
       const build = (): RequestInit => {
         const token = deps.getAccessToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -141,11 +144,19 @@ export function createHttpClient(deps: HttpDeps): HttpClient {
           headers['Content-Type'] = 'application/json';
           body = JSON.stringify(init.json);
         }
-        return { method: init.method ?? 'GET', headers, body, signal: init.signal };
+        return {
+          method: init.method ?? 'GET',
+          headers,
+          body,
+          signal: init.signal,
+          cache: 'no-store',
+        };
       };
 
       let res = await deps.fetch(path, build());
       if (res.status === 401 && (await deps.refresh())) {
+        if (deps.getOwner && deps.getOwner() !== owner)
+          return throwForResponse(res, path, init.method ?? 'GET');
         res = await deps.fetch(path, build());
       }
       if (!res.ok) return throwForResponse(res, path, init.method ?? 'GET');

@@ -66,6 +66,13 @@ and the remaining browser, production and restore gates.
 - **Driver analytics:** show percentile history, progression, recent races, profile
   stats, achievements, and head-to-head comparison surfaces when iRacing data is
   available.
+  Sensitive reads refresh at least every 15 seconds while connected and visible, with display
+  validity capped at 30 seconds from check start. Offline, suspended, expired or uncertain
+  display clears and must pass a fresh protected read. Controlled synthetic personal/shared
+  cards support own-User consent withdrawal; Real authorization remains unavailable.
+  Withdrawal confirmation distinguishes a recorded request from active writer drain,
+  verified live erasure and backup expiry, and does not promise recall of delivered/exported bytes.
+  See [browser evidence](research/driver-browser-validity.md).
 - **iRacing standings:** report championship, Time Trial, qualifying, and category-leaderboard
   Standings without conflating those awarded positions with ApexRacers' Recommendation Rank.
 - **Catalog exploration:** browse current cars and tracks; private Uploaded Best overlays are

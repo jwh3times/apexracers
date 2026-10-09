@@ -556,6 +556,15 @@ export interface SeasonQualifyResults {
 
 // ── Rival comparison (3.1) ──────────────────────────────────────────────────
 
+export interface DriverWithdrawal {
+  operationId: string;
+  withdrawalRecorded: boolean;
+  writersDrained: boolean;
+  originalLossAt: string;
+  liveErasureVerified: boolean;
+  backupExpiryVerified: boolean;
+}
+
 export interface ScopedDriverDiscovery {
   driverName: string;
   detailReference: string;
@@ -720,6 +729,7 @@ export { session } from './session';
 const http = createHttpClient({
   fetch: (input, init) => fetch(input, init),
   getAccessToken: () => session.accessToken,
+  getOwner: () => session.claims?.sub ?? null,
   refresh: () => session.refresh(),
 });
 
@@ -997,6 +1007,16 @@ export const api = {
     return request('/api/race-guide', { signal });
   },
 
+  getScopedDriverPersonal(signal?: AbortSignal): Promise<ScopedDriverDetail> {
+    return request('/api/drivers/scoped/personal', { signal });
+  },
+  withdrawDriver(body: {
+    operationId: string;
+    scope: 'personal' | 'sharing';
+  }): Promise<DriverWithdrawal> {
+    return request('/api/drivers/privacy/withdrawal', { method: 'POST', json: body });
+  },
+
   /** GET /api/drivers/scoped/discovery — currently eligible Driver references */
   getScopedDriverDiscovery(term?: string, signal?: AbortSignal): Promise<ScopedDriverDiscovery[]> {
     const query = term === undefined ? '' : `?term=${encodeURIComponent(term)}`;
@@ -1048,8 +1068,8 @@ export const api = {
   },
 
   /** GET /api/users/me/rivals/search?term= — driver name search */
-  searchDrivers(term: string): Promise<DriverSearchResult[]> {
-    return request(`/api/users/me/rivals/search?term=${encodeURIComponent(term)}`);
+  searchDrivers(term: string, signal?: AbortSignal): Promise<DriverSearchResult[]> {
+    return request(`/api/users/me/rivals/search?term=${encodeURIComponent(term)}`, { signal });
   },
 
   /** GET /api/users/me/rivals/suggestions — drivers the caller has raced (409 if unlinked) */

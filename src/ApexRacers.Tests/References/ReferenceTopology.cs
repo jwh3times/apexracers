@@ -20,6 +20,7 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
     public LifecycleProcess First { get; } = first;
     public LifecycleProcess Second { get; } = second;
     public CancellationToken Token => ct;
+    public Guid HistoryEpoch => epoch;
     public ControlledPublicationHistory History { get; } = new(independent, epoch, new LifecycleGates());
     public AppDbContext Db(DataProvenance provenance = DataProvenance.Demo) => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(provenance));
     public async Task<HttpResponseMessage> Request(string path, string id, Guid? actor = null, string? reference = null, bool secondHost = false, bool anonymous = false)
@@ -74,12 +75,34 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         var ct = timeout.Token;
+        await using var test = await CreateAsync(fixture.Container.GetConnectionString(), ct, browser: name.StartsWith("browser-", StringComparison.Ordinal));
+        var epoch = test.HistoryEpoch;
+        var first = test.First; var second = test.Second;
+        var passed = false;
+        try { await exercise(test); passed = true; }
+        finally
+        {
+            var output = Path.Combine("TestResults", "driver-references"); Directory.CreateDirectory(output);
+            await File.WriteAllTextAsync(Path.Combine(output, name + ".json"), JsonSerializer.Serialize(new
+            {
+                Scenario = name,
+                Passed = passed,
+                Catalog = DriverReferences.CatalogId,
+                Fixture = name.StartsWith("browser-", StringComparison.Ordinal) ? "controlled-browser-template-v1" : "controlled-reference-template-v1",
+                Epoch = epoch,
+                Hosts = new[] { first, second }.Select(h => new { h.ProcessId, h.Incarnation }),
+                Boundary = "Fabricated reference fixtures, actual JWT/production controller/owned response executor, independent PostgreSQL. No live/catalog admission."
+            }), CancellationToken.None);
+        }
+    }
+    public static async Task<ReferenceTopology> CreateAsync(string connection, CancellationToken ct, bool browser = false, int port = 0)
+    {
         async Task<string> Create(string prefix)
         {
             var name = prefix + Guid.NewGuid().ToString("N");
-            await using var c = new NpgsqlConnection(fixture.Container.GetConnectionString()); await c.OpenAsync(ct);
+            await using var c = new NpgsqlConnection(connection); await c.OpenAsync(ct);
             await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", c); await command.ExecuteNonQueryAsync(ct);
-            return new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString()) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+            return new NpgsqlConnectionStringBuilder(connection) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
         }
         var primary = await Create("apexracers_reference_primary_"); var independent = await Create("apexracers_reference_history_");
         var epoch = Guid.NewGuid();
@@ -96,23 +119,17 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
                     user == ReferenceActors.Target ? "Synthetic Reference Driver" : "Synthetic Reference Owner"),
                     new(DriverAuthorizationPolicy.PersonalConsentVersion, user == ReferenceActors.Target ? DriverAuthorizationPolicy.SharingConsentVersion : null), history, ct);
             await ReferenceActors.SeedAsync(db, ct);
-        }
-        var first = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct);
-        LifecycleProcess second;
-        try { second = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct); } catch { await first.DisposeAsync(); throw; }
-        await using var test = new ReferenceTopology(primary, independent, epoch, first, second, ct);
-        var passed = false;
-        try { await exercise(test); passed = true; }
-        finally
-        {
-            var output = Path.Combine("TestResults", "driver-references"); Directory.CreateDirectory(output);
-            await File.WriteAllTextAsync(Path.Combine(output, name + ".json"), JsonSerializer.Serialize(new
+            if (browser)
             {
-                Scenario = name, Passed = passed, Catalog = DriverReferences.CatalogId, Fixture = "controlled-reference-template-v1",
-                Epoch = epoch, Hosts = new[] { first, second }.Select(h => new { h.ProcessId, h.Incarnation }),
-                Boundary = "Fabricated reference fixtures, actual JWT/production controller/owned response executor, independent PostgreSQL. No live/catalog admission."
-            }), CancellationToken.None);
+                var flag = await db.FeatureFlags.SingleAsync(f => f.Key == "iracing-demo", ct);
+                flag.IsEnabled = true; flag.MinimumRole = "Standard";
+                await db.SaveChangesAsync(ct);
+            }
         }
+        var first = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser, port);
+        LifecycleProcess second;
+        try { second = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser); } catch { await first.DisposeAsync(); throw; }
+        return new ReferenceTopology(primary, independent, epoch, first, second, ct);
     }
     public async ValueTask DisposeAsync() { await First.DisposeAsync(); await Second.DisposeAsync(); }
 }

@@ -107,7 +107,14 @@ describe('PercentileCarPage', () => {
     renderPage();
 
     await waitFor(() =>
-      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001, expect.any(Object))
+      expect(mockGetPercentile).toHaveBeenCalledWith(
+        9001,
+        1,
+        9001,
+        100001,
+        expect.any(Object),
+        expect.any(AbortSignal)
+      )
     );
   });
 
@@ -170,7 +177,14 @@ describe('PercentileCarPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /look up my percentile/i }));
 
     await waitFor(() =>
-      expect(mockGetPercentile).toHaveBeenCalledWith(9001, 1, 9001, 100001, expect.any(Object))
+      expect(mockGetPercentile).toHaveBeenCalledWith(
+        9001,
+        1,
+        9001,
+        100001,
+        expect.any(Object),
+        expect.any(AbortSignal)
+      )
     );
   });
 
@@ -323,7 +337,8 @@ describe('PercentileCarPage', () => {
         1,
         9001,
         100001,
-        expect.objectContaining({ includeUploadedLaps: true })
+        expect.objectContaining({ includeUploadedLaps: true }),
+        expect.any(AbortSignal)
       )
     );
   });

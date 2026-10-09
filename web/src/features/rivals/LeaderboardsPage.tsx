@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 
 const CATEGORIES = [
   { id: 5, label: 'Sports Car' },
@@ -16,9 +16,13 @@ const CATEGORIES = [
 export default function LeaderboardsPage() {
   const { user } = useAuth();
   const [categoryId, setCategoryId] = useState(5);
-  const resource = useResource(signal => api.getLeaderboard(categoryId, signal), [categoryId], {
-    fallbackMessage: 'Failed to load leaderboard.',
-  });
+  const resource = useDriverResource(
+    signal => api.getLeaderboard(categoryId, signal),
+    [categoryId],
+    {
+      fallbackMessage: 'Failed to load leaderboard.',
+    }
+  );
 
   return (
     <main className="page-wrap">
