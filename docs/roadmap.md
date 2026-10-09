@@ -33,7 +33,9 @@ using the `<major>.<minor>.<build>` format.
   admission and production integration still precede product publication. Scoped synthetic
   discovery/comparison/Follow uses revocable recipient-bound references. Bounded browser reads,
   own-User withdrawal and built-SPA synthetic evidence now cover browser invalidation;
-  restore/pilot controls and the integrated acceptance matrix remain separate gates.
+  local physical snapshot restore evidence covers current enforcement/history and original clocks;
+  production adapter/pilot controls, deployed retention and the integrated acceptance matrix
+  remain separate gates.
 - **Live iRacing data readiness:** keep the iRacing-backed surface gated until required
   service credentials and rollout checks are complete.
 - **Sign in with iRacing:** replace self-entered customer IDs with a verified OAuth

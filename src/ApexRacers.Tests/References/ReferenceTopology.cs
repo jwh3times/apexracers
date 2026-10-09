@@ -20,6 +20,8 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
     public LifecycleProcess First { get; } = first;
     public LifecycleProcess Second { get; } = second;
     public CancellationToken Token => ct;
+    public string PrimaryConnection => primary;
+    public string IndependentConnection => independent;
     public Guid HistoryEpoch => epoch;
     public ControlledPublicationHistory History { get; } = new(independent, epoch, new LifecycleGates());
     public AppDbContext Db(DataProvenance provenance = DataProvenance.Demo) => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(provenance));

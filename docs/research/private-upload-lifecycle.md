@@ -20,6 +20,8 @@ PostgreSQL coordination before saving. Only controlled Demo provenance is accept
 and their cascading `PrivateUploadedLaps` retain no raw bytes, names, YAML or credential values.
 The unique original User/Driver/car/track/recording identity and Lap Number preserve idempotence.
 The old `UploadedLaps` are not promoted into this store or guessed to have proof/consent.
+The later [migration/restore fence](driver-migration-restore.md) retains them physically as
+`QuarantinedUploadedLaps`, so an insecure old binary cannot read them on the upgraded schema.
 
 The processor owns and disposes its input stream on success, cancellation, malformed content,
 missing authority and attribution failure. It creates no staging file or raw archive, leaving no
