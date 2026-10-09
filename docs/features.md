@@ -36,6 +36,14 @@ rehearsals preserve current prohibitions and original clocks.
 [restore evidence](research/driver-migration-restore.md) record the controlled scope and remaining
 production and integrated acceptance gates.
 
+Controlled synthetic rollout now enforces explicit pilot enrollment, declared catalog/collection
+scope and shared operating budgets at acquisition and protected dispatch. Every stage promotion
+requires current approval/evidence; safety stops preserve withdrawal and cleanup. Admin status,
+preview tiers and UI flags confer no enrollment or Driver permission. Ordinary Real operating
+authority remains unavailable; the existing Demo preview stays usable.
+[Operating evidence](research/driver-operating-admission.md) records the synthetic contract and
+remaining provider/client/quota and deployed prerequisites.
+
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,

@@ -53,6 +53,7 @@ Two schemas in one database:
 | `ScopedDriverReferences` | SHA-256 TokenHash PK | Recipient/target grant, proof and revision bindings; purpose/provenance, original creation and at most 15-minute expiry; restricted grant FKs and expiry index |
 | `PrivateDriverFollows` | Guid PK | Unique recipient/target grant pair; private provenance and original loss/reactivation/removal clocks, restricted grant FKs and removal index |
 | `PrivateUploadSessions` / `PrivateUploadedLaps` | Guid PKs | Typed personal source, original verified User/Driver/provenance and restricted marker/catalog FKs; laps cascade with their source. Unique original session and Lap Number identities fence retries. |
+| `SyntheticDriverOperatingControls` | int PK, singleton `Id = 1` | Serialized owned operating snapshot and reservations, original window start and nonnegative acquisition/publication usage; no FKs or secondary indexes. Coordination uses advisory transaction lock `379`; migration creates an empty table and refuses Down. |
 
 The earlier lifecycle migration creates the six `Driver*` tables empty and renames the physical legacy claim column
 to `identity.Users.ClaimedIRacingCustomerId`, preserving values and the named claim uniqueness

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.3] - 2026-10-09
+
+### Added
+
+- API and background operating admission with controlled synthetic stage approvals, at-most-ten
+  pilot enrollment, declared scope/budget enforcement and cause-specific safety recovery. Protected
+  dispatch rechecks current operating state while withdrawal and cleanup retain their original clocks.
+  Ordinary startup keeps Real acquisition/publication closed pending verified operating authority.
+
 ## [14.0.0] - 2026-10-09
 
 ### Added
@@ -1617,7 +1626,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.3...HEAD
+[14.0.3]: https://github.com/jwh3times/apexracers/compare/v14.0.2...v14.0.3
 [14.0.0]: https://github.com/jwh3times/apexracers/compare/v13.1.1...v14.0.0
 [13.1.0]: https://github.com/jwh3times/apexracers/compare/v13.0.4...v13.1.0
 [13.0.3]: https://github.com/jwh3times/apexracers/compare/v13.0.2...v13.0.3
