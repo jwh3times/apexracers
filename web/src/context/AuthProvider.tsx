@@ -6,6 +6,7 @@ import { session, type JwtClaims } from '../services/session';
 import { dbGet, dbSet } from '../services/db';
 import { useTheme } from './ThemeContext';
 import { AuthContext, type User } from './AuthContext';
+import { driverDisclosure } from '../services/driverDisclosure';
 
 /**
  * Builds the display-facing user from the token's own claims.
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // invoke, a multi-provider test) adds a listener instead of silently replacing the first,
     // and unmounting removes exactly this one.
     const unsubscribe = session.subscribe(({ accessToken, claims }) => {
+      driverDisclosure.setOwner(accessToken ? (claims?.sub ?? null) : null);
       setUser(prev => {
         // Signed out — the only case that drops the user.
         if (!accessToken) return null;

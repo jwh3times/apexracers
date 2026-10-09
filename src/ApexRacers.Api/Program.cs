@@ -240,6 +240,7 @@ builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipP
 builder.Services.AddSingleton<IDriverEnforcementJournal, UnavailableDriverEnforcementJournal>();
 builder.Services.AddScoped<DriverAuthorityStore>();
 builder.Services.AddScoped<DriverAuthorization>();
+builder.Services.AddScoped<DriverPrivacy>();
 builder.Services.AddScoped<DriverReferenceStore>();
 builder.Services.AddScoped(sp => new ScopedDriverPublication(sp.GetRequiredService<DriverReferenceStore>(),
     sp.GetRequiredService<IDriverEnforcementJournal>(), Guid.NewGuid()));

@@ -20,6 +20,8 @@ PostgreSQL coordination before saving. Only controlled Demo provenance is accept
 and their cascading `PrivateUploadedLaps` retain no raw bytes, names, YAML or credential values.
 The unique original User/Driver/car/track/recording identity and Lap Number preserve idempotence.
 The old `UploadedLaps` are not promoted into this store or guessed to have proof/consent.
+The later [migration/restore fence](driver-migration-restore.md) retains them physically as
+`QuarantinedUploadedLaps`, so an insecure old binary cannot read them on the upgraded schema.
 
 The processor owns and disposes its input stream on success, cancellation, malformed content,
 missing authority and attribution failure. It creates no staging file or raw archive, leaving no
@@ -115,5 +117,8 @@ transport, suppression of unsent prepared output and protected response terminal
 under `TestResults/driver-lifecycle/` contain synthetic outcome/context metadata; TRX owns pass/fail.
 
 This contributes UPLOAD-01, COPY-03–05 and AUTH-01–03 within the named synthetic boundaries. Real
-proof exchange, production journal selection, publication catalog/composition admission, browser
-invalidation, integrated restore acceptance and deployed backup/log expiry remain separate slices.
+proof exchange, production journal selection, publication catalog/composition admission, integrated
+acceptance and deployed backup/log expiry remain separate.
+[#376 browser evidence](driver-browser-validity.md) and
+[#377 physical restore evidence](driver-migration-restore.md) add controlled scenarios without
+certifying those production obligations.

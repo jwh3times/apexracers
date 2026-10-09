@@ -112,6 +112,10 @@ jobs:
         run: npx playwright test ${{ github.event.inputs.update_snapshots == 'true' && '--update-snapshots' || '' }}
         working-directory: web
 
+      - name: Rehearse bounded Driver display against real HTTP and built SPA
+        run: npx playwright test --config playwright.privacy.config.ts
+        working-directory: web
+
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

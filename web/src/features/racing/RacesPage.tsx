@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, type RaceHistoryRow } from '../../services/api';
 import ResourceView from '../../components/ResourceView';
-import { useResource } from '../../hooks/useResource';
+import { useDriverResource } from '../../hooks/useDriverResource';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -117,7 +117,7 @@ function RaceTable({ rows }: { rows: RaceHistoryRow[] }) {
 
 export default function RacesPage() {
   const [seriesFilter, setSeriesFilter] = useState<string | null>(null);
-  const resource = useResource(signal => api.getRaceHistory(signal), [], {
+  const resource = useDriverResource(signal => api.getRaceHistory(signal), [], {
     fallbackMessage: 'Failed to load race history.',
   });
 

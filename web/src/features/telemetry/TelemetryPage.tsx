@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useDriverResource } from '../../hooks/useDriverResource';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { api, type UploadedBest, type TelemetryUploadResult } from '../../services/api';
+import { api, type TelemetryUploadResult } from '../../services/api';
+import type { UploadedBest } from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { MAX_UPLOAD_MEGABYTES, tooLargeMessage } from './uploadLimits';
 
@@ -95,8 +97,10 @@ export default function TelemetryPage() {
   const [queue, setQueue] = useState<FileStatus[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [recentLaps, setRecentLaps] = useState<UploadedBest[]>([]);
-  const [lapsLoading, setLapsLoading] = useState(true);
+  const [lapVersion, setLapVersion] = useState(0);
+  const laps = useDriverResource(signal => api.getMyUploadedBests(signal), [lapVersion]);
+  const recentLaps = laps.status === 'ok' ? laps.data.slice(0, 5) : [];
+  const lapsLoading = laps.status === 'loading';
 
   const isUploading = queue.some(f => f.status === 'pending' || f.status === 'uploading');
   const hasQueue = queue.length > 0;
@@ -104,37 +108,9 @@ export default function TelemetryPage() {
   const doneCount = queue.filter(f => f.status === 'done').length;
   const currentlyUploading = queue.find(f => f.status === 'uploading');
 
-  // Re-fetch after an upload, showing the spinner again. Called from an event handler.
   function refreshLaps() {
-    setLapsLoading(true);
-    api
-      .getMyUploadedBests()
-      .then(laps => setRecentLaps(laps.slice(0, 5)))
-      .catch(() => {
-        /* silently ignore — user may not be authenticated */
-      })
-      .finally(() => setLapsLoading(false));
+    setLapVersion(version => version + 1);
   }
-
-  // Initial load on mount. The loading flag already starts true, so the fetch only
-  // needs to populate state through the promise callbacks (never synchronously).
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .getMyUploadedBests()
-      .then(laps => {
-        if (!cancelled) setRecentLaps(laps.slice(0, 5));
-      })
-      .catch(() => {
-        /* silently ignore — user may not be authenticated */
-      })
-      .finally(() => {
-        if (!cancelled) setLapsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);

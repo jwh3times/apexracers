@@ -24,6 +24,7 @@ internal sealed class LifecycleTopology(
     public LifecycleProcess Publisher { get; private set; } = publisher;
     public LifecycleProcess Coordinator { get; private set; } = coordinator;
     public CancellationToken CancellationToken => ct;
+    public string PrimaryConnection => primary;
     public PersistedSyntheticJournal Journal { get; } = new(journal, new LifecycleGates());
 
     public AppDbContext OpenPrimary() => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options,

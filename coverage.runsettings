@@ -8,6 +8,8 @@
       </Include>
       <Exclude>
         <ModulePath>.*ApexRacers\.Tests\.dll$</ModulePath>
+        <!-- The deliberately archived insecure binary is rollback-test input, not current product. -->
+        <ModulePath>.*[/\\]apexracers_restore_legacy_[^/\\]+[/\\].*</ModulePath>
       </Exclude>
     </ModulePaths>
     <!--

@@ -25,6 +25,18 @@ public sealed class ScopedDriverPublication(DriverReferenceStore references, IDr
     Guid incarnation, IControlledDriverReferenceCatalog? catalog = null, PublicationReleaseStore? releases = null,
     IDriverPublicationObserver? observer = null)
 {
+    public async Task<IActionResult> ReadOwnerAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (catalog is null || releases is null) return Unavailable();
+        var owner = await references.RecipientAsync(userId, ct);
+        var source = await catalog.LoadAsync(ct);
+        if (owner?.DriverName is null || !Valid(source)
+            || await catalog.ReviewAsync(source!, ct) is not { } review) return Unavailable();
+        var detail = source!.Drivers.SingleOrDefault(d => d.Scope == owner.Scope);
+        if (detail is null) return Unavailable();
+        return await PrepareAsync(userId, source, review, [],
+            new ScopedDriverDetailDto(owner.DriverName, detail.OfficialBestLapSeconds, detail.IRating, "synthetic"), ct, owner: owner);
+    }
     public async Task<IActionResult> DiscoverAsync(Guid recipientUserId, string? term, bool followedOnly = false,
         CancellationToken ct = default)
     {
@@ -83,19 +95,19 @@ public sealed class ScopedDriverPublication(DriverReferenceStore references, IDr
         return await PrepareAsync(recipientUserId, source!, review, [binding], new ScopedDriverFollowDto(true, "synthetic"), ct, addFollow: true);
     }
     private async Task<IActionResult> PrepareAsync(Guid recipient, ControlledDriverReferenceSource source, string review,
-        IReadOnlyList<DriverReferenceBinding> bindings, object dto, CancellationToken ct, bool followedOnly = false, bool addFollow = false)
+        IReadOnlyList<DriverReferenceBinding> bindings, object dto, CancellationToken ct, bool followedOnly = false, bool addFollow = false, DriverAccess? owner = null)
     {
-        var required = bindings.SelectMany(b => new[] { b.Recipient, b.Target }).DistinctBy(a => a.GrantId).ToArray();
+        var required = bindings.SelectMany(b => new[] { b.Recipient, b.Target }).Concat(owner is null ? [] : [owner]).DistinctBy(a => a.GrantId).ToArray();
         var dependencies = await releases!.ObserveAsync(required.Select(a => a.Scope).ToImmutableArray(),
             required.ToDictionary(a => a.Scope.CustomerId, a => a.Purpose), journal, ct);
         if (dependencies is null) return Unavailable();
         var body = JsonSerializer.SerializeToUtf8Bytes(dto, JsonSerializerOptions.Web);
         if (body.Length > 262144) return Unavailable();
         var sourceHash = ControlledCohortPublication.Hash(source);
-        var proposal = new PublicationProposal(Guid.NewGuid(), ControlledCohortPublication.Hash(new { sourceHash, review, recipient, followedOnly, addFollow, bindings = bindings.Select(b => b.Reference.TokenHash) }),
+        var proposal = new PublicationProposal(Guid.NewGuid(), ControlledCohortPublication.Hash(new { sourceHash, review, recipient, followedOnly, addFollow, owner, bindings = bindings.Select(b => b.Reference.TokenHash) }),
             ControlledCohortPublication.Hash(dto), ControlledCohortPublication.Hash(new { sourceHash, review, dependencies }),
             DriverReferences.CatalogId, source.CatalogRevision, DataProvenance.Demo, recipient, PublicationPurpose.SignedIn, incarnation, dependencies.Value);
-        return new ProtectedScopedDriverResult(proposal, body, sourceHash, review, bindings, references, catalog!, releases, journal, observer, followedOnly, addFollow);
+        return new ProtectedScopedDriverResult(proposal, body, sourceHash, review, bindings, references, catalog!, releases, journal, observer, followedOnly, addFollow, owner);
     }
     private static bool Valid(ControlledDriverReferenceSource? source) => source is { CatalogRevision: > 0 }
         && !source.Drivers.IsDefaultOrEmpty && source.Drivers.Length <= 12
@@ -107,7 +119,7 @@ public sealed class ScopedDriverPublication(DriverReferenceStore references, IDr
 
 internal sealed class ProtectedScopedDriverResult(PublicationProposal proposal, byte[] body, string sourceHash, string reviewHash,
     IReadOnlyList<DriverReferenceBinding> bindings, DriverReferenceStore references, IControlledDriverReferenceCatalog catalog,
-    PublicationReleaseStore releases, IDriverEnforcementJournal journal, IDriverPublicationObserver? observer, bool followedOnly, bool addFollow) : IActionResult
+    PublicationReleaseStore releases, IDriverEnforcementJournal journal, IDriverPublicationObserver? observer, bool followedOnly, bool addFollow, DriverAccess? owner) : IActionResult
 {
     public async Task ExecuteResultAsync(ActionContext context)
     {
@@ -122,6 +134,7 @@ internal sealed class ProtectedScopedDriverResult(PublicationProposal proposal, 
                 || user != proposal.RecipientUserId) return false;
             var source = await catalog.LoadAsync(token);
             if (source is null || ControlledCohortPublication.Hash(source) != sourceHash || await catalog.ReviewAsync(source, token) != reviewHash) return false;
+            if (owner is not null && await references.RecipientAsync(user, token) != owner) return false;
             foreach (var binding in bindings)
             {
                 // Resolve by hash without retaining the plaintext bearer in enforcement history.

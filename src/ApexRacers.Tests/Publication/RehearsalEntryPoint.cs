@@ -7,6 +7,8 @@ internal static class RehearsalEntryPoint
 {
     public static async Task<int> Main(string[] args)
     {
+        if (args is ["--driver-browser-fixture"]) { await References.BrowserFixture.RunAsync(); return 0; }
+        if (args is ["--driver-browser-host"]) { await References.ReferenceHost.RunAsync(browser: true); return 0; }
         if (args is ["--driver-reference-host"])
         {
             await References.ReferenceHost.RunAsync();

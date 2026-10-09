@@ -19,3 +19,4 @@ public record ResetPasswordRequest(string Email, string Token, string NewPasswor
 public record AddRivalRequest(long CustId, string? DisplayName = null);
 
 public sealed record ScopedDriverReferenceRequest(string? Reference);
+public sealed record DriverWithdrawalRequest(Guid OperationId, string Scope);
