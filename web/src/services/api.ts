@@ -1007,9 +1007,11 @@ export const api = {
     return request('/api/race-guide', { signal });
   },
 
+  /** GET /api/drivers/scoped/personal — currently authorized personal Driver detail */
   getScopedDriverPersonal(signal?: AbortSignal): Promise<ScopedDriverDetail> {
     return request('/api/drivers/scoped/personal', { signal });
   },
+  /** POST /api/drivers/privacy/withdrawal — withdraw the signed-in User's Driver consent */
   withdrawDriver(body: {
     operationId: string;
     scope: 'personal' | 'sharing';
