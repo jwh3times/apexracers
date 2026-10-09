@@ -62,7 +62,8 @@ app-wide `session` singleton built with `createSession(deps)`, behind `restore()
 request once if it resolves `true`. `api.ts` wires that dependency straight to `session.refresh()` —
 `http.ts` itself knows nothing about tokens, so there is no `AuthContext`-facing refresh API to keep
 in sync; a successful or failed refresh reaches `AuthContext` the same way any other session change
-does, through `session.subscribe()`.
+does, through `session.subscribe()`. Preserve the original request owner when wiring the HTTP
+dependencies; a refreshed token from another User must never replay the old request.
 
 ### Testing session state
 
@@ -88,7 +89,10 @@ hooks rather than re-deriving them in consumers.
 
 ## State management
 
-React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`. No Redux, Zustand, Jotai, Recoil, or similar. For cross-component state, use the existing contexts or add a new context file following the same pattern as `AuthContext`.
+React hooks only: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`;
+`useSyncExternalStore` binds the bounded Driver resource. No Redux, Zustand, Jotai, Recoil, or similar.
+For cross-component state, use the existing contexts or add a new context file following the same
+pattern as `AuthContext`.
 
 `PaceSourceProvider` owns the app-lifetime Personal Best evidence choice. Consumers call
 `usePaceSource()` and pass its memoized `evidenceOptions` to every Personal Best API read; selectors
@@ -109,9 +113,11 @@ src/pages/__tests__/    ← Vitest tests for the static pages
 src/components/         ← shared UI pieces, each with a colocated *.test.tsx sibling
 src/context/            ← React contexts (AuthContext, FeatureFlagContext, PaceSourceContext) + their Provider components
                           (AuthProvider, …), each with a colocated *.test.tsx sibling
-src/hooks/              ← shared hooks (`useResource`) and request lifecycle (`resourceRequest`)
+src/hooks/              ← independent resources (`useResource`, `resourceRequest`) and bounded
+                          sensitive resources (`useDriverResource`, `driverResource`)
                           with colocated *.test.ts(x) siblings
-src/services/           ← api.ts, http.ts, session.ts, db.ts, each with a colocated *.test.ts sibling
+src/services/           ← api.ts, http.ts, session.ts, driverDisclosure.ts, db.ts,
+                          each with a colocated *.test.ts sibling
 src/utils/              ← pure helper functions (e.g. lapTime.ts), each with a colocated *.test.ts sibling
 src/test/               ← setup.ts (Vitest global setup), apiMock.ts (shared api.ts mock factory — see Testing)
 ```
@@ -192,20 +198,24 @@ Use the shared `card-shadow` and `scan-texture` classes. Their theme-aware value
 
 ### Read-only page resources
 
-Use `useResource` for remote data that a page reads without locally mutating the returned collection.
+Use `useResource` for independent remote data that a page reads without locally mutating the
+returned collection.
 Pass its `AbortSignal` through the matching `api` method to the shared HTTP client, and render loading,
 typed `IRACING_NOT_LINKED`, and error states with `ResourceView`. If an optional overlay deliberately
 disappears when it is unavailable, declare its typed fallback with `onNotLinked` and/or `onError` at
 the hook call instead of reinterpreting every non-`ok` state in the component.
 
-Keep local state machines for mutation-owned collections and domain workflows: admin CRUD lists that
-are updated in place after writes, debounced searches, uploads, and the percentile lookup's
-idle/not-found/compute flow are not read-only page resources.
+Keep local state machines for mutation-owned collections and domain workflows. A local selection
+or mutation can own its transitions while its sensitive read stays inside `useDriverResource`.
+Apply the browser contract linked from the project guide: pass every selection/owner dependency
+and `AbortSignal`, keep loading/error states empty of prior Driver values, and test actual rendered
+clearing before an async withdrawal settles. `DriverDisclosure` owns the protected cards and
+withdrawal feedback; reported intent/drain must remain distinct from verified erasure.
 
-When a domain workflow also owns a replaceable read, reuse `createResourceRequest` from
+For independent replaceable reads, reuse `createResourceRequest` from
 web/src/hooks/resourceRequest.ts for cancellation, stale-settlement suppression, and outcome
 classification. Keep domain transitions in the feature hook: web/src/features/rivals/useRivalComparison.ts
-owns the selected Customer ID, active comparison, and successful-removal invalidation together.
+owns selection and successful-removal invalidation while `useDriverResource` owns its bounded read.
 Removal checks the current selection after the write succeeds; a request replaced by a newer
 selection, removed selection, or unmount must not publish a late success or failure.
 
@@ -236,6 +246,9 @@ Icons use Material Symbols via `<span className="material-symbols-outlined" aria
 - `src/test/jest-dom-matchers.d.ts` restores `@testing-library/jest-dom`'s matcher types (`toBeInTheDocument`, etc.) under Vitest 5: Vitest 5 inlined `expect` with a two-type-parameter `Assertion<R, T>`, and jest-dom's own one-parameter augmentation (`types/vitest.d.ts`) silently stops merging against it, so `tsc`/`npm run build` fails while the tests themselves stay green. The shim augments `Matchers` instead (the extension point `Assertion`/`AsymmetricMatchersContaining`/`ExpectStatic` all build on) and carries a delete-when-upstream-ships note (testing-library/jest-dom#738 is open; 7.0.1 is latest). Delete it once that lands and `npm run build` still passes with it gone.
 - The **85%** coverage gate (statements/branches/functions/lines), the `Format` (prettier-check) CI job, and the `Lint` (Oxlint) CI job are in AGENTS.md (Testing, Commands). Run `npx vitest run --coverage`, `npx prettier --check .`, and `npm run lint` before pushing.
 - **End-to-end (Playwright):** tests live in `web/e2e/` and run against the full stack at `http://localhost:8080` (e.g. `docker compose up`). Config is `web/playwright.config.ts` (single Chromium project; `reuseExistingServer: !process.env.CI`). Run with `npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive). Vitest excludes `e2e/` via `include: ['src/**']` in `vite.config.ts` — E2E tests never count toward the coverage gate. A non-blocking per-PR GitHub Actions workflow (`.github/workflows/e2e.yml`) also runs the suite (Postgres service + builds SPA into API wwwroot + Playwright); it is not yet a required check.
+- For sensitive display changes, extend the separate built-SPA privacy cases linked from the
+  project guide. A mocked hook cannot establish before-paint clearing, actual no-store headers or
+  current protected dispatch across independent hosts; keep those assertions at the browser seam.
 - **Accessibility audits:** `web/e2e/a11y.spec.ts` asserts zero WCAG 2.1 A/AA violations across 5 public + 7 authed pages via `auditA11y(page)` from `web/e2e/helpers/a11y.ts` (`@axe-core/playwright`, `wcag2a`/`wcag2aa` tagset).
 - **Visual regression:** `web/e2e/visual.spec.ts` captures full-page `toHaveScreenshot` baselines for the stable public pages; **CI-only** (`test.skip(!process.env.CI)`) with committed Linux/Chromium PNGs under `e2e/visual.spec.ts-snapshots/`. Refresh via `e2e.yml` `workflow_dispatch` (`update_snapshots=true`) → download the `visual-baselines` artifact → commit. Defaults (animations off, caret hidden, 2% tolerance) live in `playwright.config.ts`.
 - **Accessibility design guidance:** When adding pages or new components, check whether they share the inline-accent-link or muted-caption patterns fixed in the workstream — if so, add `underline` to inline links in body text and remove any `text-on-surface-variant/60` opacity on light surfaces.

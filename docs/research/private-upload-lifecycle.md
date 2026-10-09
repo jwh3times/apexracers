@@ -117,5 +117,8 @@ transport, suppression of unsent prepared output and protected response terminal
 under `TestResults/driver-lifecycle/` contain synthetic outcome/context metadata; TRX owns pass/fail.
 
 This contributes UPLOAD-01, COPY-03–05 and AUTH-01–03 within the named synthetic boundaries. Real
-proof exchange, production journal selection, publication catalog/composition admission, browser
-invalidation, integrated restore acceptance and deployed backup/log expiry remain separate slices.
+proof exchange, production journal selection, publication catalog/composition admission, integrated
+acceptance and deployed backup/log expiry remain separate.
+[#376 browser evidence](driver-browser-validity.md) and
+[#377 physical restore evidence](driver-migration-restore.md) add controlled scenarios without
+certifying those production obligations.

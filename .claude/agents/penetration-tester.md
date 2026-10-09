@@ -219,6 +219,20 @@ Policies in `Program.cs`:
   reactivation strictly before day 90, physical removal by day 97 and User-delete private erasure.
   Include raw SQL writers and alternate legacy Driver routes, not only normal service calls.
 
+**Personal display and withdrawal**
+
+- `GET /api/drivers/scoped/personal` requires the authenticated owner and module-owned protected
+  dispatch. Probe another User's input, claim-only identities, source/journal uncertainty and stale
+  response delivery; no name or private result may survive invalidation. Apply the browser/restore
+  boundaries linked from the project guide.
+- `POST /api/drivers/privacy/withdrawal` takes only an operation UUID and `personal`/`sharing`
+  scope. Replay another User's UUID or change its scope; the request must not transition another
+  association. Test lost responses, reload and owner rotation during refresh: the original operation
+  remains a veto and cannot replay as the replacement User. Durable intent and writer drain do not
+  certify Live erasure or backup expiry.
+- Compare no-store successes and denials in actual HTTP/browser fixtures. A local tab signal or
+  pending-operation record cannot grant permission; delayed/obsolete values must stay cleared.
+
 **Cross-user data access**
 
 - Probe the resource-filter boundary before endpoint-specific validation: legacy Real Driver

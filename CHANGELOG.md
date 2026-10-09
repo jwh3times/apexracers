@@ -7,13 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+No unreleased changes.
 
-- Fence pre-lifecycle upload readers and writers with a forward-only quarantine-table migration.
-  Restoring an old API binary against the upgraded schema cannot read legacy private Uploaded Laps.
-- Bound Driver browser display to fresh protected reads every 15 seconds and expiry within
-  30 seconds of check start. Withdrawal, uncertainty, offline/suspended pages and obsolete
-  responses clear display; reload cannot restore a pending withdrawal as authorization.
+## [14.0.0] - 2026-10-09
 
 ### Added
 
@@ -25,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retains unavailable Real proof/journal/catalog adapters and useful synthetic Demo workflows.
 - Built-SPA privacy rehearsals using actual JWT/controller dispatch, two API processes,
   independent PostgreSQL history, delayed HTTP responses and ordinary credential-free Demo.
+
+### Changed
+
+- **Breaking:** Move legacy private Uploaded Laps from `UploadedLaps` to
+  `QuarantinedUploadedLaps` through a forward-only migration. Old upload readers and writers,
+  including an insecure API binary rolled back against the upgraded schema, lose access.
+  Restore activation requires current migrations and independent enforcement/history;
+  downgrading this migration is unsupported.
+
+### Fixed
+
+- Bound Driver browser display to fresh protected reads every 15 seconds and expiry within
+  30 seconds of check start. Withdrawal, uncertainty, offline/suspended pages and obsolete
+  responses clear display; reload cannot restore a pending withdrawal as authorization.
 
 ## [13.1.0] - 2026-10-08
 
@@ -1607,7 +1617,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v13.1.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.0...HEAD
+[14.0.0]: https://github.com/jwh3times/apexracers/compare/v13.1.1...v14.0.0
 [13.1.0]: https://github.com/jwh3times/apexracers/compare/v13.0.4...v13.1.0
 [13.0.3]: https://github.com/jwh3times/apexracers/compare/v13.0.2...v13.0.3
 [13.0.2]: https://github.com/jwh3times/apexracers/compare/v13.0.1...v13.0.2

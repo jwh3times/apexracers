@@ -28,9 +28,13 @@ Controlled synthetic Driver discovery, detail, comparison and Follow now use sho
 references bound to the signed-in recipient and purpose. Each use and protected dispatch rechecks
 current ownership, consent and source/catalog evidence; raw Customer IDs and retained Follows
 cannot grant access. Follow loss preserves its original reactivation and cleanup deadlines.
-These API paths remain unavailable under ordinary startup, and no browser workflow is enabled by
-this slice. [Reference evidence](research/driver-scoped-references.md) records the controlled scope
-and the remaining browser, production and restore gates.
+These API paths remain unavailable under ordinary startup. Controlled browser cards, own-User
+withdrawal and bounded sensitive reads now exercise this path; physical snapshot/legacy-binary
+rehearsals preserve current prohibitions and original clocks.
+[Reference evidence](research/driver-scoped-references.md),
+[browser evidence](research/driver-browser-validity.md) and
+[restore evidence](research/driver-migration-restore.md) record the controlled scope and remaining
+production and integrated acceptance gates.
 
 ## Core Workflows
 
