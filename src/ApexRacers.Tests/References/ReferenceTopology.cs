@@ -25,10 +25,10 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
     public Guid HistoryEpoch => epoch;
     public ControlledPublicationHistory History { get; } = new(independent, epoch, new LifecycleGates());
     public AppDbContext Db(DataProvenance provenance = DataProvenance.Demo) => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(provenance));
-    public async Task<HttpResponseMessage> Request(string path, string id, Guid? actor = null, string? reference = null, bool secondHost = false, bool anonymous = false)
+    public async Task<HttpResponseMessage> Request(string path, string id, Guid? actor = null, string? reference = null, bool secondHost = false, bool anonymous = false, string role = "Standard")
     {
         using var request = new HttpRequestMessage(reference is null ? HttpMethod.Get : HttpMethod.Post, path);
-        if (!anonymous) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ReferenceActors.Token(actor ?? ReferenceActors.Recipient));
+        if (!anonymous) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ReferenceActors.Token(actor ?? ReferenceActors.Recipient, role));
         request.Headers.Add("X-Rehearsal-Writer", id);
         if (reference is not null) request.Content = JsonContent.Create(new ScopedDriverReferenceRequest(reference));
         return await (secondHost ? Second : First).Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -121,6 +121,8 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
                     user == ReferenceActors.Target ? "Synthetic Reference Driver" : "Synthetic Reference Owner"),
                     new(DriverAuthorizationPolicy.PersonalConsentVersion, user == ReferenceActors.Target ? DriverAuthorizationPolicy.SharingConsentVersion : null), history, ct);
             await ReferenceActors.SeedAsync(db, ct);
+            await Operating.OperatingFixtures.SeedAsync(db, [new(DriverReferences.CatalogId, "official", OperatingWork.Publication)],
+                [ReferenceActors.Recipient, ReferenceActors.Target], ct);
             if (browser)
             {
                 var flag = await db.FeatureFlags.SingleAsync(f => f.Key == "iracing-demo", ct);

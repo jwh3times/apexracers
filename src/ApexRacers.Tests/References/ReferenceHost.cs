@@ -73,7 +73,8 @@ internal static class ReferenceHost
         builder.Services.AddScoped(sp => new ScopedDriverPublication(sp.GetRequiredService<DriverReferenceStore>(), history, incarnation,
             new ReferenceCatalog(sp.GetRequiredService<AppDbContext>(), genesis, gates, browser),
             new PublicationReleaseStore(sp.GetRequiredService<AppDbContext>(), clock, history, browser ? new BrowserCompositionReview() : new ReferenceCompositionReview(), epoch),
-            new HttpPublicationObserver(gates, sp.GetRequiredService<IHttpContextAccessor>().HttpContext!.Request.Headers["X-Rehearsal-Writer"].ToString(), admissions)));
+            new HttpPublicationObserver(gates, sp.GetRequiredService<IHttpContextAccessor>().HttpContext!.Request.Headers["X-Rehearsal-Writer"].ToString(), admissions),
+            new SyntheticDriverOperatingStore(sp.GetRequiredService<AppDbContext>(), clock)));
         builder.Services.AddControllers(o => o.Filters.AddService<LegacyDriverAccessGuard>()).AddApplicationPart(typeof(ScopedDriversController).Assembly);
         builder.Services.AddAuthentication("Bearer").AddJwtBearer(o => { o.MapInboundClaims = false; o.TokenValidationParameters = JwtSettings.FromConfiguration(ReferenceActors.Configuration).ValidationParameters(); });
         builder.Services.AddAuthorization();
@@ -91,6 +92,19 @@ internal static class ReferenceHost
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
         app.MapControllers();
+        // A controlled provider substitute exercises the real shared collection interface.
+        // This endpoint exists only in the isolated test executable, never the product host.
+        app.MapGet("/synthetic/acquisition", async (HttpContext http) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            if (!Guid.TryParse(http.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value, out var user))
+                return Results.Unauthorized();
+            var controls = new SyntheticDriverOperatingStore(http.RequestServices.GetRequiredService<AppDbContext>(), clock);
+            var value = await new DriverOperatingCollection(controls).CollectAsync(
+                new("synthetic-acquisition", "active-season:42", OperatingWork.Acquisition, DataProvenance.Demo, user, OperatingAudience.Standard),
+                _ => Task.FromResult("synthetic-field"), http.RequestAborted);
+            return Results.Json(new { value, provenance = "synthetic" });
+        }).RequireAuthorization();
         if (browser)
         {
             app.UseStaticFiles();

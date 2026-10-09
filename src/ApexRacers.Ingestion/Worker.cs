@@ -1,3 +1,4 @@
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Aydsko.iRacingData;
@@ -39,24 +40,28 @@ public sealed class Worker(
         logger.LogInformation("Ingestion worker stopped");
     }
 
+    private static Task<T> FetchAsync<T>(DriverOperatingCollection collection, string catalog, string collectionScope, Func<Task<T>> fetch, CancellationToken ct) =>
+        collection.CollectAsync(new(catalog, collectionScope, OperatingWork.BackgroundCollection, DataProvenance.Real, null, OperatingAudience.Visitor), _ => fetch(), ct);
+
     private async Task RunAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var client = scope.ServiceProvider.GetRequiredService<IDataClient>();
+        var collection = scope.ServiceProvider.GetRequiredService<DriverOperatingCollection>();
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
 
         logger.LogInformation("Ingestion run starting at {Time}", DateTimeOffset.UtcNow);
 
         // Step 1 — Fetch all active seasons (includes per-week schedule/track info).
-        var seasonsResponse = await client.GetSeasonsAsync(includeSeries: true, ct);
+        var seasonsResponse = await FetchAsync(collection, "seasons", "active-seasons", () => client.GetSeasonsAsync(includeSeries: true, ct), ct);
         var activeSeries = seasonsResponse.Data.Where(s => s.Active).ToList();
         logger.LogDebug("Found {Count} active series", activeSeries.Count);
 
         // Step 1b — Refresh the full car/track catalog (specs + assets) for the catalog explorer.
         try
         {
-            var (cars, tracks) = await RefreshCatalogAsync(db, client, ct);
+            var (cars, tracks) = await RefreshCatalogAsync(db, client, collection, ct);
             logger.LogDebug("Catalog refreshed: {Cars} cars, {Tracks} tracks", cars, tracks);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -74,7 +79,7 @@ public sealed class Worker(
             try
             {
                 var (series, subsessions) = await ProcessSeasonAsync(
-                    db, client, seasonSeries, ct);
+                    db, client, collection, seasonSeries, ct);
                 seriesProcessed += series;
                 subsessionsIndexed += subsessions;
             }
@@ -94,10 +99,10 @@ public sealed class Worker(
     // Upsert the full car & track catalog (+ asset image bits) so the catalog explorer reads it
     // from the DB. Pure mapping lives in CatalogIngest (tested); this is just fetch + upsert.
     private static async Task<(int cars, int tracks)> RefreshCatalogAsync(
-        AppDbContext db, IDataClient client, CancellationToken ct)
+        AppDbContext db, IDataClient client, DriverOperatingCollection collection, CancellationToken ct)
     {
-        var cars = (await client.GetCarsAsync(ct)).Data;
-        var carAssets = (await client.GetCarAssetDetailsAsync(ct)).Data;
+        var cars = (await FetchAsync(collection, "cars", "catalog", () => client.GetCarsAsync(ct), ct)).Data;
+        var carAssets = (await FetchAsync(collection, "car-assets", "catalog", () => client.GetCarAssetDetailsAsync(ct), ct)).Data;
         foreach (var info in cars)
         {
             var car = await db.Cars.FindAsync([info.CarId], ct);
@@ -110,8 +115,8 @@ public sealed class Worker(
             CatalogIngest.PopulateCar(car, info, asset);
         }
 
-        var tracks = (await client.GetTracksAsync(ct)).Data;
-        var trackAssets = (await client.GetTrackAssetsAsync(ct)).Data;
+        var tracks = (await FetchAsync(collection, "tracks", "catalog", () => client.GetTracksAsync(ct), ct)).Data;
+        var trackAssets = (await FetchAsync(collection, "track-assets", "catalog", () => client.GetTrackAssetsAsync(ct), ct)).Data;
         foreach (var info in tracks)
         {
             var track = await db.Tracks.FindAsync([info.TrackId], ct);
@@ -131,6 +136,7 @@ public sealed class Worker(
     private async Task<(int seriesProcessed, int subsessionsIndexed)> ProcessSeasonAsync(
         AppDbContext db,
         IDataClient client,
+        DriverOperatingCollection collection,
         SeasonSeries seasonSeries,
         CancellationToken ct)
     {
@@ -151,7 +157,7 @@ public sealed class Worker(
 
         // ── Step 3: Fetch full schedule → upsert Weeks, Cars, SeasonCars ─────────
         // GetSeasonScheduleAsync gives us SeasonScheduleItem[] with per-week car lists.
-        var scheduleResponse = await client.GetSeasonScheduleAsync(seasonSeries.SeasonId, ct);
+        var scheduleResponse = await FetchAsync(collection, "schedule", $"active-season:{seasonSeries.SeasonId}", () => client.GetSeasonScheduleAsync(seasonSeries.SeasonId, ct), ct);
         if (scheduleResponse?.Data?.Schedules is not { Length: > 0 })
         {
             logger.LogDebug("Season {SeasonId} returned no schedule items", seasonSeries.SeasonId);
@@ -162,7 +168,7 @@ public sealed class Worker(
             seasonSeries.SeasonId, scheduleResponse.Data.Schedules, ct, scheduleReceipt);
 
         // ── Step 4: Index new race subsessions ────────────────────────────────────
-        var indexed = await IndexNewSubsessionsAsync(db, client, seasonSeries, purpose, ct);
+        var indexed = await IndexNewSubsessionsAsync(db, client, collection, seasonSeries, purpose, ct);
 
         // Upsert SeasonCarClass entries after indexing so new CarClass rows created
         // during subsession indexing are available for the FK guard.
@@ -185,7 +191,7 @@ public sealed class Worker(
     }
 
     private async Task<int> IndexNewSubsessionsAsync(
-        AppDbContext db, IDataClient client, SeasonSeries seasonSeries, Guid purpose, CancellationToken ct)
+        AppDbContext db, IDataClient client, DriverOperatingCollection collection, SeasonSeries seasonSeries, Guid purpose, CancellationToken ct)
     {
         // Narrow the search to sessions starting after the last indexed one (minus a
         // 1-hour buffer for concurrent splits). Null on first run → full season fetch.
@@ -195,7 +201,7 @@ public sealed class Worker(
 
         DateTime? searchRangeBegin = SubsessionIndexer.ComputeSearchRangeBegin(lastIndexedStart);
 
-        var searchResponse = await client.SearchOfficialResultsAsync(new OfficialSearchParameters
+        var searchResponse = await FetchAsync(collection, "official-search", $"active-season:{seasonSeries.SeasonId}", () => client.SearchOfficialResultsAsync(new OfficialSearchParameters
         {
             SeriesId = seasonSeries.SeriesId,
             SeasonYear = seasonSeries.SeasonYear,
@@ -203,7 +209,7 @@ public sealed class Worker(
             EventTypes = new[] { 5 },  // Race only
             OfficialOnly = true,
             StartRangeBegin = searchRangeBegin,
-        }, ct);
+        }, ct), ct);
 
         if (searchResponse?.Data.Items is not { Length: > 0 }) return 0;
 
@@ -226,7 +232,7 @@ public sealed class Worker(
                 var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
                 var receipt = await lifecycle.CaptureAsync(purpose, ApexRacers.Core.EvidenceCopyKind.OfficialField,
                     $"field:{subsessionId}", ct: ct);
-                var resultResponse = await client.GetSubSessionResultAsync(subsessionId, includeLicenses: false, ct);
+                var resultResponse = await FetchAsync(collection, "official-result", $"active-season:{seasonSeries.SeasonId}", () => client.GetSubSessionResultAsync(subsessionId, includeLicenses: false, ct), ct);
                 if (resultResponse?.Data is null) continue;
 
                 var data = resultResponse.Data;

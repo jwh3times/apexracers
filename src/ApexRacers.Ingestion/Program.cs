@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 var builder = Host.CreateApplicationBuilder(args);
 EvidenceOperationalLogging.Configure(builder.Logging);
 builder.Services.AddSingleton<ApexRacers.Core.IEvidencePurposeIssuer, ApexRacers.Core.UnavailableEvidencePurposeIssuer>();
+builder.Services.AddSingleton<ApexRacers.Core.IDriverOperatingControls, ApexRacers.Core.UnavailableDriverOperatingControls>();
+builder.Services.AddScoped<DriverOperatingCollection>();
 
 var keyVaultUrl = builder.Configuration["AZURE_KEY_VAULT_URL"];
 if (!string.IsNullOrEmpty(keyVaultUrl))

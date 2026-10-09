@@ -25,7 +25,7 @@ public sealed record CohortPublicationRequest(string CatalogId, PublicationPurpo
 /// adapters. Feature callers receive only the protected executor, never a released candidate DTO.</summary>
 public sealed class ControlledCohortPublication(IControlledCohortSource source, IControlledCohortCatalog catalog,
     PublicationReleaseStore releases, IDriverEnforcementJournal journal, Guid incarnation,
-    IDriverPublicationObserver? observer = null)
+    IDriverPublicationObserver? observer = null, IDriverOperatingControls? operating = null)
 {
     public async Task<IActionResult> ReadAsync(CohortPublicationRequest request, Guid? actualRecipientUserId, CancellationToken ct = default)
     {
@@ -69,7 +69,7 @@ public sealed class ControlledCohortPublication(IControlledCohortSource source, 
             request.CatalogId, loaded.Snapshot.CatalogRevision, DataProvenance.Demo, actualRecipientUserId,
             request.Purpose, incarnation, dependencies.Value);
         return new ProtectedCohortResult(proposal, body, sourceHash, reviewFingerprint, Hash(candidate.Projection), variant, request,
-            source, catalog, releases, journal, observer);
+            source, catalog, releases, journal, observer, operating ?? new UnavailableDriverOperatingControls());
     }
 
     internal static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value)));
@@ -88,15 +88,19 @@ public sealed class ControlledCohortPublication(IControlledCohortSource source, 
 internal sealed class ProtectedCohortResult(PublicationProposal proposal, byte[] body, string sourceHash,
     string reviewFingerprint, string projectionHash, CandidateVariant variant, CohortPublicationRequest request,
     IControlledCohortSource source, IControlledCohortCatalog catalog, PublicationReleaseStore releases,
-    IDriverEnforcementJournal journal, IDriverPublicationObserver? observer) : IActionResult
+    IDriverEnforcementJournal journal, IDriverPublicationObserver? observer, IDriverOperatingControls operating) : IActionResult
 {
     public async Task ExecuteResultAsync(ActionContext context)
     {
         var http = context.HttpContext;
         var ct = http.RequestAborted;
         http.Response.Headers.CacheControl = "no-store";
+        var operatingLease = await DriverOperatingAdmission.ReserveAsync(http, operating, proposal.CatalogId, WholeCohortCandidates.Scope,
+            proposal.Provenance, proposal.RecipientUserId, proposal.CatalogRevision, ct);
+        if (operatingLease is null) { http.Response.StatusCode = 503; return; }
         async Task<bool> Current(CancellationToken token)
         {
+            if (!await operating.CurrentAsync(operatingLease, token)) return false;
             var current = await source.LoadAsync(token);
             if (current is null || ControlledCohortPublication.Hash(current) != sourceHash) return false;
             var currentReview = await catalog.ReviewAsync(current, token);
@@ -121,6 +125,7 @@ internal sealed class ProtectedCohortResult(PublicationProposal proposal, byte[]
                 return;
             }
             await Phase("dispatch-started", proposal.Id, ct);
+            if (!await operating.CurrentAsync(operatingLease, ct)) { http.Response.StatusCode = 503; return; }
             http.Response.ContentType = "application/json";
             await http.Response.Body.WriteAsync(body, ct);
             await http.Response.Body.FlushAsync(ct);

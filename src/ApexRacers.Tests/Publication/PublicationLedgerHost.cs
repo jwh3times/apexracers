@@ -66,10 +66,12 @@ internal static class PublicationLedgerHost
                 "missing" => Guid.Parse("dddddddd-3740-4000-8000-000000000099"),
                 _ => CohortActors.Recipient
             };
+            if (recipient is { } user) http.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.ToString())], "controlled-synthetic-host"));
             IDriverEnforcementJournal selectedJournal = gates.IsFaulted("separate-journal")
                 ? new PersistedSyntheticJournal(independent, gates) : history;
             var protectedModule = new ControlledCohortPublication(new ControlledCohortSqlSource(db, gates), new FiniteCohortCatalog(gates, genesis),
-                Releases(db, id), selectedJournal, incarnation, new HttpPublicationObserver(gates, id, admissions));
+                Releases(db, id), selectedJournal, incarnation, new HttpPublicationObserver(gates, id, admissions), new SyntheticDriverOperatingStore(db, TimeProvider.System));
             var result = await protectedModule.ReadAsync(new(catalog ?? WholeCohortCandidates.CatalogId, purpose, offset ?? 0), recipient, http.RequestAborted);
             try { await result.ExecuteResultAsync(new ActionContext { HttpContext = http }); }
             finally { await gates.ReachAsync(id, "request-ended", CancellationToken.None); }

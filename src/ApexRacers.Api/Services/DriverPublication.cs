@@ -16,7 +16,7 @@ public interface IDriverPublicationObserver
 /// This initial artifact is explicitly synthetic; it admits no Real query catalog or projection.</summary>
 public sealed class DriverPublication(
     DriverAuthorization authority, DriverAuthorityStore store, IDriverEnforcementJournal journal,
-    Guid incarnation, IDriverPublicationObserver? observer = null, ControlledCohortPublication? cohortPublication = null)
+    Guid incarnation, IDriverPublicationObserver? observer = null, ControlledCohortPublication? cohortPublication = null, IDriverOperatingControls? operating = null)
 {
     public async Task<IActionResult> ReadControlledCohortAsync(CohortPublicationRequest request,
         Guid? actualRecipientUserId, CancellationToken ct = default)
@@ -28,7 +28,7 @@ public sealed class DriverPublication(
     {
         if (scope.Provenance != DataProvenance.Demo) return Unavailable();
         var access = await authority.ResolveAsync(scope, DriverConsentScope.Personal, ct);
-        return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer);
+        return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer, operating ?? new UnavailableDriverOperatingControls(), scope.UserId, "synthetic-owner-v1", "personal");
     }
 
     public async Task<IActionResult> ReadSyntheticSharingAsync(
@@ -37,7 +37,7 @@ public sealed class DriverPublication(
         if (scope.Provenance != DataProvenance.Demo || recipientUserId == Guid.Empty || recipientUserId == scope.UserId)
             return Unavailable();
         var access = await authority.ResolveAsync(scope, DriverConsentScope.Sharing, ct);
-        return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer);
+        return access is null ? Unavailable() : new ProtectedDriverResult(access, store, journal, incarnation, observer, operating ?? new UnavailableDriverOperatingControls(), recipientUserId, "synthetic-sharing-v1", "sharing");
     }
 
     public async Task<IActionResult> ReadSyntheticUploadedBestsAsync(DriverScope scope, PrivateUploadStore uploads,
@@ -47,7 +47,7 @@ public sealed class DriverPublication(
         var access = await authority.ResolveAsync(scope, DriverConsentScope.Personal, ct);
         if (access is null) return Unavailable();
         var snapshot = await uploads.ReadSnapshotAsync(access, ct);
-        return new ProtectedPrivateUploadResult(access, snapshot, uploads, store, journal, incarnation, observer);
+        return new ProtectedPrivateUploadResult(access, snapshot, uploads, store, journal, incarnation, observer, operating ?? new UnavailableDriverOperatingControls());
     }
 
     private static ObjectResult Unavailable() => new UnavailableDriverResult();
@@ -68,7 +68,7 @@ public sealed class DriverPublication(
 }
 
 internal sealed class ProtectedPrivateUploadResult(DriverAccess access, PrivateUploadSnapshot snapshot, PrivateUploadStore uploads,
-    DriverAuthorityStore store, IDriverEnforcementJournal journal, Guid incarnation, IDriverPublicationObserver? observer) : IActionResult
+    DriverAuthorityStore store, IDriverEnforcementJournal journal, Guid incarnation, IDriverPublicationObserver? observer, IDriverOperatingControls operating) : IActionResult
 {
     public async Task ExecuteResultAsync(ActionContext context)
     {
@@ -78,13 +78,16 @@ internal sealed class ProtectedPrivateUploadResult(DriverAccess access, PrivateU
         var payload = JsonSerializer.SerializeToUtf8Bytes(snapshot.Bests, JsonSerializerOptions.Web);
         if (payload.Length > 262_144) throw new InvalidOperationException("Protected output exceeds its bound.");
         await PhaseAsync("before-admission", Guid.Empty, ct);
+        var operatingLease = await DriverOperatingAdmission.ReserveAsync(http, operating, "synthetic-uploaded-bests-v1", "personal",
+            access.Scope.Provenance, access.Scope.UserId, 1, ct);
+        if (operatingLease is null) { http.Response.StatusCode = 503; return; }
         var admission = await store.AdmitAsync(access, incarnation, journal, ct);
         if (admission is null) { http.Response.StatusCode = 503; return; }
         try
         {
             await PhaseAsync("admitted", admission.Id, ct);
             if (!(await journal.ReadCurrentAsync(access.Scope, ct)).Allows(access.Revision, access.Purpose)
-                || !await uploads.SnapshotCurrentAsync(access, snapshot, ct))
+                || !await uploads.SnapshotCurrentAsync(access, snapshot, ct) || !await operating.CurrentAsync(operatingLease, ct))
             { http.Response.StatusCode = 503; return; }
             http.Response.ContentType = "application/json";
             await http.Response.Body.WriteAsync(payload, ct);
@@ -106,7 +109,7 @@ internal sealed class ProtectedPrivateUploadResult(DriverAccess access, PrivateU
 
 internal sealed class ProtectedDriverResult(
     DriverAccess access, DriverAuthorityStore store, IDriverEnforcementJournal journal,
-    Guid incarnation, IDriverPublicationObserver? observer) : IActionResult
+    Guid incarnation, IDriverPublicationObserver? observer, IDriverOperatingControls operating, Guid recipientUserId, string catalog, string collection) : IActionResult
 {
     public async Task ExecuteResultAsync(ActionContext context)
     {
@@ -114,6 +117,9 @@ internal sealed class ProtectedDriverResult(
         var ct = http.RequestAborted;
         http.Response.Headers.CacheControl = "no-store";
         await PhaseAsync("before-admission", Guid.Empty, ct);
+        var operatingLease = await DriverOperatingAdmission.ReserveAsync(http, operating, catalog, collection,
+            access.Scope.Provenance, recipientUserId, 1, ct);
+        if (operatingLease is null) { http.Response.StatusCode = 503; return; }
         var state = await journal.ReadCurrentAsync(access.Scope, ct);
         if (!state.Allows(access.Revision, access.Purpose)) { http.Response.StatusCode = 503; return; }
         var admission = await store.AdmitAsync(access, incarnation, journal, ct);
@@ -125,7 +131,8 @@ internal sealed class ProtectedDriverResult(
             // boundary; already admitted active transport remains part of the drain protocol.
             state = await journal.ReadCurrentAsync(access.Scope, ct);
             var current = await store.ResolveAsync(access.Scope, access.Purpose, ct);
-            if (!state.Allows(access.Revision, access.Purpose) || current is null || current.Revision != access.Revision)
+            if (!state.Allows(access.Revision, access.Purpose) || current is null || current.Revision != access.Revision
+                || !await operating.CurrentAsync(operatingLease, ct))
             { http.Response.StatusCode = 503; return; }
             http.Response.ContentType = "application/x-ndjson";
             var first = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new SyntheticDriverArtifact(access.DriverName,
