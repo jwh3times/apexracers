@@ -63,8 +63,9 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
         var target = new Npgsql.NpgsqlConnectionStringBuilder(database);
         if (target.Host is not ("127.0.0.1" or "localhost") || target.Database?.StartsWith("apexracers_restore_legacy_", StringComparison.Ordinal) != true)
             throw new InvalidOperationException("Only a disposable loopback restore database may host the pinned legacy binary.");
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
-        var binary = current ? Path.Combine(RepositoryRoot, "src", "ApexRacers.Api", "bin", configuration, "net10.0", "ApexRacers.Api.dll") : await Binary.Value.WaitAsync(ct);
+        // Use the same compiled module path as the test host. Loading an identical second copy
+        // from the API output corrupts the collector's combined module counters.
+        var binary = current ? typeof(JwtSettings).Assembly.Location : await Binary.Value.WaitAsync(ct);
         var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         var info = new ProcessStartInfo("dotnet") { WorkingDirectory = RepositoryRoot, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };

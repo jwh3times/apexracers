@@ -109,6 +109,11 @@ current-product denominator, alongside the existing generated/infrastructure exc
 binary still builds and executes in the test; current product assemblies stay included and both
 85% thresholds stay unchanged. The filter uses the documented assembly-path selector in
 [Microsoft's coverage configuration](https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage).
+The ordinary current API process executes the production entry point and runtime/dependency files
+copied beside the Tests assembly, using the same compiled module locations as the parent. Loading
+another identical copy from the API project's output caused combined coverage to lose already
+covered methods; a focused 19-case copy-lifecycle/legacy/Demo check verifies that coverage survives
+the ordinary API processes. No current product code or child-process coverage is excluded.
 
 Accelerated local clocks prove deadline handling for these copies. They do not establish deployed
 backup lifetime, backup expiry, production restore safety, deletion outside application control,
