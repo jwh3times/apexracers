@@ -18,8 +18,9 @@ chain: the ordinary API's route guard could not protect a rolled-back binary.
 foreign keys and indexes, and records an observed unknown-row count in migration inventory.
 No compatibility view recreates `UploadedLaps`. Both a running old binary across upgrade and a
 fresh old binary after upgrade fail with HTTP 500 without private values; old SQL readers/writers
-fail with undefined relation. Current ordinary startup returns generic no-store HTTP 503 for
-Telemetry while the independent catalog remains useful. Actual downgrade migration execution
+fail with undefined relation; a SQL reader explicitly prepared before upgrade is invalidated too.
+Current ordinary startup returns generic no-store HTTP 503 for Telemetry while the independent
+catalog remains useful. Actual downgrade migration execution
 throws: recovery is forward-only.
 
 This is application-binary rollback evidence on the **upgraded** schema. Restoring the entire
@@ -102,6 +103,12 @@ commit, actual binary SHA-256 and old/current process IDs. Related writer events
 clock/deadline and physical-state evidence are in `TestResults/driver-lifecycle/`,
 `TestResults/driver-references/` and `TestResults/publication-ledger/`. CI uploads `TestResults/`.
 Failed assertions fail the test run; artifacts alone are not acceptance approval.
+
+`coverage.runsettings` excludes only the temporary archived legacy-binary directory from the
+current-product denominator, alongside the existing generated/infrastructure exclusions. The old
+binary still builds and executes in the test; current product assemblies stay included and both
+85% thresholds stay unchanged. The filter uses the documented assembly-path selector in
+[Microsoft's coverage configuration](https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage).
 
 Accelerated local clocks prove deadline handling for these copies. They do not establish deployed
 backup lifetime, backup expiry, production restore safety, deletion outside application control,

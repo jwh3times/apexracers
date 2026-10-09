@@ -52,7 +52,14 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
             Assert.Equal(HttpStatusCode.OK, permissive.StatusCode);
             Assert.Contains("93.125", await permissive.Content.ReadAsStringAsync(Ct));
         }
+        await using var oldSession = new NpgsqlConnection(target);
+        await oldSession.OpenAsync(Ct);
+        await using var preparedReader = new NpgsqlCommand("SELECT COUNT(*) FROM iracing.\"UploadedLaps\"", oldSession);
+        await preparedReader.PrepareAsync(Ct);
+        Assert.Equal(3L, await preparedReader.ExecuteScalarAsync(Ct));
         await migration.MigrateAsync(cancellationToken: Ct);
+        var invalidated = await Assert.ThrowsAsync<PostgresException>(() => preparedReader.ExecuteScalarAsync(Ct));
+        Assert.Equal(PostgresErrorCodes.UndefinedTable, invalidated.SqlState);
         await using var legacy = await LegacyApiProcess.StartAsync(target, Ct);
         using var response = await ReadAsync(legacy, "/api/telemetry/laps");
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
@@ -102,6 +109,7 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
             Inventory = inventory.Select(i => new { i.StorageKind, i.UnknownRows }),
             LegacyBeforeUpgrade = 200,
             MixedAndRolledBackBinary = 500,
+            PreparedLegacyReader = invalidated.SqlState,
             CurrentDenied = 503,
             IndependentCatalog = 200,
             Topology = "Restored pre-provenance PostgreSQL snapshot; actual pinned old API stays running across full upgrade; fresh old/current API processes"
