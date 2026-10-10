@@ -26,11 +26,11 @@ internal static class ReferenceActors
         ["JWT_ISSUER"] = "controlled-reference-host",
         ["JWT_AUDIENCE"] = "controlled-reference-clients"
     }).Build();
-    public static string Token(Guid user)
+    public static string Token(Guid user, string role = "Standard")
     {
         var settings = JwtSettings.FromConfiguration(Configuration);
         return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(settings.Issuer, settings.Audience,
-            [new Claim(JwtRegisteredClaimNames.Sub, user.ToString())], expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: settings.IssuingCredentials()));
+            [new Claim(JwtRegisteredClaimNames.Sub, user.ToString()), new Claim("role", role)], expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: settings.IssuingCredentials()));
     }
     public static ImmutableArray<ControlledDriverDetail> Details => [new(Scope(Recipient), 89.90, 1500), new(Scope(Target), 90.16, 1350)];
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct, bool initializeGenesis = true)

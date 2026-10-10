@@ -205,7 +205,8 @@ builder.Services.AddAuthorization(options =>
 // nullable parameter means. Container auto-wiring would fail to resolve it instead.
 builder.Services.AddScoped(sp =>
     new CachedIRacingClient(sp.GetRequiredService<AppDbContext>(), sp.GetService<IDataClient>(),
-        purposeIssuer: sp.GetRequiredService<IEvidencePurposeIssuer>()));
+        purposeIssuer: sp.GetRequiredService<IEvidencePurposeIssuer>(),
+        operating: sp.GetRequiredService<IDriverOperatingControls>(), httpContext: sp.GetRequiredService<IHttpContextAccessor>()));
 builder.Services.AddScoped<FeatureFlagEligibility>();
 builder.Services.AddScoped<SubjectDriverContext>();
 builder.Services.AddScoped<ApexRacers.Core.IRacingDataScope>();
@@ -234,6 +235,9 @@ builder.Services.AddScoped<CarRecommendationService>();
 builder.Services.AddScoped<StrategyService>();
 builder.Services.AddScoped<UserAnalyticsService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddHttpContextAccessor();
+// Production operating/quota authority is unverified. HTTP/configuration cannot select fixtures.
+builder.Services.AddSingleton<IDriverOperatingControls, UnavailableDriverOperatingControls>();
 // No verified registered-client proof or production journal adapter exists yet. Neither
 // configuration nor a caller header can select the controlled synthetic test adapters.
 builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipProof>();
@@ -243,13 +247,13 @@ builder.Services.AddScoped<DriverAuthorization>();
 builder.Services.AddScoped<DriverPrivacy>();
 builder.Services.AddScoped<DriverReferenceStore>();
 builder.Services.AddScoped(sp => new ScopedDriverPublication(sp.GetRequiredService<DriverReferenceStore>(),
-    sp.GetRequiredService<IDriverEnforcementJournal>(), Guid.NewGuid()));
+    sp.GetRequiredService<IDriverEnforcementJournal>(), Guid.NewGuid(), operating: sp.GetRequiredService<IDriverOperatingControls>()));
 builder.Services.AddScoped<PrivateUploadStore>();
 builder.Services.AddScoped<CopyLifecycle>();
 var driverHostIncarnation = Guid.NewGuid();
 builder.Services.AddScoped(sp => new DriverPublication(
     sp.GetRequiredService<DriverAuthorization>(), sp.GetRequiredService<DriverAuthorityStore>(),
-    sp.GetRequiredService<IDriverEnforcementJournal>(), driverHostIncarnation));
+    sp.GetRequiredService<IDriverEnforcementJournal>(), driverHostIncarnation, operating: sp.GetRequiredService<IDriverOperatingControls>()));
 builder.Services.AddScoped<RefreshTokenStore>();
 
 // Sign-in throttling (issue #300). Thresholds are config-driven for the same reason the rate limits

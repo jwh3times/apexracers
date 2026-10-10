@@ -436,6 +436,12 @@ changing rollback fences, snapshot activation, independent history reconciliatio
 Legacy `UploadedLap` maps to `iracing.QuarantinedUploadedLaps`; the forward-only migration removes
 the older binary's physical reader/writer route without inventing attribution or original clocks.
 
+**Operating admission:** read `docs/research/driver-operating-admission.md` before changing stage
+approval, pilot enrollment, acquisition/publication budgets, background collection or safety recovery.
+Operating admission supplements Driver authority and release accounting; withdrawal and cleanup
+retain their independent access. Ordinary API/ingestion startup uses unavailable operating controls;
+the explicit PostgreSQL synthetic adapter admits Demo provenance only.
+
 Controllers do no logic beyond binding inputs and returning `Ok(result)`. Services live in
 `src/ApexRacers.Api/Services/`; response shapes are `record` types in `Dtos/ResponseDtos.cs`. If an
 action needs multiple steps, extract a focused service class injected via DI — no MediatR, no
@@ -699,6 +705,7 @@ indexes, FK/`OnDelete` behavior).
 | `AuthorizedDriverNameCopy` | Name material bound to a current authorization grant and its revision |
 | `ScopedDriverReference` / `PrivateDriverFollow` | hashed short-lived reference bindings and private Follow original loss/reactivation/removal clocks; restricted grant FKs, separate from legacy Rivals |
 | `PrivateUploadSession` / `PrivateUploadedLap` | Typed verified-owner source and cascading Timed Laps, bound to original User/Driver/provenance and an evidence-copy marker |
+| `DriverOperatingRecord` | Singleton controlled synthetic operating state, decision history, budget-window usage and reservations; see the operating admission boundary above |
 | `UploadedLap`                                                        | Legacy claim-attributed Uploaded Lap; `DriverCustId` is the Driver the file named (null = not established); not promoted into verified private sources |
 | `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |

@@ -24,7 +24,8 @@ namespace ApexRacers.Api.Services;
 /// for any requested type.
 /// </remarks>
 public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProvenance? source = null,
-    IEvidencePurposeIssuer? purposeIssuer = null)
+    IEvidencePurposeIssuer? purposeIssuer = null, IDriverOperatingControls? operating = null,
+    IHttpContextAccessor? httpContext = null)
 {
     protected static T MapEvidence<T>(T value) => NameFreeIRacingEvidence.Map(value);
     /// <summary>
@@ -77,20 +78,31 @@ public class CachedIRacingClient(AppDbContext db, IDataClient? client, DataProve
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
         var purposeId = await (purposeIssuer ?? new UnavailableEvidencePurposeIssuer()).ResolveAsync(
             new(provenance, spec.Purpose, spec.SeasonId), ct) ?? throw new IRacingNotConfiguredException();
+        var http = httpContext?.HttpContext;
+        var user = http?.User.Identity?.IsAuthenticated == true
+            && Guid.TryParse(http.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value, out var id) ? (Guid?)id : null;
+        var request = http is null ? null : DriverOperatingAdmission.Request(http, spec.Key,
+            $"{spec.Purpose}:{spec.SeasonId}", OperatingWork.Acquisition, provenance, user);
+        if (request is null) throw new IRacingNotConfiguredException();
+        var controls = operating ?? new UnavailableDriverOperatingControls();
         var lifecycle = new EvidenceCopyLifecycle(db, TimeProvider.System);
-        var receipt = await lifecycle.CaptureAsync(purposeId, EvidenceCopyKind.MappedCache, spec.Key, ct: ct);
-
-        var fresh = NameFreeIRacingEvidence.Map(await fetch(live));
+        // Capture only inside operating-admitted work, while the existing purpose/copy fence remains authoritative.
+        EvidenceWriteReceipt? receipt = null;
+        var fresh = NameFreeIRacingEvidence.Map(await new DriverOperatingCollection(controls).CollectAsync(request, async token =>
+        {
+            receipt = await lifecycle.CaptureAsync(purposeId, EvidenceCopyKind.MappedCache, spec.Key, ct: token);
+            return await fetch(live);
+        }, ct));
         await RealAcquisitionGuard.EnsureDemoTeardownAsync(db, ct);
         var json = JsonSerializer.Serialize(fresh);
 
-        await lifecycle.CommitAsync(receipt, new MappedCacheBatch(new ExternalDataCache
+        await lifecycle.CommitAsync(receipt!, new MappedCacheBatch(new ExternalDataCache
         {
             CacheKey = spec.Key,
             Provenance = provenance,
             Payload = json,
-            FetchedAt = receipt.OriginalAcquiredAt,
-            ExpiresAt = receipt.OriginalAcquiredAt + spec.Ttl,
+            FetchedAt = receipt!.OriginalAcquiredAt,
+            ExpiresAt = receipt!.OriginalAcquiredAt + spec.Ttl,
         }), ct);
 
         return fresh;

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ApexRacers.Core;
+using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
@@ -110,6 +111,8 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(DataProvenance.Demo)))
         {
             await db.Database.MigrateAsync(ct);
+            await Operating.OperatingFixtures.SeedAsync(db, [new(WholeCohortCandidates.CatalogId, WholeCohortCandidates.Scope, OperatingWork.Publication)],
+                [CohortActors.Owner, CohortActors.OtherOwner, CohortActors.Consenting, CohortActors.Recipient], ct);
             db.Users.AddRange(new[] { CohortActors.Owner, CohortActors.OtherOwner, CohortActors.Consenting, CohortActors.Recipient }
                 .Select(id => new ApplicationUser { Id = id, DisplayName = "Synthetic fixture account", EmailConfirmed = true }));
             await db.SaveChangesAsync(ct);

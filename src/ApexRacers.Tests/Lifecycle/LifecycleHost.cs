@@ -87,11 +87,20 @@ internal static class LifecycleHost
         await using var app = builder.Build();
         using var lifetime = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         app.UseMiddleware<ExceptionHandlingMiddleware>();
+        // Dedicated synthetic host principal; ordinary product hosts use validated JWTs.
+        app.Use((context, next) =>
+        {
+            var user = context.Request.Path.StartsWithSegments("/sharing") ? SyntheticLifecycleActors.Other
+                : context.Request.Query["actor"] == "other" ? SyntheticLifecycleActors.Other : SyntheticLifecycleActors.Owner;
+            context.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.ToString())], "controlled-synthetic-host"));
+            return next(context);
+        });
 
         DriverAuthorityStore Store(HttpContext context) => new(context.RequestServices.GetRequiredService<AppDbContext>(), TimeProvider.System);
         DriverAuthorization Authority(HttpContext context) => new(Store(context), journal, proof, TimeProvider.System, observer);
         DriverPublication Publication(HttpContext context, string id) =>
-            new(Authority(context), Store(context), journal, incarnation, new HttpPublicationObserver(gates, id, admissions));
+            new(Authority(context), Store(context), journal, incarnation, new HttpPublicationObserver(gates, id, admissions), operating: new SyntheticDriverOperatingStore(context.RequestServices.GetRequiredService<AppDbContext>(), TimeProvider.System));
 
         app.MapPost("/grant", async (HttpContext context, string? consent) =>
         {
@@ -129,7 +138,7 @@ internal static class LifecycleHost
                 : SyntheticLifecycleActors.Scope;
             var store = new DriverAuthorityStore(db, TimeProvider.System);
             var authority = new DriverAuthorization(store, journal, proof, TimeProvider.System);
-            var publication = new DriverPublication(authority, store, journal, incarnation, new HttpPublicationObserver(gates, id, admissions));
+            var publication = new DriverPublication(authority, store, journal, incarnation, new HttpPublicationObserver(gates, id, admissions), operating: new SyntheticDriverOperatingStore(db, TimeProvider.System));
             var result = await publication.ReadSyntheticUploadedBestsAsync(scope, new(db, TimeProvider.System, journal), context.RequestAborted);
             await result.ExecuteResultAsync(new ActionContext { HttpContext = context });
         });

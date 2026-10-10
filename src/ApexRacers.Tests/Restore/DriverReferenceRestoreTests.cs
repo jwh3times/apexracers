@@ -55,15 +55,19 @@ public sealed class DriverReferenceRestoreTests(PostgreSqlFixture postgres)
                 await test.Control("release/pending/admitted");
                 using (var resumed = await pending)
                 {
-                    Assert.Equal(HttpStatusCode.OK, resumed.StatusCode);
-                    Assert.Contains("Synthetic Reference Owner", await resumed.Content.ReadAsStringAsync(ct));
+                    // The snapshot predates this operating reservation. Missing operating evidence
+                    // closes the pending writer even after independent release history is reconciled.
+                    await DeniedAsync(resumed, ct);
                     await test.Wait("pending", "checkpointed");
                 }
                 await test.Control("release/dispatch/first-written", secondHost: true);
                 Assert.Contains("Synthetic Reference Owner", await dispatched.Content.ReadAsStringAsync(ct));
                 await test.Wait("dispatch", "checkpointed", secondHost: true);
                 var complete = (await test.History.ReadAsync(ct)).Releases;
-                Assert.All(complete, r => { Assert.True(r.Terminal); Assert.False(r.ProvenUnsent); });
+                Assert.All(complete, r => Assert.True(r.Terminal));
+                Assert.False(complete[0].ProvenUnsent);
+                Assert.True(complete[1].ProvenUnsent);
+                Assert.False(complete[2].ProvenUnsent);
                 using (var useful = await test.Request("/api/drivers/scoped/personal", "after-history"))
                 {
                     Assert.Equal(HttpStatusCode.OK, useful.StatusCode);

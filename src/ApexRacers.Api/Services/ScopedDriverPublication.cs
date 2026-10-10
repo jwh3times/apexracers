@@ -23,7 +23,7 @@ public interface IControlledDriverReferenceCatalog
 /// source or review; unavailable proof/journal/catalog never becomes permission through a request.</summary>
 public sealed class ScopedDriverPublication(DriverReferenceStore references, IDriverEnforcementJournal journal,
     Guid incarnation, IControlledDriverReferenceCatalog? catalog = null, PublicationReleaseStore? releases = null,
-    IDriverPublicationObserver? observer = null)
+    IDriverPublicationObserver? observer = null, IDriverOperatingControls? operating = null)
 {
     public async Task<IActionResult> ReadOwnerAsync(Guid userId, CancellationToken ct = default)
     {
@@ -107,7 +107,7 @@ public sealed class ScopedDriverPublication(DriverReferenceStore references, IDr
         var proposal = new PublicationProposal(Guid.NewGuid(), ControlledCohortPublication.Hash(new { sourceHash, review, recipient, followedOnly, addFollow, owner, bindings = bindings.Select(b => b.Reference.TokenHash) }),
             ControlledCohortPublication.Hash(dto), ControlledCohortPublication.Hash(new { sourceHash, review, dependencies }),
             DriverReferences.CatalogId, source.CatalogRevision, DataProvenance.Demo, recipient, PublicationPurpose.SignedIn, incarnation, dependencies.Value);
-        return new ProtectedScopedDriverResult(proposal, body, sourceHash, review, bindings, references, catalog!, releases, journal, observer, followedOnly, addFollow, owner);
+        return new ProtectedScopedDriverResult(proposal, body, sourceHash, review, bindings, references, catalog!, releases, journal, observer, followedOnly, addFollow, owner, operating ?? new UnavailableDriverOperatingControls());
     }
     private static bool Valid(ControlledDriverReferenceSource? source) => source is { CatalogRevision: > 0 }
         && !source.Drivers.IsDefaultOrEmpty && source.Drivers.Length <= 12
@@ -119,13 +119,16 @@ public sealed class ScopedDriverPublication(DriverReferenceStore references, IDr
 
 internal sealed class ProtectedScopedDriverResult(PublicationProposal proposal, byte[] body, string sourceHash, string reviewHash,
     IReadOnlyList<DriverReferenceBinding> bindings, DriverReferenceStore references, IControlledDriverReferenceCatalog catalog,
-    PublicationReleaseStore releases, IDriverEnforcementJournal journal, IDriverPublicationObserver? observer, bool followedOnly, bool addFollow, DriverAccess? owner) : IActionResult
+    PublicationReleaseStore releases, IDriverEnforcementJournal journal, IDriverPublicationObserver? observer, bool followedOnly, bool addFollow, DriverAccess? owner, IDriverOperatingControls operating) : IActionResult
 {
     public async Task ExecuteResultAsync(ActionContext context)
     {
         var http = context.HttpContext;
         var ct = http.RequestAborted;
         http.Response.Headers.CacheControl = "no-store";
+        var operatingLease = await DriverOperatingAdmission.ReserveAsync(http, operating, proposal.CatalogId, "official",
+            proposal.Provenance, proposal.RecipientUserId, proposal.CatalogRevision, ct);
+        if (operatingLease is null) { await UnavailableAsync(context); return; }
         async Task<bool> Current(CancellationToken token)
         {
             // Authentication is read again from the executing request, never an actor argument,
@@ -140,7 +143,8 @@ internal sealed class ProtectedScopedDriverResult(PublicationProposal proposal, 
                 // Resolve by hash without retaining the plaintext bearer in enforcement history.
                 if (!await references.BindingCurrentAsync(user, binding, token)) return false;
             }
-            return !followedOnly || await references.FollowBindingsCurrentAsync(bindings, token);
+            return (!followedOnly || await references.FollowBindingsCurrentAsync(bindings, token))
+                && await operating.CurrentAsync(operatingLease, token);
         }
         await Phase("before-admission", Guid.Empty, ct);
         PublicationAccounting? admission;
@@ -161,6 +165,7 @@ internal sealed class ProtectedScopedDriverResult(PublicationProposal proposal, 
             { neverStarted = true; await UnavailableAsync(context); return; }
             if (addFollow && !await references.AddFollowAsync(proposal.RecipientUserId!.Value, bindings.Single(), ct))
             { await UnavailableAsync(context); return; }
+            if (!await operating.CurrentAsync(operatingLease, ct)) { await UnavailableAsync(context); return; }
             // No awaiting externally controlled phase exists between the final recheck and write.
             http.Response.ContentType = "application/json";
             await http.Response.Body.WriteAsync(body, ct);
