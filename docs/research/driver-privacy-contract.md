@@ -104,9 +104,10 @@ procedures remain separately tracked; this check is not an activation instructio
 
 ## Required-check installation
 
-The workflow context must report successfully from the implementing PR before it is added to the
-active main/release ruleset. Preserve the existing required contexts and strict up-to-date policy;
-append **Driver Privacy Contract** and verify both the API rule and the check run's exact context.
-The workflow must be merged before this check can report for ordinary subsequent branches. Until
-required-context installation is verified, this issue's live-eligibility prerequisite is incomplete.
-The check's synthetic success alone never establishes the separate live gates.
+On 2026-10-10, the exact **Driver Privacy Contract** context was verified as successful on
+[implementing PR #402](https://github.com/jwh3times/apexracers/actions/runs/38106566166/job/114373245914)
+and installed in the active main/release ruleset. The rule applies to the default branch and
+`release/**`, preserves all five existing required contexts and retains strict up-to-date checking.
+The implementing workflow still needs to merge before ordinary subsequent branches inherit it.
+Required-context installation establishes the merge gate; the check's synthetic success never
+establishes the separate live gates or changes `liveEligible=false`.

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [14.0.4] - 2026-10-10
+
 ### Added
 
 - Integrated synthetic Driver privacy-contract evidence with a complete acceptance-matrix manifest,
@@ -1630,7 +1634,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.4...HEAD
+[14.0.4]: https://github.com/jwh3times/apexracers/compare/v14.0.3...v14.0.4
 [14.0.3]: https://github.com/jwh3times/apexracers/compare/v14.0.2...v14.0.3
 [14.0.0]: https://github.com/jwh3times/apexracers/compare/v13.1.1...v14.0.0
 [13.1.0]: https://github.com/jwh3times/apexracers/compare/v13.0.4...v13.1.0

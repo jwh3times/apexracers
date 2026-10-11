@@ -307,8 +307,9 @@ The unfiltered **Driver Privacy Contract** workflow exercises the 43-row control
 acceptance matrix through PostgreSQL, two-host HTTP, migration/restore and built-SPA cases. Read
 `docs/research/driver-privacy-contract.md` before changing its collector, matrix mapping, admitted
 catalog receipt or workflow. Missing/skipped cases, retries and material source/build changes fail
-the gate. A green synthetic result retains `liveEligible=false`; required-context installation and
-separate live prerequisites must be verified before any live eligibility claim.
+the gate. Its exact context is required by the active main/release ruleset with strict up-to-date
+checking. A green synthetic result retains `liveEligible=false`; separate live prerequisites remain
+required before any live eligibility claim.
 
 ### Infrastructure
 
