@@ -23,6 +23,8 @@ internal static class PublicationLedgerHost
 {
     public static async Task RunAsync()
     {
+        if (Environment.GetEnvironmentVariable("DRIVER_PRIVACY_EVIDENCE_DIR") is not null)
+            PrivacyContract.CatalogAdmission.Verify();
         var primary = Environment.GetEnvironmentVariable("DRIVER_LIFECYCLE_DATABASE")!;
         var independent = Environment.GetEnvironmentVariable("DRIVER_LIFECYCLE_JOURNAL")!;
         foreach (var (connection, prefix) in new[] { (primary, "apexracers_ledger_primary_"), (independent, "apexracers_ledger_history_") })

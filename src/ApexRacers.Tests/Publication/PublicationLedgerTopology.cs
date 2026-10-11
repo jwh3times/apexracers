@@ -135,7 +135,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
         try { await exercise(test); passed = true; }
         finally
         {
-            var output = Path.Combine("TestResults", "publication-ledger");
+            var output = PrivacyContract.CatalogAdmission.OutputDirectory("publication-ledger");
             Directory.CreateDirectory(output);
             await File.WriteAllTextAsync(Path.Combine(output, scenario + ".json"), JsonSerializer.Serialize(new
             {

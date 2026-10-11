@@ -59,6 +59,7 @@ docs/superpowers/
 coverage*/
 coverage-report/
 TestResults/
+__pycache__/
 
 # Seed Screenshots
 src/ApexRacers.Data/Seeds/Screenshots/

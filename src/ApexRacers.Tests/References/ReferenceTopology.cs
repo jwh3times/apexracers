@@ -84,7 +84,7 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         try { await exercise(test); passed = true; }
         finally
         {
-            var output = Path.Combine("TestResults", "driver-references"); Directory.CreateDirectory(output);
+            var output = PrivacyContract.CatalogAdmission.OutputDirectory("driver-references"); Directory.CreateDirectory(output);
             await File.WriteAllTextAsync(Path.Combine(output, name + ".json"), JsonSerializer.Serialize(new
             {
                 Scenario = name,

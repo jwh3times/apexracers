@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Integrated synthetic Driver privacy-contract evidence with a complete acceptance-matrix manifest,
+  admitted useful catalog contexts, real HTTP/PostgreSQL/restore and built-SPA cases, and explicit
+  unexercised live/deployed requirements. The unfiltered check rejects missing cases and retries.
 
 ## [14.0.3] - 2026-10-09
 

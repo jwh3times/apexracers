@@ -101,3 +101,5 @@ config parity** section in `AGENTS.md` for why, and for the full mapping.
 Required human actions arising from completed agent work follow
 [Human follow-ups](agents/human-actions.md): private issues and board tracking paired with
 step-by-step private wiki instructions. Docs-updater, ship, end-session, and wizard use that procedure.
+
+| [Integrated Driver privacy contract](research/driver-privacy-contract.md) | Synthetic required-check execution, complete matrix evidence, admitted catalog receipt and explicit live/deployed limits. |

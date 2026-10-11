@@ -1,0 +1,783 @@
+{
+  "schemaVersion": 1,
+  "matrixSource": "docs/design/driver-acceptance-and-rollout.md",
+  "rows": [
+    {
+      "id": "AUTH-01",
+      "requirement": "An asserted claim, local password, recorder ID, OAuth login without affirmative consent, or feature flag grants no private Driver access or named sharing. Matching simulated proof plus personal consent permits the synthetic owner's authorized view.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Matching_synthetic_proof_and_personal_consent_enable_only_original_owners_private_view",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.MissingOrObsoleteConsentIsNotOwnership",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.ForgedReceiptAndEvenSyntheticRealAdapterCannotGrantReal"
+      ],
+      "browser": [
+        "ordinary startup preserves useful credential-free Demo without granting Real ownership"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Matching_synthetic_proof_and_personal_consent_enable_only_original_owners_private_view": 1,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.MissingOrObsoleteConsentIsNotOwnership": 2,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.ForgedReceiptAndEvenSyntheticRealAdapterCannotGrantReal": 1
+      }
+    },
+    {
+      "id": "AUTH-02",
+      "requirement": "Personal consent without sharing retains owner analytics; permitted sharing exposes only the consented name/racing fields to signed-in recipients, never another Driver's Customer ID, uploads or private history. Visitors get no names/references.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Sharing_requires_separate_consent_and_signed_in_recipient_and_withdrawal_preserves_personal_view",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.NamesOnlyAppearInTheirPermittedSignedInAudienceAndNeverBoostHiddenSupport"
+      ],
+      "browser": [
+        "two actual pages retain useful personal and consented shared data and clear withdrawal"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Sharing_requires_separate_consent_and_signed_in_recipient_and_withdrawal_preserves_personal_view": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.NamesOnlyAppearInTheirPermittedSignedInAudienceAndNeverBoostHiddenSupport": 1
+      }
+    },
+    {
+      "id": "AUTH-03",
+      "requirement": "Sharing withdrawal preserves valid personal access; personal withdrawal/unlink/Driver change/User deletion closes both scopes. Every follower becomes inactive without granting access.",
+      "backend": [
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.PersonalLossClosesBothScopesWithDurableOriginalClock",
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Private_follow_is_immediately_hidden_on_target_or_recipient_relevant_loss"
+      ],
+      "browser": [
+        "sharing withdrawal clears the recipient while preserving the withdrawing Driver personal data"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.PersonalLossClosesBothScopesWithDurableOriginalClock": 4,
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Private_follow_is_immediately_hidden_on_target_or_recipient_relevant_loss": 5
+      }
+    },
+    {
+      "id": "AUTH-04",
+      "requirement": "Routine expiry/transient provider outage preserves grants and original retention state; detected revocation/invalid proof suspends both. Relink and material scope expansion require the applicable fresh proof/opt-in.",
+      "backend": [
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.PersonalLossClosesBothScopesWithDurableOriginalClock",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.ReproofCannotExtendDormantReactivationBoundary",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.MissingOrObsoleteConsentIsNotOwnership"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.PersonalLossClosesBothScopesWithDurableOriginalClock": 4,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.ReproofCannotExtendDormantReactivationBoundary": 3,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.MissingOrObsoleteConsentIsNotOwnership": 2
+      }
+    },
+    {
+      "id": "AUTH-05",
+      "requirement": "Confirmed verified ownership can supersede an unverified claim; verified conflicts require explicit resolution. No account merge, private disclosure, upload transfer or consent reuse occurs.",
+      "backend": [
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.VerifiedSyntheticProofSupersedesAnAssertedClaimWithoutTransferringData",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.FreshProofCannotTransferHistoricalOwnerOrReactivateDeletedGrant"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.VerifiedSyntheticProofSupersedesAnAssertedClaimWithoutTransferringData": 1,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.FreshProofCannotTransferHistoricalOwnerOrReactivateDeletedGrant": 1
+      }
+    },
+    {
+      "id": "AUTH-06",
+      "requirement": "Journal intent is durable first; pending intent vetoes affected acquisition/publication. Primary closure/revisions and cleanup work commit together. Repeated operations recover from stable checkpoints with original clocks.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Failure_at_each_lifecycle_boundary_restarts_both_hosts_and_replays_same_original_intent",
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Journal_first_intent_blocks_delayed_copy_commit_before_primary_closure_and_retains_existing_copy_work"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Failure_at_each_lifecycle_boundary_restarts_both_hosts_and_replays_same_original_intent": 9,
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Journal_first_intent_blocks_delayed_copy_commit_before_primary_closure_and_retains_existing_copy_work": 1
+      }
+    },
+    {
+      "id": "AUTH-07",
+      "requirement": "Journal unavailability, unestablished current enforcement or primary state known to lag cannot open access. The journal never grants consent. Required completion entries exist before acknowledgment.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Journal_unavailability_closes_warm_authorized_output_and_does_not_create_permission",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.RecoveryCannotAcknowledgeKnownLaggingPrimaryEvenWithExistingOperation"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Journal_unavailability_closes_warm_authorized_output_and_does_not_create_permission": 1,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.RecoveryCannotAcknowledgeKnownLaggingPrimaryEvenWithExistingOperation": 1
+      }
+    },
+    {
+      "id": "HTTP-01",
+      "requirement": "Withdrawal before admission blocks new output. Withdrawal after admission remains pending until the actual writer finishes or is verifiably stopped. No affected dispatch occurs after successful completion acknowledgment.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Withdrawal_acknowledges_only_after_actual_protected_executor_terminal_checkpoint",
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Actual_writers_on_both_hosts_must_checkpoint_before_transition_acknowledges"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Withdrawal_acknowledges_only_after_actual_protected_executor_terminal_checkpoint": 4,
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Actual_writers_on_both_hosts_must_checkpoint_before_transition_acknowledges": 1
+      }
+    },
+    {
+      "id": "HTTP-02",
+      "requirement": "Cancellation requests, lease expiry, process-liveness claims or database session loss do not falsely prove terminality. A late writer that can still send keeps acknowledgment pending; unknown dispatch remains possible release history.",
+      "backend": [
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Coordination_partition_and_expired_lease_leave_late_actual_writer_pending_until_ended_checkpoint_recovery",
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Losing_actual_PostgreSQL_checkpoint_session_does_not_acknowledge_missing_terminal_record",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.KilledWriterRestartCannotForgetPossibleHistoryOrCheckpointOldIncarnation"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Coordination_partition_and_expired_lease_leave_late_actual_writer_pending_until_ended_checkpoint_recovery": 1,
+        "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests.Losing_actual_PostgreSQL_checkpoint_session_does_not_acknowledge_missing_terminal_record": 1,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.KilledWriterRestartCannotForgetPossibleHistoryOrCheckpointOldIncarnation": 1
+      }
+    },
+    {
+      "id": "HTTP-03",
+      "requirement": "Provider fetching/preparation stays outside admission; a protected result retains coordination through actual serialization/dispatch. Unsent work with changed dependencies is rebuilt or denied.",
+      "backend": [
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.CompleteCurrentDependenciesInvalidateAllUnsentWork",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.EntireReviewedCatalogIsCurrentEvenWhenRequestedOwnerProjectionDoesNotChange"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.CompleteCurrentDependenciesInvalidateAllUnsentWork": 12,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.EntireReviewedCatalogIsCurrentEvenWhenRequestedOwnerProjectionDoesNotChange": 2
+      }
+    },
+    {
+      "id": "PUB-01",
+      "requirement": "The complete authorized filtered cohort is assessed before pagination. Every emitted joint group has at least five distinct hidden Drivers, excluding owner/disclosed contributions; duplicate laps do not increase support.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.DistinctHiddenSupportBoundary",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.RepeatedDriverRowsNeverIncreaseSupport",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.AllReviewedOwnersUseOneLevelAndFiveToFourCannotRechoose"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.DistinctHiddenSupportBoundary": 3,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.RepeatedDriverRowsNeverIncreaseSupport": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.AllReviewedOwnersUseOneLevelAndFiveToFourCannotRechoose": 1
+      }
+    },
+    {
+      "id": "PUB-02",
+      "requirement": "Exact lower-inclusive/upper-exclusive boundaries hold for 0.5-second lap bands, 250 rating bands inside [1000,2500), 500 outside, then 1/1000, 2/2000, 4/4000, 8/8000. One finest supported level applies to the whole cohort.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.BaseAbsoluteRatingHasExactHalfOpenZeroOrigin",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.LapBandsHaveExactBoundaries",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.EveryBaseBoundaryNestsInEveryCoarserRatingPartition",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.OneGlobalLevelWidensEvenGroupsThatAlreadyHadBaseSupport"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.BaseAbsoluteRatingHasExactHalfOpenZeroOrigin": 10,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.LapBandsHaveExactBoundaries": 8,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.EveryBaseBoundaryNestsInEveryCoarserRatingPartition": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.OneGlobalLevelWidensEvenGroupsThatAlreadyHadBaseSupport": 1
+      }
+    },
+    {
+      "id": "PUB-03",
+      "requirement": "Unsupported measurements are omitted; visible missingness needs joint support. No unverified source sentinel rules or rating-delta bands are inferred.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.UnsupportedMeasurementsAreOmittedAndVisibleMissingnessNeedsJointSupport",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.SupportedMarginalsCannotRescueAnUnsupportedJointVector"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.UnsupportedMeasurementsAreOmittedAndVisibleMissingnessNeedsJointSupport": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.SupportedMarginalsCannotRescueAnUnsupportedJointVector": 1
+      }
+    },
+    {
+      "id": "PUB-04",
+      "requirement": "One summary per admitted band group contains no exact count or Driver-addressing key. Hidden ordering derives only from approved bands, with no exact source position/delta/incident/race-reference leakage.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.HiddenPublicShapeContainsOnlyRangesWithoutCountIdentityOrExactMetric",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.UsefulExplicitlyReviewedVisitorAndSignedInCompositionPublishesThroughTwoHosts"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.HiddenPublicShapeContainsOnlyRangesWithoutCountIdentityOrExactMetric": 1,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.UsefulExplicitlyReviewedVisitorAndSignedInCompositionPublishesThroughTwoHosts": 1
+      }
+    },
+    {
+      "id": "PUB-05",
+      "requirement": "Initial visitor/fallback output contains only approved band-group ranges from the same artifact. Failed support/composition is not rescued by a separate sparse count, extrema, median, position or custom predicate.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.UnsupportedSparseGroupsCannotBeRescuedByIndependentStatistics",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.WholeVariantReviewCannotReuseVisitorFiveDriverSupportForOwner"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.UnsupportedSparseGroupsCannotBeRescuedByIndependentStatistics": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.WholeVariantReviewCannotReuseVisitorFiveDriverSupportForOwner": 1
+      }
+    },
+    {
+      "id": "PUB-06",
+      "requirement": "Versioned catalog review covers fields/scope/audience, prior/overlapping releases, totals, owner variants and external racing knowledge. Unknown/unsafe/unreviewed entries stay unavailable.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.ExternalLinkageOverlapsTotalsAndUnreviewedRisksCannotSelfApprove",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.KnownExternalClassificationCanIdentifyOneDriverDespiteFiveSupport",
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.RepeatedSupportedCandidatesExposeChangedRangesAndRequireFreshCompositionReview",
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.ExternalLinkageOverlapsTotalsAndUnreviewedRisksCannotSelfApprove": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.KnownExternalClassificationCanIdentifyOneDriverDespiteFiveSupport": 1,
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.RepeatedSupportedCandidatesExposeChangedRangesAndRequireFreshCompositionReview": 1,
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory": 3
+      }
+    },
+    {
+      "id": "PUB-07",
+      "requirement": "Review/reservation is atomic with admission. Concurrent publishers account for completed, pending and possibly dispatched releases across recipients; neither can ignore the other's reserved output.",
+      "backend": [
+        "ApexRacers.Tests.Publication.PublicationReleaseAtomicReviewTests.CompetingHostsCannotBothReviewEmptyHistoryBeforeReservation",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.AtomicPendingReservationMakesOnlyOneIndividuallySafeCompositionWin"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Publication.PublicationReleaseAtomicReviewTests.CompetingHostsCannotBothReviewEmptyHistoryBeforeReservation": 1,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.AtomicPendingReservationMakesOnlyOneIndividuallySafeCompositionWin": 2
+      }
+    },
+    {
+      "id": "PUB-08",
+      "requirement": "Sharing changes, hidden membership changes, late ingestion/corrections or catalog/enforcement changes invalidate the entire unsent projection. Removing a name alone cannot repair stale support.",
+      "backend": [
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.CompleteCurrentDependenciesInvalidateAllUnsentWork",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.FirstHiddenSharingGrantCannotBypassAbsenceDependencyOrActiveWriterDrain"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.CompleteCurrentDependenciesInvalidateAllUnsentWork": 12,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.FirstHiddenSharingGrantCannotBypassAbsenceDependencyOrActiveWriterDrain": 2
+      }
+    },
+    {
+      "id": "PUB-09",
+      "requirement": "Internal Field membership and authorized owner percentile arithmetic remain exact. Unsafe supplementary Field Size/Position/histograms/extrema are withheld without changing the owner's formula.",
+      "backend": [
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.OwnerRankKeepsExactFormulaAndPersonalBestDoesNotDoubleCountRaceBest",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UsefulOwnerPercentileKeepsExactArithmeticAndTracksBothPrivateAndIndependentSources",
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.WholeCohortCandidateTests.OwnerRankKeepsExactFormulaAndPersonalBestDoesNotDoubleCountRaceBest": 1,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UsefulOwnerPercentileKeepsExactArithmeticAndTracksBothPrivateAndIndependentSources": 1,
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory": 3
+      }
+    },
+    {
+      "id": "PUB-10",
+      "requirement": "At least one reviewed, supported catalog entry produces useful permitted synthetic output. Unknown/unsafe contexts still close; passing by denying every view is not integrated validation.",
+      "backend": [
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests.RecordedAdmissionProducesUsefulOutputWithoutPartitioningItsHistory": 3
+      }
+    },
+    {
+      "id": "REF-01",
+      "requirement": "Random references are recipient/purpose scoped, expire at 15 minutes and bind current authorization revision. Wrong/expired/revoked references give generic unavailability without identity/existence disclosure.",
+      "backend": [
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Reference_expiry_is_rechecked_before_at_after_fifteen_minutes_and_does_not_expire_consent",
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Invalid_nonexistent_ineligible_wrong_recipient_purpose_raw_ID_and_unavailable_outcomes_match",
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Prepared_result_cannot_execute_under_a_different_authenticated_principal"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Reference_expiry_is_rechecked_before_at_after_fifteen_minutes_and_does_not_expire_consent": 3,
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Invalid_nonexistent_ineligible_wrong_recipient_purpose_raw_ID_and_unavailable_outcomes_match": 1,
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Prepared_result_cannot_execute_under_a_different_authenticated_principal": 1
+      }
+    },
+    {
+      "id": "REF-02",
+      "requirement": "Arbitrary raw Customer IDs and private follows do not authorize other-Driver lookup. Eligible views issue fresh references; withdrawn follows disappear, cannot reactivate at day 90 and are removed by day 97.",
+      "backend": [
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Actual_legacy_routes_remain_unavailable_with_raw_ID_or_stale_Follow",
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Follow_reactivation_ends_at_original_day90_with_actual_requests_and_fresh_proof",
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Cleanup_physically_removes_inactive_follow_by_day97_and_User_deletion_by_day7"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Actual_legacy_routes_remain_unavailable_with_raw_ID_or_stale_Follow": 15,
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Follow_reactivation_ends_at_original_day90_with_actual_requests_and_fresh_proof": 3,
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Cleanup_physically_removes_inactive_follow_by_day97_and_User_deletion_by_day7": 1
+      }
+    },
+    {
+      "id": "COPY-01",
+      "requirement": "Shared mapped evidence is name-free; authorized names/private payloads are separately scoped. Fetch completion and every persistence writer recheck current generation/purpose/provenance.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.IngestionMappedFullFieldCannotCommitAfterPurposeClosureAndRestart",
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.RealMappedArraysRemainTypedAndNameFreeOnFreshAndWarmReads",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.IngestionScheduleBatchReplacesCopiesAndRejectsLateAcquisition"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.IngestionMappedFullFieldCannotCommitAfterPurposeClosureAndRestart": 1,
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.RealMappedArraysRemainTypedAndNameFreeOnFreshAndWarmReads": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.IngestionScheduleBatchReplacesCopiesAndRejectsLateAcquisition": 1
+      }
+    },
+    {
+      "id": "COPY-02",
+      "requirement": "Stale writes and retries cannot recreate deleted names/personal data, renew eligibility or extend original deadlines. Transition-triggered work is durable and idempotent.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.DelayedAcquisitionAndRestartCannotResurrectRemovedCache",
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.OldOperationReplayDoesNotDrainFreshlyAuthorizedWriters"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.DelayedAcquisitionAndRestartCannotResurrectRemovedCache": 1,
+        "ApexRacers.Tests.Services.DriverLifecycleSpineTests.OldOperationReplayDoesNotDrainFreshlyAuthorizedWriters": 1
+      }
+    },
+    {
+      "id": "COPY-03",
+      "requirement": "Dormant personal data is immediately unavailable. Fresh proof/consent before day 90 restores only the same original User/Driver; at day 90 restoration ends, physical removal completes by day 97.",
+      "backend": [
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.FreshProofRestoresOnlyBeforeDayNinetyWithoutRenewingOriginalMarkerClocks",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.PhysicalRemovalAtDayNinetySevenAndRetriesPreserveDeadline",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.AnotherUserOrAnotherDriverCannotRecoverOriginalDormantSources"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.FreshProofRestoresOnlyBeforeDayNinetyWithoutRenewingOriginalMarkerClocks": 3,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.PhysicalRemovalAtDayNinetySevenAndRetriesPreserveDeadline": 3,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.AnotherUserOrAnotherDriverCannotRecoverOriginalDormantSources": 1
+      }
+    },
+    {
+      "id": "COPY-04",
+      "requirement": "Explicit User deletion stops access immediately and erases owned live data within 7 days and backup copies within 14 days. It never receives the dormant grace; earlier applicable deadlines win.",
+      "backend": [
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UserWideDeletionCoversHistoryTightensDormancyAndSeparatelyReportsBackupExpiry",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.DeletionBoundariesNeverExtendLiveDeadlineOrClaimBackupExpiry"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised.",
+        "Deployed backup/log/temp-orphan lifecycle and physical expiry are not exercised; synthetic deadline/status/copy assertions are bounded to tested stores."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UserWideDeletionCoversHistoryTightensDormancyAndSeparatelyReportsBackupExpiry": 1,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.DeletionBoundariesNeverExtendLiveDeadlineOrClaimBackupExpiry": 6
+      }
+    },
+    {
+      "id": "COPY-05",
+      "requirement": "Deleted personal sources invalidate/delete derivatives or rebuild them only from independently authorized retained evidence. Minimal enforcement/audit exceptions do not preserve profiles, names, telemetry or usable credentials.",
+      "backend": [
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.PhysicalSourceLossInvalidatesPreparedPublicationAndDerivativeWhileIndependentFieldSurvives",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.SyntheticCalculationCannotDropOneErasedContributingField"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.PhysicalSourceLossInvalidatesPreparedPublicationAndDerivativeWhileIndependentFieldSurvives": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.SyntheticCalculationCannotDropOneErasedContributingField": 1
+      }
+    },
+    {
+      "id": "COPY-06",
+      "requirement": "Independent official evidence retains its continuing purpose and exact Field membership; collection is active Seasons or authorized historical feature requests. Purpose termination removes affected evidence within 7 days.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.HistoricalOwnerRequestEndsCollectionWithoutEndingRetainedNameFreeField",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.PurposeClosureRetryPreservesEarliestClockAndSevenDayCeiling"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.HistoricalOwnerRequestEndsCollectionWithoutEndingRetainedNameFreeField": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.PurposeClosureRetryPreservesEarliestClockAndSevenDayCeiling": 1
+      }
+    },
+    {
+      "id": "COPY-07",
+      "requirement": "Unauthorized name copies are removed within 24 hours; their backups expire within 8 days. Expired mapped payloads are physically removed within 48 hours; temporary material is removed after processing or orphan cleanup within 24 hours.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.NamesHaveTwentyFourHourClockWhileOfficialFieldSurvivesOwnerWithdrawalAndSeasonEnd",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.ExpiryKeepsOriginalDeadlineAndInvalidatesConcreteDerivativeSources",
+        "ApexRacers.Tests.Services.TelemetryUploadServiceTests.CancellationAndMalformedInputDisposeOwnedRawMaterial"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised.",
+        "Deployed backup/log/temp-orphan lifecycle and physical expiry are not exercised; synthetic deadline/status/copy assertions are bounded to tested stores."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.NamesHaveTwentyFourHourClockWhileOfficialFieldSurvivesOwnerWithdrawalAndSeasonEnd": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.ExpiryKeepsOriginalDeadlineAndInvalidatesConcreteDerivativeSources": 1,
+        "ApexRacers.Tests.Services.TelemetryUploadServiceTests.CancellationAndMalformedInputDisposeOwnedRawMaterial": 1
+      }
+    },
+    {
+      "id": "COPY-08",
+      "requirement": "Backups have maximum 7-day lifetime; operational logs maximum 30 days; explanatory consent audit maximum 12 months. Minimal enforcement persists while stale copies can return, with only permitted fields.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.ProofExplanationExpiresAtTwelveMonthsWhileMinimalBindingRemains",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UserWideDeletionCoversHistoryTightensDormancyAndSeparatelyReportsBackupExpiry"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised.",
+        "Deployed backup/log/temp-orphan lifecycle and physical expiry are not exercised; synthetic deadline/status/copy assertions are bounded to tested stores."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.ProofExplanationExpiresAtTwelveMonthsWhileMinimalBindingRemains": 1,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.UserWideDeletionCoversHistoryTightensDormancyAndSeparatelyReportsBackupExpiry": 1
+      }
+    },
+    {
+      "id": "COPY-09",
+      "requirement": "Cleanup failure reports overdue work, retries and withholds affected use. Durable withdrawal, verified live erasure and backup expiry are separate outcomes; no false completion or clock reset occurs.",
+      "backend": [
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.CleanupFailureReportsOverdueWithoutFalseErasureAndRestartPreservesDeadline",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.CleanupStatusCountsOverdueOpaquePayloadsSeparatelyFromTypedErasure"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.CleanupFailureReportsOverdueWithoutFalseErasureAndRestartPreservesDeadline": 1,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.CleanupStatusCountsOverdueOpaquePayloadsSeparatelyFromTypedErasure": 1
+      }
+    },
+    {
+      "id": "UPLOAD-01",
+      "requirement": "Matching verified personal ownership permits attributed private persistence; unverified previews are transient/non-identifying and mismatches generic. Recorder identity alone never proves ownership; no raw-file archive remains.",
+      "backend": [
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.MatchingProofAndPersonalOptInPersistTypedLapsAndUsefulAllTimeBestIdempotently",
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.MissingOrMismatchedRecorderCannotPersistAndFailureIsGeneric",
+        "ApexRacers.Tests.Services.TelemetryUploadServiceTests.RecorderAndClaimCannotAuthorizePersistenceOrIdentifyPreview"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.MatchingProofAndPersonalOptInPersistTypedLapsAndUsefulAllTimeBestIdempotently": 1,
+        "ApexRacers.Tests.Services.PrivateUploadLifecycleTests.MissingOrMismatchedRecorderCannotPersistAndFailureIsGeneric": 2,
+        "ApexRacers.Tests.Services.TelemetryUploadServiceTests.RecorderAndClaimCannotAuthorizePersistenceOrIdentifyPreview": 4
+      }
+    },
+    {
+      "id": "BROWSER-01",
+      "requirement": "Owner withdrawal clears immediately. Connected checks occur at least every 15 seconds and display validity ends no later than 30 seconds from check start. Delayed receipt cannot restart validity.",
+      "backend": [
+        "ApexRacers.Tests.References.DriverBrowserHttpTests.Withdrawal_is_bound_to_the_authenticated_owner_and_replays_the_original_durable_operation"
+      ],
+      "browser": [
+        "two actual pages retain useful personal and consented shared data and clear withdrawal",
+        "delayed real responses expire from check start and obsolete success cannot revive display"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.References.DriverBrowserHttpTests.Withdrawal_is_bound_to_the_authenticated_owner_and_replays_the_original_durable_operation": 1
+      }
+    },
+    {
+      "id": "BROWSER-02",
+      "requirement": "Denial/uncertainty/expiry clears state; obsolete generations cannot repopulate it. Navigation/focus/reconnect and resumed offline/suspended sessions revalidate before display. Independent pages observe withdrawal.",
+      "backend": [
+        "ApexRacers.Tests.References.DriverBrowserHttpTests.Personal_evidence_is_authenticated_protected_and_survives_another_Drivers_sharing_withdrawal"
+      ],
+      "browser": [
+        "offline, focus and resumed pages clear first and require a fresh protected response",
+        "reload retains an unconfirmed withdrawal veto and retries the same operation",
+        "sharing withdrawal clears the recipient while preserving the withdrawing Driver personal data"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.References.DriverBrowserHttpTests.Personal_evidence_is_authenticated_protected_and_survives_another_Drivers_sharing_withdrawal": 1
+      }
+    },
+    {
+      "id": "BROWSER-03",
+      "requirement": "Sensitive responses use no-store. App-managed caches/reloads do not resurrect affected display. Already-delivered/exported bytes are outside recall guarantees and are not claimed erased.",
+      "backend": [
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Eligible_discovery_detail_comparison_and_follow_use_actual_JWT_recipient_and_atomic_owned_dispatch"
+      ],
+      "browser": [
+        "two actual pages retain useful personal and consented shared data and clear withdrawal",
+        "reload retains an unconfirmed withdrawal veto and retries the same operation"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.References.DriverReferenceHttpTests.Eligible_discovery_detail_comparison_and_follow_use_actual_JWT_recipient_and_atomic_owned_dispatch": 1
+      }
+    },
+    {
+      "id": "DEMO-01",
+      "requirement": "Explicit provenance separates request/store/cache/publication namespaces. Demo misses remain synthetic and never invoke real acquisition; numeric IDs/expiry sentinels alone do not decide provenance.",
+      "backend": [
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.SameCustomerIdHasIndependentDemoAndRealWarmCaches",
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.MissingOrExpiredDemoCannotUseConfiguredRealProvider",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.RealAndUnknownCannotMintSyntheticPurposeOrAcquireUsingDemoReceipt"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.SameCustomerIdHasIndependentDemoAndRealWarmCaches": 1,
+        "ApexRacers.Tests.Services.DemoAcquisitionTests.MissingOrExpiredDemoCannotUseConfiguredRealProvider": 2,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.RealAndUnknownCannotMintSyntheticPurposeOrAcquireUsingDemoReceipt": 1
+      }
+    },
+    {
+      "id": "DEMO-02",
+      "requirement": "Demo remains useful without provider credentials, real verification or real consent. Legacy ambiguous provenance stays unavailable; successful teardown precedes real ingestion if Demo was enabled.",
+      "backend": [
+        "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession"
+      ],
+      "browser": [
+        "ordinary startup preserves useful credential-free Demo without granting Real ownership"
+      ],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession": 1
+      }
+    },
+    {
+      "id": "RESTORE-01",
+      "requirement": "A pre-withdrawal/deletion snapshot serves no affected data until current independent enforcement and overdue cleanup reconcile. Restored revisions cannot revive grants; unavailable authority stays closed.",
+      "backend": [
+        "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests.Actual_pre_loss_snapshot_requires_current_journal_replay_and_original_time_cleanup",
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_profiles_opaque_references_and_follows_cannot_revive_a_deleted_Target"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests.Actual_pre_loss_snapshot_requires_current_journal_replay_and_original_time_cleanup": 3,
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_profiles_opaque_references_and_follows_cannot_revive_a_deleted_Target": 1
+      }
+    },
+    {
+      "id": "RESTORE-02",
+      "requirement": "Restored state also reconciles prior/pending/possibly dispatched release accounting. Missing accounting cannot be treated as no prior output or be bypassed with a new catalog/namespace.",
+      "backend": [
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_primary_imports_prior_pending_and_dispatched_accounting_before_actual_JWT_output",
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.RestoredEmptyPrimaryCannotTrustFreshIndependentGenesis"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_primary_imports_prior_pending_and_dispatched_accounting_before_actual_JWT_output": 1,
+        "ApexRacers.Tests.Publication.PublicationReleaseHttpTests.RestoredEmptyPrimaryCannotTrustFreshIndependentGenesis": 1
+      }
+    },
+    {
+      "id": "MIGRATE-01",
+      "requirement": "Mixed-version cutover inventories/fences old writers and permissive routes before new publication opens. No fabricated proof/provenance/loss time, silent upload transfer or grant revival occurs.",
+      "backend": [
+        "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedDatabaseRejectsOldWritersMarkerReuseAndPreparedWriteAfterRawDeletion"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain": 1,
+        "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedDatabaseRejectsOldWritersMarkerReuseAndPreparedWriteAfterRawDeletion": 1
+      }
+    },
+    {
+      "id": "MIGRATE-02",
+      "requirement": "Rollback retains independent enforcement, possible-release accounting and deadlines. An insecure binary or stale data snapshot cannot reopen access; unsafe recovery stays closed.",
+      "backend": [
+        "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_primary_imports_prior_pending_and_dispatched_accounting_before_actual_JWT_output"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain": 1,
+        "ApexRacers.Tests.Restore.DriverReferenceRestoreTests.Restored_primary_imports_prior_pending_and_dispatched_accounting_before_actual_JWT_output": 1
+      }
+    },
+    {
+      "id": "PILOT-01",
+      "requirement": "Every affected API acquisition/publication path enforces allowlisted User, catalog/scope and operating limits, including direct calls and background collection. Flags/preview choice/Admin status cannot bypass the declared pilot boundary.",
+      "backend": [
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.PilotEnrollmentCannotBeBypassedByAdminTierOrRequestParameters",
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.DirectAcquisitionUsesTheSameSharedBudgetAsBackgroundCollection"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.PilotEnrollmentCannotBeBypassedByAdminTierOrRequestParameters": 1,
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.DirectAcquisitionUsesTheSameSharedBudgetAsBackgroundCollection": 1
+      }
+    },
+    {
+      "id": "PILOT-02",
+      "requirement": "A safety failure pauses affected acquisition/publication while required withdrawal/cleanup continues. Resumption requires cause-specific evidence and returns through the allowlisted stage.",
+      "backend": [
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.SafetyStopClosesDirectPublicationOnBothHostsButWithdrawalStillCompletes",
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.PreparedOutputCannotDispatchAfterAnOperatingStopAndRetainsReleaseHistory"
+      ],
+      "browser": [],
+      "scope": "Controlled synthetic owned modules and enumerated fixture paths only; legacy Driver routes remain resource-fenced.",
+      "notExercised": [
+        "Real provider ownership/processing and production authority are not exercised.",
+        "Actual runtime pilot/recovery approvals and 14/7/7-day operational observations are not exercised."
+      ],
+      "minimumBackendCases": {
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.SafetyStopClosesDirectPublicationOnBothHostsButWithdrawalStillCompletes": 1,
+        "ApexRacers.Tests.Operating.DriverOperatingHttpTests.PreparedOutputCannotDispatchAfterAnOperatingStopAndRetainsReleaseHistory": 1
+      }
+    }
+  ]
+}

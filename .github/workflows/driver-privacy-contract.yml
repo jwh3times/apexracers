@@ -1,0 +1,82 @@
+name: Driver Privacy Contract
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A required check must report on every PR. Do not add path filters.
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DRIVER_PRIVACY_EVIDENCE_DIR: ${{ github.workspace }}/TestResults/driver-privacy-contract
+  PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/TestResults/driver-privacy-contract/browser.json
+
+jobs:
+  contract:
+    name: Driver Privacy Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.x'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Verify evidence collector failure behavior
+        run: python3 scripts/driver_privacy_contract_tests.py
+      - name: Build backend and SPA
+        run: |
+          dotnet build --configuration Release
+          npm ci --prefix web
+          npm run build --prefix web
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Start fresh evidence context
+        run: python3 scripts/driver-privacy-contract.py start "$DRIVER_PRIVACY_EVIDENCE_DIR"
+      - name: Run original backend contract cases without retries
+        id: backend
+        continue-on-error: true
+        run: |
+          dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj --configuration Release --no-build \
+            --report-xunit-trx --report-xunit-trx-filename backend.trx \
+            --results-directory "$DRIVER_PRIVACY_EVIDENCE_DIR"
+      - name: Run original built-SPA privacy cases without retries
+        id: browser
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npx playwright test --config playwright.privacy.config.ts --reporter=json
+        working-directory: web
+      - name: Evaluate complete matrix and original execution outcomes
+        if: ${{ !cancelled() }}
+        env:
+          BACKEND_OUTCOME: ${{ steps.backend.outcome }}
+          BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+        run: |
+          backend_exit=1
+          browser_exit=1
+          if [ "$BACKEND_OUTCOME" = success ]; then backend_exit=0; fi
+          if [ "$BROWSER_OUTCOME" = success ]; then browser_exit=0; fi
+          python3 scripts/driver-privacy-contract.py collect "$DRIVER_PRIVACY_EVIDENCE_DIR" \
+            --backend-exit "$backend_exit" --browser-exit "$browser_exit"
+      - name: Retain original results, manifest and fault artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: driver-privacy-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            TestResults/driver-privacy-contract/
+            web/test-results/
+          if-no-files-found: error
+          retention-days: 30
