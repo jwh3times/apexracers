@@ -76,7 +76,7 @@ starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite
 Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow
 (`.github/workflows/e2e.yml`) — it is not yet a required check.
 
-**Browser privacy:** build the SPA, then run
+**Browser privacy:** run `dotnet build --configuration Release` from the repository root, build the SPA, then run
 `npx playwright test --config playwright.privacy.config.ts`. This separate configuration starts
 dedicated synthetic protected hosts and an ordinary credential-free Demo host through the Tests
 executable; Docker and the repository's .NET SDK are required. The cases exercise actual built-page

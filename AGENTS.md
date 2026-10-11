@@ -889,7 +889,7 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
   in the `react-frontend` agent.
 - **Browser privacy and restore rehearsals:** `web/playwright.privacy.config.ts` runs the built SPA
-  against dedicated synthetic hosts after ordinary E2E. Actual PostgreSQL snapshot/legacy-binary
+  against dedicated synthetic hosts after ordinary E2E; build the solution in Release first. Actual PostgreSQL snapshot/legacy-binary
   tests live in `src/ApexRacers.Tests/Restore/` and require the pinned legacy Git commit documented in
   `docs/research/driver-migration-restore.md`; CI fetches full history. These establish local
   implementation evidence, not production restore or backup certification.

@@ -35,7 +35,7 @@ bytes are outside recall guarantees.
 Docker, .NET from `global.json`, Node and the pinned frontend dependencies are required:
 
 ```bash
-dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj --filter-namespace ApexRacers.Tests.References
+dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj --configuration Release --filter-namespace ApexRacers.Tests.References
 cd web
 npm ci
 npm run test
