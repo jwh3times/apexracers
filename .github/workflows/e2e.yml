@@ -112,6 +112,9 @@ jobs:
         run: npx playwright test ${{ github.event.inputs.update_snapshots == 'true' && '--update-snapshots' || '' }}
         working-directory: web
 
+      - name: Build Release privacy fixture
+        run: dotnet build src/ApexRacers.Tests/ApexRacers.Tests.csproj --configuration Release
+
       - name: Rehearse bounded Driver display against real HTTP and built SPA
         run: npx playwright test --config playwright.privacy.config.ts
         working-directory: web
