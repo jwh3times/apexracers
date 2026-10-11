@@ -34,6 +34,21 @@ def source_fingerprint():
     return hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
 
 
+def build_inventories():
+    assemblies = {p.name: digest(p) for p in (ROOT / "src/ApexRacers.Tests/bin/Release/net10.0").glob("ApexRacers.*.dll")}
+    spa = {str(p.relative_to(ROOT / "web/dist")): digest(p) for p in (ROOT / "web/dist").rglob("*") if p.is_file()}
+    required = {"ApexRacers." + name + ".dll" for name in ["Api", "Core", "Data", "Ingestion", "Seeder", "Tests"]}
+    if not required.issubset(assemblies) or "index.html" not in spa or not any(name.startswith("assets/") for name in spa):
+        raise ValueError("Complete Release assembly and built-SPA inventories are required")
+    return {"compiledReleaseAssemblies": assemblies, "builtSpa": spa}
+
+
+def validate_builds(context):
+    for name, current in build_inventories().items():
+        if current != context.get(name):
+            raise ValueError("Compiled artifact inventory changed during evidence run: " + name)
+
+
 def instant(value):
     if not isinstance(value, str):
         raise ValueError("Invalid execution timestamp")
@@ -123,6 +138,12 @@ def validate_admissions(directory, started):
     return paths
 
 
+def validate_matrix_source(mapping):
+    actual = hashlib.sha256((ROOT / mapping["matrixSource"]).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    if actual != mapping.get("matrixSourceSha256"):
+        raise ValueError("Accepted matrix requirements changed; deliberately review and remap affected evidence")
+
+
 def collect(directory, backend_exit, browser_exit):
     if (directory / "manifest.json").exists():
         raise ValueError("Finalized evidence cannot be overwritten; retain the original outcome and use a fresh run")
@@ -136,6 +157,10 @@ def collect(directory, backend_exit, browser_exit):
         errors.append("execution context: " + str(error))
         context = {"startedAt": now(), "sourceFingerprint": None, "commit": None}
         started = instant(context["startedAt"])
+    try:
+        validate_builds(context)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        errors.append("compiled artifacts: " + str(error))
     backend, browser, admissions = [], [], []
     for report, loader in [("backend.trx", backend_results), ("browser.json", browser_results)]:
         try:
@@ -159,6 +184,10 @@ def collect(directory, backend_exit, browser_exit):
     if source_fingerprint() != context["sourceFingerprint"]:
         errors.append("Material source/configuration change during evidence run")
     mapping = json.loads((ROOT / "docs/testing/driver-privacy-matrix.json").read_text())
+    try:
+        validate_matrix_source(mapping)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        errors.append("matrix source: " + str(error))
     expected = re.findall(r"^\| ([A-Z]+-\d+) \|", (ROOT / mapping["matrixSource"]).read_text(), re.M)
     rows = [row_result(row, backend, browser) for row in mapping["rows"]]
     if [row["id"] for row in rows] != expected or len(set(expected)) != len(expected):
@@ -194,8 +223,7 @@ def main():
                    "environment": platform.platform(), "provenance": "Demo / fabricated identities and measurements",
                    "configuration": {"backend": "Release, real PostgreSQL18 migrations and two-process HTTP fixtures", "browser": "built SPA, Chromium, two controlled hosts plus ordinary Demo, retries=0", "authority": "test-only proof/journal/history/operating adapters; ordinary Real startup unavailable"},
                    "catalogReviewVersion": "catalog30-technical-review-v1",
-                   "compiledReleaseAssemblies": {p.name: digest(p) for p in (ROOT / "src/ApexRacers.Tests/bin/Release/net10.0").glob("ApexRacers.*.dll")},
-                   "builtSpa": {str(p.relative_to(ROOT / "web/dist")): digest(p) for p in (ROOT / "web/dist").rglob("*") if p.is_file()},
+                   **build_inventories(),
                    "workflowRun": __import__("os").environ.get("GITHUB_RUN_ID"), "workflowAttempt": __import__("os").environ.get("GITHUB_RUN_ATTEMPT")}
         (directory / "context.json").write_text(json.dumps(context, indent=2) + "\n")
         return 0

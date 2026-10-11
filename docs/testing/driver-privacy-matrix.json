@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixSource": "docs/design/driver-acceptance-and-rollout.md",
+  "matrixSourceSha256": "c265d1124e77ea15a837743de735641e217fc174f552b14de090d29a4e1adffe",
   "rows": [
     {
       "id": "AUTH-01",

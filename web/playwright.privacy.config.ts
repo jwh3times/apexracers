@@ -10,7 +10,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command:
-      'dotnet run --configuration Release --no-launch-profile --project src/ApexRacers.Tests -- --driver-browser-fixture',
+      'dotnet run --configuration Release --no-build --no-launch-profile --project src/ApexRacers.Tests -- --driver-browser-fixture',
     cwd: '..',
     url: 'http://127.0.0.1:8186/ready',
     timeout: 600_000,

@@ -303,6 +303,13 @@ than the deploy. `npm run lint` fails on Oxlint *errors* only; warnings do not a
 Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
 
+The unfiltered **Driver Privacy Contract** workflow exercises the 43-row controlled synthetic
+acceptance matrix through PostgreSQL, two-host HTTP, migration/restore and built-SPA cases. Read
+`docs/research/driver-privacy-contract.md` before changing its collector, matrix mapping, admitted
+catalog receipt or workflow. Missing/skipped cases, retries and material source/build changes fail
+the gate. A green synthetic result retains `liveEligible=false`; required-context installation and
+separate live prerequisites must be verified before any live eligibility claim.
+
 ### Infrastructure
 
 ```bash

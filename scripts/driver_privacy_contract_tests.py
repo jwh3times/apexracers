@@ -5,6 +5,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location("privacy_contract", pathlib.Path(__file__).with_name("driver-privacy-contract.py"))
 contract = importlib.util.module_from_spec(spec)
@@ -70,6 +71,33 @@ class EvidenceBoundaryTests(unittest.TestCase):
         for value in [123, None, "2026-10-10T00:00:00", "unknown"]:
             with self.assertRaises(ValueError):
                 contract.instant(value)
+
+    def test_replaced_compiled_artifact_cannot_retain_original_inventory(self):
+        context = {"compiledReleaseAssemblies": {"ApexRacers.Api.dll": "original"}, "builtSpa": {"index.html": "original"}}
+        for changed in ["compiledReleaseAssemblies", "builtSpa"]:
+            current = {name: dict(inventory) for name, inventory in context.items()}
+            current[changed][next(iter(current[changed]))] = "replacement"
+            with mock.patch.object(contract, "build_inventories", return_value=current):
+                with self.assertRaisesRegex(ValueError, "inventory changed"):
+                    contract.validate_builds(context)
+
+    def test_missing_builds_cannot_establish_execution_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(contract, "ROOT", pathlib.Path(directory)):
+                with self.assertRaisesRegex(ValueError, "Complete Release"):
+                    contract.build_inventories()
+
+    def test_changed_matrix_requirement_cannot_inherit_an_unchanged_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            matrix = root / "matrix.md"
+            matrix.write_text("| AUTH-01 | original requirement |")
+            mapping = {"matrixSource": "matrix.md", "matrixSourceSha256": contract.digest(matrix)}
+            with mock.patch.object(contract, "ROOT", root):
+                contract.validate_matrix_source(mapping)
+                matrix.write_text("| AUTH-01 | changed requirement |")
+                with self.assertRaisesRegex(ValueError, "requirements changed"):
+                    contract.validate_matrix_source(mapping)
 
     def test_finalized_failure_cannot_be_replaced_by_a_later_collector_success(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -15,7 +15,7 @@ hosts and the ordinary credential-free Demo host. Both test invocations have no 
 E2E and coverage remain supplementary checks.
 
 `docs/testing/driver-privacy-matrix.json` maps every one of the 43 matrix IDs to specific method/browser
-names, with minimum backend case counts so deleting theory cases cannot silently establish coverage.
+names, bound to the accepted matrix source hash, with minimum backend case counts so deleting theory cases cannot silently establish coverage.
 The collector resolves actual TRX test definitions/results and original Playwright results; a scenario
 label or JSON `Passed` marker cannot substitute for those reports. Every row retains matched execution
 IDs/names, bounded fixture scope and unexercised requirements. Backend entries refer to `backend.trx`;
@@ -28,7 +28,7 @@ hashes, provenance, environment and workflow run/attempt. The directory must be 
 artifacts are retained rather than overwritten. The collector rejects reports predating the context,
 missing/empty/malformed reports, missing matrix cases, insufficient theory executions, any original
 failed/skipped/inconclusive result, browser retries, infrastructure errors, changed material source,
-and nonzero original process outcomes. It writes `manifest.json` before returning the gate failure.
+changed or missing compiled DLL/SPA inventories, and nonzero original process outcomes. It writes `manifest.json` before returning the gate failure.
 A finalized manifest cannot be overwritten by another collector invocation. A job failure cannot
 be erased by feeding the collector a subsequently passing report.
 
