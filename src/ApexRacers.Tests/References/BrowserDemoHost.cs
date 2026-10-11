@@ -18,10 +18,17 @@ internal sealed class BrowserDemoHost(Process process) : IAsyncDisposable
             await command.ExecuteNonQueryAsync(ct);
         }
         var database = new NpgsqlConnectionStringBuilder(connection) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+        var frameworkDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+        var configurationDirectory = frameworkDirectory.Parent
+            ?? throw new InvalidOperationException("The browser fixture build configuration directory is missing.");
+        var sourceDirectory = configurationDirectory.Parent?.Parent?.Parent
+            ?? throw new InvalidOperationException("The browser fixture source directory is missing.");
         ProcessStartInfo Command(string project)
         {
+            var assemblyPath = Path.Combine(sourceDirectory.FullName, project, "bin", configurationDirectory.Name, frameworkDirectory.Name, $"{project}.dll");
+            if (!File.Exists(assemblyPath)) throw new FileNotFoundException("The browser fixture requires the matching compiled child process; no rebuild is performed.", assemblyPath);
             var info = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-            info.ArgumentList.Add(Path.GetFullPath($"src/{project}/bin/Debug/net10.0/{project}.dll"));
+            info.ArgumentList.Add(assemblyPath);
             info.Environment["DATABASE_CONNECTION_STRING"] = database;
             info.Environment["ASPNETCORE_URLS"] = "http://127.0.0.1:8186";
             info.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
@@ -33,8 +40,15 @@ internal sealed class BrowserDemoHost(Process process) : IAsyncDisposable
         using (var seeder = Process.Start(seed)!)
         {
             var output = seeder.StandardOutput.ReadToEndAsync(ct); var errors = seeder.StandardError.ReadToEndAsync(ct);
-            await seeder.WaitForExitAsync(ct); await output; await errors;
-            if (seeder.ExitCode != 0) throw new InvalidOperationException("Credential-free Demo seed failed.");
+            await seeder.WaitForExitAsync(ct);
+            var standardOutput = await output; var standardError = await errors;
+            if (seeder.ExitCode != 0)
+            {
+                var diagnostic = $"Credential-free Demo seed failed with exit code {seeder.ExitCode}.\nstdout:\n{standardOutput}\nstderr:\n{standardError}";
+                foreach (var sensitive in new[] { database, new NpgsqlConnectionStringBuilder(database).Password, ReferenceActors.Configuration["JWT_SIGNING_KEY"] })
+                    if (!string.IsNullOrEmpty(sensitive)) diagnostic = diagnostic.Replace(sensitive, "[redacted]", StringComparison.Ordinal);
+                throw new InvalidOperationException(diagnostic);
+            }
         }
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(database).Options))
         {

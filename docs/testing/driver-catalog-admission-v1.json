@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "reviewVersion": "catalog30-technical-review-v1",
+  "acceptedAt": "2026-10-07T04:19:05Z",
+  "decision": "accepted without amendment by Jerry; controlled synthetic template only",
+  "sourceCommit": "1ef98d055cb10ed7ff4a84b7426a9197b638c779",
+  "reviewedSources": {
+    "src/ApexRacers.Tests/Publication/ControlledCohortFixtures.cs": "28807f8cc9474a65dcc5ad2badb1ca90a48b9c98502a989f4d97e1d54e0ff732",
+    "src/ApexRacers.Core/WholeCohortBands.cs": "253508c87adb2edc7e7b71b3b2ef623f9a72e3ce3a291e0e0cfa0a6ad928fb96",
+    "src/ApexRacers.Core/FieldPercentile.cs": "2ca9b4588823a4ae97fd2e09b4d42b9c7a7c3d120218e3218b644a59d5f97a9b",
+    "src/ApexRacers.Api/Services/WholeCohortCandidates.cs": "60f5088b9a80e12dadf6c9b8d75b0ee7dfc425b17485d987e3898a78e26cc641"
+  },
+  "catalogId": "synthetic-lap-rating-v1",
+  "provenance": "Demo",
+  "allowedCompositions": [
+    [
+      "visitor"
+    ],
+    [
+      "signed"
+    ],
+    [
+      "visitor",
+      "signed"
+    ],
+    [
+      "owner1"
+    ],
+    [
+      "owner2"
+    ]
+  ],
+  "runtimeBinding": "Fresh isolated synthetic original copy/purpose/genesis and one continuous global history; no replacement copy, owner partition, epoch reset or live admission.",
+  "ownerPercentile": 92.85714285714286,
+  "ownerFieldSizeInference": "Fixed fabricated PB below disclosed lap band permits 100-50/n inference; omission of an explicit count is not absence of count information.",
+  "limits": [
+    "No Real or externally linked racing data",
+    "No provider processing permission",
+    "No production journal/durability/retention or activation"
+  ]
+}

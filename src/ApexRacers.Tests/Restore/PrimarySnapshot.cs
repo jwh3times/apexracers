@@ -45,7 +45,7 @@ internal sealed record PrimarySnapshot(string Path, string Sha256, string Databa
 
     public async Task RecordAsync(string scenario, object observations, bool passed)
     {
-        var directory = System.IO.Path.Combine(LegacyApiProcess.RepositoryRoot, "TestResults", "driver-restore");
+        var directory = PrivacyContract.CatalogAdmission.OutputDirectory("driver-restore");
         Directory.CreateDirectory(directory);
         var sourceHashes = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var path in Directory.GetFiles(System.IO.Path.Combine(LegacyApiProcess.RepositoryRoot, "src/ApexRacers.Tests/Restore"), "*.cs")

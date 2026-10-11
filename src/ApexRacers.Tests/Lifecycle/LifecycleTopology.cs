@@ -210,7 +210,7 @@ internal sealed class LifecycleTopology(
             var root = new DirectoryInfo(AppContext.BaseDirectory);
             while (root.Parent is not null && !File.Exists(Path.Combine(root.FullName, "global.json")))
                 root = root.Parent;
-            var directory = Path.Combine(root.FullName, "TestResults", "driver-lifecycle",
+            var directory = Path.Combine(PrivacyContract.CatalogAdmission.OutputDirectory("driver-lifecycle"),
                 $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}");
             Directory.CreateDirectory(directory);
             await File.WriteAllTextAsync(Path.Combine(directory, scenario + ".json"), JsonSerializer.Serialize(new

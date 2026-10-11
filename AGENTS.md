@@ -303,6 +303,14 @@ than the deploy. `npm run lint` fails on Oxlint *errors* only; warnings do not a
 Proxy target is `API_TARGET` in the relevant `web/.env.*` file; the default falls back to
 `http://localhost:5000`.
 
+The unfiltered **Driver Privacy Contract** workflow exercises the 43-row controlled synthetic
+acceptance matrix through PostgreSQL, two-host HTTP, migration/restore and built-SPA cases. Read
+`docs/research/driver-privacy-contract.md` before changing its collector, matrix mapping, admitted
+catalog receipt or workflow. Missing/skipped cases, retries and material source/build changes fail
+the gate. Its exact context is required by the active main/release ruleset with strict up-to-date
+checking. A green synthetic result retains `liveEligible=false`; separate live prerequisites remain
+required before any live eligibility claim.
+
 ### Infrastructure
 
 ```bash
@@ -882,7 +890,7 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   (`.github/workflows/e2e.yml`) runs the suite. E2E tests are excluded from Vitest coverage. Full detail
   in the `react-frontend` agent.
 - **Browser privacy and restore rehearsals:** `web/playwright.privacy.config.ts` runs the built SPA
-  against dedicated synthetic hosts after ordinary E2E. Actual PostgreSQL snapshot/legacy-binary
+  against dedicated synthetic hosts after ordinary E2E; build the solution in Release first. Actual PostgreSQL snapshot/legacy-binary
   tests live in `src/ApexRacers.Tests/Restore/` and require the pinned legacy Git commit documented in
   `docs/research/driver-migration-restore.md`; CI fetches full history. These establish local
   implementation evidence, not production restore or backup certification.
