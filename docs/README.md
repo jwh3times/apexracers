@@ -28,6 +28,7 @@ This directory contains public, contributor-safe project documentation.
 | [research/driver-operating-admission.md](research/driver-operating-admission.md) | Controlled pilot/stage admission, shared operating budgets, safety recovery, participating API/background paths and unverified live prerequisites. |
 | [research/atomic-publication-reservations.md](research/atomic-publication-reservations.md) | Controlled composition reservations, independently reconciled disclosure history, protected dispatch and scoped verification evidence. |
 | [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
+| [Integrated Driver privacy contract](research/driver-privacy-contract.md) | Synthetic required-check execution, complete matrix evidence, admitted catalog receipt and explicit live/deployed limits. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
@@ -101,5 +102,3 @@ config parity** section in `AGENTS.md` for why, and for the full mapping.
 Required human actions arising from completed agent work follow
 [Human follow-ups](agents/human-actions.md): private issues and board tracking paired with
 step-by-step private wiki instructions. Docs-updater, ship, end-session, and wizard use that procedure.
-
-| [Integrated Driver privacy contract](research/driver-privacy-contract.md) | Synthetic required-check execution, complete matrix evidence, admitted catalog receipt and explicit live/deployed limits. |
