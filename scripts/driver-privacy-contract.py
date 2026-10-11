@@ -35,12 +35,19 @@ def source_fingerprint():
 
 
 def build_inventories():
-    assemblies = {p.name: digest(p) for p in (ROOT / "src/ApexRacers.Tests/bin/Release/net10.0").glob("ApexRacers.*.dll")}
+    names = ["Api", "Core", "Data", "Ingestion", "Seeder", "Tests"]
+    directories = [ROOT / ("src/ApexRacers." + name + "/bin/Release/net10.0") for name in names]
+    assemblies = {str(p.relative_to(ROOT)): digest(p) for directory in directories for p in directory.rglob("*.dll")}
+    configuration = {str(p.relative_to(ROOT)): digest(p) for directory in directories for p in directory.glob("*")
+                     if p.is_file() and (p.name.endswith((".runtimeconfig.json", ".deps.json")) or p.name in {directory.parent.parent.parent.name, directory.parent.parent.parent.name + ".exe"})}
     spa = {str(p.relative_to(ROOT / "web/dist")): digest(p) for p in (ROOT / "web/dist").rglob("*") if p.is_file()}
-    required = {"ApexRacers." + name + ".dll" for name in ["Api", "Core", "Data", "Ingestion", "Seeder", "Tests"]}
-    if not required.issubset(assemblies) or "index.html" not in spa or not any(name.startswith("assets/") for name in spa):
+    required = {"src/ApexRacers." + name + "/bin/Release/net10.0/ApexRacers." + name + ".dll" for name in names}
+    required |= {"src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers." + name + ".dll" for name in names}
+    runtime = {"src/ApexRacers." + name + "/bin/Release/net10.0/ApexRacers." + name + extension
+               for name in ["Api", "Seeder", "Tests"] for extension in [".runtimeconfig.json", ".deps.json"]}
+    if not required.issubset(assemblies) or not runtime.issubset(configuration) or "index.html" not in spa or not any(name.startswith("assets/") for name in spa):
         raise ValueError("Complete Release assembly and built-SPA inventories are required")
-    return {"compiledReleaseAssemblies": assemblies, "builtSpa": spa}
+    return {"compiledReleaseAssemblies": assemblies, "compiledReleaseConfiguration": configuration, "builtSpa": spa}
 
 
 def validate_builds(context):

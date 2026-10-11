@@ -24,7 +24,7 @@ copy, fault, publication, reference, restore and admitted-instance artifacts alo
 
 `python3 scripts/driver-privacy-contract.py start <fresh-directory>` records execution start, current
 commit and dirty state, the material source/configuration fingerprint, Release assembly and built-SPA
-hashes, provenance, environment and workflow run/attempt. The directory must be empty: prior failure
+hashes (including the directly launched API/Seeder outputs and runtime configuration), provenance, environment and workflow run/attempt. The directory must be empty: prior failure
 artifacts are retained rather than overwritten. The collector rejects reports predating the context,
 missing/empty/malformed reports, missing matrix cases, insufficient theory executions, any original
 failed/skipped/inconclusive result, browser retries, infrastructure errors, changed material source,

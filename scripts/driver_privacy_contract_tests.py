@@ -73,8 +73,8 @@ class EvidenceBoundaryTests(unittest.TestCase):
                 contract.instant(value)
 
     def test_replaced_compiled_artifact_cannot_retain_original_inventory(self):
-        context = {"compiledReleaseAssemblies": {"ApexRacers.Api.dll": "original"}, "builtSpa": {"index.html": "original"}}
-        for changed in ["compiledReleaseAssemblies", "builtSpa"]:
+        context = {"compiledReleaseAssemblies": {"ApexRacers.Api.dll": "original"}, "compiledReleaseConfiguration": {"ApexRacers.Api.runtimeconfig.json": "original"}, "builtSpa": {"index.html": "original"}}
+        for changed in context:
             current = {name: dict(inventory) for name, inventory in context.items()}
             current[changed][next(iter(current[changed]))] = "replacement"
             with mock.patch.object(contract, "build_inventories", return_value=current):
