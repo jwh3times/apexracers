@@ -29,6 +29,8 @@ This directory contains public, contributor-safe project documentation.
 | [research/atomic-publication-reservations.md](research/atomic-publication-reservations.md) | Controlled composition reservations, independently reconciled disclosure history, protected dispatch and scoped verification evidence. |
 | [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [Integrated Driver privacy contract](research/driver-privacy-contract.md) | Synthetic required-check execution, complete matrix evidence, admitted catalog receipt and explicit live/deployed limits. |
+| [CI duration investigation](research/ci-duration-investigation.md) | Comparable CI timings, local fixture/coverage probes, ranked optimization proposals and required evidence safeguards. |
+| [CI duration tooling](research/ci-duration-tooling.md) | Official-source scheduling, coverage, artifact reuse and required-check aggregation constraints. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |

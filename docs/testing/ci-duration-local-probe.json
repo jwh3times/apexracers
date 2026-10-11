@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-11",
+  "scope": "Temporary instrumented single-method cost probe; not acceptance or full-suite overhead evidence",
+  "sdk": "10.0.112",
+  "docker": "29.9.0",
+  "platform": "Linux-7.2.9-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "logical_cpus": 16,
+  "method": "ApexRacers.Tests.References.DriverReferenceHttpTests.Eligible_discovery_detail_comparison_and_follow_use_actual_JWT_recipient_and_atomic_owned_dispatch",
+  "runs": [
+    {
+      "number": 1,
+      "coverage": false,
+      "elapsed_seconds": 22.903759164000803,
+      "exit_code": 0,
+      "case_seconds": 12.389,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.187888
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.108093
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.2340888
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.055933
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.6088785
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.5498661
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "coverage": true,
+      "elapsed_seconds": 26.46176440900308,
+      "exit_code": 0,
+      "case_seconds": 13.597,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.2043639
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.1208932
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.4361695
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.1633183
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.8659937
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.840581
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "coverage": false,
+      "elapsed_seconds": 22.762370373999147,
+      "exit_code": 0,
+      "case_seconds": 12.379,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.1886324
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.1166895
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.2230107
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.0494661
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.5667131
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.5684481
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "coverage": true,
+      "elapsed_seconds": 26.378824293002253,
+      "exit_code": 0,
+      "case_seconds": 13.538,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.197187
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.124899
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.4501878
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.1489496
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.8521422
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.8235083
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "coverage": false,
+      "elapsed_seconds": 22.794042032001016,
+      "exit_code": 0,
+      "case_seconds": 12.436,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.1919965
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.1201468
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.2270885
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.0558986
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.5655667
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.531896
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "coverage": true,
+      "elapsed_seconds": 26.386161891001393,
+      "exit_code": 0,
+      "case_seconds": 13.732,
+      "outcome": "Passed",
+      "phases": [
+        {
+          "phase": "create-two-databases",
+          "seconds": 0.204578
+        },
+        {
+          "phase": "history-genesis",
+          "seconds": 0.1289411
+        },
+        {
+          "phase": "primary-migrations",
+          "seconds": 2.5044695
+        },
+        {
+          "phase": "seed-authority-copy-operating",
+          "seconds": 1.191135
+        },
+        {
+          "phase": "first-host-ready",
+          "seconds": 1.8486542
+        },
+        {
+          "phase": "second-host-ready",
+          "seconds": 1.8254788
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+diff --git a/src/ApexRacers.Tests/References/ReferenceTopology.cs b/src/ApexRacers.Tests/References/ReferenceTopology.cs
+index f9d2c30..4020791 100644
+--- a/src/ApexRacers.Tests/References/ReferenceTopology.cs
++++ b/src/ApexRacers.Tests/References/ReferenceTopology.cs
+@@ -106,12 +106,17 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
+             await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", c); await command.ExecuteNonQueryAsync(ct);
+             return new NpgsqlConnectionStringBuilder(connection) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+         }
++        var probe = System.Diagnostics.Stopwatch.StartNew();
++        void Mark(string phase) { var output = Environment.GetEnvironmentVariable("CI_DURATION_PROBE_OUTPUT"); if (output is not null) File.AppendAllText(output, System.Text.Json.JsonSerializer.Serialize(new { phase, seconds = probe.Elapsed.TotalSeconds }) + "\n"); probe.Restart(); }
+         var primary = await Create("apexracers_reference_primary_"); var independent = await Create("apexracers_reference_history_");
++        Mark("create-two-databases");
+         var epoch = Guid.NewGuid();
+         var history = new ControlledPublicationHistory(independent, epoch, new LifecycleGates()); await history.InitializeGenesisAsync(ct);
++        Mark("history-genesis");
+         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(DataProvenance.Demo)))
+         {
+             await db.Database.MigrateAsync(ct);
++            Mark("primary-migrations");
+             db.Users.AddRange(new[] { ReferenceActors.Recipient, ReferenceActors.Target, ReferenceActors.Other }.Select(id => new ApplicationUser
+             { Id = id, DisplayName = "Controlled synthetic User", EmailConfirmed = true }));
+             await db.SaveChangesAsync(ct);
+@@ -130,9 +135,12 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
+                 await db.SaveChangesAsync(ct);
+             }
+         }
++        Mark("seed-authority-copy-operating");
+         var first = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser, port);
++        Mark("first-host-ready");
+         LifecycleProcess second;
+         try { second = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser); } catch { await first.DisposeAsync(); throw; }
++        Mark("second-host-ready");
+         return new ReferenceTopology(primary, independent, epoch, first, second, ct);
+     }
+     public async ValueTask DisposeAsync() { await First.DisposeAsync(); await Second.DisposeAsync(); }
