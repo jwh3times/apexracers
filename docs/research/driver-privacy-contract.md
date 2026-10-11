@@ -8,7 +8,7 @@ backup expiry or operational pilot approval.
 ## Execution and evidence boundaries
 
 `.github/workflows/driver-privacy-contract.yml` reports the **Driver Privacy Contract** context on every
-PR to main, on main pushes and on explicit dispatch, without path filters. It runs the complete Release
+PR regardless of target branch, on main pushes and on explicit dispatch, without path filters. It runs the complete Release
 backend suite (including real PostgreSQL, independent two-host HTTP writers and the migration/physical
 snapshot/old-binary rehearsals), followed by the six Chromium cases against the built SPA, two controlled
 hosts and the ordinary credential-free Demo host. Both test invocations have no retry policy. General
@@ -29,7 +29,8 @@ artifacts are retained rather than overwritten. The collector rejects reports pr
 missing/empty/malformed reports, missing matrix cases, insufficient theory executions, any original
 failed/skipped/inconclusive result, browser retries, infrastructure errors, changed material source,
 and nonzero original process outcomes. It writes `manifest.json` before returning the gate failure.
-A job failure cannot be erased by feeding the collector a subsequently passing report.
+A finalized manifest cannot be overwritten by another collector invocation. A job failure cannot
+be erased by feeding the collector a subsequently passing report.
 
 Each row's `result` describes only its declared controlled synthetic evidence. `fullRequirementResult`
 remains `not exercised` where real or deployed requirements are unavailable. The manifest explicitly

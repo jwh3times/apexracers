@@ -71,6 +71,15 @@ class EvidenceBoundaryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 contract.instant(value)
 
+    def test_finalized_failure_cannot_be_replaced_by_a_later_collector_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory)
+            original = '{"syntheticGate":"failed","originalFailure":"unauthorized disclosure"}'
+            (path / "manifest.json").write_text(original)
+            with self.assertRaisesRegex(ValueError, "cannot be overwritten"):
+                contract.collect(path, 0, 0)
+            self.assertEqual(original, (path / "manifest.json").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

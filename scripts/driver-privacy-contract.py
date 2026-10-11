@@ -124,6 +124,8 @@ def validate_admissions(directory, started):
 
 
 def collect(directory, backend_exit, browser_exit):
+    if (directory / "manifest.json").exists():
+        raise ValueError("Finalized evidence cannot be overwritten; retain the original outcome and use a fresh run")
     errors = []
     try:
         context = json.loads((directory / "context.json").read_text())
@@ -199,7 +201,11 @@ def main():
         return 0
     if args.backend_exit is None or args.browser_exit is None:
         parser.error("Original backend and browser process exit outcomes are required")
-    return collect(directory, args.backend_exit, args.browser_exit)
+    try:
+        return collect(directory, args.backend_exit, args.browser_exit)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
