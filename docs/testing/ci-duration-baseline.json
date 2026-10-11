@@ -1,0 +1,1323 @@
+{
+  "schema": 1,
+  "date": "2026-10-11",
+  "scope": "Retained original successful CI timing evidence; not a new privacy acceptance result",
+  "reports": [
+    {
+      "file": "pr-coverage/backend-tests.trx",
+      "sha256": "78c6c1addd2f5781d7e602655b30c6cf07be616973701a8dd70bc3df7ded9eb9",
+      "count": 1316,
+      "outcomes": {
+        "Passed": 1316
+      },
+      "inventory_sha256": "12b681ad91c8b7a027b81c149c1fa171704467f158ece710625f69b8f92ec2d2",
+      "run_seconds": 1847.149365,
+      "test_interval_union_seconds": 1823.9255349999994,
+      "postgres_count": 486,
+      "postgres_interval_union_seconds": 1804.7676759999993,
+      "postgres_span_seconds": 1805.098291,
+      "classes": [
+        {
+          "name": "ApexRacers.Tests.References.DriverReferenceHttpTests",
+          "postgres": true,
+          "count": 55,
+          "sum_seconds": 520.1119998999999
+        },
+        {
+          "name": "ApexRacers.Tests.Publication.PublicationReleaseHttpTests",
+          "postgres": true,
+          "count": 38,
+          "sum_seconds": 330.7839999
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests",
+          "postgres": true,
+          "count": 23,
+          "sum_seconds": 219.731
+        },
+        {
+          "name": "ApexRacers.Tests.Services.AuthServiceTests",
+          "postgres": true,
+          "count": 116,
+          "sum_seconds": 122.5759993999999
+        },
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests",
+          "postgres": true,
+          "count": 17,
+          "sum_seconds": 86.94299989999999
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 63.664
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests",
+          "postgres": true,
+          "count": 1,
+          "sum_seconds": 56.925
+        },
+        {
+          "name": "ApexRacers.Tests.Services.PrivateUploadLifecycleTests",
+          "postgres": true,
+          "count": 35,
+          "sum_seconds": 55.9459995
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 53.685
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.PrivateUploadHttpTests",
+          "postgres": true,
+          "count": 5,
+          "sum_seconds": 46.952999899999995
+        },
+        {
+          "name": "ApexRacers.Tests.Operating.DriverOperatingHttpTests",
+          "postgres": true,
+          "count": 4,
+          "sum_seconds": 38.528999999999996
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests",
+          "postgres": false,
+          "count": 5,
+          "sum_seconds": 33.264
+        }
+      ],
+      "slowest_cases": [
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession",
+          "seconds": 67.174,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests.IdempotentDemoSeedAndSqlTeardownPrecedeRealAcquisition",
+          "seconds": 57.232,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation",
+          "seconds": 56.925,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests.SeededRecentRaces_AllOpenThroughSubsessionDetailService",
+          "seconds": 31.672,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+          "seconds": 20.287,
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "file": "pr-privacy/TestResults/driver-privacy-contract/backend.trx",
+      "sha256": "1e79b6dc7b484ccb844d1a172a95fbecdbfb90022d2a614a091692c7120526d3",
+      "count": 1316,
+      "outcomes": {
+        "Passed": 1316
+      },
+      "inventory_sha256": "12b681ad91c8b7a027b81c149c1fa171704467f158ece710625f69b8f92ec2d2",
+      "run_seconds": 1080.893381,
+      "test_interval_union_seconds": 1007.620125,
+      "postgres_count": 486,
+      "postgres_interval_union_seconds": 994.4714300000002,
+      "postgres_span_seconds": 994.633802,
+      "classes": [
+        {
+          "name": "ApexRacers.Tests.References.DriverReferenceHttpTests",
+          "postgres": true,
+          "count": 55,
+          "sum_seconds": 286.4859998
+        },
+        {
+          "name": "ApexRacers.Tests.Publication.PublicationReleaseHttpTests",
+          "postgres": true,
+          "count": 38,
+          "sum_seconds": 174.50699969999994
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests",
+          "postgres": true,
+          "count": 23,
+          "sum_seconds": 119.4739999
+        },
+        {
+          "name": "ApexRacers.Tests.Services.AuthServiceTests",
+          "postgres": true,
+          "count": 116,
+          "sum_seconds": 78.39099889999999
+        },
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests",
+          "postgres": true,
+          "count": 17,
+          "sum_seconds": 47.74499989999999
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 34.035000000000004
+        },
+        {
+          "name": "ApexRacers.Tests.Services.PrivateUploadLifecycleTests",
+          "postgres": true,
+          "count": 35,
+          "sum_seconds": 32.8639999
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 29.261000000000003
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.PrivateUploadHttpTests",
+          "postgres": true,
+          "count": 5,
+          "sum_seconds": 26.436999900000004
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests",
+          "postgres": true,
+          "count": 1,
+          "sum_seconds": 24.646
+        },
+        {
+          "name": "ApexRacers.Tests.Operating.DriverOperatingHttpTests",
+          "postgres": true,
+          "count": 4,
+          "sum_seconds": 20.751
+        },
+        {
+          "name": "ApexRacers.Tests.PrivacyContract.AdmittedCatalogTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 15.876000000000001
+        }
+      ],
+      "slowest_cases": [
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession",
+          "seconds": 35.611,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests.IdempotentDemoSeedAndSqlTeardownPrecedeRealAcquisition",
+          "seconds": 30.453,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation",
+          "seconds": 24.646,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+          "seconds": 13.992,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests.Actual_pre_loss_snapshot_requires_current_journal_replay_and_original_time_cleanup(kind: WithdrawPersonal)",
+          "seconds": 10.784,
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "file": "main-coverage/backend-tests.trx",
+      "sha256": "f3a99f544fa851162e4f94a8a39d2e2dc476df05e8bfa5d374737aa19e37ab0f",
+      "count": 1316,
+      "outcomes": {
+        "Passed": 1316
+      },
+      "inventory_sha256": "12b681ad91c8b7a027b81c149c1fa171704467f158ece710625f69b8f92ec2d2",
+      "run_seconds": 1858.823071,
+      "test_interval_union_seconds": 1835.2107540000018,
+      "postgres_count": 486,
+      "postgres_interval_union_seconds": 1814.4063560000013,
+      "postgres_span_seconds": 1814.721244,
+      "classes": [
+        {
+          "name": "ApexRacers.Tests.References.DriverReferenceHttpTests",
+          "postgres": true,
+          "count": 55,
+          "sum_seconds": 521.2039996
+        },
+        {
+          "name": "ApexRacers.Tests.Publication.PublicationReleaseHttpTests",
+          "postgres": true,
+          "count": 38,
+          "sum_seconds": 324.93299989999997
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests",
+          "postgres": true,
+          "count": 23,
+          "sum_seconds": 224.13700000000003
+        },
+        {
+          "name": "ApexRacers.Tests.Services.AuthServiceTests",
+          "postgres": true,
+          "count": 116,
+          "sum_seconds": 123.14299940000001
+        },
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests",
+          "postgres": true,
+          "count": 17,
+          "sum_seconds": 86.9079997
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 64.591
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests",
+          "postgres": true,
+          "count": 1,
+          "sum_seconds": 60.828
+        },
+        {
+          "name": "ApexRacers.Tests.Services.PrivateUploadLifecycleTests",
+          "postgres": true,
+          "count": 35,
+          "sum_seconds": 55.9829998
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 54.163000000000004
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.PrivateUploadHttpTests",
+          "postgres": true,
+          "count": 5,
+          "sum_seconds": 48.428
+        },
+        {
+          "name": "ApexRacers.Tests.Operating.DriverOperatingHttpTests",
+          "postgres": true,
+          "count": 4,
+          "sum_seconds": 38.6919999
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests",
+          "postgres": false,
+          "count": 5,
+          "sum_seconds": 38.658
+        }
+      ],
+      "slowest_cases": [
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession",
+          "seconds": 67.104,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation",
+          "seconds": 60.828,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests.IdempotentDemoSeedAndSqlTeardownPrecedeRealAcquisition",
+          "seconds": 58.216,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests.SeededRecentRaces_AllOpenThroughSubsessionDetailService",
+          "seconds": 36.847,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+          "seconds": 21.227,
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "file": "main-privacy/TestResults/driver-privacy-contract/backend.trx",
+      "sha256": "60502959d6a4447c3cfda113e26bc72cfd291861c620a465af4b3756ddc48a31",
+      "count": 1316,
+      "outcomes": {
+        "Passed": 1316
+      },
+      "inventory_sha256": "12b681ad91c8b7a027b81c149c1fa171704467f158ece710625f69b8f92ec2d2",
+      "run_seconds": 1350.99821,
+      "test_interval_union_seconds": 1313.833478,
+      "postgres_count": 486,
+      "postgres_interval_union_seconds": 1289.953558,
+      "postgres_span_seconds": 1290.14526,
+      "classes": [
+        {
+          "name": "ApexRacers.Tests.References.DriverReferenceHttpTests",
+          "postgres": true,
+          "count": 55,
+          "sum_seconds": 371.6159995000001
+        },
+        {
+          "name": "ApexRacers.Tests.Publication.PublicationReleaseHttpTests",
+          "postgres": true,
+          "count": 38,
+          "sum_seconds": 228.44699980000004
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.DriverLifecycleHttpTests",
+          "postgres": true,
+          "count": 23,
+          "sum_seconds": 155.7639997
+        },
+        {
+          "name": "ApexRacers.Tests.Services.AuthServiceTests",
+          "postgres": true,
+          "count": 116,
+          "sum_seconds": 101.38699899999999
+        },
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests",
+          "postgres": true,
+          "count": 17,
+          "sum_seconds": 59.82
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 43.184999999999995
+        },
+        {
+          "name": "ApexRacers.Tests.Services.PrivateUploadLifecycleTests",
+          "postgres": true,
+          "count": 35,
+          "sum_seconds": 40.0189997
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverSnapshotRestoreTests",
+          "postgres": true,
+          "count": 3,
+          "sum_seconds": 37.833
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests",
+          "postgres": true,
+          "count": 1,
+          "sum_seconds": 34.686
+        },
+        {
+          "name": "ApexRacers.Tests.Lifecycle.PrivateUploadHttpTests",
+          "postgres": true,
+          "count": 5,
+          "sum_seconds": 34.138
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests",
+          "postgres": false,
+          "count": 5,
+          "sum_seconds": 29.457
+        },
+        {
+          "name": "ApexRacers.Tests.Operating.DriverOperatingHttpTests",
+          "postgres": true,
+          "count": 4,
+          "sum_seconds": 27.842000000000002
+        }
+      ],
+      "slowest_cases": [
+        {
+          "name": "ApexRacers.Tests.Services.EvidenceCopyLifecycleTests.MigratedSyntheticSeederRoundTripTeardownAndExplicitFreshSession",
+          "seconds": 44.634,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Data.DemoTransitionTests.IdempotentDemoSeedAndSqlTeardownPrecedeRealAcquisition",
+          "seconds": 38.626,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DemoSnapshotRestoreTests.Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation",
+          "seconds": 34.686,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Seeder.DemoCacheRoundTripTests.SeededRecentRaces_AllOpenThroughSubsessionDetailService",
+          "seconds": 28.598,
+          "outcome": "Passed"
+        },
+        {
+          "name": "ApexRacers.Tests.Restore.DriverMigrationRestoreTests.Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain",
+          "seconds": 17.918,
+          "outcome": "Passed"
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "id": 38109169800,
+      "head_sha": "bead7bb1e8c754a499aa7187b2b0d5d4d69ba675",
+      "event": "pull_request",
+      "created_at": "2026-10-11T03:40:57Z",
+      "run_started_at": "2026-10-11T03:40:57Z",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/jwh3times/apexracers/actions/runs/38109169800",
+      "jobs": [
+        {
+          "id": 114380937899,
+          "name": "Lint",
+          "started_at": "2026-10-11T03:41:00Z",
+          "completed_at": "2026-10-11T03:41:16Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:01Z",
+              "completed_at": "2026-10-11T03:41:01Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:01Z",
+              "completed_at": "2026-10-11T03:41:02Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:02Z",
+              "completed_at": "2026-10-11T03:41:08Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:08Z",
+              "completed_at": "2026-10-11T03:41:12Z"
+            },
+            {
+              "name": "Run Oxlint",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:12Z",
+              "completed_at": "2026-10-11T03:41:13Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:13Z",
+              "completed_at": "2026-10-11T03:41:14Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:14Z",
+              "completed_at": "2026-10-11T03:41:14Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:14Z",
+              "completed_at": "2026-10-11T03:41:14Z"
+            }
+          ]
+        },
+        {
+          "id": 114380937999,
+          "name": "Test",
+          "started_at": "2026-10-11T03:41:00Z",
+          "completed_at": "2026-10-11T04:14:22Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:01Z",
+              "completed_at": "2026-10-11T03:41:02Z"
+            },
+            {
+              "name": "Pull ghcr.io/irongut/codecoveragesummary:v1.3.0",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:02Z",
+              "completed_at": "2026-10-11T03:41:05Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:05Z",
+              "completed_at": "2026-10-11T03:41:07Z"
+            },
+            {
+              "name": "Setup .NET",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:07Z",
+              "completed_at": "2026-10-11T03:41:07Z"
+            },
+            {
+              "name": "Run backend tests with coverage",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:07Z",
+              "completed_at": "2026-10-11T04:12:41Z"
+            },
+            {
+              "name": "Upload backend test results",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:41Z",
+              "completed_at": "2026-10-11T04:12:42Z"
+            },
+            {
+              "name": "Check backend line coverage threshold (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:42Z",
+              "completed_at": "2026-10-11T04:12:43Z"
+            },
+            {
+              "name": "Check backend branch coverage threshold (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:43Z",
+              "completed_at": "2026-10-11T04:12:43Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:43Z",
+              "completed_at": "2026-10-11T04:12:50Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:50Z",
+              "completed_at": "2026-10-11T04:12:54Z"
+            },
+            {
+              "name": "Run repository coordination tests",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:54Z",
+              "completed_at": "2026-10-11T04:12:54Z"
+            },
+            {
+              "name": "Test ingestion deployment pause preservation",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:12:54Z",
+              "completed_at": "2026-10-11T04:13:31Z"
+            },
+            {
+              "name": "Run frontend tests with coverage (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:13:31Z",
+              "completed_at": "2026-10-11T04:14:20Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:14:20Z",
+              "completed_at": "2026-10-11T04:14:20Z"
+            },
+            {
+              "name": "Post Setup .NET",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:14:20Z",
+              "completed_at": "2026-10-11T04:14:20Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:14:20Z",
+              "completed_at": "2026-10-11T04:14:20Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:14:20Z",
+              "completed_at": "2026-10-11T04:14:20Z"
+            }
+          ]
+        },
+        {
+          "id": 114380938123,
+          "name": "Format",
+          "started_at": "2026-10-11T03:41:01Z",
+          "completed_at": "2026-10-11T03:41:23Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:02Z",
+              "completed_at": "2026-10-11T03:41:03Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:03Z",
+              "completed_at": "2026-10-11T03:41:04Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:04Z",
+              "completed_at": "2026-10-11T03:41:12Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:12Z",
+              "completed_at": "2026-10-11T03:41:16Z"
+            },
+            {
+              "name": "Check Prettier formatting",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:16Z",
+              "completed_at": "2026-10-11T03:41:20Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:20Z",
+              "completed_at": "2026-10-11T03:41:20Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:20Z",
+              "completed_at": "2026-10-11T03:41:20Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:20Z",
+              "completed_at": "2026-10-11T03:41:20Z"
+            }
+          ]
+        },
+        {
+          "id": 114386191830,
+          "name": "Deploy Ingestion Worker",
+          "started_at": "2026-10-11T04:14:22Z",
+          "completed_at": "2026-10-11T04:14:22Z",
+          "conclusion": "skipped",
+          "steps": []
+        },
+        {
+          "id": 114386191915,
+          "name": "Deploy API",
+          "started_at": "2026-10-11T04:14:22Z",
+          "completed_at": "2026-10-11T04:14:22Z",
+          "conclusion": "skipped",
+          "steps": []
+        }
+      ]
+    },
+    {
+      "id": 38109169847,
+      "head_sha": "bead7bb1e8c754a499aa7187b2b0d5d4d69ba675",
+      "event": "pull_request",
+      "created_at": "2026-10-11T03:40:57Z",
+      "run_started_at": "2026-10-11T03:40:57Z",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/jwh3times/apexracers/actions/runs/38109169847",
+      "jobs": [
+        {
+          "id": 114380938314,
+          "name": "Driver Privacy Contract",
+          "started_at": "2026-10-11T03:41:00Z",
+          "completed_at": "2026-10-11T04:00:57Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:01Z",
+              "completed_at": "2026-10-11T03:41:02Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:02Z",
+              "completed_at": "2026-10-11T03:41:03Z"
+            },
+            {
+              "name": "Run actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:03Z",
+              "completed_at": "2026-10-11T03:41:04Z"
+            },
+            {
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:04Z",
+              "completed_at": "2026-10-11T03:41:10Z"
+            },
+            {
+              "name": "Verify evidence collector failure behavior",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:10Z",
+              "completed_at": "2026-10-11T03:41:10Z"
+            },
+            {
+              "name": "Build backend and SPA",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:10Z",
+              "completed_at": "2026-10-11T03:41:40Z"
+            },
+            {
+              "name": "Install Chromium",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:40Z",
+              "completed_at": "2026-10-11T03:41:59Z"
+            },
+            {
+              "name": "Start fresh evidence context",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:59Z",
+              "completed_at": "2026-10-11T03:41:59Z"
+            },
+            {
+              "name": "Run original backend contract cases without retries",
+              "conclusion": "success",
+              "started_at": "2026-10-11T03:41:59Z",
+              "completed_at": "2026-10-11T04:00:01Z"
+            },
+            {
+              "name": "Run original built-SPA privacy cases without retries",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:01Z",
+              "completed_at": "2026-10-11T04:00:53Z"
+            },
+            {
+              "name": "Evaluate complete matrix and original execution outcomes",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:53Z",
+              "completed_at": "2026-10-11T04:00:53Z"
+            },
+            {
+              "name": "Retain original results, manifest and fault artifacts",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:53Z",
+              "completed_at": "2026-10-11T04:00:54Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:54Z",
+              "completed_at": "2026-10-11T04:00:54Z"
+            },
+            {
+              "name": "Post Run actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:54Z",
+              "completed_at": "2026-10-11T04:00:54Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:54Z",
+              "completed_at": "2026-10-11T04:00:55Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:00:55Z",
+              "completed_at": "2026-10-11T04:00:55Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38110986246,
+      "head_sha": "ba858126e6cccb1aac17a73c13611259333c916a",
+      "event": "push",
+      "created_at": "2026-10-11T04:15:12Z",
+      "run_started_at": "2026-10-11T04:15:12Z",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/jwh3times/apexracers/actions/runs/38110986246",
+      "jobs": [
+        {
+          "id": 114386322871,
+          "name": "Format",
+          "started_at": "2026-10-11T04:15:14Z",
+          "completed_at": "2026-10-11T04:15:32Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:15Z",
+              "completed_at": "2026-10-11T04:15:16Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:16Z",
+              "completed_at": "2026-10-11T04:15:18Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:18Z",
+              "completed_at": "2026-10-11T04:15:25Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:25Z",
+              "completed_at": "2026-10-11T04:15:27Z"
+            },
+            {
+              "name": "Check Prettier formatting",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:27Z",
+              "completed_at": "2026-10-11T04:15:30Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:30Z",
+              "completed_at": "2026-10-11T04:15:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:30Z",
+              "completed_at": "2026-10-11T04:15:30Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:30Z",
+              "completed_at": "2026-10-11T04:15:30Z"
+            }
+          ]
+        },
+        {
+          "id": 114386323063,
+          "name": "Test",
+          "started_at": "2026-10-11T04:15:15Z",
+          "completed_at": "2026-10-11T04:48:57Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:16Z",
+              "completed_at": "2026-10-11T04:15:18Z"
+            },
+            {
+              "name": "Pull ghcr.io/irongut/codecoveragesummary:v1.3.0",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:18Z",
+              "completed_at": "2026-10-11T04:15:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:24Z",
+              "completed_at": "2026-10-11T04:15:26Z"
+            },
+            {
+              "name": "Setup .NET",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:26Z",
+              "completed_at": "2026-10-11T04:15:26Z"
+            },
+            {
+              "name": "Run backend tests with coverage",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:26Z",
+              "completed_at": "2026-10-11T04:47:14Z"
+            },
+            {
+              "name": "Upload backend test results",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:14Z",
+              "completed_at": "2026-10-11T04:47:16Z"
+            },
+            {
+              "name": "Check backend line coverage threshold (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:16Z",
+              "completed_at": "2026-10-11T04:47:16Z"
+            },
+            {
+              "name": "Check backend branch coverage threshold (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:16Z",
+              "completed_at": "2026-10-11T04:47:17Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:17Z",
+              "completed_at": "2026-10-11T04:47:24Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:24Z",
+              "completed_at": "2026-10-11T04:47:28Z"
+            },
+            {
+              "name": "Run repository coordination tests",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:28Z",
+              "completed_at": "2026-10-11T04:47:29Z"
+            },
+            {
+              "name": "Test ingestion deployment pause preservation",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:47:29Z",
+              "completed_at": "2026-10-11T04:48:06Z"
+            },
+            {
+              "name": "Run frontend tests with coverage (>85%)",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:48:06Z",
+              "completed_at": "2026-10-11T04:48:53Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:48:53Z",
+              "completed_at": "2026-10-11T04:48:53Z"
+            },
+            {
+              "name": "Post Setup .NET",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:48:53Z",
+              "completed_at": "2026-10-11T04:48:53Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:48:53Z",
+              "completed_at": "2026-10-11T04:48:53Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:48:53Z",
+              "completed_at": "2026-10-11T04:48:53Z"
+            }
+          ]
+        },
+        {
+          "id": 114386323101,
+          "name": "Lint",
+          "started_at": "2026-10-11T04:15:15Z",
+          "completed_at": "2026-10-11T04:15:30Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:16Z",
+              "completed_at": "2026-10-11T04:15:16Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:16Z",
+              "completed_at": "2026-10-11T04:15:17Z"
+            },
+            {
+              "name": "Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:17Z",
+              "completed_at": "2026-10-11T04:15:24Z"
+            },
+            {
+              "name": "Install frontend dependencies",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:24Z",
+              "completed_at": "2026-10-11T04:15:26Z"
+            },
+            {
+              "name": "Run Oxlint",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:26Z",
+              "completed_at": "2026-10-11T04:15:27Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:27Z",
+              "completed_at": "2026-10-11T04:15:27Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:27Z",
+              "completed_at": "2026-10-11T04:15:27Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:27Z",
+              "completed_at": "2026-10-11T04:15:27Z"
+            }
+          ]
+        },
+        {
+          "id": 114391594529,
+          "name": "Deploy Ingestion Worker",
+          "started_at": "2026-10-11T04:49:01Z",
+          "completed_at": "2026-10-11T04:50:40Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:02Z",
+              "completed_at": "2026-10-11T04:49:03Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:03Z",
+              "completed_at": "2026-10-11T04:49:04Z"
+            },
+            {
+              "name": "Log in to Azure",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:04Z",
+              "completed_at": "2026-10-11T04:49:10Z"
+            },
+            {
+              "name": "Log in to Container Registry",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:10Z",
+              "completed_at": "2026-10-11T04:49:12Z"
+            },
+            {
+              "name": "Build and push ingestion image",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:12Z",
+              "completed_at": "2026-10-11T04:49:47Z"
+            },
+            {
+              "name": "Update Container App image",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:47Z",
+              "completed_at": "2026-10-11T04:50:38Z"
+            },
+            {
+              "name": "Post Log in to Azure",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:38Z",
+              "completed_at": "2026-10-11T04:50:38Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:38Z",
+              "completed_at": "2026-10-11T04:50:39Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:39Z",
+              "completed_at": "2026-10-11T04:50:39Z"
+            }
+          ]
+        },
+        {
+          "id": 114391594538,
+          "name": "Deploy API",
+          "started_at": "2026-10-11T04:49:01Z",
+          "completed_at": "2026-10-11T04:50:14Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:02Z",
+              "completed_at": "2026-10-11T04:49:02Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:02Z",
+              "completed_at": "2026-10-11T04:49:03Z"
+            },
+            {
+              "name": "Log in to Azure",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:03Z",
+              "completed_at": "2026-10-11T04:49:12Z"
+            },
+            {
+              "name": "Log in to Container Registry",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:12Z",
+              "completed_at": "2026-10-11T04:49:14Z"
+            },
+            {
+              "name": "Build and push API image",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:14Z",
+              "completed_at": "2026-10-11T04:49:59Z"
+            },
+            {
+              "name": "Deploy to App Service",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:49:59Z",
+              "completed_at": "2026-10-11T04:50:12Z"
+            },
+            {
+              "name": "Post Log in to Azure",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:12Z",
+              "completed_at": "2026-10-11T04:50:13Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:13Z",
+              "completed_at": "2026-10-11T04:50:13Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:50:13Z",
+              "completed_at": "2026-10-11T04:50:13Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38110986274,
+      "head_sha": "ba858126e6cccb1aac17a73c13611259333c916a",
+      "event": "push",
+      "created_at": "2026-10-11T04:15:12Z",
+      "run_started_at": "2026-10-11T04:15:12Z",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/jwh3times/apexracers/actions/runs/38110986274",
+      "jobs": [
+        {
+          "id": 114386322850,
+          "name": "Driver Privacy Contract",
+          "started_at": "2026-10-11T04:15:15Z",
+          "completed_at": "2026-10-11T04:40:11Z",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:16Z",
+              "completed_at": "2026-10-11T04:15:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:17Z",
+              "completed_at": "2026-10-11T04:15:19Z"
+            },
+            {
+              "name": "Run actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:19Z",
+              "completed_at": "2026-10-11T04:15:20Z"
+            },
+            {
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:20Z",
+              "completed_at": "2026-10-11T04:15:28Z"
+            },
+            {
+              "name": "Verify evidence collector failure behavior",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:28Z",
+              "completed_at": "2026-10-11T04:15:29Z"
+            },
+            {
+              "name": "Build backend and SPA",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:15:29Z",
+              "completed_at": "2026-10-11T04:16:09Z"
+            },
+            {
+              "name": "Install Chromium",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:16:09Z",
+              "completed_at": "2026-10-11T04:16:28Z"
+            },
+            {
+              "name": "Start fresh evidence context",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:16:28Z",
+              "completed_at": "2026-10-11T04:16:28Z"
+            },
+            {
+              "name": "Run original backend contract cases without retries",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:16:28Z",
+              "completed_at": "2026-10-11T04:39:01Z"
+            },
+            {
+              "name": "Run original built-SPA privacy cases without retries",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:39:01Z",
+              "completed_at": "2026-10-11T04:40:06Z"
+            },
+            {
+              "name": "Evaluate complete matrix and original execution outcomes",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:06Z",
+              "completed_at": "2026-10-11T04:40:07Z"
+            },
+            {
+              "name": "Retain original results, manifest and fault artifacts",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:07Z",
+              "completed_at": "2026-10-11T04:40:08Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:08Z",
+              "completed_at": "2026-10-11T04:40:08Z"
+            },
+            {
+              "name": "Post Run actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:08Z",
+              "completed_at": "2026-10-11T04:40:08Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:08Z",
+              "completed_at": "2026-10-11T04:40:08Z"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "started_at": "2026-10-11T04:40:08Z",
+              "completed_at": "2026-10-11T04:40:08Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.5] - 2026-10-11
+
+### Added
+
+- Reproducible CI-duration analysis with retained timing baselines, bounded local coverage/setup
+  measurements, and ranked optimization proposals that preserve the Driver privacy-contract gates.
+
 ## [14.0.4] - 2026-10-10
 
 ### Added
@@ -1634,7 +1641,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.5...HEAD
+[14.0.5]: https://github.com/jwh3times/apexracers/compare/v14.0.4...v14.0.5
 [14.0.4]: https://github.com/jwh3times/apexracers/compare/v14.0.3...v14.0.4
 [14.0.3]: https://github.com/jwh3times/apexracers/compare/v14.0.2...v14.0.3
 [14.0.0]: https://github.com/jwh3times/apexracers/compare/v13.1.1...v14.0.0
