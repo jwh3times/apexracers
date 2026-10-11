@@ -35,7 +35,12 @@ def source_fingerprint():
 
 
 def instant(value):
-    return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, str):
+        raise ValueError("Invalid execution timestamp")
+    result = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if result.utcoffset() is None:
+        raise ValueError("Execution timestamp requires an explicit timezone")
+    return result
 
 
 def backend_results(path):
@@ -43,6 +48,8 @@ def backend_results(path):
     definitions = {}
     for test in root.findall(".//t:UnitTest", NS):
         method = test.find("t:TestMethod", NS)
+        if method is None or not method.get("className") or not method.get("name") or test.get("id") in definitions:
+            raise ValueError("Missing or duplicate backend case definition")
         definitions[test.get("id")] = method.get("className") + "." + method.get("name")
     records = []
     for result in root.findall(".//t:UnitTestResult", NS):
@@ -54,6 +61,8 @@ def backend_results(path):
     if len({r["executionId"] for r in records}) != len(records):
         raise ValueError("Duplicate backend execution records")
     times = root.find("t:Times", NS)
+    if times is None:
+        raise ValueError("Missing backend execution timestamps")
     return records, times.get("start"), times.get("finish")
 
 
@@ -94,7 +103,7 @@ def validate_admissions(directory, started):
         raise ValueError("All three actually admitted useful contexts are required")
     receipt = json.loads((ROOT / "docs/testing/driver-catalog-admission-v1.json").read_text())
     for name, expected in receipt["reviewedSources"].items():
-        if digest(ROOT / name) != expected:
+        if hashlib.sha256((ROOT / name).read_bytes().replace(b"\r\n", b"\n")).hexdigest() != expected:
             raise ValueError("Material reviewed template change requires renewed maintainer decision")
     epochs = set()
     for path in paths:
@@ -115,10 +124,17 @@ def validate_admissions(directory, started):
 
 
 def collect(directory, backend_exit, browser_exit):
-    context = json.loads((directory / "context.json").read_text())
     errors = []
+    try:
+        context = json.loads((directory / "context.json").read_text())
+        started = instant(context["startedAt"])
+        if not context["sourceFingerprint"] or not context["commit"]:
+            raise ValueError("Incomplete execution context")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        errors.append("execution context: " + str(error))
+        context = {"startedAt": now(), "sourceFingerprint": None, "commit": None}
+        started = instant(context["startedAt"])
     backend, browser, admissions = [], [], []
-    started = instant(context["startedAt"])
     for report, loader in [("backend.trx", backend_results), ("browser.json", browser_results)]:
         try:
             loaded = loader(directory / report)
@@ -128,11 +144,11 @@ def collect(directory, backend_exit, browser_exit):
                 backend = loaded[0]
             else:
                 browser = loaded[0]
-        except (OSError, ValueError, KeyError, TypeError, ET.ParseError) as error:
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, ET.ParseError) as error:
             errors.append(report + ": " + str(error))
     try:
         admissions = validate_admissions(directory, started)
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
         errors.append("catalog admission: " + str(error))
     if backend_exit != 0 or browser_exit != 0:
         errors.append("A test process failed; successful retries cannot erase that outcome")

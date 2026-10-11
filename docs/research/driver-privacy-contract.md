@@ -44,7 +44,7 @@ The existing maintainer decision accepted `catalog30-technical-review-v1` withou
 `1ef98d055cb10ed7ff4a84b7426a9197b638c779`. Its sanitized executable receipt is
 `docs/testing/driver-catalog-admission-v1.json`; it records the accepted scope/compositions, limits and
 hashes of the reviewed template, band/formula and candidate implementation sources. Those four sources
-remain byte-for-byte equivalent to the reviewed source. A material change fails the check and requires
+remain equivalent to the reviewed source after normalizing CRLF to LF for Windows checkouts. A material change fails the check and requires
 renewed review; neither test code nor a new hash is a replacement maintainer decision.
 
 `AdmittedCatalogTests` consumes that receipt, creates a fresh isolated original evidence copy/purpose

@@ -1,3 +1,5 @@
+import contextlib
+import io
 import importlib.util
 import json
 import pathlib
@@ -52,6 +54,22 @@ class EvidenceBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "actually admitted"):
                 contract.validate_admissions(pathlib.Path(directory), contract.instant("2026-10-10T00:00:00Z"))
+
+    def test_missing_execution_context_still_emits_every_matrix_row_as_unexercised(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory)
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = contract.collect(path, 1, 1)
+            manifest = json.loads((path / "manifest.json").read_text())
+        self.assertEqual(1, code)
+        self.assertEqual(43, len(manifest["rows"]))
+        self.assertEqual({"not exercised"}, {row["result"] for row in manifest["rows"]})
+        self.assertFalse(manifest["liveEligible"])
+
+    def test_ambiguous_or_malformed_timestamps_cannot_establish_freshness(self):
+        for value in [123, None, "2026-10-10T00:00:00", "unknown"]:
+            with self.assertRaises(ValueError):
+                contract.instant(value)
 
 
 if __name__ == "__main__":

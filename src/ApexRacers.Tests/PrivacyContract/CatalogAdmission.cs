@@ -26,7 +26,7 @@ internal static class CatalogAdmission
             throw new InvalidOperationException("Recorded synthetic catalog admission is unavailable.");
         foreach (var source in receipt.GetProperty("reviewedSources").EnumerateObject())
         {
-            var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(RepositoryRoot, source.Name))));
+            var hash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(Path.Combine(RepositoryRoot, source.Name)).Replace("\r\n", "\n", StringComparison.Ordinal))));
             if (!hash.Equals(source.Value.GetString(), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Material template change requires renewed catalog review.");
         }
