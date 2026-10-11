@@ -74,6 +74,7 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
     }
     public static async Task Run(PostgreSqlFixture fixture, string name, Func<ReferenceTopology, Task> exercise)
     {
+        using var rootProbe = FixtureCostProbe.Begin("reference.topology");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         var ct = timeout.Token;
@@ -81,9 +82,10 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         var epoch = test.HistoryEpoch;
         var first = test.First; var second = test.Second;
         var passed = false;
-        try { await exercise(test); passed = true; }
+        try { await FixtureCostProbe.MeasureAsync("topology.exercise", () => exercise(test)); passed = true; }
         finally
         {
+            using var artifactProbe = FixtureCostProbe.Begin("topology.artifact");
             var output = PrivacyContract.CatalogAdmission.OutputDirectory("driver-references"); Directory.CreateDirectory(output);
             await File.WriteAllTextAsync(Path.Combine(output, name + ".json"), JsonSerializer.Serialize(new
             {
@@ -99,8 +101,10 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
     }
     public static async Task<ReferenceTopology> CreateAsync(string connection, CancellationToken ct, bool browser = false, int port = 0)
     {
+        using var setupProbe = FixtureCostProbe.Begin("reference.setup");
         async Task<string> Create(string prefix)
         {
+            using var createProbe = FixtureCostProbe.Begin("database.create");
             var name = prefix + Guid.NewGuid().ToString("N");
             await using var c = new NpgsqlConnection(connection); await c.OpenAsync(ct);
             await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", c); await command.ExecuteNonQueryAsync(ct);
@@ -108,10 +112,11 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         }
         var primary = await Create("apexracers_reference_primary_"); var independent = await Create("apexracers_reference_history_");
         var epoch = Guid.NewGuid();
-        var history = new ControlledPublicationHistory(independent, epoch, new LifecycleGates()); await history.InitializeGenesisAsync(ct);
+        var history = new ControlledPublicationHistory(independent, epoch, new LifecycleGates()); await FixtureCostProbe.MeasureAsync("history.genesis", () => history.InitializeGenesisAsync(ct));
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(DataProvenance.Demo)))
         {
-            await db.Database.MigrateAsync(ct);
+            await FixtureCostProbe.MeasureAsync("schema.migrations", () => db.Database.MigrateAsync(ct));
+            using var seedProbe = FixtureCostProbe.Begin("seed.authority-copy-operating");
             db.Users.AddRange(new[] { ReferenceActors.Recipient, ReferenceActors.Target, ReferenceActors.Other }.Select(id => new ApplicationUser
             { Id = id, DisplayName = "Controlled synthetic User", EmailConfirmed = true }));
             await db.SaveChangesAsync(ct);
@@ -135,5 +140,5 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         try { second = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser); } catch { await first.DisposeAsync(); throw; }
         return new ReferenceTopology(primary, independent, epoch, first, second, ct);
     }
-    public async ValueTask DisposeAsync() { await First.DisposeAsync(); await Second.DisposeAsync(); }
+    public async ValueTask DisposeAsync() { using var disposalProbe = FixtureCostProbe.Begin("reference.dispose"); await First.DisposeAsync(); await Second.DisposeAsync(); }
 }

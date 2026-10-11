@@ -22,9 +22,11 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
     [Fact]
     public async Task Actual_legacy_binary_cannot_read_uploaded_laps_after_the_real_upgrade_chain()
     {
+        using var rootProbe = FixtureCostProbe.Begin("legacy-upgrade.case");
         var database = "apexracers_restore_legacy_" + Guid.NewGuid().ToString("N");
         await using (var connection = new NpgsqlConnection(fixture.Container.GetConnectionString()))
         {
+            using var createProbe = FixtureCostProbe.Begin("database.create");
             await connection.OpenAsync(Ct);
             await using var create = new NpgsqlCommand($"CREATE DATABASE \"{database}\"", connection);
             await create.ExecuteNonQueryAsync(Ct);
@@ -32,7 +34,7 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
         var target = new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString()) { Database = database, Host = "127.0.0.1", Pooling = false }.ConnectionString;
         await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(target, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")).Options, new IRacingDataScope(DataProvenance.Real));
         var migration = db.GetService<IMigrator>();
-        await migration.MigrateAsync("20260912044021_AddKnownDevices", Ct);
+        await FixtureCostProbe.MeasureAsync("schema.legacy-migrations", () => migration.MigrateAsync("20260912044021_AddKnownDevices", Ct));
         await db.Database.ExecuteSqlRawAsync("""
             INSERT INTO identity."Users" ("Id", "DisplayName", "IRacingCustomerId", "EmailConfirmed", "PhoneNumberConfirmed", "TwoFactorEnabled", "LockoutEnabled", "AccessFailedCount")
             VALUES ('aaaaaaaa-3750-4000-8000-000000000001', 'Synthetic unverified legacy User', 100001, true, false, false, false, 0);
@@ -57,7 +59,7 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
         await using var preparedReader = new NpgsqlCommand("SELECT COUNT(*) FROM iracing.\"UploadedLaps\"", oldSession);
         await preparedReader.PrepareAsync(Ct);
         Assert.Equal(3L, await preparedReader.ExecuteScalarAsync(Ct));
-        await migration.MigrateAsync(cancellationToken: Ct);
+        await FixtureCostProbe.MeasureAsync("schema.upgrade-migrations", () => migration.MigrateAsync(cancellationToken: Ct));
         var invalidated = await Assert.ThrowsAsync<PostgresException>(() => preparedReader.ExecuteScalarAsync(Ct));
         Assert.Equal(PostgresErrorCodes.UndefinedTable, invalidated.SqlState);
         await using var legacy = await LegacyApiProcess.StartAsync(target, Ct);

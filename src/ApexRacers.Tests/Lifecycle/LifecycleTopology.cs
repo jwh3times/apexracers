@@ -140,6 +140,7 @@ internal sealed class LifecycleTopology(
     public static async Task RunAsync(PostgreSqlFixture fixture, string scenario, string[] evidenceIds,
         Func<LifecycleTopology, Task> exercise)
     {
+        using var rootProbe = FixtureCostProbe.Begin("lifecycle.topology");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(3));
         var ct = deadline.Token;
@@ -148,7 +149,8 @@ internal sealed class LifecycleTopology(
         var journal = await CreateDatabaseAsync(fixture, "apexracers_lifecycle_journal_", ct);
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options))
         {
-            await db.Database.MigrateAsync(ct);
+            await FixtureCostProbe.MeasureAsync("schema.migrations", () => db.Database.MigrateAsync(ct));
+            using var seedProbe = FixtureCostProbe.Begin("seed.operating-users");
             await Operating.OperatingFixtures.SeedAsync(db,
                 [new("synthetic-owner-v1", "personal", OperatingWork.Publication),
                  new("synthetic-sharing-v1", "sharing", OperatingWork.Publication),
@@ -158,7 +160,7 @@ internal sealed class LifecycleTopology(
                 new ApplicationUser { Id = SyntheticLifecycleActors.Other, DisplayName = "Synthetic recipient", EmailConfirmed = true });
             await db.SaveChangesAsync(ct);
         }
-        await new PersistedSyntheticJournal(journal, new LifecycleGates()).InitializeAsync(ct);
+        await FixtureCostProbe.MeasureAsync("history.initialize", () => new PersistedSyntheticJournal(journal, new LifecycleGates()).InitializeAsync(ct));
         var link = RehearsalDatabaseLink.Create(primary);
         LifecycleProcess publisher;
         try { publisher = await LifecycleProcess.StartAsync(link.ConnectionString, journal, ct); }
@@ -170,11 +172,12 @@ internal sealed class LifecycleTopology(
         var passed = false;
         try
         {
-            await exercise(topology).WaitAsync(TimeSpan.FromMinutes(2), ct);
+            await FixtureCostProbe.MeasureAsync("topology.exercise", () => exercise(topology).WaitAsync(TimeSpan.FromMinutes(2), ct));
             passed = true;
         }
         finally
         {
+            using var observationProbe = FixtureCostProbe.Begin("topology.observation-artifact");
             try { await topology.CaptureAsync(); }
             catch (Exception error) when (!passed && error is HttpRequestException or OperationCanceledException)
             { topology.faults.Add("Final observation unavailable: " + error.GetType().Name); }
@@ -248,6 +251,7 @@ internal sealed class LifecycleTopology(
 
     private static async Task<string> CreateDatabaseAsync(PostgreSqlFixture fixture, string prefix, CancellationToken ct)
     {
+        using var createProbe = FixtureCostProbe.Begin("database.create");
         var name = prefix + Guid.NewGuid().ToString("N");
         await using var connection = new NpgsqlConnection(fixture.Container.GetConnectionString());
         await connection.OpenAsync(ct);
@@ -259,6 +263,7 @@ internal sealed class LifecycleTopology(
 
     public async ValueTask DisposeAsync()
     {
+        using var disposalProbe = FixtureCostProbe.Begin("lifecycle.dispose");
         foreach (var host in hosts)
             await host.DisposeAsync();
         await link.DisposeAsync();
