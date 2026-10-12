@@ -210,6 +210,38 @@ class ProcessOwnershipTests(unittest.TestCase):
                     owner.cleanup(grace=0)
             self.assertFalse(any(call.args[0][:3] == ['docker', 'network', 'rm'] for call in run.call_args_list))
 
+    def test_unlabelled_mounted_volume_survivor_fails_without_name_removal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            owner.containers['removed-container'] = {'id': 'removed-container', 'created': 'before', 'session': 'session',
+                'reaper': False, 'image': 'postgres', 'volumeNames': ['anonymous-volume']}
+            def command(argv, **kwargs):
+                if argv[:2] == ['docker', 'inspect']:
+                    return subprocess.CompletedProcess(argv, 1, '', 'error: no such object')
+                if argv[:3] == ['docker', 'volume', 'inspect']:
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([{'Name': 'anonymous-volume', 'Labels': {}}]), '')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command) as run:
+                result = owner.cleanup(grace=0)
+            self.assertFalse(result['complete'])
+            self.assertIn('anonymous-volume', result['remainingResources'])
+            self.assertFalse(any(call.args[0][:3] == ['docker', 'volume', 'rm'] for call in run.call_args_list))
+
+    def test_verified_owned_container_removal_includes_anonymous_volumes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            owner.containers['container-id'] = {'id': 'container-id', 'created': 'before', 'session': 'session',
+                'reaper': False, 'image': 'postgres', 'volumeNames': []}
+            def command(argv, **kwargs):
+                if argv[:2] == ['docker', 'inspect']:
+                    data = {'Created': 'before', 'Config': {'Labels': {'org.testcontainers.resource-reaper-session': 'session'}}}
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([data]), '')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command) as run:
+                result = owner.cleanup(grace=0)
+            self.assertTrue(result['complete'])
+            self.assertTrue(any(call.args[0] == ['docker', 'rm', '-f', '-v', 'container-id'] for call in run.call_args_list))
+
 
 class ChildCancellationTests(unittest.TestCase):
     def test_sigterm_keeps_both_original_exit_records_and_nonzero_parent(self):

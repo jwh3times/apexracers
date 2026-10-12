@@ -161,7 +161,8 @@ class Ownership:
                     if not labelled and not reaper:
                         raise ValueError('Container session ownership mismatch')
                     self.containers[data['Id']] = {'id': data['Id'], 'created': data['Created'],
-                        'session': session, 'reaper': reaper, 'image': data['Config']['Image']}
+                        'session': session, 'reaper': reaper, 'image': data['Config']['Image'],
+                        'volumeNames': [m['Name'] for m in data.get('Mounts', []) if m.get('Type') == 'volume']}
         with self.output.open('a') as stream:
             stream.write(json.dumps({'monotonicSeconds': time.monotonic(),
                 'identities': self.identities, 'sessions': sorted(self.sessions),
@@ -204,7 +205,19 @@ class Ownership:
             remaining = limit - (time.monotonic() - started)
             if remaining <= 0:
                 raise TimeoutError('Owned cleanup deadline exceeded')
-            return subprocess.run(argv, capture_output=True, text=True, timeout=min(8, remaining))
+            record = {'argv': argv, 'monotonicSeconds': time.monotonic()}
+            journal = self.output.with_name('cleanup-command-original.jsonl')
+            with journal.open('a') as stream:
+                stream.write(json.dumps(dict(record, stage='started')) + '\n')
+            try:
+                result = subprocess.run(argv, capture_output=True, text=True, timeout=min(8, remaining))
+            except BaseException as error:
+                with journal.open('a') as stream:
+                    stream.write(json.dumps(dict(record, stage='failed', errorType=type(error).__name__)) + '\n')
+                raise
+            with journal.open('a') as stream:
+                stream.write(json.dumps(dict(record, stage='completed', exitCode=result.returncode)) + '\n')
+            return result
         self.observe(deadline=started + limit)
         while self.alive() and time.monotonic() - started < grace:
             time.sleep(.2)
@@ -233,7 +246,7 @@ class Ownership:
                          and data['Config']['Image'] == original['image']))
             if data['Created'] != original['created'] or not owned:
                 raise ValueError('Container identity changed before cleanup')
-            result = bounded(['docker', 'rm', '-f', cid])
+            result = bounded(['docker', 'rm', '-f', '-v', cid])
             actions.append({'container': cid, 'exitCode': result.returncode})
             if result.returncode and not ('no such object' in result.stderr.lower() or 'no such container' in result.stderr.lower()):
                 remaining_containers.append(cid)
@@ -261,6 +274,8 @@ class Ownership:
                                 'created': data.get('CreatedAt' if kind == 'volume' else 'Created'),
                                 'id': data.get('Id')}
                     resource_bindings.append(identity)
+                    with self.output.with_name('cleanup-resource-bindings-original.jsonl').open('a') as stream:
+                        stream.write(json.dumps(identity) + '\n')
                     if kind == 'volume':
                         remaining_resources.append(resource)
                         continue
@@ -301,6 +316,18 @@ class Ownership:
                     if result.returncode:
                         raise RuntimeError('Final owned resource enumeration unavailable')
                     residual.extend({'kind': kind, 'id': value, 'session': session} for value in result.stdout.split())
+            # Anonymous image volumes need not carry Testcontainers session labels.
+            # Detect surviving names from verified container mounts, but never
+            # delete a Docker volume by a name that could have been reused.
+            for original in self.containers.values():
+                for name in original.get('volumeNames', []):
+                    inspected = bounded(['docker', 'volume', 'inspect', name])
+                    if inspected.returncode:
+                        if 'no such' in inspected.stderr.lower() or 'not found' in inspected.stderr.lower():
+                            continue
+                        raise RuntimeError('Final mounted-volume inspection unavailable')
+                    residual.append({'kind': 'mounted-volume', 'id': name, 'session': original['session'],
+                                     'inspection': {k: json.loads(inspected.stdout)[0].get(k) for k in ('Name', 'CreatedAt', 'Driver')}})
             final_observations.append({'monotonicSeconds': time.monotonic(), 'resources': residual,
                                        'processes': self.alive()})
             if observation == 0:
@@ -308,7 +335,7 @@ class Ownership:
         remaining_containers = sorted(set(remaining_containers) | {r['id'] for sample in final_observations
                                       for r in sample['resources'] if r['kind'] in ('container', 'ryuk')})
         remaining_resources = sorted(set(remaining_resources) | {r['id'] for sample in final_observations
-                                     for r in sample['resources'] if r['kind'] in ('volume', 'network')})
+                                     for r in sample['resources'] if r['kind'] in ('volume', 'network', 'mounted-volume')})
         return {'seconds': time.monotonic() - started, 'actions': actions,
                 'resourceBindings': resource_bindings, 'finalObservations': final_observations,
                 'remainingProcesses': self.alive(), 'remainingContainers': remaining_containers,
