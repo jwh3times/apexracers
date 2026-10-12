@@ -35,6 +35,13 @@ internal static class FixtureCostProbe
         catch { SetOutcome(span, "fault"); throw; }
     }
 
+    public static void TestcontainersSessionResource()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR"))) return;
+        Resource("testcontainers-session",
+            DotNet.Testcontainers.Containers.ResourceReaper.DefaultSessionId.ToString("D"));
+    }
+
     public static void ProcessResource(int processId)
     {
         if (processId <= 0) { Console.Error.WriteLine("FIXTURE_COST_PROBE_INVALID ProcessResource"); return; }
