@@ -12,6 +12,7 @@ import signal
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 import xml.etree.ElementTree as ET
 
@@ -39,12 +40,20 @@ def docker_ids():
 
 def test_environment(directory):
     env = os.environ.copy()
-    for key, leaf in [('TMPDIR', 'tmp'), ('DOTNET_CLI_HOME', 'cli'), ('NUGET_PACKAGES', 'nuget'),
+    # MTP uses Unix sockets under TMPDIR; the workspace path exceeds their limit.
+    temporary = tempfile.mkdtemp(prefix='ax408-')
+    env['TMPDIR'] = temporary
+    env['TESTINGPLATFORM_PIPE_DIRECTORY'] = temporary
+    for key, leaf in [('DOTNET_CLI_HOME', 'cli'), ('NUGET_PACKAGES', 'nuget'),
                       ('MSBuildUserExtensionsPath', 'msbuild'), ('DRIVER_PRIVACY_EVIDENCE_DIR', 'evidence'),
                       ('APEXRACERS_COST_PROBE_DIR', 'phases'), ('PUBLICATION_REHEARSAL_ARTIFACTS', 'publication')]:
         target = directory / leaf
         target.mkdir(parents=True, exist_ok=False)
         env[key] = str(target)
+    write(directory / 'environment-paths-original.json',
+          {key: env[key] for key in ('TMPDIR', 'TESTINGPLATFORM_PIPE_DIRECTORY', 'DOTNET_CLI_HOME',
+                                    'NUGET_PACKAGES', 'MSBuildUserExtensionsPath', 'DRIVER_PRIVACY_EVIDENCE_DIR',
+                                    'APEXRACERS_COST_PROBE_DIR', 'PUBLICATION_REHEARSAL_ARTIFACTS')})
     return env
 
 
