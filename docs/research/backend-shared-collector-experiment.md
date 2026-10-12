@@ -13,7 +13,10 @@ The branch-only `backend-shared-experiment.yml` builds one canonical Release tre
 and transfers its exact bytes to original baseline and prototype jobs. The jobs
 use pinned .NET SDK 10.0.112 and Microsoft dotnet-coverage 18.12.0. Baseline uses
 original MTP collection; prototype executes two whole-class copied test applications
-inside one live collector. Both retain source/build, SDK, runtime and tool bindings,
+inside one live collector. The SDK is installed into an isolated root and its
+selected version is checked explicitly, avoiding `latestMinor` selecting a newer
+preinstalled SDK. The pinned [setup action supports the isolated installation](https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/src/installer.ts).
+Both retain source/build, SDK, runtime and tool bindings,
 original discovery, commands, outcomes and raw reports. Location-specific copied
 UIDs are mapped through complete unchanged case metadata.
 
@@ -22,7 +25,10 @@ ownership. Cleanup observes PID/start-time identities and producer-owned diagnos
 sockets, records Testcontainers sessions before initialization, and inspects owned
 Docker objects by concrete IDs and creation metadata. Unknown objects are never
 removed based solely on a Docker delta. Missing or invalid ownership evidence
-invalidates acceptance. Every Docker operation shares the cleanup deadline.
+invalidates acceptance. Every Docker operation shares the cleanup deadline. Final session/resource
+enumeration checks for late creation. Networks are bound to immutable ID and
+creation metadata; volumes have reusable names, so residual volumes cause a
+failed assessment rather than deletion by an unsafe identity.
 
 Three matched original pairs must preserve the complete inventory and exact
 source/class/method/line/condition coverage model and observations. General gate

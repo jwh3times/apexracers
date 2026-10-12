@@ -235,9 +235,12 @@ class Ownership:
                 raise ValueError('Container identity changed before cleanup')
             result = bounded(['docker', 'rm', '-f', cid])
             actions.append({'container': cid, 'exitCode': result.returncode})
-            if result.returncode:
+            if result.returncode and not ('no such object' in result.stderr.lower() or 'no such container' in result.stderr.lower()):
                 remaining_containers.append(cid)
         # Reaper deletion may leave session-labelled volumes/networks on cancellation.
+        # Network IDs are immutable. Docker volumes expose no immutable ID, so a
+        # residual volume fails cleanup rather than risking deletion by reused name.
+        resource_bindings = []
         remaining_resources = []
         for session in self.sessions:
             for kind in ('volume', 'network'):
@@ -245,23 +248,73 @@ class Ownership:
                     'label=org.testcontainers.resource-reaper-session=' + session])
                 if listing.returncode:
                     raise RuntimeError('Owned resource enumeration unavailable')
-                ids = listing.stdout.split()
-                for resource in ids:
+                for resource in listing.stdout.split():
                     inspected = bounded(['docker', kind, 'inspect', resource])
                     if inspected.returncode:
+                        if 'no such' in inspected.stderr.lower() or 'not found' in inspected.stderr.lower():
+                            continue
                         raise RuntimeError('Owned resource inspection unavailable')
                     data = json.loads(inspected.stdout)[0]
                     if (data.get('Labels') or {}).get('org.testcontainers.resource-reaper-session', '').lower() != session:
-                        raise ValueError('Resource identity changed before cleanup')
-                    code = bounded(['docker', kind, 'rm', resource]).returncode
-                    actions.append({kind: resource, 'exitCode': code})
-                    if code:
+                        raise ValueError('Resource ownership changed before cleanup')
+                    identity = {'kind': kind, 'session': session, 'name': data['Name'],
+                                'created': data.get('CreatedAt' if kind == 'volume' else 'Created'),
+                                'id': data.get('Id')}
+                    resource_bindings.append(identity)
+                    if kind == 'volume':
                         remaining_resources.append(resource)
-        time.sleep(.1)
+                        continue
+                    if not identity['id'] or not identity['created']:
+                        raise ValueError('Network lacks immutable creation identity')
+                    verified = bounded(['docker', 'network', 'inspect', identity['id']])
+                    if verified.returncode:
+                        if 'no such' in verified.stderr.lower() or 'not found' in verified.stderr.lower():
+                            continue
+                        raise RuntimeError('Owned network reinspection unavailable')
+                    current = json.loads(verified.stdout)[0]
+                    if (current['Id'] != identity['id'] or current['Created'] != identity['created']
+                        or current['Name'] != identity['name']
+                        or (current.get('Labels') or {}).get('org.testcontainers.resource-reaper-session', '').lower() != session):
+                        raise ValueError('Network creation identity changed before cleanup')
+                    result = bounded(['docker', 'network', 'rm', identity['id']])
+                    actions.append({'network': identity['id'], 'exitCode': result.returncode, 'identity': identity})
+                    if result.returncode and not ('no such' in result.stderr.lower() or 'not found' in result.stderr.lower()):
+                        remaining_resources.append(identity['id'])
+        # Re-enumerate after every owned process has stopped: Docker may finish a
+        # creation request after its client exited. Snapshot twice; never substitute
+        # removal exit codes for a fresh session-scoped absence observation.
+        final_observations = []
+        for observation in range(2):
+            self.observe(deadline=started + limit)
+            residual = []
+            for session in self.sessions:
+                queries = [('container', ['docker', 'ps', '-aq', '--no-trunc', '--filter',
+                            'label=org.testcontainers.resource-reaper-session=' + session]),
+                           ('ryuk', ['docker', 'ps', '-aq', '--no-trunc', '--filter',
+                            'name=^/testcontainers-ryuk-' + session + '$']),
+                           ('volume', ['docker', 'volume', 'ls', '-q', '--filter',
+                            'label=org.testcontainers.resource-reaper-session=' + session]),
+                           ('network', ['docker', 'network', 'ls', '-q', '--filter',
+                            'label=org.testcontainers.resource-reaper-session=' + session])]
+                for kind, argv in queries:
+                    result = bounded(argv)
+                    if result.returncode:
+                        raise RuntimeError('Final owned resource enumeration unavailable')
+                    residual.extend({'kind': kind, 'id': value, 'session': session} for value in result.stdout.split())
+            final_observations.append({'monotonicSeconds': time.monotonic(), 'resources': residual,
+                                       'processes': self.alive()})
+            if observation == 0:
+                time.sleep(.25)
+        remaining_containers = sorted(set(remaining_containers) | {r['id'] for sample in final_observations
+                                      for r in sample['resources'] if r['kind'] in ('container', 'ryuk')})
+        remaining_resources = sorted(set(remaining_resources) | {r['id'] for sample in final_observations
+                                     for r in sample['resources'] if r['kind'] in ('volume', 'network')})
         return {'seconds': time.monotonic() - started, 'actions': actions,
+                'resourceBindings': resource_bindings, 'finalObservations': final_observations,
                 'remainingProcesses': self.alive(), 'remainingContainers': remaining_containers,
                 'remainingResources': remaining_resources,
                 'complete': not (self.alive() or remaining_containers or remaining_resources)}
+
 
 
 def environment(directory):

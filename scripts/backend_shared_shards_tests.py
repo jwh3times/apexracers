@@ -156,6 +156,60 @@ class ProcessOwnershipTests(unittest.TestCase):
                     owner.cleanup(grace=0)
             self.assertEqual(run.call_count, 1)
 
+    def test_late_server_created_container_fails_final_absence_observation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            owner.sessions.add('11111111-1111-1111-1111-111111111111')
+            def command(argv, **kwargs):
+                output = 'late-container\n' if argv[:3] == ['docker', 'ps', '-aq'] and 'label=' in argv[-1] else ''
+                return subprocess.CompletedProcess(argv, 0, output, '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command) as run:
+                result = owner.cleanup(grace=0)
+            self.assertFalse(result['complete'])
+            self.assertIn('late-container', result['remainingContainers'])
+            self.assertEqual(len(result['finalObservations']), 2)
+            self.assertFalse(any(call.args[0][:3] == ['docker', 'rm', '-f'] for call in run.call_args_list))
+
+    def test_volume_without_immutable_id_is_recorded_and_never_removed_by_name(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            session = '11111111-1111-1111-1111-111111111111'
+            owner.sessions.add(session)
+            def command(argv, **kwargs):
+                if argv[:3] == ['docker', 'volume', 'ls']:
+                    return subprocess.CompletedProcess(argv, 0, 'reusable-volume\n', '')
+                if argv[:3] == ['docker', 'volume', 'inspect']:
+                    data = {'Name': 'reusable-volume', 'CreatedAt': 'original-time',
+                            'Labels': {'org.testcontainers.resource-reaper-session': session}}
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([data]), '')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command) as run:
+                result = owner.cleanup(grace=0)
+            self.assertFalse(result['complete'])
+            self.assertEqual(result['resourceBindings'][0]['created'], 'original-time')
+            self.assertFalse(any(call.args[0][:3] == ['docker', 'volume', 'rm'] for call in run.call_args_list))
+
+    def test_network_creation_identity_rechecked_and_changed_generation_never_removed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            session = '11111111-1111-1111-1111-111111111111'
+            owner.sessions.add(session)
+            inspections = 0
+            def command(argv, **kwargs):
+                nonlocal inspections
+                if argv[:3] == ['docker', 'network', 'ls']:
+                    return subprocess.CompletedProcess(argv, 0, 'network-id\n', '')
+                if argv[:3] == ['docker', 'network', 'inspect']:
+                    inspections += 1
+                    data = {'Name': 'network', 'Id': 'network-id', 'Created': 'before' if inspections == 1 else 'after',
+                            'Labels': {'org.testcontainers.resource-reaper-session': session}}
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([data]), '')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command) as run:
+                with self.assertRaises(ValueError):
+                    owner.cleanup(grace=0)
+            self.assertFalse(any(call.args[0][:3] == ['docker', 'network', 'rm'] for call in run.call_args_list))
+
 
 class ChildCancellationTests(unittest.TestCase):
     def test_sigterm_keeps_both_original_exit_records_and_nonzero_parent(self):
