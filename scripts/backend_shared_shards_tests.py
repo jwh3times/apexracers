@@ -167,7 +167,7 @@ class ProcessOwnershipTests(unittest.TestCase):
                 result = owner.cleanup(grace=0)
             self.assertFalse(result['complete'])
             self.assertIn('late-container', result['remainingContainers'])
-            self.assertEqual(len(result['finalObservations']), 2)
+            self.assertEqual(len(result['finalObservations']), 8)
             self.assertFalse(any(call.args[0][:3] == ['docker', 'rm', '-f'] for call in run.call_args_list))
 
     def test_volume_without_immutable_id_is_recorded_and_never_removed_by_name(self):
@@ -217,7 +217,7 @@ class ProcessOwnershipTests(unittest.TestCase):
                 'reaper': False, 'image': 'postgres', 'volumeNames': ['anonymous-volume']}
             def command(argv, **kwargs):
                 if argv[:2] == ['docker', 'inspect']:
-                    return subprocess.CompletedProcess(argv, 1, '', 'error: no such object')
+                    return subprocess.CompletedProcess(argv, 1, '', 'error: no such object: removed-container')
                 if argv[:3] == ['docker', 'volume', 'inspect']:
                     return subprocess.CompletedProcess(argv, 0, json.dumps([{'Name': 'anonymous-volume', 'Labels': {}}]), '')
                 return subprocess.CompletedProcess(argv, 0, '', '')
@@ -241,6 +241,50 @@ class ProcessOwnershipTests(unittest.TestCase):
                 result = owner.cleanup(grace=0)
             self.assertTrue(result['complete'])
             self.assertTrue(any(call.args[0] == ['docker', 'rm', '-f', '-v', 'container-id'] for call in run.call_args_list))
+
+    def test_concurrent_owned_removal_waits_for_two_clear_samples(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            owner.sessions.add('session')
+            owner.containers['container-id'] = {'id': 'container-id', 'created': 'before', 'session': 'session',
+                'reaper': False, 'image': 'postgres', 'volumeNames': []}
+            ps = 0
+            def command(argv, **kwargs):
+                nonlocal ps
+                if argv[:2] == ['docker', 'inspect']:
+                    data = {'Created': 'before', 'Config': {'Labels': {'org.testcontainers.resource-reaper-session': 'session'}}}
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([data]), '')
+                if argv[:2] == ['docker', 'rm']:
+                    return subprocess.CompletedProcess(argv, 1, '', 'Error response from daemon: removal of container container-id is already in progress')
+                if argv[:3] == ['docker', 'ps', '-aq'] and 'label=' in argv[-1]:
+                    ps += 1
+                    return subprocess.CompletedProcess(argv, 0, 'container-id\n' if ps == 1 else '', '')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command):
+                result = owner.cleanup(grace=0)
+            self.assertTrue(result['complete'])
+            self.assertEqual(len(result['finalObservations']), 3)
+            self.assertTrue(result['finalObservations'][0]['resources'])
+            self.assertEqual(result['actions'][0]['exitCode'], 1)
+            self.assertEqual(result['actions'][0]['failureKind'], 'owned-removal-in-progress')
+
+    def test_daemon_unavailable_removal_never_green_even_if_later_enumeration_empty(self):
+        with tempfile.TemporaryDirectory() as temp:
+            owner = runner.Ownership([], Path(temp) / 'observations')
+            owner.containers['container-id'] = {'id': 'container-id', 'created': 'before', 'session': 'session',
+                'reaper': False, 'image': 'postgres', 'volumeNames': []}
+            def command(argv, **kwargs):
+                if argv[:2] == ['docker', 'inspect']:
+                    data = {'Created': 'before', 'Config': {'Labels': {'org.testcontainers.resource-reaper-session': 'session'}}}
+                    return subprocess.CompletedProcess(argv, 0, json.dumps([data]), '')
+                if argv[:2] == ['docker', 'rm']:
+                    return subprocess.CompletedProcess(argv, 1, '', 'Cannot connect to the Docker daemon')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command):
+                result = owner.cleanup(grace=0)
+            self.assertFalse(result['complete'])
+            self.assertTrue(result['stableAbsence'])
+            self.assertEqual(result['commandFailures'][0]['failureKind'], 'unclassified')
 
 
 class ChildCancellationTests(unittest.TestCase):

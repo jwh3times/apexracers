@@ -7,6 +7,7 @@ are retained. This runner neither retries tests nor changes production CI.
 import argparse
 from collections import Counter
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -69,6 +70,24 @@ def command_json(argv, timeout=8):
     if result.returncode:
         raise RuntimeError('Resource command failed: ' + argv[0])
     return json.loads(result.stdout)
+
+
+def container_failure(stderr, cid):
+    message = stderr.lower()
+    if cid.lower() not in message:
+        return 'unclassified'
+    if 'no such object' in message or 'no such container' in message:
+        return 'owned-container-absent'
+    if 'removal of container' in message and 'is already in progress' in message:
+        return 'owned-removal-in-progress'
+    return 'unclassified'
+
+
+def resource_absent(stderr, kind, identity):
+    message = stderr.lower()
+    value = identity.lower()
+    return (f'no such {kind}: {value}' in message or f'{kind} {value} not found' in message
+            or (f'get {value}:' in message and f'no such {kind}' in message))
 
 
 class Ownership:
@@ -216,7 +235,9 @@ class Ownership:
                     stream.write(json.dumps(dict(record, stage='failed', errorType=type(error).__name__)) + '\n')
                 raise
             with journal.open('a') as stream:
-                stream.write(json.dumps(dict(record, stage='completed', exitCode=result.returncode)) + '\n')
+                stream.write(json.dumps(dict(record, stage='completed', exitCode=result.returncode,
+                    stderrSha256=hashlib.sha256(result.stderr.encode()).hexdigest(),
+                    failureKind=container_failure(result.stderr, argv[-1]) if result.returncode and argv[:2] in (['docker', 'rm'], ['docker', 'inspect']) else None)) + '\n')
             return result
         self.observe(deadline=started + limit)
         while self.alive() and time.monotonic() - started < grace:
@@ -232,11 +253,12 @@ class Ownership:
             actions.append({'signal': 'SIGKILL', 'identities': self.alive()})
             self.terminate(signal.SIGKILL)
         remaining_containers = []
+        command_failures = []
         # Every removal rechecks immutable creation identity and original ownership.
         for cid, original in sorted(self.containers.items(), key=lambda item: item[1]['reaper']):
             check = bounded(['docker', 'inspect', cid])
             if check.returncode:
-                if 'no such object' in check.stderr.lower():
+                if container_failure(check.stderr, cid) == 'owned-container-absent':
                     continue
                 raise RuntimeError('Cleanup inspection unavailable')
             data = json.loads(check.stdout)[0]
@@ -248,8 +270,11 @@ class Ownership:
                 raise ValueError('Container identity changed before cleanup')
             result = bounded(['docker', 'rm', '-f', '-v', cid])
             actions.append({'container': cid, 'exitCode': result.returncode})
-            if result.returncode and not ('no such object' in result.stderr.lower() or 'no such container' in result.stderr.lower()):
-                remaining_containers.append(cid)
+            if result.returncode:
+                kind = container_failure(result.stderr, cid)
+                actions[-1]['failureKind'] = kind
+                if kind == 'unclassified':
+                    command_failures.append({'container': cid, 'exitCode': result.returncode, 'failureKind': kind})
         # Reaper deletion may leave session-labelled volumes/networks on cancellation.
         # Network IDs are immutable. Docker volumes expose no immutable ID, so a
         # residual volume fails cleanup rather than risking deletion by reused name.
@@ -264,7 +289,7 @@ class Ownership:
                 for resource in listing.stdout.split():
                     inspected = bounded(['docker', kind, 'inspect', resource])
                     if inspected.returncode:
-                        if 'no such' in inspected.stderr.lower() or 'not found' in inspected.stderr.lower():
+                        if resource_absent(inspected.stderr, kind, resource):
                             continue
                         raise RuntimeError('Owned resource inspection unavailable')
                     data = json.loads(inspected.stdout)[0]
@@ -283,7 +308,7 @@ class Ownership:
                         raise ValueError('Network lacks immutable creation identity')
                     verified = bounded(['docker', 'network', 'inspect', identity['id']])
                     if verified.returncode:
-                        if 'no such' in verified.stderr.lower() or 'not found' in verified.stderr.lower():
+                        if resource_absent(verified.stderr, 'network', identity['id']):
                             continue
                         raise RuntimeError('Owned network reinspection unavailable')
                     current = json.loads(verified.stdout)[0]
@@ -293,13 +318,14 @@ class Ownership:
                         raise ValueError('Network creation identity changed before cleanup')
                     result = bounded(['docker', 'network', 'rm', identity['id']])
                     actions.append({'network': identity['id'], 'exitCode': result.returncode, 'identity': identity})
-                    if result.returncode and not ('no such' in result.stderr.lower() or 'not found' in result.stderr.lower()):
-                        remaining_resources.append(identity['id'])
+                    if result.returncode and not resource_absent(result.stderr, 'network', identity['id']):
+                        command_failures.append({'network': identity['id'], 'exitCode': result.returncode, 'failureKind': 'unclassified'})
         # Re-enumerate after every owned process has stopped: Docker may finish a
         # creation request after its client exited. Snapshot twice; never substitute
         # removal exit codes for a fresh session-scoped absence observation.
         final_observations = []
-        for observation in range(2):
+        clear_samples = 0
+        for observation in range(8):
             self.observe(deadline=started + limit)
             residual = []
             for session in self.sessions:
@@ -323,24 +349,27 @@ class Ownership:
                 for name in original.get('volumeNames', []):
                     inspected = bounded(['docker', 'volume', 'inspect', name])
                     if inspected.returncode:
-                        if 'no such' in inspected.stderr.lower() or 'not found' in inspected.stderr.lower():
+                        if resource_absent(inspected.stderr, 'volume', name):
                             continue
                         raise RuntimeError('Final mounted-volume inspection unavailable')
                     residual.append({'kind': 'mounted-volume', 'id': name, 'session': original['session'],
                                      'inspection': {k: json.loads(inspected.stdout)[0].get(k) for k in ('Name', 'CreatedAt', 'Driver')}})
             final_observations.append({'monotonicSeconds': time.monotonic(), 'resources': residual,
                                        'processes': self.alive()})
-            if observation == 0:
+            clear_samples = clear_samples + 1 if not residual and not self.alive() else 0
+            if clear_samples >= 2:
+                break
+            if observation < 7:
                 time.sleep(.25)
-        remaining_containers = sorted(set(remaining_containers) | {r['id'] for sample in final_observations
-                                      for r in sample['resources'] if r['kind'] in ('container', 'ryuk')})
-        remaining_resources = sorted(set(remaining_resources) | {r['id'] for sample in final_observations
-                                     for r in sample['resources'] if r['kind'] in ('volume', 'network', 'mounted-volume')})
+        last_resources = final_observations[-1]['resources']
+        remaining_containers = sorted({r['id'] for r in last_resources if r['kind'] in ('container', 'ryuk')})
+        remaining_resources = sorted({r['id'] for r in last_resources if r['kind'] in ('volume', 'network', 'mounted-volume')})
         return {'seconds': time.monotonic() - started, 'actions': actions,
                 'resourceBindings': resource_bindings, 'finalObservations': final_observations,
+                'stableAbsence': clear_samples >= 2, 'commandFailures': command_failures,
                 'remainingProcesses': self.alive(), 'remainingContainers': remaining_containers,
                 'remainingResources': remaining_resources,
-                'complete': not (self.alive() or remaining_containers or remaining_resources)}
+                'complete': clear_samples >= 2 and not (self.alive() or remaining_containers or remaining_resources or command_failures)}
 
 
 
