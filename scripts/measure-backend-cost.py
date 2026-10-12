@@ -30,8 +30,9 @@ def digest(path):
 
 
 def inventory():
-    paths = [path for path in (ROOT / "src").rglob("*.cs") if not {"bin", "obj"}.intersection(path.parts)]
-    paths += [path for path in (ROOT / "src").rglob("*.csproj")]
+    tracked = subprocess.check_output(["git", "ls-files", "-z", "--", "src"], cwd=ROOT).decode().split("\0")
+    paths = [ROOT / name for name in tracked if name]
+    paths += [ROOT / "docs/testing/driver-catalog-admission-v1.json"]
     paths += [ROOT / name for name in ("global.json", "coverage.runsettings", "Directory.Packages.props", "Directory.Build.props", "Directory.Build.targets") if (ROOT / name).is_file()]
     paths += [path for path in TEST_OUTPUT.rglob("*") if path.is_file()]
     return {str(path.relative_to(ROOT)): digest(path) for path in sorted(paths)}
@@ -201,7 +202,6 @@ def main():
         raise ValueError("Empty discovered inventory")
     (output / "discovery.json").write_text(json.dumps(discovered, indent=2) + "\n")
     context = {"schemaVersion": 1, "scope": "cost measurement only; not acceptance evidence", "startedAt": datetime.now(timezone.utc).isoformat(), "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), "dirtyState": subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines(), "platform": platform.platform(), "logicalCpus": os.cpu_count(), "sdk": subprocess.check_output(["dotnet", "--version"], text=True).strip(), "docker": subprocess.check_output(["docker", "version", "--format", "{{.Server.Version}}"], text=True).strip(), "inventory": expected_build, "discoverySha256": digest(output / "discovery.json"), "runnerSha256": digest(Path(__file__)), "count": sum(names.values())}
-    (output / "context.json").write_text(json.dumps(context, indent=2) + "\n")
     context.update(sdkInventorySha256=digest(output / "sdk-inventory.json"), processClockTicksPerSecond=os.sysconf("SC_CLK_TCK"))
     (output / "context.json").write_text(json.dumps(context, indent=2) + "\n")
     shutil.copy2(Path(__file__), output / "runner-original.py")

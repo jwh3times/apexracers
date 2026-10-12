@@ -31,20 +31,25 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
             await using var create = new NpgsqlCommand($"CREATE DATABASE \"{database}\"", connection);
             await create.ExecuteNonQueryAsync(Ct);
         }
+        using var contextProbe = FixtureCostProbe.Begin("legacy.context-prepare");
         var target = new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString()) { Database = database, Host = "127.0.0.1", Pooling = false }.ConnectionString;
         await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(target, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")).Options, new IRacingDataScope(DataProvenance.Real));
         var migration = db.GetService<IMigrator>();
+        contextProbe.Dispose();
         await FixtureCostProbe.MeasureAsync("schema.legacy-migrations", () => migration.MigrateAsync("20260912044021_AddKnownDevices", Ct));
-        await db.Database.ExecuteSqlRawAsync("""
-            INSERT INTO identity."Users" ("Id", "DisplayName", "IRacingCustomerId", "EmailConfirmed", "PhoneNumberConfirmed", "TwoFactorEnabled", "LockoutEnabled", "AccessFailedCount")
-            VALUES ('aaaaaaaa-3750-4000-8000-000000000001', 'Synthetic unverified legacy User', 100001, true, false, false, false, 0);
-            INSERT INTO iracing."Cars" ("Id", "Name", "NameAbbreviated", "RainEnabled") VALUES (40, 'Synthetic legacy car', 'SLC', false);
-            INSERT INTO iracing."Tracks" ("Id", "Name", "ConfigName", "IsDirt", "IsOval", "Retired", "NightLighting", "HasSvgMap")
-            VALUES (30, 'Synthetic legacy track', '', false, false, false, false, false);
-            INSERT INTO iracing."UploadedLaps" ("Id", "UserId", "DriverCustId", "CarId", "TrackId", "LapTimeSeconds", "SessionType", "AirTempCelsius", "TrackTempCelsius", "TrackWetness", "RecordedAt")
-            VALUES ('aaaaaaaa-3770-4000-8000-000000000001', 'aaaaaaaa-3750-4000-8000-000000000001', 100001, 40, 30, 93.125, 0, 20, 30, 0, TIMESTAMPTZ '2020-01-01 00:00:00+00');
-            """, Ct);
-        await LegacyRestoreDataset.SeedAdditionalAsync(db, Ct);
+        using (FixtureCostProbe.Begin("seed.legacy-dataset"))
+        {
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO identity."Users" ("Id", "DisplayName", "IRacingCustomerId", "EmailConfirmed", "PhoneNumberConfirmed", "TwoFactorEnabled", "LockoutEnabled", "AccessFailedCount")
+                VALUES ('aaaaaaaa-3750-4000-8000-000000000001', 'Synthetic unverified legacy User', 100001, true, false, false, false, 0);
+                INSERT INTO iracing."Cars" ("Id", "Name", "NameAbbreviated", "RainEnabled") VALUES (40, 'Synthetic legacy car', 'SLC', false);
+                INSERT INTO iracing."Tracks" ("Id", "Name", "ConfigName", "IsDirt", "IsOval", "Retired", "NightLighting", "HasSvgMap")
+                VALUES (30, 'Synthetic legacy track', '', false, false, false, false, false);
+                INSERT INTO iracing."UploadedLaps" ("Id", "UserId", "DriverCustId", "CarId", "TrackId", "LapTimeSeconds", "SessionType", "AirTempCelsius", "TrackTempCelsius", "TrackWetness", "RecordedAt")
+                VALUES ('aaaaaaaa-3770-4000-8000-000000000001', 'aaaaaaaa-3750-4000-8000-000000000001', 100001, 40, 30, 93.125, 0, 20, 30, 0, TIMESTAMPTZ '2020-01-01 00:00:00+00');
+                """, Ct);
+            await LegacyRestoreDataset.SeedAdditionalAsync(db, Ct);
+        }
         var snapshot = await PrimarySnapshot.CaptureAsync(fixture, target, Ct);
         // Exercise actual restore of the legacy schema, not just a fresh database upgrade.
         await snapshot.RestoreAsync(fixture, target, Ct, replaceSchemas: true);
@@ -60,6 +65,7 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
         await preparedReader.PrepareAsync(Ct);
         Assert.Equal(3L, await preparedReader.ExecuteScalarAsync(Ct));
         await FixtureCostProbe.MeasureAsync("schema.upgrade-migrations", () => migration.MigrateAsync(cancellationToken: Ct));
+        using var validationProbe = FixtureCostProbe.Begin("legacy.post-upgrade-validation");
         var invalidated = await Assert.ThrowsAsync<PostgresException>(() => preparedReader.ExecuteScalarAsync(Ct));
         Assert.Equal(PostgresErrorCodes.UndefinedTable, invalidated.SqlState);
         await using var legacy = await LegacyApiProcess.StartAsync(target, Ct);
@@ -92,17 +98,21 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
         Assert.Equal(PostgresErrorCodes.UndefinedTable, oldWrite.SqlState);
         Assert.Throws<NotSupportedException>(() => new FenceLegacyUploadedLapReaders().DownOperations);
         await Assert.ThrowsAsync<NotSupportedException>(() => migration.MigrateAsync("20261008132131_ScopedDriverReferences", Ct));
+        validationProbe.Dispose();
         // Observe quarantine before ordinary startup's prompt unclassified-data erasure runs.
         await using var current = await LegacyApiProcess.StartAsync(target, Ct, current: true);
-        using (var closed = await ReadAsync(current, "/api/telemetry/laps"))
+        using (FixtureCostProbe.Begin("legacy.current-http-validation"))
         {
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, closed.StatusCode);
-            Assert.Equal("no-store", closed.Headers.CacheControl?.ToString());
-        }
-        using (var catalog = await ReadAsync(current, "/api/cars"))
-        {
-            Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
-            Assert.Contains("Synthetic legacy car", await catalog.Content.ReadAsStringAsync(Ct));
+            using (var closed = await ReadAsync(current, "/api/telemetry/laps"))
+            {
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, closed.StatusCode);
+                Assert.Equal("no-store", closed.Headers.CacheControl?.ToString());
+            }
+            using (var catalog = await ReadAsync(current, "/api/cars"))
+            {
+                Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
+                Assert.Contains("Synthetic legacy car", await catalog.Content.ReadAsStringAsync(Ct));
+            }
         }
         await snapshot.RecordAsync("legacy-upgrade-mixed-rollback", new
         {
@@ -120,6 +130,7 @@ public sealed class DriverMigrationRestoreTests(PostgreSqlFixture fixture) : IAs
 
     private static async Task<HttpResponseMessage> ReadAsync(LegacyApiProcess host, string path)
     {
+        using var readProbe = FixtureCostProbe.Begin("legacy.http-read");
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ReferenceActors.Token(ReferenceActors.Recipient));
         return await host.Client.SendAsync(request, Ct);

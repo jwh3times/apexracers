@@ -22,6 +22,11 @@ ANALYZE = load("analyze_backend_cost", "analyze-backend-cost.py")
 
 
 class CostTests(unittest.TestCase):
+    def test_runtime_sql_and_catalog_receipt_are_fingerprinted(self):
+        inventory = MEASURE.inventory()
+        self.assertIn("src/ApexRacers.Data/Seeds/purge_demo_data.sql", inventory)
+        self.assertIn("docs/testing/driver-catalog-admission-v1.json", inventory)
+
     def test_reused_root_pid_does_not_admit_unrelated_descendants(self):
         rows = {1: {"pid": 1, "parentPid": 0, "startTimeTicks": 99}, 2: {"pid": 2, "parentPid": 1, "startTimeTicks": 100}}
         self.assertEqual(MEASURE.select_owned_processes(rows, 1, {1: 10}), [])
