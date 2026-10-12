@@ -115,7 +115,7 @@ jobs:
             args+=(--filter-class ApexRacers.Tests.Services.RefreshTokenStoreTests --filter-class ApexRacers.Tests.Models.FieldPercentileTests)
           fi
           if [ "$CAMPAIGN" = actions-cancel ]; then
-            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests)
+            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests --filter-class ApexRacers.Tests.References.DriverReferenceHttpTests)
           fi
 
           python3 scripts/backend-shared-shards.py "${args[@]}"
@@ -231,7 +231,7 @@ jobs:
             args+=(--filter-class ApexRacers.Tests.Services.RefreshTokenStoreTests --filter-class ApexRacers.Tests.Models.FieldPercentileTests)
           fi
           if [ "$CAMPAIGN" = actions-cancel ]; then
-            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests)
+            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests --filter-class ApexRacers.Tests.References.DriverReferenceHttpTests)
           fi
           args+=(--reference "TestResults/pair-$PAIR/baseline/context.json")
           if [ "$CAMPAIGN" = producer-exit ] || [ "$CAMPAIGN" = cancel ]; then args+=(--fault "$CAMPAIGN" --fault-after 2); fi
