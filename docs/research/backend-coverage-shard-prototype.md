@@ -3,8 +3,11 @@
 ## Decision
 
 Keep the current general `Test` topology. The two-shard proposal failed the coverage
-preservation preflight. It is captured on `prototype/405-backend-coverage-shards`,
-not selected for production. No shard timing improvement has been established.
+preservation preflight. The rejected implementation is retained at
+[commit 097ae736](https://github.com/jwh3times/apexracers/tree/097ae7364f221853367ee5f1626db3c7db21e34f)
+on `prototype/405-backend-coverage-shards`. This report and its preflight evidence can ship
+independently; the proposed scripts and workflow are excluded from `main`.
+No shard timing improvement has been established.
 
 The proposed workflow is designed to build once, discover every case, allocate exactly two
 whole-class bins and supply identical compiled bytes to independent hosted runners. Its `Test`
@@ -75,9 +78,13 @@ Even preserved counters would need branch-identity fidelity, not just matching p
 
 ## Reproduction and remaining work
 
-The throwaway branch includes `scripts/backend-shard-prototype.py`, its tests, and the
-proposed `deploy.yml` topology. Run `python3 scripts/backend_shard_prototype_tests.py`
-for the rejection tests. The workflow's native export currently fails the strict coverage
+The retained [prototype script](https://github.com/jwh3times/apexracers/blob/097ae7364f221853367ee5f1626db3c7db21e34f/scripts/backend-shard-prototype.py),
+[rejection tests](https://github.com/jwh3times/apexracers/blob/097ae7364f221853367ee5f1626db3c7db21e34f/scripts/backend_shard_prototype_tests.py)
+and [proposed workflow](https://github.com/jwh3times/apexracers/blob/097ae7364f221853367ee5f1626db3c7db21e34f/.github/workflows/deploy.yml)
+exist in that captured commit. In an isolated checkout of that commit, run
+`python3 scripts/backend_shard_prototype_tests.py` for the rejection tests. These files
+are not installed by the findings-only change on `main`.
+The workflow's native export currently fails the strict coverage
 preflight and must not be adopted or have its branch validation relaxed.
 The script can compare accepted coverage with a reference baseline through
 `--reference-baseline`; the proposed workflow does not yet supply that argument. A resumed
@@ -99,9 +106,11 @@ line and branch model against full-suite baseline originals, rehearse hosted can
 and collect at least three matched baseline/prototype CI comparisons. The original targets
 remain median general Test <=20 minutes and combined general plus privacy <=65 runner-minutes.
 Those comparisons were not run because coverage preservation already failed; there is no
-speed claim, topology adoption, release or deployment from this prototype.
+speed claim or topology adoption. Publishing the findings does not deploy the proposed topology.
 
-Keep #405 open and Blocked on a separate investigation into a supported coverage format/tool
-that preserves the current source, line and branch identities. This is agent investigation,
+[Issue #405](https://github.com/jwh3times/apexracers/issues/405) remains open and Blocked on
+[issue #408](https://github.com/jwh3times/apexracers/issues/408), the investigation into a
+supported coverage format/tool that preserves the current source, line and branch identities.
+This is agent investigation,
 not a required human action. The ReportGenerator PRO alternative has not been selected, so
 this result creates no current license-purchase requirement or private human follow-up.
