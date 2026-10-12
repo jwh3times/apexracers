@@ -1,0 +1,6 @@
+<Configuration>
+  <CodeCoverage>
+    <ModulePaths><Include><ModulePath>.*CoveragePreservationProbe\.dll$</ModulePath></Include></ModulePaths>
+    <Attributes><Exclude><Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute></Exclude></Attributes>
+  </CodeCoverage>
+</Configuration>
