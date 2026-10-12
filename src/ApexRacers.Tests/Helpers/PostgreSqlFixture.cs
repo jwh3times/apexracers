@@ -27,6 +27,22 @@ public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 public sealed class PostgreSqlFixture(IMessageSink messageSink)
     : ContainerFixture<PostgreSqlBuilder, PostgreSqlContainer>(messageSink)
 {
+    protected override async ValueTask InitializeAsync()
+    {
+        await FixtureCostProbe.MeasureAsync("container.initialize", async () => await base.InitializeAsync());
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR")))
+            FixtureCostProbe.ContainerResource(Container.Id, Container.GetMappedPublicPort(5432), "ready");
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        var probeEnabled = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR"));
+        var containerId = probeEnabled ? Container.Id : "";
+        if (probeEnabled) FixtureCostProbe.ContainerResource(containerId, 0, "disposing");
+        await FixtureCostProbe.MeasureAsync("container.dispose", async () => await base.DisposeAsyncCore());
+        if (probeEnabled) FixtureCostProbe.ContainerResource(containerId, 0, "disposed");
+    }
+
     protected override PostgreSqlBuilder Configure() =>
         new PostgreSqlBuilder("postgres:18.0-alpine");
 
@@ -42,17 +58,18 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
 
     public DbContextOptions<AppDbContext> CreateOptions(params IInterceptor[] interceptors)
     {
+        using var optionsProbe = FixtureCostProbe.Begin("fixture.options");
         var databaseName = $"apexracers_test_{Guid.NewGuid():N}";
         using (var connection = new NpgsqlConnection(Container.GetConnectionString()))
         {
-            connection.Open();
+            using (FixtureCostProbe.Begin("connection.open")) connection.Open();
             using var command = new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\"", connection);
-            command.ExecuteNonQuery();
+            using (FixtureCostProbe.Begin("database.create")) command.ExecuteNonQuery();
         }
 
         var options = BuildOptions(databaseName, interceptors);
         using var context = new AppDbContext(options);
-        context.Database.EnsureCreated();
+        using (FixtureCostProbe.Begin("schema.ensure-created")) context.Database.EnsureCreated();
         return options;
     }
 
@@ -60,17 +77,18 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
         CancellationToken ct,
         params IInterceptor[] interceptors)
     {
+        using var optionsProbe = FixtureCostProbe.Begin("fixture.options");
         var databaseName = $"apexracers_test_{Guid.NewGuid():N}";
         await using (var connection = new NpgsqlConnection(Container.GetConnectionString()))
         {
-            await connection.OpenAsync(ct);
+            await FixtureCostProbe.MeasureAsync("connection.open", () => connection.OpenAsync(ct));
             await using var command = new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\"", connection);
-            await command.ExecuteNonQueryAsync(ct);
+            await FixtureCostProbe.MeasureAsync("database.create", async () => await command.ExecuteNonQueryAsync(ct));
         }
 
         var options = BuildOptions(databaseName, interceptors);
         await using var context = new AppDbContext(options);
-        await context.Database.EnsureCreatedAsync(ct);
+        await FixtureCostProbe.MeasureAsync("schema.ensure-created", async () => await context.Database.EnsureCreatedAsync(ct));
         return options;
     }
 

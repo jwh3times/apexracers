@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ApexRacers.Tests.Helpers;
 
 namespace ApexRacers.Tests.Lifecycle;
 
@@ -24,6 +25,7 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
     public static Task<LifecycleProcess> StartReferenceAsync(string primary, string journal, Guid epoch, CancellationToken ct, bool browser = false, int port = 0) => StartCoreAsync(primary, journal, epoch, ct, reference: true, browser: browser, port: port);
     private static async Task<LifecycleProcess> StartCoreAsync(string primary, string journal, Guid? epoch, CancellationToken ct, bool reference = false, bool browser = false, int port = 0)
     {
+        using var readyProbe = FixtureCostProbe.Begin("host.ready");
         var incarnation = Guid.NewGuid();
         var info = new ProcessStartInfo("dotnet")
         {
@@ -40,6 +42,8 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
         info.Environment["DRIVER_LIFECYCLE_INCARNATION"] = incarnation.ToString();
         info.Environment["DRIVER_BROWSER_PORT"] = port.ToString();
         var process = Process.Start(info) ?? throw new InvalidOperationException("Synthetic lifecycle host did not start.");
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR")))
+            FixtureCostProbe.ProcessResource(process.Id);
         var stderr = process.StandardError.ReadToEndAsync(ct);
         try
         {
@@ -61,6 +65,7 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
 
     public async Task StopAsync(CancellationToken ct)
     {
+        using var stopProbe = FixtureCostProbe.Begin("host.stop");
         if (!process.HasExited)
             process.Kill(entireProcessTree: true);
         await process.WaitForExitAsync(ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
@@ -68,6 +73,7 @@ internal sealed class LifecycleProcess(Process process, Uri address, Guid incarn
 
     public async ValueTask DisposeAsync()
     {
+        using var disposeProbe = FixtureCostProbe.Begin("host.dispose");
         Client.Dispose();
         ControlClient.Dispose();
         await StopAsync(CancellationToken.None);

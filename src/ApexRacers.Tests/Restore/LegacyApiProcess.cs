@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ApexRacers.Tests.Helpers;
 using System.Formats.Tar;
 using ApexRacers.Api.Services;
 using ApexRacers.Tests.References;
@@ -24,12 +25,13 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
     }
     private static async Task<string> BuildAsync()
     {
+        using var buildProbe = FixtureCostProbe.Begin("legacy.cold-build");
         var root = Path.Combine(Path.GetTempPath(), "apexracers_restore_legacy_" + Guid.NewGuid().ToString("N"));
         buildDirectory = root;
         Directory.CreateDirectory(root);
         var archive = Path.Combine(root, "source.tar");
         await CommandAsync("git", ["archive", "--format=tar", "--output", archive, LegacyCommit], RepositoryRoot);
-        TarFile.ExtractToDirectory(archive, root, overwriteFiles: false);
+        using (FixtureCostProbe.Begin("legacy.extract")) TarFile.ExtractToDirectory(archive, root, overwriteFiles: false);
         var project = Path.Combine(root, "src", "ApexRacers.Api", "ApexRacers.Api.csproj");
         await CommandAsync("dotnet", ["build", project, "--configuration", "Release", "--verbosity", "quiet"], root);
         return Path.Combine(root, "src", "ApexRacers.Api", "bin", "Release", "net10.0", "ApexRacers.Api.dll");
@@ -41,6 +43,7 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
     }
     public static async ValueTask CleanupBuildAsync()
     {
+        using var cleanupProbe = FixtureCostProbe.Begin("legacy.build-cleanup");
         if (Binary.IsValueCreated)
         {
             try { await Binary.Value; } catch { /* A failed build still owns its temporary directory. */ }
@@ -49,6 +52,7 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
     }
     private static async Task CommandAsync(string executable, string[] args, string directory)
     {
+        using var commandProbe = FixtureCostProbe.Begin(executable == "git" ? "legacy.archive" : "legacy.dotnet-build");
         var info = new ProcessStartInfo(executable) { WorkingDirectory = directory, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var arg in args) info.ArgumentList.Add(arg);
         using var process = Process.Start(info)!;
@@ -60,6 +64,7 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
     }
     public static async Task<LegacyApiProcess> StartAsync(string database, CancellationToken ct, bool current = false)
     {
+        using var readyProbe = FixtureCostProbe.Begin("legacy.host-ready");
         var target = new Npgsql.NpgsqlConnectionStringBuilder(database);
         if (target.Host is not ("127.0.0.1" or "localhost") || target.Database?.StartsWith("apexracers_restore_legacy_", StringComparison.Ordinal) != true)
             throw new InvalidOperationException("Only a disposable loopback restore database may host the pinned legacy binary.");
@@ -77,6 +82,8 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
         var jwt = JwtSettings.FromConfiguration(ReferenceActors.Configuration);
         info.Environment["JWT_SIGNING_KEY"] = jwt.SigningKey; info.Environment["JWT_ISSUER"] = jwt.Issuer; info.Environment["JWT_AUDIENCE"] = jwt.Audience;
         var child = Process.Start(info)!;
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR")))
+            FixtureCostProbe.ProcessResource(child.Id);
         _ = child.StandardOutput.ReadToEndAsync(ct); _ = child.StandardError.ReadToEndAsync(ct);
         var host = new LegacyApiProcess(child, new(new SocketsHttpHandler { UseProxy = false }) { BaseAddress = new($"http://127.0.0.1:{port}") });
         try
@@ -94,6 +101,7 @@ internal sealed class LegacyApiProcess(Process child, HttpClient client) : IAsyn
     }
     public async ValueTask DisposeAsync()
     {
+        using var disposalProbe = FixtureCostProbe.Begin("legacy.host-dispose");
         Client.Dispose(); if (!child.HasExited) child.Kill(entireProcessTree: true);
         await child.WaitForExitAsync(CancellationToken.None); child.Dispose();
     }

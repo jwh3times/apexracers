@@ -30,6 +30,7 @@ This directory contains public, contributor-safe project documentation.
 | [research/driver-publication-safety-2026-10-02.md](research/driver-publication-safety-2026-10-02.md) | Primary-source review of coarsening, linkage, and repeated-release risks, with candidate publication algorithms. |
 | [Integrated Driver privacy contract](research/driver-privacy-contract.md) | Synthetic required-check execution, complete matrix evidence, admitted catalog receipt and explicit live/deployed limits. |
 | [CI duration investigation](research/ci-duration-investigation.md) | Comparable CI timings, local fixture/coverage probes, ranked optimization proposals and required evidence safeguards. |
+| [Backend fixture cost investigation](research/backend-fixture-cost.md) | Matched full-suite Linux coverage timings, instrumented fixture phases, sampled resources and explicit attribution/provenance limits. |
 | [CI duration tooling](research/ci-duration-tooling.md) | Official-source scheduling, coverage, artifact reuse and required-check aggregation constraints. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |

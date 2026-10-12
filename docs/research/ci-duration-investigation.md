@@ -15,6 +15,12 @@ artifact constraints. Measurements are retained in
 #404. Existing [#391](https://github.com/jwh3times/apexracers/issues/391) owns Windows connection
 lifetime failures; Linux timing successes do not resolve it.
 
+The subsequent [#404 fixture cost investigation](backend-fixture-cost.md) records six original
+matched full-suite Linux runs, phase/resource measurements and separately bound focused legacy
+validation. Its results describe that instrumented local experiment; they do not replace the CI
+baselines below or demonstrate a fixture speedup. The original manifest and attribution limits
+remain explicit in that report.
+
 ## Comparable retained baselines
 
 PR head `bead7bb1e8c754a499aa7187b2b0d5d4d69ba675` and squash-merged main

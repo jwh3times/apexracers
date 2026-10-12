@@ -11,10 +11,14 @@ internal sealed record PrimarySnapshot(string Path, string Sha256, string Databa
 {
     public static async Task<PrimarySnapshot> CaptureAsync(PostgreSqlFixture fixture, string connection, CancellationToken ct)
     {
+        using var snapshotProbe = FixtureCostProbe.Begin("snapshot.operation");
         var db = RequireDisposable(connection);
         var path = "/tmp/driver377_" + Guid.NewGuid().ToString("N") + ".sql";
+        using var dumpProbe = FixtureCostProbe.Begin("snapshot.pg-dump");
         var dump = await fixture.Container.ExecAsync(["pg_dump", "--clean", "--if-exists", "--no-owner", "-U", db.Username!, "-d", db.Database!, "-f", path], ct);
         Assert.Equal(0, dump.ExitCode);
+        dumpProbe.Dispose();
+        using var hashProbe = FixtureCostProbe.Begin("snapshot.hash");
         var hash = await fixture.Container.ExecAsync(["sha256sum", path], ct);
         Assert.Equal(0, hash.ExitCode);
         return new(path, hash.Stdout.Split(' ')[0], db.Database!);
@@ -22,14 +26,17 @@ internal sealed record PrimarySnapshot(string Path, string Sha256, string Databa
 
     public async Task RestoreAsync(PostgreSqlFixture fixture, string connection, CancellationToken ct, bool replaceSchemas = false)
     {
+        using var snapshotProbe = FixtureCostProbe.Begin("snapshot.operation");
         var db = RequireDisposable(connection);
         Assert.Equal(Database, db.Database);
         Assert.StartsWith("/tmp/driver377_", Path);
         if (replaceSchemas)
         {
+            using var clearProbe = FixtureCostProbe.Begin("snapshot.drop-schemas");
             var clear = await fixture.Container.ExecAsync(["psql", "-v", "ON_ERROR_STOP=1", "-U", db.Username!, "-d", db.Database!, "-c", "DROP SCHEMA IF EXISTS identity, iracing, public CASCADE"], ct);
             Assert.Equal(0, clear.ExitCode);
         }
+        using var restoreProbe = FixtureCostProbe.Begin("snapshot.psql-restore");
         var restore = await fixture.Container.ExecAsync(["psql", "-v", "ON_ERROR_STOP=1", "-U", db.Username!, "-d", db.Database!, "-f", Path], ct);
         Assert.Equal(0, restore.ExitCode);
     }
@@ -45,6 +52,7 @@ internal sealed record PrimarySnapshot(string Path, string Sha256, string Databa
 
     public async Task RecordAsync(string scenario, object observations, bool passed)
     {
+        using var artifactProbe = FixtureCostProbe.Begin("snapshot.artifact");
         var directory = PrivacyContract.CatalogAdmission.OutputDirectory("driver-restore");
         Directory.CreateDirectory(directory);
         var sourceHashes = new SortedDictionary<string, string>(StringComparer.Ordinal);

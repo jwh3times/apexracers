@@ -20,10 +20,12 @@ public sealed class DemoSnapshotRestoreTests(PostgreSqlFixture postgres)
     [Fact]
     public async Task Restored_Demo_is_useful_but_actual_teardown_precedes_closed_Real_simulation()
     {
+        using var rootProbe = FixtureCostProbe.Begin("demo-restore.case");
         var ct = TestContext.Current.CancellationToken;
         var name = "apexracers_restore_legacy_" + Guid.NewGuid().ToString("N");
         await using (var connection = new NpgsqlConnection(postgres.Container.GetConnectionString()))
         {
+            using var createProbe = FixtureCostProbe.Begin("database.create");
             await connection.OpenAsync(ct);
             await using var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", connection);
             await create.ExecuteNonQueryAsync(ct);
@@ -31,9 +33,9 @@ public sealed class DemoSnapshotRestoreTests(PostgreSqlFixture postgres)
         var target = new NpgsqlConnectionStringBuilder(postgres.Container.GetConnectionString()) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
         var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(target, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "iracing")).Options;
         await using var demo = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
-        await demo.Database.MigrateAsync(ct);
-        await new CiCatalogSeeder(demo).SeedAsync();
-        await new DemoCacheSeeder(demo).SeedAllAsync(ct);
+        await FixtureCostProbe.MeasureAsync("schema.migrations", () => demo.Database.MigrateAsync(ct));
+        await FixtureCostProbe.MeasureAsync("seed.ci-catalog", () => new CiCatalogSeeder(demo).SeedAsync());
+        await FixtureCostProbe.MeasureAsync("seed.demo-cache", () => new DemoCacheSeeder(demo).SeedAllAsync(ct));
         demo.Users.Add(new() { Id = ReferenceActors.Recipient, DisplayName = "Synthetic restored Demo User", EmailConfirmed = true });
         var flag = await demo.FeatureFlags.SingleAsync(f => f.Key == "iracing-demo", ct);
         flag.IsEnabled = true; flag.MinimumRole = "Standard";
@@ -58,7 +60,7 @@ public sealed class DemoSnapshotRestoreTests(PostgreSqlFixture postgres)
             flag = await demo.FeatureFlags.SingleAsync(f => f.Key == "iracing-demo", ct);
             flag.IsEnabled = false; await demo.SaveChangesAsync(ct);
             var sql = await File.ReadAllTextAsync(Path.Combine(LegacyApiProcess.RepositoryRoot, "src/ApexRacers.Data/Seeds/purge_demo_data.sql"), ct);
-            await demo.Database.ExecuteSqlRawAsync(sql, ct);
+            await FixtureCostProbe.MeasureAsync("demo.purge", async () => await demo.Database.ExecuteSqlRawAsync(sql, ct));
             await using var real = new AppDbContext(options, new IRacingDataScope(DataProvenance.Real));
             Assert.All(await DemoSeedVerifier.VerifyTeardownAsync(real, ct), check => Assert.True(check.Passed, check.Detail));
             Assert.Empty(await real.ExternalDataCaches.IgnoreQueryFilters().Where(c => c.Provenance == DataProvenance.Demo).ToListAsync(ct));

@@ -83,6 +83,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
     }
     public async Task<string> Backup()
     {
+        using var dumpProbe = FixtureCostProbe.Begin("snapshot.pg-dump");
         var db = new NpgsqlConnectionStringBuilder(primary);
         var path = "/tmp/publication374_" + Guid.NewGuid().ToString("N") + ".sql";
         var result = await fixture.Container.ExecAsync(["pg_dump", "--clean", "--if-exists", "--no-owner", "-U", db.Username!, "-d", db.Database!, "-f", path], ct);
@@ -91,6 +92,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
     }
     public async Task Restore(string path)
     {
+        using var restoreProbe = FixtureCostProbe.Begin("snapshot.psql-restore");
         Assert.StartsWith("/tmp/publication374_", path);
         var db = new NpgsqlConnectionStringBuilder(primary);
         Assert.StartsWith("apexracers_ledger_primary_", db.Database);
@@ -100,6 +102,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
 
     public static async Task Run(PostgreSqlFixture fixture, string scenario, Func<PublicationLedgerTopology, Task> exercise)
     {
+        using var rootProbe = FixtureCostProbe.Begin("publication.topology");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(3));
         var ct = deadline.Token;
@@ -107,10 +110,11 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
         var independent = await Create(fixture, "apexracers_ledger_history_", ct);
         var epoch = Guid.NewGuid();
         var history = new ControlledPublicationHistory(independent, epoch, new LifecycleGates());
-        await history.InitializeGenesisAsync(ct);
+        await FixtureCostProbe.MeasureAsync("history.genesis", () => history.InitializeGenesisAsync(ct));
         await using (var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options, new IRacingDataScope(DataProvenance.Demo)))
         {
-            await db.Database.MigrateAsync(ct);
+            await FixtureCostProbe.MeasureAsync("schema.migrations", () => db.Database.MigrateAsync(ct));
+            using var seedProbe = FixtureCostProbe.Begin("seed.authority-copy-operating");
             await Operating.OperatingFixtures.SeedAsync(db, [new(WholeCohortCandidates.CatalogId, WholeCohortCandidates.Scope, OperatingWork.Publication)],
                 [CohortActors.Owner, CohortActors.OtherOwner, CohortActors.Consenting, CohortActors.Recipient], ct);
             db.Users.AddRange(new[] { CohortActors.Owner, CohortActors.OtherOwner, CohortActors.Consenting, CohortActors.Recipient }
@@ -132,9 +136,10 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
         catch { await first.DisposeAsync(); throw; }
         await using var test = new PublicationLedgerTopology(primary, independent, epoch, fixture, first, second, ct);
         var passed = false;
-        try { await exercise(test); passed = true; }
+        try { await FixtureCostProbe.MeasureAsync("topology.exercise", () => exercise(test)); passed = true; }
         finally
         {
+            using var artifactProbe = FixtureCostProbe.Begin("topology.artifact");
             var output = PrivacyContract.CatalogAdmission.OutputDirectory("publication-ledger");
             Directory.CreateDirectory(output);
             await File.WriteAllTextAsync(Path.Combine(output, scenario + ".json"), JsonSerializer.Serialize(new
@@ -151,6 +156,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
     }
     private static async Task<string> Create(PostgreSqlFixture fixture, string prefix, CancellationToken ct)
     {
+        using var createProbe = FixtureCostProbe.Begin("database.create");
         var name = prefix + Guid.NewGuid().ToString("N");
         await using var c = new NpgsqlConnection(fixture.Container.GetConnectionString());
         await c.OpenAsync(ct);
@@ -160,6 +166,7 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
     }
     public async ValueTask DisposeAsync()
     {
+        using var disposalProbe = FixtureCostProbe.Begin("publication.dispose");
         foreach (var host in hosts) await host.DisposeAsync();
     }
     public static async Task Denied(HttpResponseMessage response, CancellationToken ct)
