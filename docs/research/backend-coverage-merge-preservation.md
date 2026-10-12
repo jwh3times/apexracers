@@ -1,120 +1,153 @@
 # Backend coverage preservation investigation (#408)
 
-## Scope and current decision
+## Result and scope
 
-The existing general `Test` job, direct Microsoft Testing Platform Cobertura collection,
-product exclusions, and positive-denominator 85% line and branch gates remain authoritative.
-The Driver Privacy Contract workflow, receipt, 43-row matrix and collector remain unchanged.
-This investigation does not establish the #405 timing targets or adopt its proposed topology.
+One live Microsoft `dotnet-coverage` 18.12.0 collection containing two independent
+MTP test processes preserved the current full-suite coverage report in a local Linux
+comparison. All 1,318 cases passed exactly once across whole-class partitions of
+664 and 654 cases. This supplies a supported alternative for further investigation
+in [#405](https://github.com/jwh3times/apexracers/issues/405); it does not validate
+the rejected prototype's separate-runner, post-hoc merge topology.
 
-The repository pins `Microsoft.Testing.Extensions.CodeCoverage` 18.12.0. The rejected
-[#405 preflight](backend-coverage-shard-prototype.md) used `dotnet-coverage` 18.12.0
-and ReportGenerator 5.5.11. Its original reports and failures remain evidence; format
-support alone does not prove preservation of source, method, line or individual branch identities.
+Production CI, its exact `Test` context, both 85% coverage gates, and the Driver
+Privacy Contract workflow remain unchanged. The privacy collector, 43-row matrix,
+admitted receipt and `liveEligible=false` are unchanged. This investigation makes
+no Live eligibility or hosted performance claim.
 
-## Primary-source findings
+The successful coverage comparison and the failed cleanup assessment are distinct
+results. The original harness reported `preservationDemonstrated=false` because an
+additional Docker container ID was observed immediately after collection. That
+original outcome remains intact. Later explicit resource cleanup does not turn it
+into a successful automatic-cleanup rehearsal.
 
-Microsoft's [merge documentation](https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage#dotnet-coverage-merge)
-supports native `.coverage`, Microsoft XML and Cobertura inputs. That is a format capability,
-not a guarantee that every input contains the information needed for this branch gate.
+## Why collect together
 
-| Path | Maintainer evidence | Consequence for this gate |
-| --- | --- | --- |
-| Native `.coverage` to Cobertura | [#171 clarification](https://github.com/microsoft/codecoverage/issues/171#issuecomment-2820374306) says the native format does not store branch information. | Export cannot reconstruct missing individual branch observations. |
-| Microsoft XML to Cobertura | [#147 clarification](https://github.com/microsoft/codecoverage/issues/147#issuecomment-2514102960) distinguishes Cobertura branches from XML/native block coverage. | Block coverage is a different model; substituting it changes the contract. |
-| Cobertura reports merged after collection | [#11 explanation](https://github.com/microsoft/codecoverage/issues/11#issuecomment-1457935172) describes ambiguous partially covered switch conditions being removed. [#104 explanation](https://github.com/microsoft/codecoverage/issues/104#issuecomment-1991051175) demonstrates the same ambiguity for partially covered jumps. | Equal counters cannot identify whether different runs exercised the same or opposite branch. |
-| Microsoft XML block merge | [#217 recommendation](https://github.com/microsoft/codecoverage/issues/217#issuecomment-4168665594) says XML can also lack enough block information for a complete merge and recommends native intermediates for block coverage. | That recommendation addresses blocks, not restoration of Cobertura branches. |
+The [#405 preflight](backend-coverage-shard-prototype.md) rejected native, Microsoft
+XML and Cobertura export/merge alternatives whose branch models differed from the
+existing report. Further controlled probes retained those failures. Changing the
+gate denominator or accepting a similar percentage would conceal the problem.
 
-For example, two runs reporting one covered side of the same two-way jump may represent
-either the same side twice or both sides together. Both inputs can say `50% (1/2)` and use
-the same condition number. A merge cannot distinguish those executions from those fields.
-Reconstructing a denominator or taking the maximum percentage would leave that ambiguity intact.
+Microsoft documents the [`collect` command](https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage#dotnet-coverage-collect).
+Its maintainer explains that exported Cobertura condition percentages cannot
+identify which edge was covered, while collecting all executions together retains
+additional internal data needed for their union in
+[codecoverage issue #104](https://github.com/microsoft/codecoverage/issues/104#issuecomment-1991051175).
+This is the supported approach tested here. No custom reconstruction, averaging,
+or summing of branch counters is used.
 
-The complete [configuration reference at commit 9360f52d](https://github.com/microsoft/codecoverage/blob/9360f52ded3127f33f8558c37e12e54c1c1a0b28/docs/configuration.md)
-documents report formats, symbol search and instrumentation settings. It does not document a
-native/XML branch-identity retention switch. Symbol lookup helps instrument modules; it is not
-documented as restoring missing execution observations during export. This is a bounded finding
-about the reviewed supported paths, not a claim about unpublished internals or future releases.
+A controlled five-edge switch separately exercises overlapping and complementary
+observations: two inputs each cover two edges, while their union covers three.
+The shared collection preserves the direct MTP control's model and observations.
+This small fixture establishes the mechanism; it does not substitute for product
+exclusions or a full-suite comparison.
 
-The newer multi-application MTP artifact processor also needs care. The maintainer records its
-implementation in [#234](https://github.com/microsoft/codecoverage/issues/234#issuecomment-5426949378),
-and the [SDK validation PR](https://github.com/dotnet/sdk/pull/55940) verifies consolidation of
-native coverage artifacts while retaining originals. That evidence does not demonstrate this
-repository's Cobertura branch model or merge coverage across isolated hosted runners.
+## Full-suite evidence
 
-## Supported shared-session path and focused validation
+Compiled product source is bound to commit
+`18e2dc74f3cd2fa227fcbbfa49ab07e98d5d9b37`. One original full-suite MTP coverage
+control is compared with one shared collection using identical copied Release
+bytes. Discovery runs in each copy, because its test UIDs differ from canonical
+discovery. The mapping rejects changed metadata or ambiguous display names and
+uses the copied discovery's UIDs for execution. Whole classes remain together;
+the partition covers the complete discovered inventory without overlap.
 
-The maintainer's [#104 workaround](https://github.com/microsoft/codecoverage/issues/104#issuecomment-1991051175)
-is materially different: execute all tests inside one `dotnet-coverage collect` collection.
-The collector retains additional information about which condition side was exercised before
-writing the final report. This is the supported path under investigation; it avoids exporting and
-then attempting to reconstruct a union from incomplete native/XML or Cobertura observations.
+| Measurement | Original full-suite MTP | Shared collection |
+| --- | ---: | ---: |
+| Passed executions | 1,318 | 664 + 654 |
+| Product lines valid / covered | 7,581 / 7,266 | 7,581 / 7,266 |
+| Product branches valid / covered | 4,127 / 3,600 | 4,127 / 3,600 |
+| Line / branch coverage | 95.8449% / 87.2304% | 95.8449% / 87.2304% |
+| Local command duration | 1,370.492 s | 731.962 s |
 
-Microsoft documents both [command-mode collection and server sessions](https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage#sessions).
-A collector can supervise a command and its managed subprocesses, or a collection server can
-accept multiple `connect` clients and write a collective report after shutdown. The documented
-server/client example does not establish cross-runner network collection. The #405 issue requires
-independent containers, databases, processes, ports, artifacts and cleanup; its rejected proposal
-implemented that isolation with separate hosted runners. A shared VM and collector therefore need
-an explicit topology review, including shared CPU contention and the collector failure boundary.
+Comparison includes source paths, classes, method names/signatures, line numbers,
+branch flags, condition numbers/types and denominators. It also compares Boolean
+line hits, condition observations and root valid/covered counters. All match.
+This demonstrates preservation of the repository's observable report contract in
+this comparison, not newly portable edge identities in exported reports.
 
-A candidate experiment would launch two independently configured test processes under one
-collector on one runner, preserving complete/disjoint whole-class inventories, GUID databases,
-independent containers, dynamic ports, primary/history separation, real HTTP and physical restores,
-separate files and original outcomes. It must avoid nested coverage collectors and use the same
-product binaries, symbols and exclusions as a direct-MTP control. Dynamic collection of child
-processes may change the product model; that possibility must be measured and rejected when
-incompatible. No common container, schema, seed, host or connection pool may replace these boundaries.
+Source/build, SDK files and host, runtime files, pinned tool files, research scripts
+and original control artifact bindings remain unchanged across the shared run.
+Product coverage retains the repository's exclusions. The shared collector
+explicitly supplies the documented MTP instrumentation defaults: non-verifiable
+dynamic managed instrumentation, no static managed or native instrumentation,
+child-process collection, test-assembly exclusion and source filtering. These
+defaults are described in Microsoft's
+[configuration reference](https://github.com/microsoft/codecoverage/blob/9360f52ded3127f33f8558c37e12e54c1c1a0b28/docs/configuration.md).
 
-The pinned [configuration reference](https://github.com/microsoft/codecoverage/blob/9360f52ded3127f33f8558c37e12e54c1c1a0b28/docs/configuration.md)
-also identifies wrapper differences to verify: child-process collection defaults to enabled, while
-test-assembly and missing-source defaults differ between the tool and the MTP extension. Preserve
-the existing explicit module/function/attribute exclusions, retain the actual effective settings,
-and require all expected product modules. Run the compiled test application without its `--coverage`
-option when an outer collector owns collection; enabling both would create nested collectors rather
-than the proposed single authority. This command choice follows the documented independent collector
-and test-runner interfaces; no unsupported internal disabling flag is assumed.
+Both test processes run on one VM with separate build copies, evidence, phase
+output, CLI/NuGet directories and short producer-owned `TMPDIR` paths. Short paths
+avoid the Unix IPC socket path limit. They retain real PostgreSQL fixtures,
+independent lifecycle hosts and physical dump/restore cases. They share the VM,
+Docker engine and collector; separate hosted runners are not demonstrated.
 
-The focused investigation makes three documented MTP defaults explicit in the outer collector's
-effective settings: `IncludeTestAssembly=False` and `ExcludeAssembliesWithoutSources=MissingAll`
-under `Configuration`, and `UseVerifiableInstrumentation=False` under `CodeCoverage`. These are
-derived probe settings; the production `coverage.runsettings` and workflow stay unchanged. The
-fourth outer-collection probe runs the same 25 representative cases as its direct-MTP control and
-matches the reported product model: 4,991 valid lines, 2,637 valid branches, 17 covered lines and
-two covered branches. The earlier three probes admitting 13 modules retain their original reports
-and failed compatibility results. Since all three defaults changed in one trial, the result does
-not establish which individual setting caused the difference.
+The roughly 22m50s and 12m12s durations are one local pair. They do not establish
+CI savings, repeatability, combined runner-minutes or satisfaction of #405's
+targets. Hosted comparisons remain required.
 
-A separate eight-case controlled MTP expression fixture checks discriminating branch behavior.
-Its shared collection reports three covered branches out of five when processes exercise overlapping
-but different paths, and two out of five when the path is repeated. This distinguishes a union of
-observed paths from summing counters or merely treating repeated execution as new coverage. Earlier
-statement-only controls produced no branch denominator and are retained as non-discriminating probes.
-These focused results establish feasibility for those inputs; matching totals alone remains
-insufficient to establish the full product source, line, condition and branch model. A full-product
-comparison bound to one unchanged committed build is still required before closing #408.
+## Original failures and cleanup limits
 
-Microsoft's [instrumentation reference](https://github.com/microsoft/codecoverage/blob/9360f52ded3127f33f8558c37e12e54c1c1a0b28/docs/instrumentation.md)
-explains that static instrumentation changes DLL/PDB files and normally restores them after the
-process finishes. Independently copied build bytes are consequently important if any candidate uses
-static instrumentation. The documented `connect` command uses dynamic instrumentation for subprocesses.
-Do not assume that copying build files or inheriting profiler environment variables alone proves the
-effective instrumentation mode; retain settings and before/after file bindings.
+Earlier native/export/configuration probes, zero-case invocations caused by
+using canonical UIDs in copied executables, and an IPC startup failure remain
+recorded as original failures. Corrected invocations have new evidence roots;
+they do not replace those originals.
 
-Before adoption, the new topology needs a separate isolation and cancellation review, exact source,
-line and condition-model comparison to its unchanged full-suite baseline, branch-side preservation
-probes, product module completeness, and the original matched hosted timing comparisons. Sharing
-one collector also creates a common failure boundary. This candidate is not the original two-runner
-artifact-merge proposal, and no performance result follows from its documented availability.
+The shared run's immediate Docker delta contained one additional container ID.
+That container was absent before later inspection, so its ownership and disappearance
+time could not be established. Later inspection found no remaining owned API hosts
+or PostgreSQL containers. A lingering `dotnet` diagnostic process was attributed
+through the producer-owned `TMPDIR` socket and matching PID/start-time identity.
+It received an explicit SIGTERM; the subsequent owned-process check was empty.
 
-## Conservative fallback
+These follow-ups establish the recorded local cleanup state only. They do not
+prove bounded automatic cleanup, failure cleanup or hosted cancellation. The
+research runner's later bounded observation code has not been demonstrated by
+this retained invocation. #405 must add resource ownership, disposal and
+failure/cancellation evidence before adopting this topology.
 
-If the shared-session path cannot establish a compatible model, retain the original full-suite
-direct-MTP coverage run as the mandatory coverage authority. Any isolated plain test shards would
-be additional diagnostic jobs; their results cannot replace that coverage gate, and their coverage
-percentages cannot be averaged or merged by guessed unions. Adding diagnostics would consume more
-runner time and would not satisfy #405's <=20 minute general gate by itself.
+## Evidence and reproduction
 
-Changing collectors, branch definitions, exclusions, thresholds, mandatory full-suite coverage,
-or required status contexts would require separate review. No license purchase, production
-configuration change or human credential action is selected by this investigation.
+The public summary and original-file SHA-256 bindings are in
+`docs/testing/coverage-preservation-408.json`. Raw originals remain under:
+
+- `TestResults/coverage-preservation-408-mtp-11/`: controlled switch, direct MTP
+  controls, original exports, rejected merges and shared collections.
+- `TestResults/coverage-preservation-408-product-2/`: successful full-suite control,
+  discovery, partition and the original failed subsequent candidate.
+- `TestResults/coverage-preservation-408-shared-product-1/`: successful collection
+  reports and per-producer TRX/discovery, original overall failed context and
+  separately recorded cleanup follow-ups.
+- The additional original roots listed in the summary's `earlierOriginalsRetained`.
+
+Reproduction requires Docker, the repository SDK and a separately installed,
+pinned Microsoft `dotnet-coverage` 18.12.0 tool. The research scripts reject an
+existing output directory, retain originals and leave CI unchanged. For a fresh
+control and candidate, run from the repository root:
+
+```bash
+python3 scripts/probe-product-coverage-preservation.py \
+  --tool /path/to/pinned/dotnet-coverage \
+  --output TestResults/coverage-preservation-new-control
+```
+
+`scripts/probe-shared-product-coverage.py` can compare a new candidate with an
+immutable original control through `--baseline-context`, `--tool` and `--output`.
+The control must still match source, compiled bytes, SDK, runtime and tool files;
+a changed checkout requires a fresh control. Original runner snapshots and command
+records identify what actually produced the retained evidence. Current scripts
+are research tools, not an accepted required-check aggregator.
+
+## Remaining #405 obligations
+
+The coverage prerequisite has a demonstrated local route, pending review and
+merge of #408. Resume #405 by revising its topology to one shared collector with
+two independently isolated processes on one runner, or by separately proving
+another topology. Preserve fail-closed inventory, artifact and coverage validation
+and the exact required `Test` context. Rehearse failed/cancelled producers and
+owned cleanup on hosted runners, then collect at least three matched
+baseline/prototype CI comparisons. The original provisional targets remain
+median general `Test` <=20 minutes and combined general plus privacy <=65
+runner-minutes. Adopt only after reliability and measured savings are established.
+
+No required human action remains: no credential setup, operator action or license
+purchase is needed for this result. Remaining work is agent implementation and
+verification. Product documentation and private feature status do not change.

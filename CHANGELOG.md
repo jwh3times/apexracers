@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.8] - 2026-10-12
+
+### Added
+
+- Reproducible backend coverage preservation probes and retained full-suite evidence for a supported shared live collector; all 1,318 cases preserved the existing line and branch report model. Automatic cleanup and hosted sharding validation remain required before adoption.
+
 ## [14.0.7] - 2026-10-12
 
 ### Added
@@ -1654,7 +1660,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.7...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.8...HEAD
+[14.0.8]: https://github.com/jwh3times/apexracers/compare/v14.0.7...v14.0.8
 [14.0.7]: https://github.com/jwh3times/apexracers/compare/v14.0.6...v14.0.7
 [14.0.6]: https://github.com/jwh3times/apexracers/compare/v14.0.5...v14.0.6
 [14.0.5]: https://github.com/jwh3times/apexracers/compare/v14.0.4...v14.0.5
