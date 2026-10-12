@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "decision": "Rejected before full CI timing comparison: supported merge/export did not preserve existing product coverage model",
+  "scope": "Coverage feasibility probes only; no sharding performance or privacy acceptance claim",
+  "sourceBase": "03149178e48b4eedd7cb9a669d2545c06f174d63",
+  "sdk": "10.0.112",
+  "tools": {
+    "dotnet-coverage": "18.12.0",
+    "dotnet-reportgenerator-globaltool": "5.5.11"
+  },
+  "fullReportsSource": "#404 retained full-suite coverage originals at 8a9aa8a48dd384ecb8cdfcff9fd484a649ed3dbe; same build and all1318cases",
+  "representativeProbe": "25 FieldPercentileTests cases passed separately with native, direct Cobertura and Microsoft XML formats; existing compiled Release assembly, no build change between these invocations; not a new full-suite baseline",
+  "originalFiles": [
+    {
+      "path": "TestResults/fixture-cost-404-matched/2-coverage/coverage.cobertura.xml",
+      "sha256": "e22cbc7779b835cd636a3571f9c975ea53b113f4f958de8655ab2bc041d7171e",
+      "bytes": 2005183,
+      "coverageAttributes": {
+        "line-rate": "0.9584487534626038",
+        "branch-rate": "0.8723043372910104",
+        "complexity": "4553",
+        "version": "1.9",
+        "timestamp": "1791758924",
+        "lines-covered": "7266",
+        "lines-valid": "7581",
+        "branches-covered": "3600",
+        "branches-valid": "4127"
+      }
+    },
+    {
+      "path": "TestResults/fixture-cost-404-matched/4-coverage/coverage.cobertura.xml",
+      "sha256": "c089662549c6da50e124d2c9b779651c107a70c04f9ca1902185a8a40fc6d3db",
+      "bytes": 2005183,
+      "coverageAttributes": {
+        "line-rate": "0.9584487534626038",
+        "branch-rate": "0.8723043372910104",
+        "complexity": "4553",
+        "version": "1.9",
+        "timestamp": "1791761575",
+        "lines-covered": "7266",
+        "lines-valid": "7581",
+        "branches-covered": "3600",
+        "branches-valid": "4127"
+      }
+    },
+    {
+      "path": "$scratch/apex405-coverage-merge-check.xml",
+      "sha256": "42f77cddd90a5b38d3466cd144a65b2111e532c0b023bd902df9d3efc83e28a3",
+      "bytes": 1850478,
+      "coverageAttributes": {
+        "line-rate": "0.9584487534626038",
+        "branch-rate": "0.9778571428571429",
+        "complexity": "3275",
+        "version": "1.9",
+        "timestamp": "1791778780",
+        "lines-covered": "7266",
+        "lines-valid": "7581",
+        "branches-covered": "2738",
+        "branches-valid": "2800"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/original.trx",
+      "sha256": "7a1a45b24101f32764b422a3a97293b77372c5a28c388fb9a33d82b5f441a55b",
+      "bytes": 33688
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/original.coverage",
+      "sha256": "101f656d767a225f9ce9322ffa3318efc3cfc5581ff9b271e52624226e0644ea",
+      "bytes": 1029841
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/export.xml",
+      "sha256": "2d5e9fc5cd1471cd4e293c17693a1a76060f621828980defd0983bb82a12c050",
+      "bytes": 985618,
+      "coverageAttributes": {
+        "line-rate": "0.0034061310358645563",
+        "branch-rate": "1",
+        "complexity": "532",
+        "version": "1.9",
+        "timestamp": "1791778841",
+        "lines-covered": "17",
+        "lines-valid": "4991"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/duplicate-merged.xml",
+      "sha256": "45831ebb09d430e30bc300d0e9fe202c2566fa7b83f97439eb59cf20448c0302",
+      "bytes": 985618,
+      "coverageAttributes": {
+        "line-rate": "0.0034061310358645563",
+        "branch-rate": "1",
+        "complexity": "532",
+        "version": "1.9",
+        "timestamp": "1791778842",
+        "lines-covered": "17",
+        "lines-valid": "4991"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/direct.xml",
+      "sha256": "d2e9d0aa60495138e20a16df3870dfac3a4e0e6312f517fff5f481d438499558",
+      "bytes": 1327906,
+      "coverageAttributes": {
+        "line-rate": "0.0034061310358645563",
+        "branch-rate": "0.0007584376185058779",
+        "complexity": "2952",
+        "version": "1.9",
+        "timestamp": "1791778846",
+        "lines-covered": "17",
+        "lines-valid": "4991",
+        "branches-covered": "2",
+        "branches-valid": "2637"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/original.xml",
+      "sha256": "58f1af7c4bde43e4a4095b412cdf15b860d504da3a32153f341764f24959d125",
+      "bytes": 1328448,
+      "coverageAttributes": {}
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/xml-export.xml",
+      "sha256": "e16aa471729a7ff83ab0b9aa839a851cb24fc25788af0aa73ada2be8cc2534cb",
+      "bytes": 985618,
+      "coverageAttributes": {
+        "line-rate": "0.0034061310358645563",
+        "branch-rate": "1",
+        "complexity": "532",
+        "version": "1.9",
+        "timestamp": "1791778934",
+        "lines-covered": "17",
+        "lines-valid": "4991"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/reportgenerator/Cobertura.xml",
+      "sha256": "6efc93f6f4873d9ab80a3fad10ad5c48ca13a0a569c36e7600c1a597962c1e02",
+      "bytes": 1355607,
+      "coverageAttributes": {
+        "line-rate": "0.9549756971092351",
+        "branch-rate": "0.8673307674892461",
+        "lines-covered": "7466",
+        "lines-valid": "7818",
+        "branches-covered": "3831",
+        "branches-valid": "4417",
+        "complexity": "4684",
+        "version": "0",
+        "timestamp": "1791778982"
+      }
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/native-original.log",
+      "sha256": "5ec5963a15993078c26efa399aed8c2e42c809929401e232897ceb6cc7f92357",
+      "bytes": 807
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/direct-original.log",
+      "sha256": "3aa0eb302633195b12c9ef9b9b5fd3783dcbcdce18177c4fa92865e041e44531",
+      "bytes": 658
+    },
+    {
+      "path": "TestResults/backend-shard-405-merge-probe/xml-original.log",
+      "sha256": "e25258c9ddb7f414d5de87fcd618c0ea96bb9c21aa07f6d827b670fbc5d5281f",
+      "bytes": 688
+    }
+  ],
+  "compiledProductBytesAtCloseout": {
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Tests.dll": "e02a5bd8d74860ed5d11c90da89e5eacdcd82d99cdfeaee7972c0bee06080ece",
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Data.dll": "28100ee62c9e699ec0b3aae8970a708e40e913495364c110fe82763933122f4c",
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Seeder.dll": "e5e2b897f672de78759712370ff3de159c399b01a270a2c250f6e8f4cc8266bc",
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Api.dll": "6d5f9119853cdb3c1aa62274ad3d84c0bedca32d4e334cce0a43deb6eb39055d",
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Ingestion.dll": "ae468c9437e05d14067be214a349106bb753608e58a77576638d164ef3de1f07",
+    "src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Core.dll": "9a5f037aef380bbfce5aaae0829bd41e395681a645fd8c11cf0719cbabff4c13"
+  },
+  "notPerformed": [
+    "Three matched baseline/prototype CI timing comparisons",
+    "Real hosted workflow cancellation rehearsal",
+    "Production adoption"
+  ],
+  "liveEligible": false
+}

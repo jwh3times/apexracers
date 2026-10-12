@@ -5,7 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch: # allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      backend_mode:
+        description: 'Throwaway #405 experiment: matched full-suite baseline or two shards'
+        type: choice
+        options: [prototype, baseline]
+        default: prototype
 
 env:
   REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
@@ -117,100 +123,172 @@ jobs:
         run: npm run lint
         working-directory: web
 
-  # ── Test gate — repository + backend + frontend tests (required on PRs) ─────
-  test:
-    name: Test
+  # THROWAWAY #405 experiment. Keep on the prototype branch until evidence review.
+  # No paths filter; Test is still the single required context.
+  backend-plan:
+    name: Backend canonical build and inventory
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Restore rehearsal builds the pinned pre-lifecycle binary from its real Git tree.
           fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '10.x'
-
-      - name: Run backend tests with coverage
+          dotnet-version: '10.0.112'
+      - name: Verify prototype rejection tests
+        run: python3 scripts/backend_shard_prototype_tests.py
+      - name: Build and discover original cases
         run: |
-          dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
-            --configuration Release \
-            --coverage \
-            --coverage-output coverage.cobertura.xml \
-            --coverage-output-format cobertura \
-            --coverage-settings "$PWD/coverage.runsettings" \
-            --report-xunit-trx \
-            --report-xunit-trx-filename backend-tests.trx \
-            --results-directory "$PWD/TestResults" \
-            --output Normal
-
-      - name: Upload backend test results
+          dotnet build --configuration Release
+          mkdir -p TestResults/canonical
+          src/ApexRacers.Tests/bin/Release/net10.0/ApexRacers.Tests --list-tests json > TestResults/canonical/discovery.json
+          python3 scripts/backend-shard-prototype.py plan --root "$PWD"             --discovery TestResults/canonical/discovery.json             --weights docs/testing/backend-fixture-cost.json             --run-id '${{ github.run_id }}-${{ github.run_attempt }}'             --output TestResults/canonical/plan.json
+          tar -czf TestResults/canonical/build.tar.gz src/ApexRacers.Tests/bin/Release/net10.0
+      - name: Retain canonical plan and build
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: backend-test-results
-          path: TestResults/
-          if-no-files-found: warn
+          name: backend-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/canonical/
+          if-no-files-found: error
+          retention-days: 30
 
-      # irongut/CodeCoverageSummary's fail_below_min only enforces the LINE rate.
-      - name: Check backend line coverage threshold (>85%)
-        uses: irongut/CodeCoverageSummary@51cc3a756ddcd398d447c044c02cb6aa83fdae95 # v1.3.0
+  backend-shards:
+    name: Backend coverage shard ${{ matrix.shard }}
+    needs: backend-plan
+    if: ${{ inputs.backend_mode != 'baseline' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          filename: 'TestResults/coverage.cobertura.xml'
-          fail_below_min: true
-          format: text
-          indicators: true
-          output: console
-          thresholds: '85 85'
-
-      # The action above does not gate branch coverage, so enforce it explicitly
-      # by reading branch-rate from the Cobertura report.
-      - name: Check backend branch coverage threshold (>85%)
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.112'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/canonical
+      - name: Restore identical compiled test build
+        run: tar -xzf TestResults/canonical/build.tar.gz
+      - name: Install supported pinned coverage tool
+        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/coverage-tool"
+      - name: Execute original shard once
         run: |
-          report=TestResults/coverage.cobertura.xml
-          if [ ! -f "$report" ]; then
-            echo "::error::No coverage.cobertura.xml found under TestResults/."
-            exit 1
-          fi
-          # Some collection failures emit rate=1 with no modules or denominators.
-          # Such a report cannot establish coverage, even when tests passed.
-          python3 - "$report" <<'PYTHON'
-          import sys
-          import xml.etree.ElementTree as ET
-          root = ET.parse(sys.argv[1]).getroot()
-          if (not root.findall('packages/package')
-              or int(root.get('lines-valid', '0')) <= 0
-              or int(root.get('branches-valid', '0')) <= 0):
-              sys.exit('::error::Backend coverage report contains no measured product coverage.')
-          PYTHON
-          rate=$(grep -m1 -oE 'branch-rate="[0-9.]+"' "$report" | grep -oE '[0-9.]+')
-          pct=$(awk -v r="$rate" 'BEGIN { printf "%.2f", r * 100 }')
-          echo "Backend branch coverage: ${pct}%"
-          if awk -v r="$rate" 'BEGIN { exit (r >= 0.85 ? 0 : 1) }'; then
-            echo "Branch coverage meets the 85% threshold."
-          else
-            echo "::error::Branch coverage ${pct}% is below the required 85%."
-            exit 1
-          fi
+          python3 scripts/backend-shard-prototype.py run --root "$PWD"             --plan TestResults/canonical/plan.json --producer shard-${{ matrix.shard }}             --output TestResults/shard-${{ matrix.shard }} --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage"
+      - name: Retain original shard results and faults
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/shard-${{ matrix.shard }}/
+          if-no-files-found: error
+          retention-days: 30
 
+  backend-baseline:
+    name: Backend full-suite coverage baseline
+    needs: backend-plan
+    if: ${{ inputs.backend_mode == 'baseline' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.112'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/canonical
+      - name: Restore identical compiled test build
+        run: tar -xzf TestResults/canonical/build.tar.gz
+      - name: Install supported pinned coverage tool
+        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/coverage-tool"
+      - name: Execute original full suite once
+        run: |
+          python3 scripts/backend-shard-prototype.py run --root "$PWD"             --plan TestResults/canonical/plan.json --producer baseline             --output TestResults/baseline --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage"
+      - name: Retain original baseline results and faults
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/baseline/
+          if-no-files-found: error
+          retention-days: 30
+
+  test:
+    name: Test
+    needs: [backend-plan, backend-shards, backend-baseline]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.112'
+      - name: Reject failed, cancelled, skipped or missing prerequisites
+        env:
+          PLAN_RESULT: ${{ needs.backend-plan.result }}
+          SHARDS_RESULT: ${{ needs.backend-shards.result }}
+          BASELINE_RESULT: ${{ needs.backend-baseline.result }}
+          MODE: ${{ inputs.backend_mode || 'prototype' }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          mode = os.environ['MODE']
+          expected = ('success', 'success', 'skipped') if mode == 'prototype' else ('success', 'skipped', 'success')
+          actual = tuple(os.environ[k] for k in ('PLAN_RESULT', 'SHARDS_RESULT', 'BASELINE_RESULT'))
+          if actual != expected:
+              raise SystemExit(f'Non-success/missing producer prerequisites: {actual}; expected {expected}')
+          PYTHON
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: backend-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: TestResults/downloaded
+      - name: Install supported pinned coverage merge tool
+        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/coverage-tool"
+      - name: Validate originals and merged product coverage
+        env:
+          MODE: ${{ inputs.backend_mode || 'prototype' }}
+          RUN_KEY: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          if [ "$MODE" = baseline ]; then
+            python3 scripts/backend-shard-prototype.py aggregate               --plan "TestResults/downloaded/backend-build-$RUN_KEY/plan.json"               --mode baseline --producers "TestResults/downloaded/backend-baseline-$RUN_KEY"               --statuses success --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage"               --output TestResults/accepted
+          else
+            python3 scripts/backend-shard-prototype.py aggregate               --plan "TestResults/downloaded/backend-build-$RUN_KEY/plan.json"               --mode prototype               --producers "TestResults/downloaded/backend-shard-1-$RUN_KEY" "TestResults/downloaded/backend-shard-2-$RUN_KEY"               --statuses success success --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage"               --output TestResults/accepted
+          fi
+      - name: Retain aggregation result and original downloads
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            TestResults/accepted/
+            TestResults/downloaded/
+          if-no-files-found: error
+          retention-days: 30
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '26'
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
-
       - name: Install frontend dependencies
         run: npm ci
         working-directory: web
-
       - name: Run repository coordination tests
         run: npm run test:repo
-
       - name: Test ingestion deployment pause preservation
         run: node --test scripts/deploy-ingestion.test.mjs
-
       - name: Run frontend tests with coverage (>85%)
         run: npx vitest run --coverage
         working-directory: web
