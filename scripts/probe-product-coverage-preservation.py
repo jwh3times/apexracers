@@ -236,55 +236,15 @@ def main():
         raise ValueError('Baseline original inventory/outcomes differ')
     if cost.inventory() != context['sourceBuildBefore'] or cost.sdk_inventory() != context['sdkBefore']:
         raise ValueError('Material inputs changed during baseline')
-    shared = out / 'shared'
-    shared.mkdir()
-    settings = ET.parse(ROOT / 'coverage.runsettings').getroot()
-    for name, value in [('IncludeTestAssembly', 'False'), ('ExcludeAssembliesWithoutSources', 'MissingAll')]:
-        ET.SubElement(settings, name).text = value
-    for name, value in [('UseVerifiableInstrumentation', 'False'), ('EnableStaticManagedInstrumentation', 'False'),
-                        ('EnableDynamicManagedInstrumentation', 'True'), ('EnableStaticNativeInstrumentation', 'False'),
-                        ('EnableDynamicNativeInstrumentation', 'False'), ('CollectFromChildProcesses', 'True')]:
-        ET.SubElement(settings.find('CodeCoverage'), name).text = value
-    ET.ElementTree(settings).write(shared / 'settings-original.config', encoding='utf-8', xml_declaration=True)
-    children = []
-    for index, shard in enumerate(shards, 1):
-        directory = shared / f'shard-{index}'
-        directory.mkdir()
-        copy = directory / 'build'
-        shutil.copytree(cost.TEST_OUTPUT, copy)
-        if probe.inventory(copy) != probe.inventory(cost.TEST_OUTPUT):
-            raise ValueError('Independent copied build differs')
-        children.append({'directory': str(directory), 'executable': str(copy / 'ApexRacers.Tests'), 'uids': [r['uid'] for r in shard]})
-    write(shared / 'children-original.json', children)
-    run('shared', [tool, 'collect', '--settings', shared / 'settings-original.config', '--output-format', 'cobertura',
-                   '--output', shared / 'original.xml', 'python3', Path(__file__).resolve(), '--child', shared / 'children-original.json'])
-    for index, shard in enumerate(shards, 1):
-        directory = shared / f'shard-{index}'
-        if cost.read_results(directory / 'original.trx') != (Counter(r['displayName'] for r in shard), Counter({'Passed': len(shard)})):
-            raise ValueError('Shard original inventory/outcomes differ')
-        if probe.inventory(directory / 'build') != probe.inventory(cost.TEST_OUTPUT):
-            raise ValueError('Producer build changed')
-    context['baselineCoverage'] = coverage_gate(baseline / 'original.xml')
-    context['sharedCoverage'] = coverage_gate(shared / 'original.xml')
-    context['modelEqual'] = normalized_report(baseline / 'original.xml') == normalized_report(shared / 'original.xml')
-    context['denominatorsEqual'] = all(context['baselineCoverage'][key] == context['sharedCoverage'][key]
-                                     for key in ('lines-valid', 'branches-valid'))
-    context['perMethodObservationsEqual'] = normalized_report(baseline / 'original.xml', True) == normalized_report(shared / 'original.xml', True)
-    context['coveredCountsEqual'] = all(context['baselineCoverage'][key] == context['sharedCoverage'][key]
-                                      for key in ('lines-covered', 'branches-covered'))
-    context['sourceBuildUnchanged'] = cost.inventory() == context['sourceBuildBefore']
-    context['sdkUnchanged'] = cost.sdk_inventory() == context['sdkBefore']
-    context['toolUnchanged'] = probe.inventory(store) == context['toolBefore']
-    context['runtimeUnchanged'] = probe.inventory(runtimes) == context['runtimeBefore']
-    context['researchInputsUnchanged'] = {str(p.relative_to(ROOT)): cost.digest(p) for p in material} == context['researchInputsBefore']
-    context['dockerAfter'] = docker_ids()
-    context['additionalContainers'] = sorted(set(context['dockerAfter']) - set(context['dockerBefore']))
-    context['originalArtifacts'] = {str(p.relative_to(out)): cost.digest(p) for p in out.rglob('*') if p.is_file() and p.name != 'context.json'}
-    context['preservationDemonstrated'] = all(context[k] for k in ('modelEqual', 'denominatorsEqual', 'perMethodObservationsEqual', 'coveredCountsEqual', 'sourceBuildUnchanged', 'sdkUnchanged', 'toolUnchanged', 'runtimeUnchanged', 'researchInputsUnchanged')) and not context['additionalContainers']
+    # Keep the original control context immutable while the independently recorded
+    # candidate validates its bytes and its location-specific discovery identities.
+    context['baselineOnly'] = True
     persist()
-    if not context['preservationDemonstrated']:
-        raise ValueError('Original comparison failed; evidence retained, no adoption')
-    print(out / 'context.json')
+    write(out / 'control-original-context.json', context)
+    run('candidate-launch', ['python3', ROOT / 'scripts/probe-shared-product-coverage.py',
+                            '--baseline-context', out / 'control-original-context.json', '--tool', tool,
+                            '--output', out / 'candidate'])
+    print(out / 'candidate/context.json')
 
 
 if __name__ == '__main__':

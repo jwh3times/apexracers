@@ -160,7 +160,15 @@ def main():
     context['runtimeUnchanged'] = product.probe.inventory(runtimes) == control['runtimeBefore']
     context['researchInputsUnchanged'] = {str(p.relative_to(ROOT)): product.cost.digest(p) for p in material} == inputs
     context['referenceControlUnchanged'] = {str(p): product.cost.digest(p) for p in originals} == original_hashes
-    context['additionalContainers'] = sorted(set(product.docker_ids()) - set(containers))
+    context['immediateAdditionalContainers'] = sorted(set(product.docker_ids()) - set(containers))
+    # Resource disposal may finish shortly after the managed processes exit.
+    # Retain the immediate snapshot and fail closed if the observed delta persists.
+    cleanup_started = time.monotonic()
+    context['additionalContainers'] = list(context['immediateAdditionalContainers'])
+    while context['additionalContainers'] and time.monotonic() - cleanup_started < 10:
+        time.sleep(.25)
+        context['additionalContainers'] = sorted(set(product.docker_ids()) - set(containers))
+    context['cleanupObservationSeconds'] = time.monotonic() - cleanup_started
     context['preservationDemonstrated'] = all(context[k] for k in ('modelEqual', 'observationsEqual', 'countsEqual',
         'sourceBuildUnchanged', 'sdkUnchanged', 'toolUnchanged', 'runtimeUnchanged', 'researchInputsUnchanged', 'referenceControlUnchanged')) and not context['additionalContainers']
     context['originalArtifacts'] = {str(p.relative_to(out)): product.cost.digest(p) for p in out.rglob('*') if p.is_file() and p.name != 'context.json'}

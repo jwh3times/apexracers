@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 1,
+  "scope": "#408 Linux local coverage preservation only, no production adoption or #405 hosted timing/reliability claim",
+  "compiledProductSourceHead": "18e2dc74f3cd2fa227fcbbfa49ab07e98d5d9b37",
+  "controlledSwitch": {
+    "modelsEqual": true,
+    "observedCounts": [
+      [
+        "5",
+        "2"
+      ],
+      [
+        "5",
+        "2"
+      ],
+      [
+        "5",
+        "3"
+      ],
+      [
+        "5",
+        "3"
+      ],
+      [
+        "5",
+        "2"
+      ]
+    ],
+    "demonstrated": true,
+    "scope": "Controlled five-edge switch only. Does not establish full product exclusions/model equality or hosted shard isolation."
+  },
+  "fullBaseline": {
+    "executions": 1318,
+    "allPassed": true,
+    "commands": [
+      {
+        "label": "build",
+        "exitCode": 0,
+        "seconds": 7.7604427710029995,
+        "processGroup": 313973
+      },
+      {
+        "label": "discovery",
+        "exitCode": 0,
+        "seconds": 0.9208908190048533,
+        "processGroup": 314584
+      },
+      {
+        "label": "baseline",
+        "exitCode": 0,
+        "seconds": 1370.4920697960042,
+        "processGroup": 314623
+      },
+      {
+        "label": "shared",
+        "exitCode": 1,
+        "seconds": 1.781982837987016,
+        "processGroup": 410962
+      }
+    ],
+    "coverage": {
+      "line-rate": "0.9584487534626038",
+      "branch-rate": "0.8723043372910104",
+      "complexity": "4553",
+      "version": "1.9",
+      "timestamp": "1791817994",
+      "lines-covered": "7266",
+      "lines-valid": "7581",
+      "branches-covered": "3600",
+      "branches-valid": "4127"
+    }
+  },
+  "sharedCollection": {
+    "executionsPerProducer": [
+      664,
+      654
+    ],
+    "allPassed": true,
+    "commands": [
+      {
+        "label": "discovery-1",
+        "argv": [
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/build/ApexRacers.Tests",
+          "--list-tests",
+          "json"
+        ],
+        "exitCode": 0
+      },
+      {
+        "label": "discovery-2",
+        "argv": [
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/build/ApexRacers.Tests",
+          "--list-tests",
+          "json"
+        ],
+        "exitCode": 0
+      },
+      {
+        "label": "shared",
+        "argv": [
+          "/tmp/apex405-coverage-tool/dotnet-coverage",
+          "collect",
+          "--settings",
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/TestResults/coverage-preservation-408-shared-product-1/shared/settings-original.config",
+          "--output-format",
+          "cobertura",
+          "--output",
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/TestResults/coverage-preservation-408-shared-product-1/shared/original.xml",
+          "python3",
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/scripts/probe-product-coverage-preservation.py",
+          "--child",
+          "/home/jerryholland/orca/workspaces/apexracers/tellin/TestResults/coverage-preservation-408-shared-product-1/shared/children-original.json"
+        ],
+        "exitCode": 0,
+        "seconds": 731.9617529949901
+      }
+    ],
+    "coverage": {
+      "line-rate": "0.9584487534626038",
+      "branch-rate": "0.8723043372910104",
+      "complexity": "4553",
+      "version": "1.9",
+      "timestamp": "1791818779",
+      "lines-covered": "7266",
+      "lines-valid": "7581",
+      "branches-covered": "3600",
+      "branches-valid": "4127"
+    },
+    "modelEqual": true,
+    "observationsEqual": true,
+    "countsEqual": true,
+    "immutableChecks": {
+      "sourceBuildUnchanged": true,
+      "sdkUnchanged": true,
+      "toolUnchanged": true,
+      "runtimeUnchanged": true,
+      "researchInputsUnchanged": true,
+      "referenceControlUnchanged": true
+    }
+  },
+  "cleanup": {
+    "originalImmediateAssessmentPassed": false,
+    "originalAdditionalContainerIds": [
+      "51dccfc747da"
+    ],
+    "recordedResourceFollowupPassed": true,
+    "additionalOwnedDiagnosticProcesses": 1,
+    "explicitCleanupRemainingProcesses": [],
+    "hostedAutomaticCleanupProven": false,
+    "boundedAutomaticCleanupLatencyProven": false
+  },
+  "earlierOriginalsRetained": [
+    "coverage-preservation-408-native-1",
+    "coverage-preservation-408-native-2",
+    "coverage-preservation-408-native-3",
+    "coverage-preservation-408-static-4",
+    "coverage-preservation-408-dynamic-5",
+    "coverage-preservation-408-static-6",
+    "coverage-preservation-408-mtp-7",
+    "coverage-preservation-408-mtp-8",
+    "coverage-preservation-408-mtp-9",
+    "coverage-preservation-408-mtp-10",
+    "coverage-preservation-408-apex-focused-1",
+    "coverage-preservation-408-apex-focused-2",
+    "coverage-preservation-408-apex-focused-3",
+    "coverage-preservation-408-apex-focused-4",
+    "coverage-preservation-408-product-1",
+    "coverage-preservation-408-product-2/shared"
+  ],
+  "originalFiles": {
+    "TestResults/coverage-preservation-408-mtp-11/evidence.json": {
+      "sha256": "1e9a7f3a85de977aa1b6ec5b49f37b49d648c4be957240af3dd7f1d92350d3d7",
+      "bytes": 592953
+    },
+    "TestResults/coverage-preservation-408-product-2/context.json": {
+      "sha256": "66604cc6d2aeaf6d0950cadb5e315e3e00caceb904460239fd87e9088c228709",
+      "bytes": 656276
+    },
+    "TestResults/coverage-preservation-408-product-2/discovery-original.json": {
+      "sha256": "0b48d9990404b2c71baa5fdc3c37bbe0e7f0d04eac60b24962854103380c1902",
+      "bytes": 1158827
+    },
+    "TestResults/coverage-preservation-408-product-2/partition.json": {
+      "sha256": "7c8035fa834e41ab28541539a24012db257d1e1d489651036bdee624f1b84262",
+      "bytes": 1217590
+    },
+    "TestResults/coverage-preservation-408-product-2/baseline/original.xml": {
+      "sha256": "3289e258885b98f812b49ab752acfb05d9d0abdd46e9f83df91805b9f63ac572",
+      "bytes": 2005183
+    },
+    "TestResults/coverage-preservation-408-product-2/baseline/original.trx": {
+      "sha256": "0001470097d139841e3ebb15db4cbff07936b9168a2aee1faf18f152a123b5f4",
+      "bytes": 1807528
+    },
+    "TestResults/coverage-preservation-408-product-2/baseline/original.log": {
+      "sha256": "68330e4d113d2e6f2cece671319b7a792e093540a1d2d0e5648577665a242d32",
+      "bytes": 2002
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/context.json": {
+      "sha256": "db909808eaecdc2586385fa310dc9615e4bae6102084b9e77a3abdd14c8bc3c1",
+      "bytes": 659328
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/original.xml": {
+      "sha256": "a0a94192b59a81403ddc4909f6629d5fce04c1cf7514c4bb6ecf33cd62188612",
+      "bytes": 2005183
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/original.log": {
+      "sha256": "87cacd0439a244c15c3e33a0a893c0b24606c10f3ca65239a707646c948ac4f0",
+      "bytes": 259
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/settings-original.config": {
+      "sha256": "69a0b55964236bc3603542af924618109bbad059938871b1bbfdb95dc3728dda",
+      "bytes": 1943
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/cleanup-followup-original.json": {
+      "sha256": "539e3b1159db23d0215e6a666bbc28dfcb554ca5b1aaaa540b413c6167a598e8",
+      "bytes": 53613
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/cleanup-owned-followup-original.json": {
+      "sha256": "de3c36fb5c94e02ee00ed142ab05128bdf7ccadb467302e72270cf6e77b92e6c",
+      "bytes": 570
+    },
+    "TestResults/coverage-preservation-408-focused-journal.json": {
+      "sha256": "94764e0188e3e03f72dde878698d274d669bbb61782ff31e28e5f770ce98cb7e",
+      "bytes": 7973
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-mtp.xml": {
+      "sha256": "7e066e98e69589c8008b08e17727bf5b93957a18bdc3ebee1dcfce4e25ee7045",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-mtp.xml": {
+      "sha256": "480570f2e730445fc8698253c5b7535d16d6a93acf08a51d0f7406f6663c0ef4",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-mtp.xml": {
+      "sha256": "b7fa16394f8f9d69e3da1a4f3a6174d8aabf8885341aa706aaec61bce8a46e1b",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a.xml": {
+      "sha256": "64c22726012d4d9ed81179ce19b0a3824e0892a15729591fb020036246900f64",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-export.xml": {
+      "sha256": "84c47f46a666410467471fd04ffbede0448ea3f285238648268a80878219d5c4",
+      "bytes": 1540
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b.xml": {
+      "sha256": "b1b417cbbcc7f3cd347209e993446dcf0776de3753cf15ac704648560a29522c",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-export.xml": {
+      "sha256": "d253b28f7c26614dfba0fab635b41e382d5f938c3d46993c9fa475542c648a57",
+      "bytes": 1540
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union.xml": {
+      "sha256": "087c3b4606e85c043be3a65c8bd2d0e6712d02ddf92a7a468f05cc8ee9b969c9",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-export.xml": {
+      "sha256": "3f013ac0b82887fb8c49c353222a981c186994f8c45ed1e782a01682019f45fc",
+      "bytes": 1540
+    },
+    "TestResults/coverage-preservation-408-mtp-11/merged-export.xml": {
+      "sha256": "44472057d5e744fcdfd4c02661e5a2ea35d394bd0b970a600776138e147d09c3",
+      "bytes": 1540
+    },
+    "TestResults/coverage-preservation-408-mtp-11/merged-cobertura.xml": {
+      "sha256": "2c0488830c531f208e77193f9f24d8485565cdd399b1e5c9c02a9298e05eddf1",
+      "bytes": 1538
+    },
+    "TestResults/coverage-preservation-408-mtp-11/shared-overlap.xml": {
+      "sha256": "4730b679faa48084fe42d92b725975018e5df359f2222b26fc24d85f57d4f247",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/shared-same.xml": {
+      "sha256": "0a13d8fc428e576eca92e36130d9a734e4836f4d56abd796ca0dc6fbde973b8b",
+      "bytes": 1950
+    },
+    "TestResults/coverage-preservation-408-mtp-11/tool-version.log": {
+      "sha256": "17448342bc533bd93ad1a5294440dfb088b17f65084bb52b72763ae31531eb7c",
+      "bytes": 49
+    },
+    "TestResults/coverage-preservation-408-mtp-11/sdk-version.log": {
+      "sha256": "754d4ec29eaf73ed9f365df0dcc770212d046e7629c4d89ba54da43163a8c24d",
+      "bytes": 9
+    },
+    "TestResults/coverage-preservation-408-mtp-11/sdk-list.log": {
+      "sha256": "399b81476a030fd77513dd93cb0f8487e2c42e0eb874f41ac2a86a0e32ae5e63",
+      "bytes": 33
+    },
+    "TestResults/coverage-preservation-408-mtp-11/sdk-info.log": {
+      "sha256": "f7f9f532076d88da1a4d1722a078ea0040c89f4a7b8555fea210ee758399c8eb",
+      "bytes": 1109
+    },
+    "TestResults/coverage-preservation-408-mtp-11/build.log": {
+      "sha256": "57c64609b5dbc7db7a35cc378adb97a8e243ec4eec743c0151658cd45b0cb372",
+      "bytes": 399
+    },
+    "TestResults/coverage-preservation-408-mtp-11/mtp-build.log": {
+      "sha256": "d329034e58592756d72e81b3bd7d619f8b56712ff4e4b30f450d6426dc5c8669",
+      "bytes": 561
+    },
+    "TestResults/coverage-preservation-408-mtp-11/switch-il.log": {
+      "sha256": "38bb366ea0d426b6e4ca87a3bb832a091202f7a67ed529b4430db917185e61e2",
+      "bytes": 99
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-mtp-control.log": {
+      "sha256": "3ac284fb38be7f98a4a62d9c36f0c1067cd401123c4828e00fe4f0ff4224d5e4",
+      "bytes": 696
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-mtp-control.log": {
+      "sha256": "438db2a17bc1dd5cfe34566fa17244d6394d13f46323440830c6d9b1aaa85ee0",
+      "bytes": 696
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-mtp-control.log": {
+      "sha256": "c048db1fecbd3748c84865f2cfe21b3c073eee1345fe1eedbcbad4de93103148",
+      "bytes": 704
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-coverage.log": {
+      "sha256": "0339cc2de4cff0f5d03a882c953243cfab6267247b5747a4757f9a464b89d793",
+      "bytes": 667
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-cobertura.log": {
+      "sha256": "1595ddbed374bb496ed739d6c9c8e179ab40a50cdee8a397eec8d33a2aaa2d01",
+      "bytes": 663
+    },
+    "TestResults/coverage-preservation-408-mtp-11/a-export.log": {
+      "sha256": "ccc89d145c5b84ffb9967fa96b5c8cf3c05759937e4faa4e9563b98aaea4d62f",
+      "bytes": 313
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-coverage.log": {
+      "sha256": "da864b35981383529d07207385a627c5e54bde22a033cfe7a6213f5d744c3896",
+      "bytes": 667
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-cobertura.log": {
+      "sha256": "c5f9d43349b849ebc0e4b09a42438a376e6f538ed3c799156635659a07ec7c7f",
+      "bytes": 663
+    },
+    "TestResults/coverage-preservation-408-mtp-11/b-export.log": {
+      "sha256": "61e3fe3de728f1b65643b3127c105dcf9a51d720eed1617b81f20b3672ea49a0",
+      "bytes": 313
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-coverage.log": {
+      "sha256": "c1b0c8b291807d0a7157113ea839db64147aa74665cde16bc55434b6aafe31dd",
+      "bytes": 675
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-cobertura.log": {
+      "sha256": "527650a0c673ae2a3b993e817cbeb4350308702c8f0f18aa119498f996e96f1c",
+      "bytes": 671
+    },
+    "TestResults/coverage-preservation-408-mtp-11/union-export.log": {
+      "sha256": "ca85b72ad8ef359c09ae6d56d7860ce66a4f9fb153671d7ca00ef58f7d376a76",
+      "bytes": 321
+    },
+    "TestResults/coverage-preservation-408-mtp-11/native-merge.log": {
+      "sha256": "1b5cec32bba26b77c8b9315955bb64acf987c79001d00ff9ff24e5b0b47b4d75",
+      "bytes": 441
+    },
+    "TestResults/coverage-preservation-408-mtp-11/native-merge-export.log": {
+      "sha256": "1a1a0fa4fa385f726d45e905124412b1277770fa93c7bd1244b323e4ae33c94b",
+      "bytes": 323
+    },
+    "TestResults/coverage-preservation-408-mtp-11/cobertura-merge.log": {
+      "sha256": "02c2b2ad7c2fadef1c3ac7dafdac4ab08d8e861a17c819454a86a62ad3e51b7f",
+      "bytes": 436
+    },
+    "TestResults/coverage-preservation-408-mtp-11/shared-overlap.log": {
+      "sha256": "041401c887d8755c346c50e1ec0f8cde2912683b32dd5df5726be3a992772901",
+      "bytes": 248
+    },
+    "TestResults/coverage-preservation-408-mtp-11/shared-same.log": {
+      "sha256": "6f687735ec932d4f3c41444e667bd2babde766f69583427f6dac2a235c773098",
+      "bytes": 245
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/original.trx": {
+      "sha256": "f3326a3ff1bb9b3f31e4030a28d8a84075ebfc9a0ab80783a08129437d54dfb0",
+      "bytes": 953730
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/original.log": {
+      "sha256": "48e91a9e55d126914e04c0c5f6fa3bb672103512c0fb12e7ebb7cb4e4f75e689",
+      "bytes": 1187
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/original-exit.json": {
+      "sha256": "ff8ae5796bcef71911ff9c5c3eaea341819c471f669549e252b830106edd4305",
+      "bytes": 20
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/discovery-original.json": {
+      "sha256": "51e174a8d833a2e0a3647d69d497961363e13cbcebe81bc52c1ad8f9052d20ae",
+      "bytes": 1158827
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/uid-mapping-original.json": {
+      "sha256": "79213f1ffedfc342cd69340067385b1996dabcf4c4e0457a6e6fc6b4ef00287d",
+      "bytes": 210282
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-1/environment-paths-original.json": {
+      "sha256": "0438759ef2c65eb1b059f12317a4280588e70fd64b5a0b576620f8617a9c9337",
+      "bytes": 1072
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/original.trx": {
+      "sha256": "3599c059c871b8f3c4139b2a59ed01eb853fe5cf272acaa101740d5e069ffa40",
+      "bytes": 947079
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/original.log": {
+      "sha256": "dbcd2fd775c517e0379f74056f6797f433131594af1791ac8aa1e8f734fa622a",
+      "bytes": 935
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/original-exit.json": {
+      "sha256": "ff8ae5796bcef71911ff9c5c3eaea341819c471f669549e252b830106edd4305",
+      "bytes": 20
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/discovery-original.json": {
+      "sha256": "623e4d2c7d4947ae8636c3c21ee706b689498c8e2491b7651883f8868061614f",
+      "bytes": 1158827
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/uid-mapping-original.json": {
+      "sha256": "c851254ff5c6258d449bba12c3b376eb747665ef0ed58e7cee22e53ff2c39a2d",
+      "bytes": 209508
+    },
+    "TestResults/coverage-preservation-408-shared-product-1/shared/shard-2/environment-paths-original.json": {
+      "sha256": "0b139d7b0d43748cb74005ef4893e231a484c2352b799cc1e847f92602255323",
+      "bytes": 1072
+    }
+  },
+  "liveEligible": false,
+  "adoptionEligible": false
+}
