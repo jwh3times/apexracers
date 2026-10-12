@@ -32,6 +32,7 @@ This directory contains public, contributor-safe project documentation.
 | [CI duration investigation](research/ci-duration-investigation.md) | Comparable CI timings, local fixture/coverage probes, ranked optimization proposals and required evidence safeguards. |
 | [Backend fixture cost investigation](research/backend-fixture-cost.md) | Matched full-suite Linux coverage timings, instrumented fixture phases, sampled resources and explicit attribution/provenance limits. |
 | [Backend coverage shard prototype](research/backend-coverage-shard-prototype.md) | Rejected two-shard coverage feasibility findings, retained evidence and the coverage-preservation prerequisite; production CI remains unchanged. |
+| [Backend coverage preservation](research/backend-coverage-merge-preservation.md) | Local full-suite preservation with one supported live collector, original cleanup failures and remaining hosted topology obligations; production CI remains unchanged. |
 | [CI duration tooling](research/ci-duration-tooling.md) | Official-source scheduling, coverage, artifact reuse and required-check aggregation constraints. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |

@@ -9,6 +9,12 @@ on `prototype/405-backend-coverage-shards`. This report and its preflight eviden
 independently; the proposed scripts and workflow are excluded from `main`.
 No shard timing improvement has been established.
 
+The subsequent [#408 preservation investigation](backend-coverage-merge-preservation.md)
+demonstrates matching full-suite coverage through one live collector containing two
+independent processes on one local VM. It preserves this rejected prototype and its
+original failures; the separate-runner post-hoc merge remains rejected. Hosted
+cleanup, cancellation and timing acceptance remain unverified.
+
 The proposed workflow is designed to build once, discover every case, allocate exactly two
 whole-class bins and supply identical compiled bytes to independent hosted runners. Its `Test`
 aggregator checks for failed/cancelled/missing prerequisites, incomplete original artifacts,
@@ -100,17 +106,18 @@ dotnet-coverage merge \
   -o /tmp/apex405-coverage-merge-check.xml -f cobertura
 ```
 
-Resolve the supported, identity-preserving coverage format/tool before resuming #405.
-Then bind new original runs to one unchanged commit/build/SDK, verify the merged source,
+The original prerequisite was to resolve supported coverage preservation before resuming #405.
+The subsequent #408 report supplies a local shared-collector route, pending review and merge.
+Revise the proposed topology, bind new original runs to one unchanged commit/build/SDK, verify the collected source,
 line and branch model against full-suite baseline originals, rehearse hosted cancellation,
 and collect at least three matched baseline/prototype CI comparisons. The original targets
 remain median general Test <=20 minutes and combined general plus privacy <=65 runner-minutes.
 Those comparisons were not run because coverage preservation already failed; there is no
 speed claim or topology adoption. Publishing the findings does not deploy the proposed topology.
 
-[Issue #405](https://github.com/jwh3times/apexracers/issues/405) remains open and Blocked on
-[issue #408](https://github.com/jwh3times/apexracers/issues/408), the investigation into a
-supported coverage format/tool that preserves the current source, line and branch identities.
+[Issue #405](https://github.com/jwh3times/apexracers/issues/405) remains open. Its original
+coverage blocker is tracked in [issue #408](https://github.com/jwh3times/apexracers/issues/408);
+the demonstrated shared-collector route requires review and merge before resuming #405.
 This is agent investigation,
 not a required human action. The ReportGenerator PRO alternative has not been selected, so
 this result creates no current license-purchase requirement or private human follow-up.
