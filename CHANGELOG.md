@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.12] - 2026-10-13
+
+### Changed
+
+- Updated Playwright, Node type definitions, concurrently and Vite with matching lockfile entries, retaining browser privacy checks and existing visual baselines.
+
 ## [14.0.11] - 2026-10-13
 
 ### Changed
@@ -1682,7 +1688,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.11...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.12...HEAD
+[14.0.12]: https://github.com/jwh3times/apexracers/compare/v14.0.11...v14.0.12
 [14.0.11]: https://github.com/jwh3times/apexracers/compare/v14.0.10...v14.0.11
 [14.0.10]: https://github.com/jwh3times/apexracers/compare/v14.0.9...v14.0.10
 [14.0.9]: https://github.com/jwh3times/apexracers/compare/v14.0.8...v14.0.9
