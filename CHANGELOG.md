@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.10] - 2026-10-13
+
+### Changed
+
+- Updated pinned Node setup and artifact-upload actions across CI and the research workflow, retaining unfiltered checks and original test evidence.
+
+## [14.0.9] - 2026-10-13
+
+### Added
+
+- Published the hosted shared-collector backend sharding evaluation and reproducible research harness, including original failure and cancellation evidence. The prototype missed the timing target and failed exact coverage-observation preservation, so production test topology remains unchanged.
+
+### Fixed
+
+- Bound the physical restore test's synthetic Race Week to its fixture clock, preventing calendar rollover from excluding the uploaded best while preserving the seven-day window and all restore assertions.
+
 ## [14.0.8] - 2026-10-12
 
 ### Added
@@ -1660,7 +1676,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.8...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.10...HEAD
+[14.0.10]: https://github.com/jwh3times/apexracers/compare/v14.0.9...v14.0.10
+[14.0.9]: https://github.com/jwh3times/apexracers/compare/v14.0.8...v14.0.9
 [14.0.8]: https://github.com/jwh3times/apexracers/compare/v14.0.7...v14.0.8
 [14.0.7]: https://github.com/jwh3times/apexracers/compare/v14.0.6...v14.0.7
 [14.0.6]: https://github.com/jwh3times/apexracers/compare/v14.0.5...v14.0.6
