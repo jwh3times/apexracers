@@ -93,7 +93,7 @@ interruption evidence.
 The original [three-pair hosted campaign](https://github.com/jwh3times/apexracers/actions/runs/38310951392)
 completed with a failed experimental gate at source
 `2b5e50920fbad7e426d64d3236859faee6bf4b75`. **Reject this topology.**
-Its median general gate was **23 minutes 13 seconds**, above the unchanged
+Its median observed general-gate cost was **23 minutes 13 seconds**, above the unchanged
 20-minute target; one original exact coverage-observation comparison also failed.
 Production `Test`, its coverage contract and the Driver Privacy Contract remain
 unchanged. No additional full pairs were run to replace these originals.
