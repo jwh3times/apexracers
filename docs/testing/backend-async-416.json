@@ -1,0 +1,468 @@
+{
+  "schemaVersion": 1,
+  "issue": 416,
+  "result": "Attributed current focused observations to shared compiler-generated static method-group delegate cache",
+  "productionChange": false,
+  "adoptionEligible": false,
+  "liveEligible": false,
+  "currentBindings": {
+    "canonicalSource": "1fa1664c604e0b848bc1c4ab4ae36a47c0a6d56e",
+    "sdk": "10.0.112",
+    "runtime": "10.0.12",
+    "coverage": "18.12.0",
+    "xunitMtp": "4.0.2"
+  },
+  "historicalLimit": "Original #405 pair3 source2b5e509 used xUnit4.0.1 and lacks after bindings; current diagnosis does not retroactively prove those missing bindings.",
+  "actualSameBinaryCold": {
+    "role-first": {
+      "role": "100% (2/2)",
+      "user": "50% (1/2)"
+    },
+    "user-first": {
+      "role": "50% (1/2)",
+      "user": "100% (2/2)"
+    }
+  },
+  "actualSameBinaryPrewarm": {
+    "bothOrders": {
+      "role": "50% (1/2)",
+      "user": "50% (1/2)"
+    },
+    "fieldToken": "0x040004F1",
+    "initialState": "null",
+    "finalState": "nonnull",
+    "callsPerOrder": 32,
+    "allCompletedOnReturn": true,
+    "allFlagsReturned": 1
+  },
+  "minimalControls": {
+    "cold": "100/50 flips with order",
+    "warm": "50/50 both orders",
+    "fresh": "No visible projection cache branch in either fresh wrapper; cached wrappers uncalled",
+    "sharedCacheField": "0x0400002E",
+    "awaiterBranchHidden": true
+  },
+  "formatLimit": "Six original native collections and their same-input XML/Cobertura exports have line/block observations but no branch rows. Six independent direct-Cobertura executions expose branch rows; they are not conversions of the native executions.",
+  "mapping": {
+    "canonicalMoveNextBytes": 217,
+    "awaitIsCompletedOffset": 49,
+    "awaitBranchOffset": 54,
+    "awaitSequencePoint": "hidden",
+    "cacheLoadOffset": 131,
+    "cacheBranchOffset": 137,
+    "cacheStoreOffset": 153,
+    "cacheVisibleLines": [
+      58,
+      64
+    ]
+  },
+  "evidence": [
+    {
+      "directory": "TestResults/async-416-real-role-first-1",
+      "bindingsUnchanged": true,
+      "commands": [
+        {
+          "label": "sqlite-strict",
+          "exitCode": 0,
+          "seconds": 2.8186453570087906
+        }
+      ],
+      "artifactSha256": {
+        "context.json": "f874aa3c061637962ea2a35ed227d3ed8fb606b89d2c85eb91c1a126b52ca08a",
+        "ownership-original.jsonl": "a783d38a67c997468d3dd19fc0f023e892d2282414d0aec5a679d6e9e977ebda",
+        "settings-binding-original.json": "77d436b742c1d40785fc45566e538f46eec8bf6072f62b379696681ebd0203f9",
+        "shared-settings-original.config": "69a0b55964236bc3603542af924618109bbad059938871b1bbfdb95dc3728dda",
+        "source-original-Probe.csproj": "ff54f2f29f280bf770797deda00e88cc0f26befc04fd95ee1bb13a8e2c48fe0c",
+        "source-original-Program.cs": "01514bc20574b32ff048e30650c25a0a9ec295cfc10cc6c86b39fd2216d72ac3",
+        "source-original-backend-shared-shards.py": "fc6d69076f072ff021e0518fcf928c9ed40c62b081157fc09711386aed277b49",
+        "source-original-measure-backend-cost.py": "961ced37d69850e8d517807cf64a0120ada614d581878a3a1b92cb05290568e5",
+        "source-original-probe-async-coverage-411.py": "06b0345a2046cd5066deaf5c2e062fbd232c728ec373777d59c0d23599e91759",
+        "source-original-probe-coverage-preservation.py": "8c6a13f9da7ceff16e71fd51832c7d65efc2b9f521bc67b3d238fce035a53e0d",
+        "source-original-probe-product-coverage-preservation.py": "bbb8971f967a4d96f2d2d6a9d26cc40430f2cdd28f40303b3f2bf1c68296a76f",
+        "source-original-probe-shared-product-coverage.py": "a1a711d32086c07ca9c0f546903be1640a9f054287e3fc06a286348d7f981348",
+        "sqlite-strict/command-original.json": "c93c365db5867d0a0b9092ad4653db373db69213173ab21db1815cf311a91c12",
+        "sqlite-strict/environment-paths-original.json": "2ce5ae85ffaa91a0e416a385eef6f8f57d799e995be812021807f0094962504a",
+        "sqlite-strict/observations-original.json": "89cb8e069791108266ab31cf7ea9827c4ed99b8cbe07b3cc3f893def628d82f6",
+        "sqlite-strict/original-exit.json": "ff8ae5796bcef71911ff9c5c3eaea341819c471f669549e252b830106edd4305",
+        "sqlite-strict/original.log": "23430ec16a330680597d2bc4c5405de79db3fa08f6d51c70d4dcc257f5f25ebc",
+        "sqlite-strict/original.xml": "1924899f3096832923a7c2990d527e441411b952b6b7cffdf757fcb1c975f395"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-real-user-first-1",
+      "bindingsUnchanged": true,
+      "commands": [
+        {
+          "label": "sqlite-strict",
+          "exitCode": 0,
+          "seconds": 2.8076488579972647
+        }
+      ],
+      "artifactSha256": {
+        "context.json": "bee249432d3e22dee6a027d5e09efdc388633b4af3cc632b45290b5e4fc426b0",
+        "ownership-original.jsonl": "0845e113e325c2f3a3eeecdfe2f168a2e4c4a14ab100a5c939b12a2054283667",
+        "settings-binding-original.json": "4e8caf40a6029840dfdc3dbe2edec6c53fa78055b78a6a77492a3b09f0b93f1d",
+        "shared-settings-original.config": "69a0b55964236bc3603542af924618109bbad059938871b1bbfdb95dc3728dda",
+        "source-original-Probe.csproj": "ff54f2f29f280bf770797deda00e88cc0f26befc04fd95ee1bb13a8e2c48fe0c",
+        "source-original-Program.cs": "01514bc20574b32ff048e30650c25a0a9ec295cfc10cc6c86b39fd2216d72ac3",
+        "source-original-backend-shared-shards.py": "fc6d69076f072ff021e0518fcf928c9ed40c62b081157fc09711386aed277b49",
+        "source-original-measure-backend-cost.py": "961ced37d69850e8d517807cf64a0120ada614d581878a3a1b92cb05290568e5",
+        "source-original-probe-async-coverage-411.py": "06b0345a2046cd5066deaf5c2e062fbd232c728ec373777d59c0d23599e91759",
+        "source-original-probe-coverage-preservation.py": "8c6a13f9da7ceff16e71fd51832c7d65efc2b9f521bc67b3d238fce035a53e0d",
+        "source-original-probe-product-coverage-preservation.py": "bbb8971f967a4d96f2d2d6a9d26cc40430f2cdd28f40303b3f2bf1c68296a76f",
+        "source-original-probe-shared-product-coverage.py": "a1a711d32086c07ca9c0f546903be1640a9f054287e3fc06a286348d7f981348",
+        "sqlite-strict/command-original.json": "640465455d1ca412b7a2e6f1250727d65134e073ece7e51210ce2a20134b2d72",
+        "sqlite-strict/environment-paths-original.json": "171c99f53084fd5f2e738987ea506a318315ac20c6e2fc3ee578aede9873f970",
+        "sqlite-strict/observations-original.json": "9f60d50fcf9ee4d0e3b9e9f6bbbb8911c0f6df6c55d68635905a25539471d6e2",
+        "sqlite-strict/original-exit.json": "ff8ae5796bcef71911ff9c5c3eaea341819c471f669549e252b830106edd4305",
+        "sqlite-strict/original.log": "ee5ef65a0614994d51af9fad06b38030bd1270017fc4eec8bde91b44afcdd9b2",
+        "sqlite-strict/original.xml": "5c9e87d7c42d1a2fa5a3c873602780970ea59046bd36d7ca81f038af44c3a34e"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-minimal-original-1",
+      "bindingsUnchanged": true,
+      "commands": [
+        {
+          "label": "uninstrumented",
+          "exitCode": 0,
+          "seconds": 0.11383175698574632
+        },
+        {
+          "label": "cold-role-first",
+          "exitCode": 0,
+          "seconds": 0.7145449499948882
+        },
+        {
+          "label": "cold-role-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.4642486450029537
+        },
+        {
+          "label": "cold-role-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.4142082080070395
+        },
+        {
+          "label": "cold-user-first",
+          "exitCode": 0,
+          "seconds": 0.7145896690199152
+        },
+        {
+          "label": "cold-user-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.46424113400280476
+        },
+        {
+          "label": "cold-user-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.4642915420117788
+        },
+        {
+          "label": "warm-role-first",
+          "exitCode": 0,
+          "seconds": 0.6645543519989587
+        },
+        {
+          "label": "warm-role-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.4642952620051801
+        },
+        {
+          "label": "warm-role-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.4642932220012881
+        },
+        {
+          "label": "warm-user-first",
+          "exitCode": 0,
+          "seconds": 0.6646632679912727
+        },
+        {
+          "label": "warm-user-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.46431532202404924
+        },
+        {
+          "label": "warm-user-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.41419146800762974
+        },
+        {
+          "label": "fresh-role-first",
+          "exitCode": 0,
+          "seconds": 0.6645051039813552
+        },
+        {
+          "label": "fresh-role-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.46420392600703053
+        },
+        {
+          "label": "fresh-role-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.4142779649992008
+        },
+        {
+          "label": "fresh-user-first",
+          "exitCode": 0,
+          "seconds": 0.6645051749947015
+        },
+        {
+          "label": "fresh-user-first-export-xml",
+          "exitCode": 0,
+          "seconds": 0.4642659129749518
+        },
+        {
+          "label": "fresh-user-first-export-cobertura",
+          "exitCode": 0,
+          "seconds": 0.4643443399982061
+        }
+      ],
+      "artifactSha256": {
+        "cold-role-first/command-original.json": "ae9b06f31a7dbf7b8e8906fad6ae31c97abba12655e697c74051ba765f77b1c3",
+        "cold-role-first/observations-original.json": "2652e871c3a3c06014432c1b788022c77ce217cb9f0e69f389994c38c796af25",
+        "cold-role-first/original.cobertura.xml": "d76154bcd0189210fcbb5975e9887e31b9e707447b31e19645cdb6b2aa0e4939",
+        "cold-role-first/original.coverage": "2012ee7577139a3dbf90854e731e2f7977b5534dfe15021e374afdb15b037cfe",
+        "cold-role-first/original.log": "b6c0c4694914906f173075233aee5afb101bcaf7de56c852cdad25cdc2fbd1f6",
+        "cold-role-first/original.xml.xml": "d5b932e947021833528ca7dadcf5a3c0784f2ddb64d26d20a947b6f7dd5b018f",
+        "cold-role-first-export-cobertura/command-original.json": "b8912a4c9424e5c5d7430701863b77715c068b15b5dfd63de3599998c65f0db8",
+        "cold-role-first-export-cobertura/original.log": "b55036a563e5325ff943c1be660d39cf00183245cccabf30f45cff76b32191ad",
+        "cold-role-first-export-xml/command-original.json": "3710600e142eb6f44d0415d001766048438a139eca2ace75868831d9db844618",
+        "cold-role-first-export-xml/original.log": "494c9282f03e1f8b255dd20597408db68ec74c5a7ca3fa96ba771c5a0d802578",
+        "cold-user-first/command-original.json": "00f199871439950aaa613aae0847abca3aff6aa632f7b8229f6f69abc3cf2c33",
+        "cold-user-first/observations-original.json": "6eae8becba2ebf3bf578aa8300de0f15219870e130a92f4275b2ac3d318b122b",
+        "cold-user-first/original.cobertura.xml": "cc5d77949e559e3932dcf71704efdfed5ca33839e0d4e6af66e4022596b7ab1b",
+        "cold-user-first/original.coverage": "d05464337f89ee7ec7e75486bdbaf60884a7d089bdfbed385a876a560ea2ffc2",
+        "cold-user-first/original.log": "4da9b96452799a876d5a0448b35a79e18a56dfeb960313c7821af5ab0ed6d1f3",
+        "cold-user-first/original.xml.xml": "af1c639f37411d123857d0df59992e3f266f89fe7f20a1213ed7ac9985dcdb2b",
+        "cold-user-first-export-cobertura/command-original.json": "4d6aaf02e8c1701edb5242e234bc2aeca4154806ccef9b3ebfb6df806edea0a5",
+        "cold-user-first-export-cobertura/original.log": "cb9316e50ab2496aa568ea6e5741e8dd88395e1991a7de1d3197e6fa3918dd44",
+        "cold-user-first-export-xml/command-original.json": "5127c0dd504122897ccbed41e93953cab3b234d2a5baf78975d6aa1b4b24302b",
+        "cold-user-first-export-xml/original.log": "f754bd2a48fdc5b5c421b12872e956a6a5b1a794d5aa3e63244369bb6d992aaa",
+        "context.json": "18fad82743eaa8b10307c71c1218d3582c4c4f001f76fe339f936bc2bf10497f",
+        "fresh-role-first/command-original.json": "3de8f8622e693d08ccb64377de695ccb0529ae12b536773d64b4a5b7a943f0ec",
+        "fresh-role-first/observations-original.json": "35c7e80e33e3a898ed92a037e03035725f588cff8b11c69aa9600842a18a1bf1",
+        "fresh-role-first/original.cobertura.xml": "c9cafbb0a63e0bf676b0e0018e023b2d92d2adb5435b9350ec5ca73961cd057a",
+        "fresh-role-first/original.coverage": "e7c4f1d94446b7e791d46efbe766f2d44a056b3b495df98597b822010116424a",
+        "fresh-role-first/original.log": "aa6798f73081b57ece912bb9a44114503bffc40f81d0541f0b0450fb903d7d81",
+        "fresh-role-first/original.xml.xml": "44db973f26cae7d3be87cb99e68801c8faff6469d394e822bca2f2907cf67a21",
+        "fresh-role-first-export-cobertura/command-original.json": "97f727c84f7e19c463d33ecafbe0ec01db4ed3bf7f4686fd0c21e32db813e855",
+        "fresh-role-first-export-cobertura/original.log": "0eded3b3f3e1ef1a2b5cae6e65a170991547e2701bab0867635a8a5fa7c944bf",
+        "fresh-role-first-export-xml/command-original.json": "75d96c7161f9cdc1fb6eb611e17fd3ed8380fe5c59d7e608d1d4946d50c88c88",
+        "fresh-role-first-export-xml/original.log": "6531d87fe3ef7d97761b73be7c827af901ae9ea09936e82460d5b0babf061d95",
+        "fresh-user-first/command-original.json": "4d7e35fbd894d5a9e40aadd4e5fa2389f4d92d6bd769fcc18e49ff32e0c37b0d",
+        "fresh-user-first/observations-original.json": "94f76669cd47063a7a20b5a298832492217e1b2d72290396e2ec7bd8bb4f63df",
+        "fresh-user-first/original.cobertura.xml": "6a518ef3b8af79b3c82940d70ab14b83ad343f9552c8bb5820062cad5ef05779",
+        "fresh-user-first/original.coverage": "eb7c098731a5f2d8ddc751b1fa97543752acfe52e4bec48962d27e6e95375c56",
+        "fresh-user-first/original.log": "bbbf8c3669d7dc51f53ca789eea5c25f4cf0cb93d789734c5b14351ed66bc688",
+        "fresh-user-first/original.xml.xml": "9a855b8cb9d72e4b62c1c438bfae312b2a9bb53e2e1d7a07a115681a70ef070c",
+        "fresh-user-first-export-cobertura/command-original.json": "5539cdebf026a2e682359f25cb50cf2e69fd10ee6cf52748b02a6bda129983e4",
+        "fresh-user-first-export-cobertura/original.log": "617cccc3b218e9de5a20ad50e292ef85cb75b06f5c7917e7ff6689780a0cb7dd",
+        "fresh-user-first-export-xml/command-original.json": "ccad9414f544fb6ba418e83da2caf6fd8b329401c3d800cc3919badcdada1e4a",
+        "fresh-user-first-export-xml/original.log": "20f7cd26585e0ef39039fba50708a6fc654ef21aabc73afabc4cfea2586b45b6",
+        "helper-source-bound-original.py": "dc305b81e63ffc577d362eba5f89c804ea7a1f40fc97fa8e2a5726ea057d7e6c",
+        "settings-original.config": "115fc1cbdddd1538fa6746caef4b787b23988e112576459e61411297098d438e",
+        "source-bound-original-Minimal.csproj": "e4ec2364cf180f8fa1f6a62abda0e705f452ca2b12ae43ed886b07c030143c18",
+        "source-bound-original-Program.cs": "9c8fa543b78f56ce37f4c3741f2c0d4e363a1a2dddcb84af59285ac3e7927a8c",
+        "uninstrumented/command-original.json": "2f1270845264091c3925e0705ac6e77bcec4ea22599225070dd9330404cab3a5",
+        "uninstrumented/il-pdb-original.json": "0152d1dffe8a92d9fcd5053320de480fb27ebcc245d9c0170f56e2ebf763f05b",
+        "uninstrumented/original.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "warm-role-first/command-original.json": "4748dd26f9b61cce80536f83b831839276316833fef67e8e39e389dbbef58447",
+        "warm-role-first/observations-original.json": "a6a08fd0330fda4508eb3607e476a147958ceab544303ef5fb212e6356d2b914",
+        "warm-role-first/original.cobertura.xml": "77a1cd11f5bc3619bb62de35ee94f835add11c29b86179d760fdd2323196e305",
+        "warm-role-first/original.coverage": "e2bb3cf35d5747a20bbdc1b34d4b0c8b3fe4c67043275d206c9cb87cdf0072c4",
+        "warm-role-first/original.log": "f500fec8b1360897a06827dedf699bf229891693e54df5a45dbf6023f2ed9cc4",
+        "warm-role-first/original.xml.xml": "6ca41be9fed71ac99a1fcea214c36cca17bfd0291540cbebdcec66c65a5db6b9",
+        "warm-role-first-export-cobertura/command-original.json": "577c86d08719c8916552d2fb2c8ec76febc423f4982f6ee1fbbe1a3503c2914e",
+        "warm-role-first-export-cobertura/original.log": "1095cbcd09ee96897c88fbc03acf116a6f036d24b7e5c43f351c43998d88edd0",
+        "warm-role-first-export-xml/command-original.json": "d490636c7d0fc4373d7d3990daf3c5c38c2a336f354cdd9ee70c88db44429431",
+        "warm-role-first-export-xml/original.log": "6284d8b6210554dbaac80ca3ac5f7427a4ca9c20f4efb08710a49f93a9a114d0",
+        "warm-user-first/command-original.json": "1c7d7c8e48c7306a7b8fedb33cf94df00773b705e516157cc3149ccb281e111f",
+        "warm-user-first/observations-original.json": "3feba74e2df6304c3fc047e5cfe9d38156a3dbf8d16fb23ed69d516a121fc07d",
+        "warm-user-first/original.cobertura.xml": "4481d85180ddf1b6a35b760a98e1640dbcd6ddfe3e0cc057253b0b90c3fb7a31",
+        "warm-user-first/original.coverage": "d4b398a6403c439074123677cb75fc76da839ad73ef98ebfdc9aba45501121ce",
+        "warm-user-first/original.log": "eb61b3201fc136b6c9cad210623a0c6639f602bf80f4abd1fde150b326efcfb0",
+        "warm-user-first/original.xml.xml": "6288fbf28fa263908c8af3bd1c986dfe1a8953d342935fe864c99d3c64a3c04d",
+        "warm-user-first-export-cobertura/command-original.json": "26b9a0d6c328820552ad13e3c83c9f0a89d3b3943265a7a8ced239d2030da739",
+        "warm-user-first-export-cobertura/original.log": "3c8d37c15fa1d1504068e9b609fc25f30c4ec845717732596e4420a78d9f7c60",
+        "warm-user-first-export-xml/command-original.json": "4f1c3d210fbd134c49d7700774a6225ad14df883608ae6394ee8256424f2c816",
+        "warm-user-first-export-xml/original.log": "b1e2afec68129a57c72c3f57e8b8442d22b09c97efaad6e701862c772f35042d"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-minimal-direct-original-1",
+      "bindingsUnchanged": true,
+      "commands": [
+        {
+          "label": "uninstrumented",
+          "exitCode": 0,
+          "seconds": 0.11385313601931557
+        },
+        {
+          "label": "cold-role-first",
+          "exitCode": 0,
+          "seconds": 0.7647249310102779
+        },
+        {
+          "label": "cold-user-first",
+          "exitCode": 0,
+          "seconds": 0.6646427790110465
+        },
+        {
+          "label": "warm-role-first",
+          "exitCode": 0,
+          "seconds": 0.6145502549770754
+        },
+        {
+          "label": "warm-user-first",
+          "exitCode": 0,
+          "seconds": 0.7147464219888207
+        },
+        {
+          "label": "fresh-role-first",
+          "exitCode": 0,
+          "seconds": 0.7147919000126421
+        },
+        {
+          "label": "fresh-user-first",
+          "exitCode": 0,
+          "seconds": 0.6644766160170548
+        }
+      ],
+      "artifactSha256": {
+        "cold-role-first/command-original.json": "10e0cacd78b5790aded080ec3f85841ef56f9c09a435ed87df0544a4f0114bb4",
+        "cold-role-first/observations-original.json": "2652e871c3a3c06014432c1b788022c77ce217cb9f0e69f389994c38c796af25",
+        "cold-role-first/original.cobertura.xml": "bfeccc65285fe4038f52270a1d1273475729ca2259b00aa57bff89efad9ae0fa",
+        "cold-role-first/original.log": "41f8bf599bbc85bbb719051b0261d95abcce7f2bcb0765282c10e399cb231622",
+        "cold-user-first/command-original.json": "7723688622d82b693f5d08bf015cc6afbb6c95450d317229f8fe2fd218334f40",
+        "cold-user-first/observations-original.json": "6eae8becba2ebf3bf578aa8300de0f15219870e130a92f4275b2ac3d318b122b",
+        "cold-user-first/original.cobertura.xml": "005dcd026b4ad4f2fd9028ed13969f6793138bf85fcd1c455b710d12e8e3d1ae",
+        "cold-user-first/original.log": "cfd77633233e2c8108ad8cc9f697c162617245d2382e9961b999a3fb69dc2fd3",
+        "context.json": "759d7e1ee645f17092a505a35f7b6bf357cc0e85bebdb2da731bca972a059a79",
+        "fresh-role-first/command-original.json": "bde8798fc1020cc175c452742490bd810137932a2a79f7f4af2375d86cfd8efe",
+        "fresh-role-first/observations-original.json": "35c7e80e33e3a898ed92a037e03035725f588cff8b11c69aa9600842a18a1bf1",
+        "fresh-role-first/original.cobertura.xml": "f1a8739d8ed6c2b0fc0454d1b792e6af7fa3e927382595a13bd5ac6909717259",
+        "fresh-role-first/original.log": "530fb18b5bc0ecbaf7ff213e0ddb698659520a2f06390cb3bdcbac899838fe03",
+        "fresh-user-first/command-original.json": "b39ff31210eac9d359222a58c7a4e0f941fc48da55c21107f968ec9cdf023dad",
+        "fresh-user-first/observations-original.json": "94f76669cd47063a7a20b5a298832492217e1b2d72290396e2ec7bd8bb4f63df",
+        "fresh-user-first/original.cobertura.xml": "eec7ded86f204332834daf30bd63960eb77bb425fbf882ab3478106a802abf3f",
+        "fresh-user-first/original.log": "15ec2207ce704e5fdb47960fd1c820cc75905f5c8c63a09d8c09df5e34ea7115",
+        "helper-source-bound-original.py": "e06036da10bcdb20d02089e832c34a606543fcc3932de611c17dc84d4124d311",
+        "settings-original.config": "115fc1cbdddd1538fa6746caef4b787b23988e112576459e61411297098d438e",
+        "source-bound-original-Minimal.csproj": "e4ec2364cf180f8fa1f6a62abda0e705f452ca2b12ae43ed886b07c030143c18",
+        "source-bound-original-Program.cs": "9c8fa543b78f56ce37f4c3741f2c0d4e363a1a2dddcb84af59285ac3e7927a8c",
+        "uninstrumented/command-original.json": "58601663ebeda87a1feedf716bb677dc1b69b5626583db22dc11c0bf074fb012",
+        "uninstrumented/il-pdb-original.json": "0152d1dffe8a92d9fcd5053320de480fb27ebcc245d9c0170f56e2ebf763f05b",
+        "uninstrumented/original.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "warm-role-first/command-original.json": "6c1d094be9755b27b046eedc9448bec3c89cc944d3b240a3eb8784b3342c1ff6",
+        "warm-role-first/observations-original.json": "a6a08fd0330fda4508eb3607e476a147958ceab544303ef5fb212e6356d2b914",
+        "warm-role-first/original.cobertura.xml": "af47934242c0b0491c225935aa338cc10a101f8ca41b745d70ca9705924b65b2",
+        "warm-role-first/original.log": "1c44978b34b8f92be451709a04f482fb6fc6965dbc37959b246b5892ef0566cc",
+        "warm-user-first/command-original.json": "09aa6cff937ce27bb79a748ad6e65458cd49189219708ed00ad0da7bdc35f232",
+        "warm-user-first/observations-original.json": "3feba74e2df6304c3fc047e5cfe9d38156a3dbf8d16fb23ed69d516a121fc07d",
+        "warm-user-first/original.cobertura.xml": "7c503d2e96e10d2cea3a6d6f097b91fbb6d6c1998ae33fc5be063d4d5466591f",
+        "warm-user-first/original.log": "2e74d239809eec9547f3395ad22f9d222296a99b3ce43fb86b2d0a8fc292b479"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-real-warm-original-1",
+      "bindingsUnchanged": true,
+      "commands": [
+        {
+          "label": "real-warm-role-first",
+          "exitCode": 0,
+          "seconds": 2.6674830190022476
+        },
+        {
+          "label": "real-warm-user-first",
+          "exitCode": 0,
+          "seconds": 2.7175136459991336
+        }
+      ],
+      "artifactSha256": {
+        "context.json": "187ff23258a2603915467923b76bbb262438bed4d18408cae35375f2d8b35b5c",
+        "input-original-0-probe-async-coverage-416.py": "d72da2bc178f1116d492c75c8c4cdc79211a96a9c483099e6d56cf5c1aec21fb",
+        "input-original-1-Program.cs": "9c8fa543b78f56ce37f4c3741f2c0d4e363a1a2dddcb84af59285ac3e7927a8c",
+        "input-original-2-Minimal.csproj": "9295d61f2381833c5b439b2c46fd460000edbd9904fcdd1aa41ba588d2b446a3",
+        "input-original-3-RealWarm.cs": "01bb4ca4c50536bcb6bebdd6a638bb41456eefeffbd2491728a92fe88bbb8aef",
+        "input-original-4-RealWarm.csproj": "cc440157d31de6fb01f07c9cbc899c625ce33f8e7b22d87c3315a2b43fdb0b93",
+        "input-original-5-global.json": "9740bf6f00b68e3aa860f6b5e22a0c7d4944081d943ead40c1c33f76f75cef5c",
+        "input-original-7-Directory.Packages.props": "c2d33bf12f47d8f394a97af6780269ad9bb8eafb10c098eb1b622afbef133292",
+        "input-original-8-settings-original.config": "69a0b55964236bc3603542af924618109bbad059938871b1bbfdb95dc3728dda",
+        "real-warm-role-first/command-original.json": "6eb4ce35de810863de816a6ace83d893f3520c8945e09e05606a9a7ea9b3b61a",
+        "real-warm-role-first/observations-original.json": "620795412106c4ae3c9c22f357e6aafae8f17a61f79cecdeb210ca603779c455",
+        "real-warm-role-first/original.cobertura.xml": "42ad0a22e653ebf6c11288fa1af5f8352b13da60fdcb762d000791c00461f3e9",
+        "real-warm-role-first/original.log": "23f51481cf4eecf38f2754b17b324c4b130809f9ce31efd7518a439c909744c7",
+        "real-warm-role-first/warm-original.json": "ea3372e9b8f0eb8947089f49f27b83c2deba6697a69fbb3ee9bf33f8348da9dd",
+        "real-warm-user-first/command-original.json": "e82dbc212a541e4362de9709681873baa9b525df23d6bc3703540fd5e3edb56e",
+        "real-warm-user-first/observations-original.json": "ed0da5474f0ff05745e9a000d2b42b147f823ae074607d1acec9dae68693c8c1",
+        "real-warm-user-first/original.cobertura.xml": "cd9823cd0dbb01d69a64b99a92f4b98360524fe0e09a04bf6b02f651ee1c8522",
+        "real-warm-user-first/original.log": "1c7dd5a05613ba863a7099f8ed3de9b8ac4055ec3c68d8a1fca08547bf16800c",
+        "real-warm-user-first/warm-original.json": "ea3372e9b8f0eb8947089f49f27b83c2deba6697a69fbb3ee9bf33f8348da9dd",
+        "settings-original.config": "69a0b55964236bc3603542af924618109bbad059938871b1bbfdb95dc3728dda"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-mapping-original-1",
+      "bindingsUnchanged": null,
+      "commands": [],
+      "artifactSha256": {
+        "Mapping.csproj": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2",
+        "Program.cs": "0518adaab32c1d93a0eab53eb4ebbc3c8ef01bf11233c7797bd422c823514b46",
+        "bin/Release/net10.0/Mapping": "a9e5280dac87f04e128743271250ef060b94f6b2b610157c44bcb615b3708f6d",
+        "bin/Release/net10.0/Mapping.deps.json": "77b56c0bddf5003127b602f2889cbb0a47ff5f6301cac0e45f133d1a6a72b1b3",
+        "bin/Release/net10.0/Mapping.dll": "75e1e0fcdec6088ba3c3677ca42cd71cacdc1812bcbc3d9762625fac3273aa51",
+        "bin/Release/net10.0/Mapping.pdb": "0bb99f5b7e1b7f566564f0cfcfc554c7b2e6edcf448f5443d10fa625ba96fbc1",
+        "bin/Release/net10.0/Mapping.runtimeconfig.json": "9950d4583cfc9a106857c0d5b8a75b53e8774852b57b80bc3823a74d44a4d87f",
+        "command-original.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence-original.json": "be330bcecde92f76df377ccb7fcf9a973477c098164c7c3f7dfa3fb12d7a782e",
+        "mapping-original.json": "2bfbe68089653b5191efdb25241f3c24ab60eb0992d45de05db0ab21d2d88b21",
+        "obj/Mapping.csproj.nuget.dgspec.json": "1046bed35b0e14ad05571abcb863123aa7ec0e5f555c8d6fa66a8406c55b01bf",
+        "obj/Mapping.csproj.nuget.g.props": "a018249d57adbae6e44d970be7f19cacd15646ecef7fb9b4fec32cd3d17fad9b",
+        "obj/Mapping.csproj.nuget.g.targets": "b14461e0cb1be3f77fcf9fe2fdd62889325ca92523d0f606980ed59eb5c4aa1c",
+        "obj/Release/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": "f79c1ad9a9fc76110b3655f5bfb5ff4e3168e9addceff05b937c0796f0ec34eb",
+        "obj/Release/net10.0/Mapping.AssemblyInfo.cs": "c707f21b745214ccf204ed61e89ccf60ba18546c82cc26fa9964be32a3f8a92d",
+        "obj/Release/net10.0/Mapping.AssemblyInfoInputs.cache": "818182506ff1870aad793cf8121ca8852e231b3d3caf6120c831b4e169b0fe4f",
+        "obj/Release/net10.0/Mapping.GeneratedMSBuildEditorConfig.editorconfig": "84ec1211c49a4d2077e93ddf2a5a0a9ab84602809855885c9f7f9a5e17b28475",
+        "obj/Release/net10.0/Mapping.GlobalUsings.g.cs": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592",
+        "obj/Release/net10.0/Mapping.assets.cache": "158fe007bde4faa0fd5d1aaecc5010dcb298b7f11d493f9c8bd4af1917176a97",
+        "obj/Release/net10.0/Mapping.csproj.CoreCompileInputs.cache": "42123ce7075fc059ae9b7c70699c733b7756c5a4f8130b4a8dbf98d2d34a406d",
+        "obj/Release/net10.0/Mapping.csproj.FileListAbsolute.txt": "b7fd897952bb6687f02d1d3b3c980361ac2b4c4c80876ae932ec782dae92e9ad",
+        "obj/Release/net10.0/Mapping.dll": "75e1e0fcdec6088ba3c3677ca42cd71cacdc1812bcbc3d9762625fac3273aa51",
+        "obj/Release/net10.0/Mapping.genruntimeconfig.cache": "d91d2b1ba226bbe6aba81421c8d4580092d94eb78476f874b447e9f7d0b1eed6",
+        "obj/Release/net10.0/Mapping.pdb": "0bb99f5b7e1b7f566564f0cfcfc554c7b2e6edcf448f5443d10fa625ba96fbc1",
+        "obj/Release/net10.0/Mapping.sourcelink.json": "11a3c0dab96e544e9eb058c0189f1c5f63cba652f62ab3364ea01ab3beb4b66d",
+        "obj/Release/net10.0/apphost": "a9e5280dac87f04e128743271250ef060b94f6b2b610157c44bcb615b3708f6d",
+        "obj/Release/net10.0/ref/Mapping.dll": "b442e2893c2d184b643313e0df9442862c6720ffb9ba1d8491061025c3acd1f2",
+        "obj/Release/net10.0/refint/Mapping.dll": "b442e2893c2d184b643313e0df9442862c6720ffb9ba1d8491061025c3acd1f2",
+        "obj/project.assets.json": "6876f8da27675189398114c2dad0d457bab38a1bb52b2dda44e130da4e76e7ae",
+        "obj/project.nuget.cache": "a5c36ea32549b4273d0e0a02b74d7ba563b01c7be562f43d3b158b376b9fa003"
+      }
+    },
+    {
+      "directory": "TestResults/async-416-feedback-red-1",
+      "bindingsUnchanged": null,
+      "commands": [],
+      "artifactSha256": {
+        "original.log": "c2eaf1f18f995df3b0e9ed9c59ab1827ca0a36c8d25ddfa1e481e1cdc4de27e9",
+        "command-original.json": "393bafcf8573f8ef5a4953d81f40b0f6ef434b0e860d7392789a48ffdf60ed57",
+        "exit-original.json": "e153f5bd2ee7416d77570b30ba1de5bb9196c55f8d145e34df9dab12190ffe43"
+      }
+    }
+  ],
+  "limits": [
+    "Independent package-free extraction removes provider and Identity dependencies together; sufficiency demonstrated, not a separate one-variable deletion of each dependency.",
+    "Warm runner original scope/collectionFormat metadata inherited minimal/native labels; actual argv and reports show realAdminService/directCobertura. Original retained unchanged.",
+    "Early native/direct run script/source snapshots were recovered and SHA-matched to original before records after collection; these extra snapshot files were added separately, original contexts unchanged.",
+    "Real prewarm before/after binds compiled diagnostic and all dependencies; sourceProgram.cs was not included in its original input hash list. Future runner includes it; no retroactive source-input immutability claim.",
+    "Original #416 minimal/prewarm runtime byte guard inventories NETCore10.0.12 only; real canonical runtimeconfig also references ASP.NETCore. Future runner captures all shared frameworks and host bytes; earlier records are not retroactively upgraded.",
+    "Exported100%/50% assignments do not identify individual edges or decode the numerator as literal edge executions. The independent Warm helper reports100% after one declared call; causal attribution relies on canonical shared-field IL and cold/warm/fresh interventions, not such edge-count interpretation."
+  ],
+  "noConfirmedToolDefect": true,
+  "requiredHumanAction": null,
+  "primarySources": [
+    "https://devblogs.microsoft.com/dotnet/understanding-the-cost-of-csharp-delegates/",
+    "https://learn.microsoft.com/en-us/dotnet/core/additional-tools/dotnet-coverage"
+  ]
+}

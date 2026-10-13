@@ -1,11 +1,20 @@
 # Async coverage-observation diagnosis (#411)
 
+> **Interpretation correction from #416:** canonical PDB mapping places the reported
+> conditions at the `Select(ToDto)` projections (lines 58 and 64), whose generated
+> code shares a delegate cache. Independent and actual-service prewarming controls
+> attribute the current order-sensitive observations to that cache. The actual awaits are lines 57 and 63, with hidden
+> sequence points for their completion branches. Earlier “await-site” labels did
+> not establish condition identity. Original reports, hashes and outcomes remain
+> unchanged; see the [follow-up attribution](backend-async-coverage-attribution.md).
+
 The bounded investigation reproduced the two-site observation drift in ordinary
 MTP collection, without sharding. A controlled comparison also inverted the
 reported observations when the diagnostic method-call order was reversed, while
 actual SQLite queries completed synchronously under a queued-context observer.
-**The observations are order-sensitive in the retained comparison; their underlying
-collector/runtime mapping mechanism remains unproven.** Production `Test`, exact
+**At #411 closeout the observations were order-sensitive, while their underlying
+mechanism remained unproven. The #416 follow-up attributes the current focused
+controls to shared compiler-generated delegate-cache execution.** Production `Test`, exact
 coverage comparisons, both 85% gates and the Driver Privacy Contract remain unchanged.
 
 [#405](backend-shared-collector-experiment.md) remains rejected. Resolving this
@@ -16,7 +25,7 @@ No new full-suite campaign or adoption claim is made.
 
 The retained #405 pair 3 reports remain unchanged. A readonly replay returns exit 1:
 identical source/class/method/line/condition models and root counters, but four
-normalized class/method rows differ at `AdminService` lines 58 and 64. Each await
+normalized class/method rows differ at `AdminService` lines 58 and 64. Each reported source
 site occurs in both class and method views; this is two observations, not four
 identified lost edges. The historical source was `2b5e509` with xUnit 4.0.1. That
 failed candidate did not capture after-source/build/tool/runtime hashes; current
@@ -30,7 +39,7 @@ The existing `AdminServiceTests` class uses actual SQLite through
 `DbContextFactory.Create`; it is not a PostgreSQL class. All 39 cases passed per
 producer, with complete copied-UID mappings and original reports retained.
 
-| Original diagnostic workload | Role await line 64 | User await line 58 |
+| Original diagnostic workload | Role projection line 64 | User projection line 58 |
 | --- | ---: | ---: |
 | First ordinary MTP, 39 cases | 100% (2/2) | 50% (1/2) |
 | One live collector, one process, 39 cases | 50% (1/2) | 100% (2/2) |
@@ -72,8 +81,10 @@ array. Their diagnostic DLLs therefore differ; that change is explicitly bound.
 The referenced product/test DLLs, coverage settings, SDK, runtime and collector
 remain the same. The observations invert even under the stronger completed-query
 control, so attributing the report difference directly to natural await scheduling
-would exceed this evidence. The lower-level instrumentation/JIT/export explanation
-has not been identified or confirmed by the tool maintainers.
+would exceed this evidence. At #411 closeout the lower-level mechanism
+had not been identified or confirmed by tool maintainers; #416 subsequently
+identified the shared cache through canonical mapping and causal controls, without
+establishing a collector defect.
 
 The retained IL disassembly identifies `TaskAwaiter.get_IsCompleted` at IL offset
 49 followed by `brtrue.s` at offset 54 in each generated `MoveNext`. Reports retain
