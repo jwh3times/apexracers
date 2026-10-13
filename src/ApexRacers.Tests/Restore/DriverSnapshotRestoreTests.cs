@@ -182,7 +182,14 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
         db.Seasons.Add(new() { Id = 1, SeriesId = 1, Active = true });
         db.CarClasses.Add(new() { Id = 1, Name = "Synthetic Restore Class", ShortName = "SRC" });
         var week = Guid.NewGuid();
-        db.Weeks.Add(new() { Id = week, SeasonId = 1, TrackId = 42, StartDate = new(2026, 10, 6) });
+        // Keep the upload inside the fixture's seven-day Race Week as UTC dates advance.
+        db.Weeks.Add(new()
+        {
+            Id = week,
+            SeasonId = 1,
+            TrackId = 42,
+            StartDate = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime).AddDays(-1)
+        });
         await db.SaveChangesAsync(ct);
         var copies = new EvidenceCopyLifecycle(db, clock, journal);
         var purpose = await copies.OpenSyntheticPurposeAsync(EvidencePurposeKind.IndependentOfficial, 1, ct: ct);

@@ -1,0 +1,290 @@
+name: Backend shared collector experiment
+
+on:
+  push:
+    branches: [prototype/405-shared-collector]
+  workflow_dispatch:
+    inputs:
+      campaign:
+        type: choice
+        options: [smoke, compare, producer-exit, cancel, actions-cancel]
+        default: smoke
+        description: Original experiment; failed/cancelled results are retained
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CAMPAIGN: ${{ inputs.campaign || 'smoke' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/apex405-dotnet
+        with:
+          dotnet-version: '10.0.112'
+      - name: Build one canonical product tree
+        run: |
+          test "$(dotnet --version)" = 10.0.112
+          dotnet build --configuration Release
+          mkdir -p TestResults/canonical
+          python3 - <<'PYTHON'
+          import importlib.util,json,subprocess
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('cost','scripts/measure-backend-cost.py')
+          cost=importlib.util.module_from_spec(spec);spec.loader.exec_module(cost)
+          Path('TestResults/canonical/build-original.json').write_text(json.dumps({'sourceHead':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sourceBuild':cost.inventory(),'sdk':cost.sdk_inventory()},indent=2))
+          PYTHON
+          tar -czf TestResults/canonical/release-build.tar.gz src/*/bin/Release/net10.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: canonical-${{ github.run_id }}
+          path: TestResults/canonical/
+          if-no-files-found: error
+          retention-days: 30
+  baseline:
+    name: Original baseline (${{ matrix.pair }})
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: ${{ fromJSON(inputs.campaign == 'compare' && '[1,2,3]' || '[1]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/apex405-dotnet
+        with:
+          dotnet-version: '10.0.112'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: canonical-${{ github.run_id }}
+          path: TestResults/canonical
+      - name: Restore canonical bytes and install pinned collector
+        run: |
+          test "$(dotnet --version)" = 10.0.112
+          tar -xzf TestResults/canonical/release-build.tar.gz
+          dotnet tool install dotnet-coverage --tool-path "$RUNNER_TEMP/coverage-tool" --version 18.12.0
+          python3 - <<'PYTHON'
+          import importlib.util,json
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('cost','scripts/measure-backend-cost.py')
+          cost=importlib.util.module_from_spec(spec);spec.loader.exec_module(cost)
+          control=json.loads(Path('TestResults/canonical/build-original.json').read_text())
+          assert cost.inventory()==control['sourceBuild'],'Canonical product bytes changed'
+          assert cost.sdk_inventory()==control['sdk'],'Canonical SDK bytes changed'
+          PYTHON
+
+      - name: Record original job metadata
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          PAIR: ${{ matrix.pair }}
+        run: |
+          python3 - <<'PYTHON'
+          import json,os,platform,subprocess
+          from pathlib import Path
+          Path('TestResults/job-baseline.json').write_text(json.dumps({'runId':os.environ['RUN_ID'],'runAttempt':os.environ['RUN_ATTEMPT'],'pair':os.environ['PAIR'],'campaign':os.environ['CAMPAIGN'],'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'runnerImage':os.environ.get('ImageOS'),'runnerImageVersion':os.environ.get('ImageVersion'),'cpuCount':os.cpu_count(),'kernel':platform.release()},indent=2))
+          PYTHON
+      - name: Execute original baseline run
+        id: producer
+        continue-on-error: true
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: |
+          args=(--mode baseline --no-build --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage" --output "TestResults/pair-$PAIR/baseline")
+          if [ "$CAMPAIGN" != compare ]; then
+            args+=(--filter-class ApexRacers.Tests.Services.RefreshTokenStoreTests --filter-class ApexRacers.Tests.Models.FieldPercentileTests)
+          fi
+          if [ "$CAMPAIGN" = actions-cancel ]; then
+            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests --filter-class ApexRacers.Tests.References.DriverReferenceHttpTests)
+          fi
+
+          python3 scripts/backend-shared-shards.py "${args[@]}"
+      - name: Verify bounded owned cleanup after original outcome
+        if: ${{ always() }}
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: python3 scripts/backend-shared-shards.py --cleanup-context "TestResults/pair-$PAIR/baseline/context.json"
+      - name: Install frontend dependencies
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: npm ci
+        working-directory: web
+      - name: Original repository and frontend tests
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: |
+          npm run test:repo
+          node --test scripts/deploy-ingestion.test.mjs
+      - name: Original frontend tests with coverage
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: npx vitest run --coverage
+        working-directory: web
+      - name: Retain every original outcome and fault artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: baseline-${{ matrix.pair }}-${{ github.run_id }}
+          path: |
+            TestResults/pair-${{ matrix.pair }}/baseline/
+            TestResults/job-baseline.json
+            !TestResults/**/build/**
+            !TestResults/**/nuget/**
+            !TestResults/**/cli/**
+            !TestResults/**/msbuild/**
+          if-no-files-found: error
+          retention-days: 30
+      - name: Reject non-success original producer
+        if: ${{ always() }}
+        env:
+          PRODUCER_OUTCOME: ${{ steps.producer.outcome }}
+        run: test "$PRODUCER_OUTCOME" = success
+  prototype:
+    name: Shared prototype (${{ matrix.pair }})
+    needs: [build, baseline]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: ${{ fromJSON(inputs.campaign == 'compare' && '[1,2,3]' || '[1]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/apex405-dotnet
+        with:
+          dotnet-version: '10.0.112'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: canonical-${{ github.run_id }}
+          path: TestResults/canonical
+      - name: Restore canonical bytes and install pinned collector
+        run: |
+          test "$(dotnet --version)" = 10.0.112
+          tar -xzf TestResults/canonical/release-build.tar.gz
+          dotnet tool install dotnet-coverage --tool-path "$RUNNER_TEMP/coverage-tool" --version 18.12.0
+          python3 - <<'PYTHON'
+          import importlib.util,json
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('cost','scripts/measure-backend-cost.py')
+          cost=importlib.util.module_from_spec(spec);spec.loader.exec_module(cost)
+          control=json.loads(Path('TestResults/canonical/build-original.json').read_text())
+          assert cost.inventory()==control['sourceBuild'],'Canonical product bytes changed'
+          assert cost.sdk_inventory()==control['sdk'],'Canonical SDK bytes changed'
+          PYTHON
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: baseline-${{ matrix.pair }}-${{ github.run_id }}
+          path: TestResults/baseline-original
+      - name: Place immutable baseline reference
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: |
+          mkdir -p "TestResults/pair-$PAIR"
+          mv "TestResults/baseline-original/pair-$PAIR/baseline" "TestResults/pair-$PAIR/baseline"
+
+      - name: Record original job metadata
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          PAIR: ${{ matrix.pair }}
+        run: |
+          python3 - <<'PYTHON'
+          import json,os,platform,subprocess
+          from pathlib import Path
+          Path('TestResults/job-prototype.json').write_text(json.dumps({'runId':os.environ['RUN_ID'],'runAttempt':os.environ['RUN_ATTEMPT'],'pair':os.environ['PAIR'],'campaign':os.environ['CAMPAIGN'],'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'runnerImage':os.environ.get('ImageOS'),'runnerImageVersion':os.environ.get('ImageVersion'),'cpuCount':os.cpu_count(),'kernel':platform.release()},indent=2))
+          PYTHON
+      - name: Execute original prototype run
+        id: producer
+        continue-on-error: true
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: |
+          args=(--mode prototype --no-build --tool "$RUNNER_TEMP/coverage-tool/dotnet-coverage" --output "TestResults/pair-$PAIR/prototype")
+          if [ "$CAMPAIGN" != compare ]; then
+            args+=(--filter-class ApexRacers.Tests.Services.RefreshTokenStoreTests --filter-class ApexRacers.Tests.Models.FieldPercentileTests)
+          fi
+          if [ "$CAMPAIGN" = actions-cancel ]; then
+            args+=(--filter-class ApexRacers.Tests.Restore.DriverSnapshotRestoreTests --filter-class ApexRacers.Tests.References.DriverReferenceHttpTests)
+          fi
+          args+=(--reference "TestResults/pair-$PAIR/baseline/context.json")
+          if [ "$CAMPAIGN" = producer-exit ] || [ "$CAMPAIGN" = cancel ]; then args+=(--fault "$CAMPAIGN" --fault-after 2); fi
+          python3 scripts/backend-shared-shards.py "${args[@]}"
+      - name: Verify bounded owned cleanup after original outcome
+        if: ${{ always() }}
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: python3 scripts/backend-shared-shards.py --cleanup-context "TestResults/pair-$PAIR/prototype/context.json"
+      - name: Install frontend dependencies
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: npm ci
+        working-directory: web
+      - name: Original repository and frontend tests
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: |
+          npm run test:repo
+          node --test scripts/deploy-ingestion.test.mjs
+      - name: Original frontend tests with coverage
+        if: ${{ !cancelled() && steps.producer.outcome == 'success' }}
+        run: npx vitest run --coverage
+        working-directory: web
+      - name: Retain every original outcome and fault artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: prototype-${{ matrix.pair }}-${{ github.run_id }}
+          path: |
+            TestResults/pair-${{ matrix.pair }}/prototype/
+            TestResults/job-prototype.json
+            !TestResults/**/build/**
+            !TestResults/**/nuget/**
+            !TestResults/**/cli/**
+            !TestResults/**/msbuild/**
+          if-no-files-found: error
+          retention-days: 30
+      - name: Reject non-success original producer
+        if: ${{ always() }}
+        env:
+          PRODUCER_OUTCOME: ${{ steps.producer.outcome }}
+        run: test "$PRODUCER_OUTCOME" = success
+  experiment-result:
+    name: Experiment result
+    needs: [build, baseline, prototype]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed on every missing, failed or cancelled prerequisite
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          BASELINE_RESULT: ${{ needs.baseline.result }}
+          PROTOTYPE_RESULT: ${{ needs.prototype.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$BASELINE_RESULT" = success
+          test "$PROTOTYPE_RESULT" = success
