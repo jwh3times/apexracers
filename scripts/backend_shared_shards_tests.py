@@ -23,6 +23,129 @@ def row(uid, kind, value=0):
             'type': {'namespace': 'Tests', 'typeName': kind}}
 
 
+class CleanupJournalTests(unittest.TestCase):
+    def test_followup_cleanup_keeps_original_journals_byte_for_byte(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            command_journal = base / 'cleanup-command-original.jsonl'
+            resource_journal = base / 'cleanup-resource-bindings-original.jsonl'
+            command_journal.write_text('{"original": "command"}\n')
+            resource_journal.write_text('{"original": "resource"}\n')
+            originals = {p: p.read_bytes() for p in (command_journal, resource_journal)}
+            # The actual follow-up call site names its observation output this way.
+            followup = base / 'cleanup-followup'
+            followup.mkdir()
+            owner = runner.Ownership([], followup / 'observations.jsonl', cleanup_phase='followup')
+            owner.sessions.add('11111111-1111-1111-1111-111111111111')
+            with patch.object(owner, 'observe'), patch.object(owner, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=lambda argv, **kw: subprocess.CompletedProcess(argv, 0, '', '')):
+                self.assertTrue(owner.cleanup(grace=0)['complete'])
+            for path, before in originals.items():
+                self.assertEqual(path.read_bytes(), before, path.name)
+
+
+class FollowupContextTests(unittest.TestCase):
+    def fixture(self, base):
+        session = '11111111-1111-1111-1111-111111111111'
+        ownership = base / 'ownership-original.jsonl'
+        ownership.write_text(json.dumps({'identities': {}, 'sessions': [session], 'containers': []}) + '\n')
+        for name in ('cleanup-command-original.jsonl', 'cleanup-resource-bindings-original.jsonl'):
+            (base / name).write_text('{"original": true}\n')
+        original_artifacts = {p.name: runner.product.cost.digest(p) for p in base.iterdir()}
+        context = base / 'context.json'
+        context.write_text(json.dumps({'producerDirectories': [], 'originalArtifacts': original_artifacts}))
+        return context, {p: p.read_bytes() for p in base.iterdir()}, session
+
+    def test_actual_followup_preserves_context_and_all_hash_bound_originals(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            context, originals, session = self.fixture(base)
+            network = {'Id': 'network-id', 'Name': 'owned-network', 'Created': 'original-time',
+                       'Labels': {'org.testcontainers.resource-reaper-session': session}}
+            present = True
+            def command(argv, **kwargs):
+                nonlocal present
+                text = ''
+                if argv[:3] == ['docker', 'network', 'ls'] and present:
+                    text = 'network-id\n'
+                elif argv[:3] == ['docker', 'network', 'inspect']:
+                    text = json.dumps([network])
+                elif argv[:3] == ['docker', 'network', 'rm']:
+                    present = False
+                return subprocess.CompletedProcess(argv, 0, text, '')
+            with patch.object(runner.Ownership, 'observe'), patch.object(runner.Ownership, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=command):
+                result = runner.cleanup_context(context)
+            self.assertTrue(result['complete'])
+            for path, before in originals.items():
+                self.assertEqual(path.read_bytes(), before, path.name)
+            followup = base / 'cleanup-followup'
+            self.assertIn('network-id', (followup / 'cleanup-command-followup.jsonl').read_text())
+            self.assertEqual(json.loads((followup / 'cleanup-resource-bindings-followup.jsonl').read_text())['id'], 'network-id')
+            result_bytes = (followup / 'result.json').read_bytes()
+            with self.assertRaises(FileExistsError):
+                runner.cleanup_context(context)
+            self.assertEqual((followup / 'result.json').read_bytes(), result_bytes)
+
+    def test_followup_artifacts_started_before_finalization_never_enter_original_manifest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            context, _, _ = self.fixture(base)
+            followup = base / 'cleanup-followup'
+            followup.mkdir()
+            journal = followup / 'cleanup-command-followup.jsonl'
+            journal.write_text('{"stage": "started"}\n')
+            before = runner.original_artifact_hashes(base)
+            journal.write_text(journal.read_text() + '{"stage": "completed"}\n')
+            (followup / 'result.json').write_text('{"complete": false}')
+            self.assertEqual(runner.original_artifact_hashes(base), before)
+            self.assertEqual(before, json.loads(context.read_text())['originalArtifacts'])
+
+    def test_followup_binds_the_consumed_context_during_parent_finalization(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            context, _, _ = self.fixture(base)
+            consumed = context.read_bytes()
+            original_mkdir = Path.mkdir
+            def replace_context(path, *args, **kwargs):
+                original_mkdir(path, *args, **kwargs)
+                if path.name == 'cleanup-followup':
+                    context.write_text('{"producerDirectories": [], "finalized": true}')
+            with patch.object(Path, 'mkdir', replace_context), patch.object(runner.Ownership, 'cleanup', return_value={'complete': True}):
+                runner.cleanup_context(context)
+            started = json.loads((base / 'cleanup-followup/started.json').read_text())
+            self.assertEqual(started['sourceContextSha256'], runner.hashlib.sha256(consumed).hexdigest())
+            self.assertEqual((base / 'cleanup-followup/source-context.json').read_bytes(), consumed)
+
+    def test_followup_nonzero_command_is_retained_without_changing_originals(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            context, originals, _ = self.fixture(base)
+            with patch.object(runner.Ownership, 'observe'), patch.object(runner.Ownership, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=lambda argv, **kw: subprocess.CompletedProcess(argv, 2, '', 'daemon unavailable')):
+                result = runner.cleanup_context(context)
+            self.assertFalse(result['complete'])
+            entries = [json.loads(line) for line in (base / 'cleanup-followup/cleanup-command-followup.jsonl').read_text().splitlines()]
+            self.assertEqual(entries[-1]['stage'], 'completed')
+            self.assertEqual(entries[-1]['exitCode'], 2)
+            for path, before in originals.items():
+                self.assertEqual(path.read_bytes(), before, path.name)
+
+    def test_followup_timeout_is_durable_and_never_rewrites_originals(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            context, originals, _ = self.fixture(base)
+            def timeout(argv, **kwargs):
+                raise subprocess.TimeoutExpired(argv, 1)
+            with patch.object(runner.Ownership, 'observe'), patch.object(runner.Ownership, 'alive', return_value={}), patch.object(runner.subprocess, 'run', side_effect=timeout):
+                result = runner.cleanup_context(context)
+            self.assertFalse(result['complete'])
+            self.assertEqual(result['errorType'], 'TimeoutExpired')
+            entries = [json.loads(line) for line in (base / 'cleanup-followup/cleanup-command-followup.jsonl').read_text().splitlines()]
+            self.assertEqual([x['stage'] for x in entries], ['started', 'failed'])
+            self.assertEqual(entries[-1]['errorType'], 'TimeoutExpired')
+            for path, before in originals.items():
+                self.assertEqual(path.read_bytes(), before, path.name)
+            self.assertFalse(json.loads((base / 'cleanup-followup/result.json').read_text())['complete'])
+
+
 class InventoryTests(unittest.TestCase):
     def test_theory_cases_partitioned_once_as_whole_classes(self):
         rows = [row('a', 'A'), row('b', 'A', 1), row('c', 'B')]

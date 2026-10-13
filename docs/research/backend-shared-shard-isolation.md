@@ -76,6 +76,14 @@ and command names alone cannot authorize cleanup. Apply TERM, a bounded wait and
 the owned group or individually bound survivors, then verify absence. Record failures and
 cancellation without substituting another passing invocation.
 
+The #411 cleanup revision keeps always-step follow-up evidence in an exclusively
+created `cleanup-followup/` subtree, outside the original artifact manifest.
+It preserves the context bytes consumed and their starting hash alongside separate
+observations, phase-labelled command/resource journals and the cleanup result.
+Concurrent parent finalization does not include these follow-up files in original
+hashes; a second invocation refuses to overwrite the first follow-up. Historical
+shared journals and their context-bound prefixes remain separate original evidence.
+
 For nested builds, prefer the supported `dotnet build --disable-build-servers` option and
 `-nr:false` where the invocation can explicitly supply them. Microsoft documents
 [disabling persistent build servers](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-build)

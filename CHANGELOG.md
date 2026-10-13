@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.13] - 2026-10-13
+
+### Added
+
+- Published a focused async coverage diagnosis and reproducible controls showing order-sensitive observations at two await sites. The underlying mechanism remains unproven, and the shared test topology remains rejected.
+
+### Fixed
+
+- Preserved original backend research cleanup evidence by separating follow-up journals and retaining the exact consumed context, including failure and cancellation outcomes.
+
 ## [14.0.12] - 2026-10-13
 
 ### Changed
@@ -1688,7 +1698,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.12...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.13...HEAD
+[14.0.13]: https://github.com/jwh3times/apexracers/compare/v14.0.12...v14.0.13
 [14.0.12]: https://github.com/jwh3times/apexracers/compare/v14.0.11...v14.0.12
 [14.0.11]: https://github.com/jwh3times/apexracers/compare/v14.0.10...v14.0.11
 [14.0.10]: https://github.com/jwh3times/apexracers/compare/v14.0.9...v14.0.10
