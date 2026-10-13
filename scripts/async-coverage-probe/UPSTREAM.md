@@ -1,7 +1,13 @@
 # Upstream-ready coverage observation counterexample
 
-Draft only. The underlying profiler/JIT/export mechanism is unproven; this is not
-a posted or maintainer-confirmed defect. Original reports and IL are linked from
+> #416 corrects the earlier await-site interpretation: source lines 58/64 are
+> projections with a shared compiler-generated delegate cache; await completion
+> branches have hidden sequence points. See docs/research/backend-async-coverage-attribution.md
+> for the reduction and controls. Original #411 outcomes remain unchanged.
+
+Historical investigation draft, superseded by #416’s shared delegate-cache
+attribution. No collector defect was demonstrated, and this draft was not posted
+as a maintainer-confirmed defect. Original reports and IL are linked from
 docs/research/backend-async-coverage-drift.md and docs/testing/backend-async-411.json.
 
 With unchanged AdminService product bytes, SDK 10.0.112/runtime 10.0.12 and
@@ -53,7 +59,9 @@ claim those additional invocations were executed. Use fresh output roots and ret
 all outcomes. No full-suite campaign, production code modification, new denominator
 exclusion or comparison tolerance is required for this question.
 
-Question for investigation: what maps the exported condition `0`, type `jump`,
-denominator 2 at these generated MoveNext await lines, and why does its observation
+The original question, now addressed by #416’s canonical mapping and cache controls,
+was what maps the exported condition `0`, type `jump`,
+denominator 2 at these generated MoveNext projection lines, and why does its observation
 assignment invert in the declared order control? The IL contains get_IsCompleted
-at offset49 and brtrue.s at54, but exact exported edge identity has not been decoded.
+at offset49 and brtrue.s at54, but those await offsets have hidden sequence points. #416 maps the visible cache
+conditional to the projection and verifies it through cache prewarming.
