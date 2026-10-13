@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.14] - 2026-10-13
+
+### Added
+
+- Published an independent async coverage reproducer and actual-service controls attributing current order-sensitive observations to a shared compiler-generated delegate cache. The shared test topology remains rejected.
+
+### Fixed
+
+- Corrected the earlier await-site interpretation: the reported branches map to projection delegate caching; exported percentages do not identify individual executed edges.
+
 ## [14.0.13] - 2026-10-13
 
 ### Added
@@ -1698,7 +1708,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.13...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.14...HEAD
+[14.0.14]: https://github.com/jwh3times/apexracers/compare/v14.0.13...v14.0.14
 [14.0.13]: https://github.com/jwh3times/apexracers/compare/v14.0.12...v14.0.13
 [14.0.12]: https://github.com/jwh3times/apexracers/compare/v14.0.11...v14.0.12
 [14.0.11]: https://github.com/jwh3times/apexracers/compare/v14.0.10...v14.0.11
