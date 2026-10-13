@@ -54,6 +54,15 @@ runner records ownership before interruption; a separate always-step observes
 cleanup after the original outcome without rewriting it. Actual hosted evidence
 is required because `always()` alone does not prove that retention completed.
 
+The #411 revision isolates that follow-up in an exclusively created
+`cleanup-followup/` subtree. It retains the consumed context bytes in
+`source-context.json`, their SHA-256 in `started.json`, and separate observations,
+phase-labelled command/resource journals and `result.json`. Original artifact
+hashing excludes this subtree even when parent finalization overlaps cleanup.
+A second follow-up refuses to overwrite the first. This changes new evidence
+handling; the historical shared journals, verified prefixes and outcomes below
+remain unchanged.
+
 The initial branch push runs focused smoke. Once registered, the workflow exposes
 smoke, three-pair comparison and fault campaigns through dispatch; GitHub describes
 [dispatching a registered workflow against branches](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch).
@@ -197,6 +206,8 @@ excluded; their original hash bindings remain in the evidence.
 
 The bounded next investigation is
 [#411: diagnose the two async coverage observations](https://github.com/jwh3times/apexracers/issues/411).
+Its [focused diagnosis report](backend-async-coverage-drift.md) records the separate
+investigation and cleanup provenance revision.
 It must reproduce and explain the difference through focused original evidence,
 without assuming a cause, weakening the coverage contract, excluding product code
 or replaying the full campaign to obtain a passing sample. It must also address the
