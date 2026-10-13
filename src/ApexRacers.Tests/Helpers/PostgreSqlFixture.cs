@@ -29,6 +29,7 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
 {
     protected override async ValueTask InitializeAsync()
     {
+        FixtureCostProbe.TestcontainersSessionResource();
         await FixtureCostProbe.MeasureAsync("container.initialize", async () => await base.InitializeAsync());
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR")))
             FixtureCostProbe.ContainerResource(Container.Id, Container.GetMappedPublicPort(5432), "ready");
