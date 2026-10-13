@@ -15,6 +15,10 @@ No unreleased changes.
 
 - Published the hosted shared-collector backend sharding evaluation and reproducible research harness, including original failure and cancellation evidence. The prototype missed the timing target and failed exact coverage-observation preservation, so production test topology remains unchanged.
 
+### Fixed
+
+- Bound the physical restore test's synthetic Race Week to its fixture clock, preventing calendar rollover from excluding the uploaded best while preserving the seven-day window and all restore assertions.
+
 ## [14.0.8] - 2026-10-12
 
 ### Added

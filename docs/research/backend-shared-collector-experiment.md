@@ -203,3 +203,31 @@ or replaying the full campaign to obtain a passing sample. It must also address 
 shared-journal provenance limitation before any reconsideration. Resolving that
 question would leave the independent 20-minute timing miss in place and would not
 authorize topology adoption. Synthetic evidence retains `liveEligible=false`.
+
+## Closeout fixture-date diagnosis
+
+The original unsharded PR checks at `da5ff6804fa0d8ae545ae2fd2b02c3406b58cb2f`
+failed after the UTC date advanced to October 13:
+[Driver Privacy Contract](https://github.com/jwh3times/apexracers/actions/runs/38344742386)
+and [general Test](https://github.com/jwh3times/apexracers/actions/runs/38344742409).
+Both retained the same three physical restore theory failures; their original
+reports and failed privacy manifest remain in the evidence archive.
+
+A focused actual-test run reproduced all three failures. The fixture's hardcoded
+Race Week ran from October 6 to October 13 exclusive, while its `ReferenceClock`
+initialized from current UTC time. The October 13 upload fell outside that window;
+the official Driver best of 105 seconds therefore produced percentile 50 among
+three Field entries, rather than the expected uploaded 90-second best and
+83.33333333333333. The database probe confirmed the Field and private lap were present.
+Changing only the diagnostic upload's recording date to October 12 made all three
+original physical restore cases pass with the expected result. Authority, journal
+and acquisition clocks stayed unchanged during that comparison.
+
+The corrective fixture change restores the current recording date and derives only
+the synthetic week's start from the same fixture clock. It preserves the seven-day
+window, all three cases and every original restore, recovery and cleanup assertion.
+Product code, the privacy collector/matrix and the admitted catalog receipt are
+unchanged. Focused verification on corrective source `dcb57a9` passed all three cases
+without skips in 51.875 seconds. Fresh source-bound required CI validates the
+correction separately; they do not erase either failed PR check or replace the
+rejected three-pair sharding campaign.
