@@ -91,7 +91,10 @@ def resource_absent(stderr, kind, identity):
 
 
 class Ownership:
-    def __init__(self, directories, output):
+    def __init__(self, directories, output, *, cleanup_phase='original'):
+        if cleanup_phase not in ('original', 'followup'):
+            raise ValueError('Invalid cleanup journal phase')
+        self.cleanup_phase = cleanup_phase
         self.directories = directories
         self.output = output
         self.identities = {}
@@ -225,7 +228,7 @@ class Ownership:
             if remaining <= 0:
                 raise TimeoutError('Owned cleanup deadline exceeded')
             record = {'argv': argv, 'monotonicSeconds': time.monotonic()}
-            journal = self.output.with_name('cleanup-command-original.jsonl')
+            journal = self.output.with_name(f'cleanup-command-{self.cleanup_phase}.jsonl')
             with journal.open('a') as stream:
                 stream.write(json.dumps(dict(record, stage='started')) + '\n')
             try:
@@ -299,7 +302,7 @@ class Ownership:
                                 'created': data.get('CreatedAt' if kind == 'volume' else 'Created'),
                                 'id': data.get('Id')}
                     resource_bindings.append(identity)
-                    with self.output.with_name('cleanup-resource-bindings-original.jsonl').open('a') as stream:
+                    with self.output.with_name(f'cleanup-resource-bindings-{self.cleanup_phase}.jsonl').open('a') as stream:
                         stream.write(json.dumps(identity) + '\n')
                     if kind == 'volume':
                         remaining_resources.append(resource)
@@ -702,19 +705,35 @@ def main():
         context['accepted'] = bool(context.get('executionValidated') and context['cleanup'].get('complete'))
         context['faultRehearsalPassed'] = bool(args.fault and context.get('faultInjected') and not context['accepted'] and context.get('error')
                                               and context['cleanup'].get('complete'))
-        context['originalArtifacts'] = {str(p.relative_to(out)): product.cost.digest(p) for p in out.rglob('*')
-                                        if p.is_file() and p.name != 'context.json' and not any(part in ('build', 'nuget', 'cli', 'msbuild') for part in p.relative_to(out).parts)}
+        context['originalArtifacts'] = original_artifact_hashes(out)
         write(out / 'context.json', context)
     print(out / 'context.json')
     return 0 if context['accepted'] else 1
 
 
-if __name__ == '__main__':
-    if len(sys.argv) == 3 and sys.argv[1] == '--cleanup-context':
-        reference = Path(sys.argv[2]).resolve()
-        context = json.loads(reference.read_text())
-        owner = Ownership([Path(p) for p in context.get('producerDirectories', [])], reference.parent / 'cleanup-followup-observations.jsonl')
-        original = reference.parent / 'ownership-original.jsonl'
+def original_artifact_hashes(output):
+    # Follow-up cleanup can begin before the original parent finalizes its context.
+    # Its independently changing outputs never belong to the original manifest.
+    return {str(p.relative_to(output)): product.cost.digest(p) for p in output.rglob('*')
+            if p.is_file() and p.name != 'context.json'
+            and not any(part in ('build', 'nuget', 'cli', 'msbuild', 'cleanup-followup')
+                        for part in p.relative_to(output).parts)}
+
+
+def cleanup_context(reference):
+    reference = Path(reference).resolve()
+    source_context = reference.read_bytes()
+    context = json.loads(source_context)
+    # Exclusive reservation retains an earlier follow-up, including failures.
+    # Original and follow-up cleanup may overlap during Actions cancellation.
+    followup = reference.parent / 'cleanup-followup'
+    followup.mkdir(exist_ok=False)
+    (followup / 'source-context.json').write_bytes(source_context)
+    write(followup / 'started.json', {'sourceContextSha256': hashlib.sha256(source_context).hexdigest()})
+    owner = Ownership([Path(p) for p in context.get('producerDirectories', [])],
+                      followup / 'observations.jsonl', cleanup_phase='followup')
+    original = reference.parent / 'ownership-original.jsonl'
+    try:
         if original.exists():
             for line in original.read_text().splitlines():
                 data = json.loads(line)
@@ -722,7 +741,15 @@ if __name__ == '__main__':
                 owner.sessions.update(data['sessions'])
                 owner.containers.update({c['id']: c for c in data['containers']})
         result = owner.cleanup(grace=0)
-        write(reference.parent / 'cleanup-followup.json', result)
+    except BaseException as error:
+        result = {'complete': False, 'errorType': type(error).__name__, 'message': str(error)}
+    write(followup / 'result.json', result)
+    return result
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 3 and sys.argv[1] == '--cleanup-context':
+        result = cleanup_context(sys.argv[2])
         raise SystemExit(0 if result['complete'] else 1)
     if len(sys.argv) == 3 and sys.argv[1] == '--children':
         raise SystemExit(children(sys.argv[2]))
