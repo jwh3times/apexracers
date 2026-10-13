@@ -33,6 +33,8 @@ This directory contains public, contributor-safe project documentation.
 | [Backend fixture cost investigation](research/backend-fixture-cost.md) | Matched full-suite Linux coverage timings, instrumented fixture phases, sampled resources and explicit attribution/provenance limits. |
 | [Backend coverage shard prototype](research/backend-coverage-shard-prototype.md) | Rejected two-shard coverage feasibility findings, retained evidence and the coverage-preservation prerequisite; production CI remains unchanged. |
 | [Backend coverage preservation](research/backend-coverage-merge-preservation.md) | Local full-suite preservation with one supported live collector, original cleanup failures and remaining hosted topology obligations; production CI remains unchanged. |
+| [Shared live backend coverage experiment](research/backend-shared-collector-experiment.md) | Hosted matched-pair evaluation of two test processes inside one live collector, retained original outcomes and adoption limits; production CI remains unchanged. |
+| [Shared-collector backend shard isolation](research/backend-shared-shard-isolation.md) | Audited PostgreSQL, process, artifact and temporary-resource boundaries, concrete cleanup ownership and hosted acceptance requirements. |
 | [CI duration tooling](research/ci-duration-tooling.md) | Official-source scheduling, coverage, artifact reuse and required-check aggregation constraints. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |
