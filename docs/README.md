@@ -36,6 +36,7 @@ This directory contains public, contributor-safe project documentation.
 | [Shared live backend coverage experiment](research/backend-shared-collector-experiment.md) | Hosted matched-pair evaluation of two test processes inside one live collector, retained original outcomes and adoption limits; production CI remains unchanged. |
 | [Shared-collector backend shard isolation](research/backend-shared-shard-isolation.md) | Audited PostgreSQL, process, artifact and temporary-resource boundaries, concrete cleanup ownership and hosted acceptance requirements. |
 | [Async backend coverage drift](research/backend-async-coverage-drift.md) | Focused diagnosis of the rejected shared-collector coverage observations and separate follow-up cleanup provenance; no topology adoption. |
+| [Shared delegate-cache attribution](research/backend-async-coverage-attribution.md) | Same-binary controls, compiler IL/PDB mapping and an independent reduction attributing current projection observations to a shared delegate cache; historical and adoption limits remain. |
 | [CI duration tooling](research/ci-duration-tooling.md) | Official-source scheduling, coverage, artifact reuse and required-check aggregation constraints. |
 | [../README.md](../README.md) | Local setup and common development commands. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution workflow and quality gates. |

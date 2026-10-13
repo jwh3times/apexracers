@@ -148,7 +148,7 @@ and satisfied the existing positive-denominator 85% gates.
 
 Pairs 1 and 2 also matched every normalized covered observation and verified
 unchanged source/build, SDK, runtime and collector bytes before and after execution.
-Pair 3 differed in **four normalized rows**, representing two await sites repeated
+Pair 3 differed in **four normalized rows**, representing two source observations repeated
 in the class and method views of the report:
 
 | Product source observation | Baseline | Shared collector |
@@ -156,8 +156,16 @@ in the class and method views of the report:
 | `AdminService.GetFlagsForUserAsync`, line 58 | 100% (2/2) | 50% (1/2) |
 | `AdminService.GetFlagsForRoleAsync`, line 64 | 50% (1/2) | 100% (2/2) |
 
+**Interpretation erratum (#416):** lines 58 and 64 contain the `Select(ToDto)`
+projections; the actual awaits are on lines 57 and 63. The
+[current attribution controls](backend-async-coverage-attribution.md) map the
+visible projection conditions to a shared compiler-generated delegate cache,
+while await-completion branches occupy hidden sequence-point regions. Earlier
+“await-site” labels did not establish that mapping. This corrects the interpretation
+without changing historical reports, counters, missing after-bindings or rejection.
+
 These rows belong to the generated `MoveNext` methods. The observation difference
-does not establish its cause or identify lost collector branches. Passing cases,
+alone did not establish its cause or identify lost collector branches. Passing cases,
 equal aggregate counters and an unchanged model do not satisfy the required exact
 observation comparison. The original rejected context remains rejected.
 
