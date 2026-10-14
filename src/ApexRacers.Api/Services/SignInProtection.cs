@@ -2,6 +2,7 @@ using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services.Email;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services;
 
@@ -14,6 +15,7 @@ public sealed record ProtectedSignIn(ApplicationUser User, IssuedDevice? Device)
 /// </summary>
 public sealed class SignInProtection(
     UserManager<ApplicationUser> userManager,
+    AppDbContext db,
     IConfiguration config,
     SignInThrottleStore signInThrottle,
     KnownDeviceStore knownDevices,
@@ -45,20 +47,16 @@ public sealed class SignInProtection(
     /// absence to a single stand-in rather than to a unique value.
     /// </para>
     /// <para>
-    /// One residual, stated rather than glossed: the throttle read below happens only for an address
-    /// that has a confirmed account, so that path now does two indexed lookups the unknown and
-    /// unconfirmed paths do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant cost —
-    /// the password hash — and its own remarks already concede it closes the measurable gap rather
-    /// than making the whole request constant time; this widens the remainder slightly. Two primary
-    /// key/unique-index lookups against the surrounding PBKDF2 work is not a practical oracle, and
-    /// the alternative — reading throttle rows for accounts that do not exist — needs a user id there
-    /// is no way to have. Worth knowing before anyone adds more work to this branch.
+    /// Confirmed accounts perform coordination and throttle database work that unknown and
+    /// unconfirmed accounts do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant
+    /// password-hash cost; it does not make the whole request constant time or establish that the
+    /// remaining timing difference is unobservable. Keep that distinction when extending this path.
     /// </para>
     /// <para>
     /// A caller holding this account's recognised cookie is charged against both the device and
     /// the address. In sequential use, spending the device's window also spends the address's,
-    /// so dropping the cookie afterwards buys no extra allowance. Each scope is claimed atomically;
-    /// the separate claims preserve the existing fallback and sequential cookie-removal behavior.
+    /// so dropping the cookie afterwards buys no extra allowance. Both scopes are claimed inside
+    /// one short per-User coordination transaction, including the address-only admission path.
     /// </para>
     /// <para>
     /// What remains: a device-scoped failure still feeds the account-wide counter, as it must, so a
@@ -106,6 +104,98 @@ public sealed class SignInProtection(
         if (!await userManager.IsEmailConfirmedAsync(user))
             return RefuseWithoutDisclosing(request.Password);
 
+        var admission = await ClaimAdmissionAsync(user, device, address, ct);
+
+        if (admission.Refused)
+            return RefuseWithoutDisclosing(request.Password);
+
+        if (!await userManager.CheckPasswordAsync(user, request.Password))
+        {
+            // Returns true only for the one caller entitled to send the owner's notice; the store
+            // paces that to one email per account per interval, because sign-in is unauthenticated
+            // and an email per lockout would be an inbox a stranger could fill.
+            //
+            // Queued rather than sent. Sending it here would put an outbound mail round trip inside
+            // the response for accounts that exist and nowhere else, which is an account oracle a
+            // single request can read off the clock — and a mail failure would surface as a 500 on
+            // exactly those accounts, which is the same oracle by status code that this endpoint's
+            // 423 once was (GHSA-28pc-cx5w-g6jp).
+            // The owner is told when the scope that was actually used runs out, whichever that was.
+            // An earlier draft skipped that on the device path, reasoning that a recognised browser
+            // running out is the owner mistyping. That is true of the common case and irrelevant to
+            // the adversarial one: with the shipped numbers a device-scoped caller tops out well
+            // below the account-wide high-water mark, so the notice would never have fired at all
+            // and someone holding a copied cookie could guess indefinitely unobserved — removing
+            // the only detection signal for precisely the adversary this exemption empowers.
+            // Pacing is already the store's job, so there is no inbox to flood by telling the truth
+            // here.
+            if (await signInThrottle.NoteFailureAsync(user.Id, admission.OnKnownDevice ? null : address, admission.DeviceSpent, ct))
+                QueueSuspiciousAttemptsNotice(user);
+
+            return null;
+        }
+
+        // This account's own device is cleared on **any** success, not only when it was the scope
+        // that let the caller in. It is the fall-through case that makes that necessary: a thief who
+        // pinned the device counter leaves it spent, and if the Driver's successful sign-in through
+        // the address did not reset it, the exemption would stay switched off for the rest of that
+        // window — exactly while the attack is running. One correct password now heals it.
+        if (device is { } owned && owned.UserId == user.Id)
+        {
+            try
+            {
+                await knownDevices.ClearFailuresAsync(owned.Id, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                LogDeviceFailure(ex);
+            }
+        }
+
+        // The address is cleared only when it was the gating scope, preserving the pre-existing
+        // rule. Clearing it on a device-scoped success would reset a counter the Driver may be
+        // sharing with whoever is guessing — handing them a fresh allowance on the strength of the
+        // victim's own sign-in. The account-wide counter is left to expire on its own for the same
+        // reason: the owner signing in is not evidence that the guessing has stopped.
+        if (!admission.OnKnownDevice)
+            await signInThrottle.ClearAddressAsync(user.Id, address, ct);
+
+        // Remembering the browser is bookkeeping, not authentication, and it must not be able to
+        // cost a caller who supplied the right password their sign-in. A device-table fault would
+        // otherwise surface as a 500 on correct credentials; the worst case here is a lost
+        // exemption, which is the safe direction. Cancellation is left to propagate — that is the
+        // caller giving up, not a fault.
+        IssuedDevice? issued = null;
+        try
+        {
+            issued = await knownDevices.RememberAsync(user.Id, device, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogDeviceFailure(ex);
+        }
+
+        return new ProtectedSignIn(user, issued);
+    }
+
+    private sealed record Admission(bool Refused, bool OnKnownDevice, bool DeviceSpent);
+
+    private async Task<Admission> ClaimAdmissionAsync(
+        ApplicationUser user, KnownDeviceRecord? device, string address, CancellationToken ct)
+    {
+        // One per-User ordering covers owned-device and address-only callers alike. Hold it only
+        // across database admission: password work, notices and successful cleanup run after disposal.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var owner = await db.Database.SqlQueryRaw<Guid>(
+            """
+            SELECT "Id" AS "Value" FROM identity."Users" WHERE "Id" = {0} FOR UPDATE
+            """, user.Id).ToListAsync(ct);
+        if (owner.Count == 0)
+        {
+            await transaction.CommitAsync(ct);
+            return new Admission(true, false, false);
+        }
+
         // An address that has used up its allowance is refused before the password is even checked,
         // so a correct guess from a machine that has already failed too often still fails. Nothing is
         // recorded on this path: an attempt that was never checked carries no information, and
@@ -137,8 +227,8 @@ public sealed class SignInProtection(
             //    would let a guesser
             //    spend its window, drop the cookie, and spend the address's as well — which they
             //    could do by hand whether or not this code fell through, so the ceiling was really
-            //    the sum of the two. Each scope is atomic; the separate claims preserve the existing
-            //    fallback and sequential cookie-removal behavior.
+            //    the sum of the two. The per-User coordination keeps both claims in the same order
+            //    for concurrent callers, including callers who omit the cookie.
             // 2. An owned recognised cookie performs both claims whether its device is permitted
             //    or spent; a spent device still retains the ordinary address route.
             //
@@ -175,76 +265,8 @@ public sealed class SignInProtection(
             refused = (await signInThrottle.ClaimAttemptAsync(user.Id, address, ct)).Refused;
         }
 
-        if (refused)
-            return RefuseWithoutDisclosing(request.Password);
-
-        if (!await userManager.CheckPasswordAsync(user, request.Password))
-        {
-            // Returns true only for the one caller entitled to send the owner's notice; the store
-            // paces that to one email per account per interval, because sign-in is unauthenticated
-            // and an email per lockout would be an inbox a stranger could fill.
-            //
-            // Queued rather than sent. Sending it here would put an outbound mail round trip inside
-            // the response for accounts that exist and nowhere else, which is an account oracle a
-            // single request can read off the clock — and a mail failure would surface as a 500 on
-            // exactly those accounts, which is the same oracle by status code that this endpoint's
-            // 423 once was (GHSA-28pc-cx5w-g6jp).
-            // The owner is told when the scope that was actually used runs out, whichever that was.
-            // An earlier draft skipped that on the device path, reasoning that a recognised browser
-            // running out is the owner mistyping. That is true of the common case and irrelevant to
-            // the adversarial one: with the shipped numbers a device-scoped caller tops out well
-            // below the account-wide high-water mark, so the notice would never have fired at all
-            // and someone holding a copied cookie could guess indefinitely unobserved — removing
-            // the only detection signal for precisely the adversary this exemption empowers.
-            // Pacing is already the store's job, so there is no inbox to flood by telling the truth
-            // here.
-            if (await signInThrottle.NoteFailureAsync(user.Id, onKnownDevice ? null : address, deviceSpent, ct))
-                QueueSuspiciousAttemptsNotice(user);
-
-            return null;
-        }
-
-        // This account's own device is cleared on **any** success, not only when it was the scope
-        // that let the caller in. It is the fall-through case that makes that necessary: a thief who
-        // pinned the device counter leaves it spent, and if the Driver's successful sign-in through
-        // the address did not reset it, the exemption would stay switched off for the rest of that
-        // window — exactly while the attack is running. One correct password now heals it.
-        if (device is { } owned && owned.UserId == user.Id)
-        {
-            try
-            {
-                await knownDevices.ClearFailuresAsync(owned.Id, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                LogDeviceFailure(ex);
-            }
-        }
-
-        // The address is cleared only when it was the gating scope, preserving the pre-existing
-        // rule. Clearing it on a device-scoped success would reset a counter the Driver may be
-        // sharing with whoever is guessing — handing them a fresh allowance on the strength of the
-        // victim's own sign-in. The account-wide counter is left to expire on its own for the same
-        // reason: the owner signing in is not evidence that the guessing has stopped.
-        if (!onKnownDevice)
-            await signInThrottle.ClearAddressAsync(user.Id, address, ct);
-
-        // Remembering the browser is bookkeeping, not authentication, and it must not be able to
-        // cost a caller who supplied the right password their sign-in. A device-table fault would
-        // otherwise surface as a 500 on correct credentials; the worst case here is a lost
-        // exemption, which is the safe direction. Cancellation is left to propagate — that is the
-        // caller giving up, not a fault.
-        IssuedDevice? issued = null;
-        try
-        {
-            issued = await knownDevices.RememberAsync(user.Id, device, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            LogDeviceFailure(ex);
-        }
-
-        return new ProtectedSignIn(user, issued);
+        await transaction.CommitAsync(ct);
+        return new Admission(refused, onKnownDevice, deviceSpent);
     }
 
     private void LogDeviceFailure(Exception ex) =>

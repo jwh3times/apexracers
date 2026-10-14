@@ -79,7 +79,7 @@ public class SignInProtectionTests(PostgreSqlFixture postgres)
             ["APP_BASE_URL"] = "https://test.apexracers.gg",
         }).Build();
         return new SignInProtection(
-            provider.GetRequiredService<UserManager<ApplicationUser>>(), config,
+            provider.GetRequiredService<UserManager<ApplicationUser>>(), db, config,
             new SignInThrottleStore(db, clock, options, NullLogger<SignInThrottleStore>.Instance),
             new KnownDeviceStore(db, clock, options),
             queue ?? new ImmediateEmailQueue(emailSender ?? new FakeEmailSender()),
