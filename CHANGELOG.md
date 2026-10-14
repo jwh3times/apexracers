@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [14.0.15] - 2026-10-14
+
 ### Changed
 
 - Consolidated sign-in protection in one module, keeping generic refusals, existing per-scope atomic claims,
@@ -1712,7 +1716,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.14...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.15...HEAD
+[14.0.15]: https://github.com/jwh3times/apexracers/compare/v14.0.14...v14.0.15
 [14.0.14]: https://github.com/jwh3times/apexracers/compare/v14.0.13...v14.0.14
 [14.0.13]: https://github.com/jwh3times/apexracers/compare/v14.0.12...v14.0.13
 [14.0.12]: https://github.com/jwh3times/apexracers/compare/v14.0.11...v14.0.12
