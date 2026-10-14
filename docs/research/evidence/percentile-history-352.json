@@ -1,0 +1,83 @@
+{
+  "issue": 352,
+  "measuredDate": "2026-10-14",
+  "productionBaseline": "74f2c4e8738752441c599d2812e9c7ca04a0dc08",
+  "testSourceSha256": "e5c87d27a40931c9bf2bd8687f1bb2f4a21a1b4ef8cae1213a8742517fbf9e47",
+  "sdk": "10.0.112",
+  "postgresImage": "postgres:18.0-alpine",
+  "passed": 5,
+  "failed": 0,
+  "skipped": 0,
+  "durationSeconds": 15.836,
+  "limits": [
+    "Synthetic direct service calls; not Live authorization or protected HTTP acceptance.",
+    "EnsureCreated fixture; not production migration or source-correction protocol.",
+    "No cache preseed; observations produced by successive actual service calls."
+  ],
+  "observations": [
+    {
+      "scenario": "real-upload-race-only",
+      "boundary": "fabricated PostgreSQL direct legacy service seam; no Live authorization",
+      "outcome": {
+        "PercentileRank": 90,
+        "ExpectedPercentile": 90,
+        "LatestPercentileRank": 90,
+        "PersonalBestLapSeconds": 110,
+        "PersonalBestLapEvidence": "RaceLap",
+        "computePersisted": false,
+        "recommendationPersisted": true
+      }
+    },
+    {
+      "scenario": "session-replacement",
+      "boundary": "fabricated PostgreSQL direct legacy service seam; no Live authorization",
+      "outcome": {
+        "practice": 90,
+        "raceUpload": 70,
+        "official": 50,
+        "ExpectedPercentile": 50,
+        "rows": 1
+      }
+    },
+    {
+      "scenario": "subject-ownership",
+      "boundary": "fabricated PostgreSQL direct legacy service seam; no Live authorization",
+      "outcome": {
+        "PersonalBestLapSeconds": null,
+        "TotalWeeks": 0,
+        "ExpectedPercentile": 50,
+        "demoUploadedVisible": false,
+        "YourBestLapEvidence": "RaceLap",
+        "recommendationPersisted": false,
+        "claimedCustomerId": 777,
+        "subjectCustomerId": 100001,
+        "PercentileRank": 50,
+        "otherRank": 90,
+        "retained": true
+      }
+    },
+    {
+      "scenario": "threshold-and-two-writers",
+      "boundary": "fabricated PostgreSQL direct legacy service seam; no Live authorization",
+      "outcome": {
+        "ExpectedPercentile": 40,
+        "undersizedExpected": 50,
+        "grownExpected": 40,
+        "repeatedExpected": 40,
+        "rows": 2
+      }
+    },
+    {
+      "scenario": "track-week-scope",
+      "boundary": "fabricated PostgreSQL direct legacy service seam; no Live authorization",
+      "outcome": {
+        "YourBestLapSeconds": 90,
+        "excluded": {
+          "LapSeconds": 2,
+          "RecordedAt": "2026-10-07T00:00:00+00:00"
+        },
+        "PersonalBestLapSeconds": 90
+      }
+    }
+  ]
+}

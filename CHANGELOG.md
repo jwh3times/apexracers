@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.18] - 2026-10-14
+
+### Added
+
+- Reproducible PostgreSQL characterization and a proposed Percentile Rank history decision brief,
+  separating observed evidence-selection and ownership inconsistencies from future policy approval.
+
 ## [14.0.17] - 2026-10-14
 
 ### Changed
@@ -1733,7 +1740,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.17...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.18...HEAD
+[14.0.18]: https://github.com/jwh3times/apexracers/compare/v14.0.17...v14.0.18
 [14.0.17]: https://github.com/jwh3times/apexracers/compare/v14.0.16...v14.0.17
 [14.0.16]: https://github.com/jwh3times/apexracers/compare/v14.0.15...v14.0.16
 [14.0.15]: https://github.com/jwh3times/apexracers/compare/v14.0.14...v14.0.15
