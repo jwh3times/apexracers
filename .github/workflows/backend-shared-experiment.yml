@@ -74,7 +74,7 @@ jobs:
           node-version: '26'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: canonical-${{ github.run_id }}
           path: TestResults/canonical
@@ -180,7 +180,7 @@ jobs:
           node-version: '26'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: canonical-${{ github.run_id }}
           path: TestResults/canonical
@@ -198,7 +198,7 @@ jobs:
           assert cost.inventory()==control['sourceBuild'],'Canonical product bytes changed'
           assert cost.sdk_inventory()==control['sdk'],'Canonical SDK bytes changed'
           PYTHON
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: baseline-${{ matrix.pair }}-${{ github.run_id }}
           path: TestResults/baseline-original
