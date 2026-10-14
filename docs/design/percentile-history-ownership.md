@@ -62,7 +62,7 @@ Consequently the row cannot establish which current evidence request its rank de
 | Participant | Present responsibility and constraint |
 | --- | --- |
 | `PercentileCalculationService` | Calculates a Field and Personal Best; persists only when the requested Driver equals the caller's resolved Subject Driver. Real claim-only compute cannot persist. |
-| `CarRecommendationService` / `GetMyPercentilesAsync` | Resolves User through the requested claimed Customer ID, independently replaces the Week slot and adjusts eligible history sum/count. The percentile lookup reuses this writer. |
+| `CarRecommendationService` / `GetMyPercentilesAsync` | Resolves User through the requested claimed Customer ID, independently replaces the Week slot and adjusts eligible history sum/count. Week Detail’s `GetMyPercentilesAsync` reuses this writer. |
 | `UserAnalyticsService` | Reads stored presentable ranks unchanged but separately computes Personal Best using the request's selection and the User's claim. History eligibility and available Personal Best Week counts can diverge. |
 | `PrivateUploadStore.CalculatePercentileAsync` | Additional typed, authorized personal derivative producer. It captures purpose/preparation generations and exact private plus official source dependencies before committing a closed percentile batch. Its copy key is `private-percentile:{user}:{week}:{car}` and has no selection dimension. It must participate in any future ownership change. |
 | Seeder | Produces Race-only synthetic readings for seeded Users. A new policy must explicitly classify fresh seed output, without pretending old rows carry inferred selection metadata. |
@@ -108,8 +108,10 @@ ReadHistoryAsync(ownerScope, seriesId?, canonicalSelection)
     -> coherent history with its Personal Best and selection context
 ```
 
-`ownerScope` must be resolved from authenticated User plus current Driver/provenance/proof and
-Personal consent, not from a raw claimed Customer ID. Read-only other-Driver calculation has no
+`ownerScope` must resolve the authenticated User and current Driver/provenance. Authorized
+personal scopes require current proof and Personal consent; synthetic Demo preview personalization
+uses its existing Demo Subject policy without claiming Real ownership. A raw claimed Customer ID
+is insufficient for either scope. Read-only other-Driver calculation has no
 capability to persist personal history. The module may use `AppDbContext` directly and existing
 pure Core helpers; no generic repository or command framework is needed. Protected publication
 still owns final dispatch: a returned reading/DTO is never proof of disclosure authority.
