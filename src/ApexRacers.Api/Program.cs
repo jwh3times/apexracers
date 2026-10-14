@@ -280,6 +280,7 @@ builder.Services.AddScoped<SignInThrottleStore>();
 // shares an egress with a guesser still sign in. Shares the throttle's options: a recognised device
 // gets the same allowance, just against its own counter.
 builder.Services.AddScoped<KnownDeviceStore>();
+builder.Services.AddScoped<SignInProtection>();
 // The sign-in security notice is queued, never sent inside the request: it fires only for
 // addresses that have an account, so an inline send would price sign-in differently for real and
 // unknown addresses and give the account oracle back by latency (or by a 500 when mail fails).

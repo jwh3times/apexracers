@@ -174,7 +174,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
 
 - JWT HS256, **15-minute access token expiry**, `ClockSkew = TimeSpan.Zero`, `MapInboundClaims = false`.
 - Claims in token: `sub` (Guid user ID), `email`, `name`, `role`, `iracing_id` (optional), `theme_preference`.
-- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender, SignInThrottleStore signInThrottle, KnownDeviceStore knownDevices, IOutboundEmailQueue emailQueue, DriverAuthorityStore driverAuthority, ILogger<AuthService> logger)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings` and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters. `SignInThrottleStore` and `KnownDeviceStore` likewise each need a `SignInThrottleOptions` (use `SignInThrottle.Defaults` in tests unless the test is specifically about tuning) and the same `TimeProvider` — `KnownDeviceStore` reads `SignInThrottleOptions.PerAddressWindow`/`AccountWindow`/`AccountHighWaterFailures` to keep a device's window and the under-attack test defined identically to the address path.
+- The token contract (signing key, issuer, audience) is bound exactly once, as `JwtSettings.FromConfiguration(config)` in `Program.cs`, and shared as a singleton by both sides that need it: `Program.cs`'s `TokenValidationParameters` (validating) and `AuthService.GenerateJwtAsync` (issuing, via a constructor-injected `JwtSettings jwt`). **Never read `JWT_SIGNING_KEY`/`JWT_ISSUER`/`JWT_AUDIENCE` from `IConfiguration` directly outside `JwtSettings`** — the two sides must derive the identical `SymmetricSecurityKey`/issuer/audience, and a mismatch (e.g. one side keeping a stale default while the other changes) is a total-auth outage with no compile error and, if the test suite constructs its own `JwtSettings` instead of binding through `FromConfiguration`, no failing test either. `AuthService`'s constructor is `(UserManager<ApplicationUser> userManager, IConfiguration config, JwtSettings jwt, RefreshTokenStore refreshTokens, IEmailSender emailSender, SignInProtection signInProtection, KnownDeviceStore knownDevices, DriverAuthorityStore driverAuthority)` — `config` remains only for `APP_BASE_URL` (email links), not JWT settings. `SignInProtection` owns the protection stores, outbound notice queue, and `ILogger<SignInProtection>`; `KnownDeviceStore` remains on `AuthService` for credential-change invalidation. Any new `AuthService(...)` construction site (tests included) needs the `JwtSettings`, protection module, and store arguments; bind the former with `JwtSettings.FromConfiguration(config)` from the same `IConfiguration`, and construct the latter with the test `AppDbContext` plus a controlled `TimeProvider` when time matters. `SignInThrottleStore` and `KnownDeviceStore` likewise each need a `SignInThrottleOptions` (use `SignInThrottle.Defaults` in tests unless the test is specifically about tuning) and the same `TimeProvider` — `KnownDeviceStore` reads `SignInThrottleOptions.PerAddressWindow`/`AccountWindow`/`AccountHighWaterFailures` to keep a device's window and the under-attack test defined identically to the address path.
 - `JwtSettings` builds **both** sides of the contract, not just the key: `IssuingCredentials()` for `AuthService.GenerateJwtAsync` and `ValidationParameters()` for `Program.cs`'s `AddJwtBearer`. Don't hand-build a `SigningCredentials` or a `TokenValidationParameters` anywhere else, tests included — that is how `JwtSettings.Algorithm` (HS256) came to be pinned on the issuing side and left unset on the validating one, where any HMAC variant the library accepts for a symmetric key would have validated. A test that restates the validation parameters by hand is the same drift with a passing suite on top of it.
 - `FromConfiguration` rejects a `JWT_SIGNING_KEY` shorter than `JwtSettings.MinimumSigningKeyBytes` (32 bytes / 256 bits), measured as **UTF-8 bytes** because that is what reaches HMAC — not characters. This is a startup failure by design: a key weaker than the HMAC-SHA256 digest is brute-forceable offline from one captured token, and startup is the last moment an operator sees why. Don't relax it to a warning, and don't move the check to a use site — the single bind point is what makes it unavoidable.
 - Roles: `Standard` (default on register), `Beta`, `Alpha`, `Admin`.
@@ -234,7 +234,7 @@ and email-change already held that line; registration is the one that had to be 
   still surfaces. `UserManager.CreateAsync` validates the password before it touches the store, so a
   weak password is rejected identically for a taken and a free address — don't reorder that by
   checking existence first, which would make the password error the new oracle.
-- `LoginAsync` refuses an unconfirmed account with the same null an unknown
+- `SignInProtection.AuthenticateAsync` refuses an unconfirmed account with the same null an unknown
   address gets, **before** the sign-in throttle claim. This is the half that actually
   closes the oracle: a generic registration response alone would still let an attacker register a
   victim's address and read the answer off whether their chosen password then works. Checking ahead
@@ -268,7 +268,7 @@ scoped to (account, source address):
 - **Never call `AccessFailedAsync`/`IsLockedOutAsync` on the sign-in path.** Those are Identity's own
   lockout, counted per account regardless of who produced the failure — reintroducing either rebuilds
   issue #300. The counters live in `SignInThrottleStore` now, not on the user.
-- `LoginAsync` claims the attempt via `SignInThrottleStore.ClaimAttemptAsync` **before** the password
+- `SignInProtection.AuthenticateAsync` claims the attempt via `SignInThrottleStore.ClaimAttemptAsync` **before** the password
   is checked, and a refusal there records nothing — an attempt never checked carries no information,
   and counting it would let a caller hold its own window open by continuing to knock. `ClaimAttemptAsync`
   itself is a single atomic SQL upsert rather than a read-then-check-then-write, because the gap
@@ -288,19 +288,20 @@ scoped to (account, source address):
   stop. The owner is told by email (`AccountEmailTemplates.SuspiciousSignInAttempts`, paced by
   `SignInThrottleStore.NoteFailureAsync`/`ClaimNoticeAsync` to one per account per
   `SignInThrottleOptions.NoticeInterval`) instead.
-- That notice **must be queued (`IOutboundEmailQueue.Enqueue`), never sent inline from `LoginAsync`**.
+- That notice **must be queued (`IOutboundEmailQueue.Enqueue`), never sent inline from `SignInProtection.AuthenticateAsync`**.
   It fires only for addresses that have an account, so an inline send would cost real accounts a mail
   round trip that unknown addresses never pay — the account-existence oracle again, this time by
   latency, or by a 500 when mail delivery fails. `OutboundEmailDispatcher` (a `BackgroundService`)
-  drains the queue outside any request.
+  drains the queue outside any request. A non-cancellation enqueue fault is logged without changing
+  the generic refusal; cancellation still propagates.
 - A correct password clears only the winning address's row (`ClearAddressAsync`). The account-wide
   counter is deliberately left alone — the owner signing in from their own machine is not evidence
   that whoever is guessing elsewhere has stopped — and expires on its own once failures actually stop.
-- Every refusal path still goes through `RefuseWithoutDisclosing`, which verifies the submitted
+- Unknown, unconfirmed, and throttled refusals go through `SignInProtection.RefuseWithoutDisclosing`, which verifies the submitted
   password against a cached stand-in hash before returning. Without it an unknown address answers
   before any hash is computed while a real one pays the full PBKDF2 cost, and that gap is readable on
   the clock. It equalises the dominant cost, not the whole request — describe it as closing the
-  measurable gap, not as constant time.
+  measurable gap, not as constant time. Wrong-password refusal has already paid the real password verification cost.
 - **The shared-address residual is closed for a known device, not eliminated.** The throttle is scoped
   to source address, so an attacker sharing one with the Driver (CGNAT, a corporate egress, a shared
   VPN exit) can still exhaust that address's allowance and deny the Driver from it — unless the Driver
@@ -313,9 +314,14 @@ scoped to (account, source address):
   someone who already controls the mailbox — and those still surface, because collapsing them would
   strand a real user with no idea why their new password was refused.
 
+Exercise sign-in admission, hash work, notice pacing, fallback and cleanup directly through
+`SignInProtection.AuthenticateAsync` in `SignInProtectionTests`, with real PostgreSQL for atomic claims
+and concurrency. Keep JWT/refresh issuance and credential-change workflow tests at `AuthService`;
+HTTP tests retain the generic response and cookie transport contract.
+
 ### The known-device exemption (issue #314)
 
-`SignInAsync` (the internal method `LoginAsync` now wraps) resolves a caller-presented cookie to a
+`SignInProtection.AuthenticateAsync` resolves a caller-presented cookie to a
 `KnownDevice` via `KnownDeviceStore.RecogniseAsync` **before** the account is looked up, and keyed
 **only** on the presented token — never on the account named in the request. That ordering is the
 whole of what keeps the exemption from becoming a second account-existence oracle alongside the ones
@@ -324,12 +330,13 @@ cookie and for none who don't, so its cost tracks something the caller already k
 address they typed has an account.
 
 - **A recognised device is charged against both scopes, judged on its own verdict.** When the resolved
-  device belongs to the account being signed into, `SignInAsync` claims an attempt against **both**
+  device belongs to the account being signed into, `SignInProtection.AuthenticateAsync` claims an attempt against **both**
   `KnownDeviceStore.ClaimAttemptAsync` and `SignInThrottleStore.ClaimAttemptAsync`, and the address
   claim's `Refused` is discarded while the device has room. Charging only the device would let a
   caller spend its window, drop the cookie, and spend the address's window too — making the ceiling
-  the *sum* of the two; charging both makes it the *larger* of the two, so dropping the cookie
-  mid-attack buys nothing.
+  the *sum* of the two. For sequential attempts, charging both makes it the *larger* of the two, so
+  dropping the cookie mid-attack buys nothing. Per-scope claims are individually atomic; this refactor
+  preserves the existing separate-claim/fallback behavior and sequential cookie-removal allowance.
 - **A device may only ever add allowance, never remove one.** When `ClaimAttemptAsync` returns
   `Refused: true` (or `null`, because the row vanished between recognition and the claim), the caller
   falls back to the address's own verdict rather than being refused outright. Refusing here would let
@@ -342,7 +349,7 @@ address they typed has an account.
   count it just wrote with `>`, not a count read before the attempt with `>=`) read from — a recognised
   device keeps the ordinary allowance even while the account-wide high-water mark is crossed. Do not
   restate the allowance rule in either path; call `AllowanceFor`.
-- **One success clears the device unconditionally.** `SignInAsync` calls
+- **One success clears the device unconditionally.** `SignInProtection.AuthenticateAsync` calls
   `KnownDeviceStore.ClearFailuresAsync` for this account's device on **any** successful sign-in, not
   only when the device was the scope that admitted the caller — a thief who pinned the device counter
   and then the Driver signs in through the address must not leave the device counter spent for the
@@ -354,10 +361,11 @@ address they typed has an account.
   — true in the common case, but with the shipped numbers a device-scoped caller tops out well below
   the account-wide high-water mark, so skipping it would silence the only detection signal for exactly
   the adversary the exemption empowers (someone who stole the cookie and is guessing unobserved).
-- **Remembering the device must never cost a correct password its sign-in.** `KnownDeviceStore.RememberAsync`
-  runs inside a `try`/`catch (Exception ex) when (ex is not OperationCanceledException)`; a fault there
-  logs a warning and returns no cookie rather than failing the request — the worst case is a lost
-  exemption, never a 500 on the right password. `OperationCanceledException` still propagates: that's
+- **Device bookkeeping must never cost a correct password its sign-in.** `KnownDeviceStore.ClearFailuresAsync`
+  and `RememberAsync` each run inside a `try`/`catch (Exception ex) when (ex is not OperationCanceledException)`.
+  A clear fault logs a warning and continues; a remember fault returns no cookie. A failed new-device
+  insert detaches only its own tracked row so later refresh-token issuance cannot retry that write.
+  Device bookkeeping may lose the exemption, never fail the correct-password request. `OperationCanceledException` still propagates: that's
   the caller giving up, not a device-table fault.
 - **Password change, reset, and email-change forget every device, alongside revoking refresh tokens**
   (`KnownDeviceStore.ForgetAllAsync`, beside the existing `RefreshTokenStore.RevokeAllActiveAsync`

@@ -20,7 +20,7 @@ namespace ApexRacers.Api.Services;
 /// the caller already knows, and not by whether the address they typed has an account. A lookup
 /// performed only for real accounts would time the difference for anyone who cared to measure it —
 /// the same shape as the <c>423</c> that GHSA-28pc-cx5w-g6jp removed, arriving by the clock instead
-/// of the status code. <see cref="AuthService.LoginAsync"/> calls this before it looks the account
+/// of the status code. <see cref="SignInProtection.AuthenticateAsync"/> calls this before it looks the account
 /// up, and the ownership check happens afterwards in memory.
 /// </para>
 /// <para>
@@ -193,7 +193,7 @@ public sealed class KnownDeviceStore(
         }
 
         var rawToken = MintToken();
-        db.KnownDevices.Add(new KnownDevice
+        var entry = db.KnownDevices.Add(new KnownDevice
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -204,7 +204,17 @@ public sealed class KnownDeviceStore(
             FailureCount = 0,
             WindowStartedAt = default,
         });
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // A failed best-effort device insert must not be retried by refresh-token issuance on
+            // this shared context. Detach only this new row; preserve unrelated tracked work.
+            entry.State = EntityState.Detached;
+            throw;
+        }
 
         await EvictExcessAsync(userId, ct);
 

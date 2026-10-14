@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Consolidated sign-in protection in one module, keeping generic refusals, existing per-scope atomic claims,
+  known-device fallback and paced notices together before session credentials are issued. Device
+  bookkeeping faults preserve successful authentication while cancellation still propagates.
 
 ## [14.0.14] - 2026-10-13
 
