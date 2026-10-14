@@ -74,31 +74,22 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
 
         var refreshTokens = new RefreshTokenStore(
             provider.GetRequiredService<AppDbContext>(), TimeProvider.System, NullLogger<RefreshTokenStore>.Instance);
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var db = provider.GetRequiredService<AppDbContext>();
+        var devices = new KnownDeviceStore(db, TimeProvider.System, SignInThrottle.Defaults);
+        var protection = new SignInProtection(
+            userManager, config,
+            new SignInThrottleStore(db, TimeProvider.System, SignInThrottle.Defaults, NullLogger<SignInThrottleStore>.Instance),
+            devices, new ImmediateEmailQueue(new FakeEmailSender()), NullLogger<SignInProtection>.Instance);
         var service = new AuthService(
-            provider.GetRequiredService<UserManager<ApplicationUser>>(),
-            config,
-            jwt,
-            refreshTokens,
-            new FakeEmailSender(),
-            new SignInThrottleStore(
-                provider.GetRequiredService<AppDbContext>(),
-                TimeProvider.System,
-                SignInThrottle.Defaults,
-                NullLogger<SignInThrottleStore>.Instance),
-            new KnownDeviceStore(
-                provider.GetRequiredService<AppDbContext>(),
-                TimeProvider.System,
-                SignInThrottle.Defaults),
-            new ImmediateEmailQueue(new FakeEmailSender()),
-            new DriverAuthorityStore(provider.GetRequiredService<AppDbContext>(), TimeProvider.System),
-            NullLogger<AuthService>.Instance);
+            userManager, config, jwt, refreshTokens, new FakeEmailSender(), protection,
+            devices, new DriverAuthorityStore(db, TimeProvider.System));
 
         // Registration hands back nothing now — an account is unusable until its address is
         // confirmed — so the token this test round-trips comes from the sign-in that follows.
         var email = $"driver-{Guid.NewGuid():N}@example.com";
         await service.RegisterAsync(new RegisterRequest(email, "Pass1234"), Ct);
 
-        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByEmailAsync(email);
         await service.ConfirmEmailAsync(
             user!.Id, await userManager.GenerateEmailConfirmationTokenAsync(user), Ct);

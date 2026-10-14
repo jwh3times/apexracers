@@ -33,11 +33,9 @@ public class AuthService(
     JwtSettings jwt,
     RefreshTokenStore refreshTokens,
     IEmailSender emailSender,
-    SignInThrottleStore signInThrottle,
+    SignInProtection signInProtection,
     KnownDeviceStore knownDevices,
-    IOutboundEmailQueue emailQueue,
-    DriverAuthorityStore driverAuthority,
-    ILogger<AuthService> logger)
+    DriverAuthorityStore driverAuthority)
 {
     private const int AccessTokenMinutes = 15;
 
@@ -113,224 +111,25 @@ public class AuthService(
     }
 
     /// <summary>
-    /// Signs a caller in, or returns null. **Every** refusal is the same null — unknown address,
-    /// unconfirmed address, throttled address, and wrong password are indistinguishable to the caller
-    /// (GHSA-28pc-cx5w-g6jp, GHSA-72v6-mw4c-q96r). The return type carries no reason on purpose;
-    /// there is nowhere to put one, so a future change cannot reopen the channel by accident.
+    /// Issues credentials for a protected sign-in, or returns the same null for every refusal.
+    /// <see cref="SignInProtection"/> owns recognition, admission, password work and cleanup.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The throttle is deliberately silent here rather than reported once the right password arrives.
-    /// Reporting it on a correct password would turn the throttle window into a password oracle: an
-    /// attacker who kept guessing through it would learn they had found the password from that
-    /// response alone, which is precisely what the throttle exists to prevent. The account's owner is
-    /// told by email instead.
-    /// </para>
-    /// <para>
-    /// <paramref name="sourceAddress"/> is what the throttle is scoped to, and it is only meaningful
-    /// because forwarded headers are processed at the edge (GHSA-fq5w-frqr-6px2) — a caller who could
-    /// forge it would hand themselves a fresh allowance per request. It is optional so that callers
-    /// with no request context (tests, tooling) still compile; those all share one bucket rather than
-    /// bypassing the throttle, which is why <see cref="SignInThrottleStore.NormaliseAddress"/> maps
-    /// absence to a single stand-in rather than to a unique value.
-    /// </para>
-    /// <para>
-    /// One residual, stated rather than glossed: the throttle read below happens only for an address
-    /// that has a confirmed account, so that path now does two indexed lookups the unknown and
-    /// unconfirmed paths do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant cost —
-    /// the password hash — and its own remarks already concede it closes the measurable gap rather
-    /// than making the whole request constant time; this widens the remainder slightly. Two primary
-    /// key/unique-index lookups against the surrounding PBKDF2 work is not a practical oracle, and
-    /// the alternative — reading throttle rows for accounts that do not exist — needs a user id there
-    /// is no way to have. Worth knowing before anyone adds more work to this branch.
-    /// </para>
-    /// <para>
-    /// The known-device exemption (issue #314) adds two residuals of its own, and deliberately does
-    /// not add a third. It does <em>not</em> widen the allowance: a caller holding a cookie is
-    /// charged against the device and the address together, so spending the device's window spends
-    /// the address's too and dropping the cookie afterwards buys nothing. An earlier draft charged
-    /// only the device and recorded the resulting sum as inherent; it is not — this is what closes
-    /// it, and it also makes every cookie-bearing attempt perform the same two claims regardless of
-    /// whether the cookie is recognised or spent, so there is no longer a shape to time.
-    /// </para>
-    /// <para>
-    /// What remains: a device-scoped failure still feeds the account-wide counter, as it must, so a
-    /// copied cookie can help push an account over the high-water mark and tighten every
-    /// <em>unrecognised</em> address — including the Driver's other browsers. And a holder who
-    /// shares the Driver's address can spend both scopes and deny them until one of the windows
-    /// lapses; that needs the cookie <em>and</em> the shared egress, which is strictly more than
-    /// #314's original attack required, and one successful sign-in clears the device again.
-    /// </para>
-    /// </remarks>
-    /// <param name="request">The submitted address and password.</param>
-    /// <param name="sourceAddress">Post-forwarded-headers client address; see the remarks.</param>
-    /// <param name="deviceToken">
-    /// The known-device cookie the caller presented, if any (issue #314). Resolved before the
-    /// account is looked up, which is what keeps the exemption from timing an account oracle — see
-    /// the call site.
-    /// </param>
-    /// <param name="ct">Cancellation token.</param>
     public async Task<SignInOutcome?> SignInAsync(
         LoginRequest request,
         string? sourceAddress,
         string? deviceToken,
         CancellationToken ct = default)
     {
-        var address = SignInThrottleStore.NormaliseAddress(sourceAddress);
-
-        // Resolved BEFORE the account is looked up, and keyed on the presented cookie alone. The
-        // ordering is the whole of issue #314's "the exemption must not itself become an oracle":
-        // this lookup happens for every caller who sends a cookie and for no caller who does not, so
-        // its cost tracks something the caller already knows rather than whether the address they
-        // typed has an account. Doing it after the account was found would add work to exactly the
-        // branch the remarks above already flag as the thin end of a timing difference.
-        var device = await knownDevices.RecogniseAsync(deviceToken, ct);
-
-        var user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null)
-            return RefuseSignInWithoutDisclosing(request.Password);
-
-        // An account whose address was never confirmed has to be indistinguishable from one that does
-        // not exist, or registration is still an enumeration oracle: an attacker who registers a
-        // victim's address could read the answer off whether the credentials they just chose work
-        // (GHSA-72v6-mw4c-q96r). Checked ahead of both the lockout state and the password so an
-        // unconfirmed account can be neither probed nor locked out by a stranger.
-        if (!await userManager.IsEmailConfirmedAsync(user))
-            return RefuseSignInWithoutDisclosing(request.Password);
-
-        // An address that has used up its allowance is refused before the password is even checked,
-        // so a correct guess from a machine that has already failed too often still fails. Nothing is
-        // recorded on this path: an attempt that was never checked carries no information, and
-        // counting it would let a caller hold their own window open by continuing to knock.
-        //
-        // The allowance is per (account, source address), NOT per account — that is the whole of
-        // issue #300. An account-wide counter meant five requests from a stranger locked the Driver
-        // out of their own account for fifteen minutes, repeatable forever. Now a stranger exhausts
-        // only their own address; the Driver's machine has a clean record and signs in normally.
-        // Claimed, not merely read. The claim and the count the gate tests are one statement, so a
-        // burst of concurrent requests gets distinct counts instead of all reading zero and all
-        // getting their password checked — see ClaimAttemptAsync for why that gap is wide enough to
-        // drive through.
-        // A device this account has already signed in from is throttled against its own counter
-        // instead of the address's (issue #314). That is what makes the exemption worth anything:
-        // raising the address allowance would not help, because on a shared egress the attacker is
-        // exhausting the very row the Driver would be measured against. The ownership test is here
-        // rather than in the lookup so recognition stays account-independent.
-        var onKnownDevice = device is not null && device.UserId == user.Id;
-        var deviceSpent = false;
-
-        bool refused;
-        if (onKnownDevice)
-        {
-            // A caller holding this account's cookie is charged against **both** scopes and judged
-            // on the device's verdict alone. Two properties fall out of that, and both matter:
-            //
-            // 1. The allowance stops being additive. Charging only the device would let a guesser
-            //    spend its window, drop the cookie, and spend the address's as well — which they
-            //    could do by hand whether or not this code fell through, so the ceiling was really
-            //    the sum of the two. Spending both together makes it the larger of the two instead.
-            // 2. The work no longer varies with whether the cookie is recognised or spent. Every
-            //    cookie-bearing attempt performs exactly the same two claims, so the only thing a
-            //    holder can time is something they already know.
-            //
-            // The address's verdict is deliberately discarded while the device has room: that is
-            // the whole of #314, since on a shared egress the address is exactly what the attacker
-            // has exhausted.
-            var deviceClaim = await knownDevices.ClaimAttemptAsync(device!.Id, user.Id, ct);
-            var addressClaim = await signInThrottle.ClaimAttemptAsync(user.Id, address, ct);
-
-            if (deviceClaim is { Refused: false } permitted)
-            {
-                refused = false;
-                deviceSpent = permitted.Spent;
-            }
-            else
-            {
-                // **A device may only ever add allowance, never remove one.** Reached when the row
-                // vanished between recognition and the claim, and — the case that matters — when its
-                // own window is spent. Refusing here would have handed anyone who copied a cookie a
-                // way to deny the Driver with the correct password from any network, because the
-                // Driver's browser presents that same cookie: issue #300's shape rebuilt on a new
-                // key, and cheaper to reach than the shared egress #314 set out to fix. Falling
-                // through leaves the Driver exactly the route they would have had with no exemption
-                // at all. The one case it cannot rescue is a holder who *also* shares the Driver's
-                // address, since both scopes are then spent — strictly harder than #314's original
-                // shared-egress attack, and self-healing after one successful sign-in clears the
-                // device below.
-                onKnownDevice = false;
-                refused = addressClaim.Refused;
-            }
-        }
-        else
-        {
-            refused = (await signInThrottle.ClaimAttemptAsync(user.Id, address, ct)).Refused;
-        }
-
-        if (refused)
-            return RefuseSignInWithoutDisclosing(request.Password);
-
-        if (!await userManager.CheckPasswordAsync(user, request.Password))
-        {
-            // Returns true only for the one caller entitled to send the owner's notice; the store
-            // paces that to one email per account per interval, because sign-in is unauthenticated
-            // and an email per lockout would be an inbox a stranger could fill.
-            //
-            // Queued rather than sent. Sending it here would put an outbound mail round trip inside
-            // the response for accounts that exist and nowhere else, which is an account oracle a
-            // single request can read off the clock — and a mail failure would surface as a 500 on
-            // exactly those accounts, which is the same oracle by status code that this endpoint's
-            // 423 once was (GHSA-28pc-cx5w-g6jp).
-            // The owner is told when the scope that was actually used runs out, whichever that was.
-            // An earlier draft skipped that on the device path, reasoning that a recognised browser
-            // running out is the owner mistyping. That is true of the common case and irrelevant to
-            // the adversarial one: with the shipped numbers a device-scoped caller tops out well
-            // below the account-wide high-water mark, so the notice would never have fired at all
-            // and someone holding a copied cookie could guess indefinitely unobserved — removing
-            // the only detection signal for precisely the adversary this exemption empowers.
-            // Pacing is already the store's job, so there is no inbox to flood by telling the truth
-            // here.
-            if (await signInThrottle.NoteFailureAsync(user.Id, onKnownDevice ? null : address, deviceSpent, ct))
-                QueueSuspiciousAttemptsNotice(user);
-
+        var authenticated = await signInProtection.AuthenticateAsync(request, sourceAddress, deviceToken, ct);
+        if (authenticated is null)
             return null;
-        }
 
-        // This account's own device is cleared on **any** success, not only when it was the scope
-        // that let the caller in. It is the fall-through case that makes that necessary: a thief who
-        // pinned the device counter leaves it spent, and if the Driver's successful sign-in through
-        // the address did not reset it, the exemption would stay switched off for the rest of that
-        // window — exactly while the attack is running. One correct password now heals it.
-        if (device is { } owned && owned.UserId == user.Id)
-            await knownDevices.ClearFailuresAsync(owned.Id, ct);
-
-        // The address is cleared only when it was the gating scope, preserving the pre-existing
-        // rule. Clearing it on a device-scoped success would reset a counter the Driver may be
-        // sharing with whoever is guessing — handing them a fresh allowance on the strength of the
-        // victim's own sign-in. The account-wide counter is left to expire on its own for the same
-        // reason: the owner signing in is not evidence that the guessing has stopped.
-        if (!onKnownDevice)
-            await signInThrottle.ClearAddressAsync(user.Id, address, ct);
-
-        // Remembering the browser is bookkeeping, not authentication, and it must not be able to
-        // cost a caller who supplied the right password their sign-in. A device-table fault would
-        // otherwise surface as a 500 on correct credentials; the worst case here is a lost
-        // exemption, which is the safe direction. Cancellation is left to propagate — that is the
-        // caller giving up, not a fault.
-        IssuedDevice? issued = null;
-        try
-        {
-            issued = await knownDevices.RememberAsync(user.Id, device, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning("Could not remember the signing-in device; continuing without the exemption. Failure type: {FailureType}", ex.GetType().Name);
-        }
-
-        var jwt = await GenerateJwtAsync(user);
+        var user = authenticated.User;
+        var token = await GenerateJwtAsync(user);
         var refresh = await refreshTokens.IssueAsync(user.Id, ct);
         return new SignInOutcome(
-            new AuthResultDto(jwt, user.Id, user.DisplayName, refresh),
-            issued);
+            new AuthResultDto(token, user.Id, user.DisplayName, refresh),
+            authenticated.Device);
     }
 
     /// <summary>
@@ -353,16 +152,6 @@ public class AuthService(
         string? deviceToken,
         CancellationToken ct = default) =>
         (await SignInAsync(request, sourceAddress, deviceToken, ct))?.Result;
-
-    /// <summary>
-    /// Refuses a sign-in without disclosing why, paying the password-hash cost first. The
-    /// <see cref="SignInOutcome"/>-shaped counterpart to <see cref="RefuseWithoutDisclosing"/>.
-    /// </summary>
-    private SignInOutcome? RefuseSignInWithoutDisclosing(string? password)
-    {
-        RefuseWithoutDisclosing(password);
-        return null;
-    }
 
     public async Task<AuthResultDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
     {
@@ -624,62 +413,6 @@ public class AuthService(
     /// The single wording every password-reset failure that is not about the submitted password uses.
     /// </summary>
     private const string InvalidResetRequest = "Invalid or expired password reset request.";
-
-    /// <summary>
-    /// A real hash of a value no account uses, held for the life of the process. Cached because
-    /// producing it costs the same as verifying it, and paying that twice on a refused request would
-    /// overshoot the very cost this is meant to match.
-    /// </summary>
-    private static string? _dummyPasswordHash;
-
-    /// <summary>
-    /// Stand-in passed to the hasher on the refusal path. <see cref="PasswordHasher{TUser}"/> ignores
-    /// the user, but the parameter is not optional and <see cref="ApplicationUser"/> has required
-    /// members, so one throwaway instance serves every call.
-    /// </summary>
-    private static readonly ApplicationUser HashStandIn = new() { DisplayName = string.Empty };
-
-    /// <summary>
-    /// Refuses a sign-in after doing the password work the accepted path would have done.
-    /// </summary>
-    /// <remarks>
-    /// Without this, an address with no account answers before any hash is computed while a real one
-    /// pays the full PBKDF2 cost, and the gap is wide enough to read account existence off the clock
-    /// (GHSA-28pc-cx5w-g6jp). Verifying against a stand-in hash puts the same dominant cost on both
-    /// paths. It equalises that cost, not the whole request — the surrounding database work still
-    /// differs slightly — so treat it as closing the measurable gap rather than as constant time.
-    /// </remarks>
-    private AuthResultDto? RefuseWithoutDisclosing(string? password)
-    {
-        // Built from the injected hasher rather than a fresh one, so it keeps matching the configured
-        // work factor if that is ever tuned. A race here is harmless: both racers compute an equally
-        // valid hash and the cost is identical either way.
-        _dummyPasswordHash ??= userManager.PasswordHasher.HashPassword(HashStandIn, "not-a-real-password");
-        userManager.PasswordHasher.VerifyHashedPassword(
-            HashStandIn, _dummyPasswordHash, password ?? string.Empty);
-        return null;
-    }
-
-    /// <summary>
-    /// Tells the account's owner that something is guessing at it, which is the only disclosure that
-    /// reaches them rather than whoever is guessing. See <see cref="LoginAsync"/> for why the HTTP
-    /// response cannot carry it, and the template for why it does not say "locked".
-    /// </summary>
-    /// <remarks>
-    /// Queued rather than sent, and so returns nothing to await. This is the one account email whose
-    /// send must not happen inside the request: it fires only for addresses that have an account, so
-    /// an inline send would price sign-in differently for real and unknown addresses and hand back
-    /// the account oracle by latency, or by a 500 when the mail provider is unhappy. See
-    /// <see cref="IOutboundEmailQueue"/>.
-    /// </summary>
-    private void QueueSuspiciousAttemptsNotice(ApplicationUser user)
-    {
-        if (string.IsNullOrEmpty(user.Email))
-            return;
-
-        emailQueue.Enqueue(
-            AccountEmailTemplates.SuspiciousSignInAttempts(user.Email, $"{BaseUrl}/forgot-password"));
-    }
 
     /// <summary>
     /// Identity's codes for "this account already exists". They are the only <see cref="RegisterAsync"/>

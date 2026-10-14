@@ -123,12 +123,12 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   rebuilding the denial of service the throttle exists to prevent. Likewise flag the account-wide
   high-water mark used to deny a sign-in directly instead of only tightening the per-address allowance.
 - Flag `AccountEmailTemplates.SuspiciousSignInAttempts` (or any future sign-in-path email) sent via
-  `IEmailSender.SendAsync` directly from `AuthService.LoginAsync` instead of `IOutboundEmailQueue.Enqueue`
+  `IEmailSender.SendAsync` directly from `SignInProtection.AuthenticateAsync` instead of `IOutboundEmailQueue.Enqueue`
   — an inline send there costs a mail round trip only on the branch where the account exists, which is
   the account-existence oracle again, this time by latency or by a 500 on mail failure.
-- Flag any `LoginAsync` refusal path that returns without going through `RefuseWithoutDisclosing` (or
-  an equivalent password-hash verification against a stand-in) — a refusal that skips the hash pays a
-  measurably smaller cost than an accepted attempt, which is what GHSA-28pc-cx5w-g6jp read account
+- Flag any `SignInProtection.AuthenticateAsync` refusal path that skips real password verification
+  and `RefuseWithoutDisclosing` (or equivalent verification against a stand-in) — skipping the hash
+  pays a measurably smaller cost than an accepted attempt, which is what GHSA-28pc-cx5w-g6jp read account
   existence off of.
 - Flag a `ResetPasswordAsync` change that lets an unknown address's message differ from an
   `InvalidToken` result's, or that collapses a genuine password-policy error (any `result.Errors`
@@ -163,8 +163,9 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   GHSA-28pc-cx5w-g6jp closed.
 - Flag a device-scoped sign-in attempt that claims **only** `KnownDeviceStore.ClaimAttemptAsync` and
   skips `SignInThrottleStore.ClaimAttemptAsync` (or vice versa) — both scopes must be charged together
-  so the exemption is the *larger* of the two windows, not their sum; charging only one lets a caller
+  so sequential attempts are bounded by the *larger* of the two windows; charging only one lets a caller
   spend it, drop the cookie, and spend the other for a strictly higher combined allowance.
+  Verify claims distinguish individual scope atomicity from sequential combined-allowance behavior.
 - Flag `KnownDeviceStore.ClaimAttemptAsync` returning `Refused: true` (or `null`) being treated as an
   outright sign-in refusal instead of a fallback to the address scope's own verdict. A device may only
   ever add allowance, never remove one — refusing here would let anyone who copied the cookie deny the
