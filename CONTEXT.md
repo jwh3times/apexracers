@@ -185,6 +185,9 @@ _Avoid_: Friend, Opponent, Competitor, Followed member
 
 ## Lap Evidence
 
+**Lap Evidence Selection**:
+The choice of Race Laps only, Race Laps with unrestricted Uploaded Laps, or Race Laps with Uploaded Laps restricted to selected Sim Session Types that determines a Subject Driver's Personal Best. Each selection has its own Percentile Rank history; selections with the same meaning are equivalent regardless of request ordering or repetition.
+
 A Lap reaches ApexRacers as one of two kinds of evidence — a Race Lap from iRacing's results, or an Uploaded Lap from a User's telemetry — and the two are never interchangeable. Any best drawn from them names the evidence it came from. **Personal Lap** is not ApexRacers language: it reads as a lap that is a personal best, which is not what it names. **Best Lap** is likewise avoided — it says nothing about whose evidence produced it or over what scope it was chosen.
 
 **Lap**:
@@ -259,7 +262,7 @@ A Field Position expressed as a share of the whole Field, rounded up — first o
 _Avoid_: Percentile, Percentile Rank, Top percentile
 
 **Expected Percentile**:
-The average of a Subject Driver's past Percentile Ranks for one Car in one Series. It estimates a Driver who has not raced that Car this week and holds no Field Position, so it is never a reading against a Field.
+The average of a Subject Driver's eligible Percentile Ranks for one Car in one Series and one Lap Evidence Selection, counting each Race Week once when its start date is at or before the requested Week's start date, including the requested Week when eligible. Weeks without an eligible Personal Best or with a Field smaller than five contribute nothing; an empty history has no Expected Percentile, and the estimate itself holds no Field Position.
 _Avoid_: Percentile Rank, Historical percentile, Average percentile
 
 **Projected Lap**:
