@@ -1,6 +1,9 @@
 # Percentile Rank history ownership — investigation #352
 
-Status: **proposed; no history semantics approved or implemented**. Investigation completed
+Status: **historical investigation; its five policies were subsequently accepted on 2026-10-14 in
+[ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md); implementation pending**.
+The original assessment and proposal below preserve the investigation-time distinction between
+evidence and decisions. Investigation completed
 2026-10-14 against production baseline `74f2c4e8738752441c599d2812e9c7ca04a0dc08`
 (v14.0.17). Source issue: [#352](https://github.com/jwh3times/apexracers/issues/352).
 
