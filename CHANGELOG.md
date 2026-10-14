@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.17] - 2026-10-14
+
+### Changed
+
+- Updated ASP.NET Core, Entity Framework Core and Microsoft Extensions packages to 10.0.13,
+  keeping the EF package family aligned.
+- Updated the Material Symbols font, type-aware lint backend and formatter to their latest patch
+  versions, and pinned the shared-backend experiment's artifact downloader to v8.0.2.
+
 ## [14.0.16] - 2026-10-14
 
 ### Security
@@ -1724,7 +1733,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.16...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.17...HEAD
+[14.0.17]: https://github.com/jwh3times/apexracers/compare/v14.0.16...v14.0.17
 [14.0.16]: https://github.com/jwh3times/apexracers/compare/v14.0.15...v14.0.16
 [14.0.15]: https://github.com/jwh3times/apexracers/compare/v14.0.14...v14.0.15
 [14.0.14]: https://github.com/jwh3times/apexracers/compare/v14.0.13...v14.0.14
