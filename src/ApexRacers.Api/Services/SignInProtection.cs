@@ -47,14 +47,10 @@ public sealed class SignInProtection(
     /// absence to a single stand-in rather than to a unique value.
     /// </para>
     /// <para>
-    /// One residual, stated rather than glossed: the throttle read below happens only for an address
-    /// that has a confirmed account, so that path now does two indexed lookups the unknown and
-    /// unconfirmed paths do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant cost —
-    /// the password hash — and its own remarks already concede it closes the measurable gap rather
-    /// than making the whole request constant time; this widens the remainder slightly. Two primary
-    /// key/unique-index lookups against the surrounding PBKDF2 work is not a practical oracle, and
-    /// the alternative — reading throttle rows for accounts that do not exist — needs a user id there
-    /// is no way to have. Worth knowing before anyone adds more work to this branch.
+    /// Confirmed accounts perform coordination and throttle database work that unknown and
+    /// unconfirmed accounts do not. <see cref="RefuseWithoutDisclosing"/> equalises the dominant
+    /// password-hash cost; it does not make the whole request constant time or establish that the
+    /// remaining timing difference is unobservable. Keep that distinction when extending this path.
     /// </para>
     /// <para>
     /// A caller holding this account's recognised cookie is charged against both the device and
