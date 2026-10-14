@@ -78,7 +78,7 @@ public class JwtIssueValidateRoundTripTests(PostgreSqlFixture postgres)
         var db = provider.GetRequiredService<AppDbContext>();
         var devices = new KnownDeviceStore(db, TimeProvider.System, SignInThrottle.Defaults);
         var protection = new SignInProtection(
-            userManager, config,
+            userManager, db, config,
             new SignInThrottleStore(db, TimeProvider.System, SignInThrottle.Defaults, NullLogger<SignInThrottleStore>.Instance),
             devices, new ImmediateEmailQueue(new FakeEmailSender()), NullLogger<SignInProtection>.Instance);
         var service = new AuthService(

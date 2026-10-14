@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Security
+
+- Coordinated sign-in device and address admission in one short per-User transaction so concurrent
+  attempts preserve the existing shared allowance and clean-address fallback. Coordination ends
+  before password verification, owner notices and successful cleanup.
 
 ## [14.0.15] - 2026-10-14
 

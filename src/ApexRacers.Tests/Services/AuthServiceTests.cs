@@ -86,7 +86,7 @@ public class AuthServiceTests(PostgreSqlFixture postgres)
             throttleOptions ?? TestThrottleOptions);
         return new AuthService(
             userManager, config, jwt, refreshTokens, sender,
-            new SignInProtection(userManager, config, throttle, devices, new ImmediateEmailQueue(sender), NullLogger<SignInProtection>.Instance),
+            new SignInProtection(userManager, db, config, throttle, devices, new ImmediateEmailQueue(sender), NullLogger<SignInProtection>.Instance),
             devices, new DriverAuthorityStore(db, timeProvider ?? TimeProvider.System));
     }
 
