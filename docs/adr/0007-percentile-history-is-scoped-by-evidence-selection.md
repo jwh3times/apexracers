@@ -44,3 +44,8 @@ Acceptance of these product policies grants no Live access. Existing proof/conse
 source preparation, copy lifecycle, withdrawal, deletion, restore and protected-dispatch obligations
 remain mandatory. The typed private-upload producer, synthetic Seeder and ordinary history writers
 must participate in coordinated implementation. This ADR records the decision, not shipped behavior.
+
+Implementation is tracked in order: [selection/owner contracts](https://github.com/jwh3times/apexracers/issues/425),
+[storage/copy cutover](https://github.com/jwh3times/apexracers/issues/426),
+[shared refresh](https://github.com/jwh3times/apexracers/issues/427), and
+[coherent readers/protected integration](https://github.com/jwh3times/apexracers/issues/428).

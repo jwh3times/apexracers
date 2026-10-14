@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.19] - 2026-10-14
+
+### Changed
+
+- Recorded the accepted evidence-selection history policies and Expected Percentile definition,
+  with dependent implementation tasks; runtime history behavior remains unchanged.
+
 ## [14.0.18] - 2026-10-14
 
 ### Added
@@ -1740,7 +1747,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.18...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.19...HEAD
+[14.0.19]: https://github.com/jwh3times/apexracers/compare/v14.0.18...v14.0.19
 [14.0.18]: https://github.com/jwh3times/apexracers/compare/v14.0.17...v14.0.18
 [14.0.17]: https://github.com/jwh3times/apexracers/compare/v14.0.16...v14.0.17
 [14.0.16]: https://github.com/jwh3times/apexracers/compare/v14.0.15...v14.0.16

@@ -13,7 +13,7 @@ This directory contains public, contributor-safe project documentation.
 | [research/iracing-terms-2026-09-30.md](research/iracing-terms-2026-09-30.md) | Dated research on iRacing's third-party terms and an audit of ApexRacers' Driver identity exposure. |
 | [research/iracing-data-permissions-2026-10-01.md](research/iracing-data-permissions-2026-10-01.md) | Historical public-source review separating access, identity proof, disclosure consent and processing permission; its open questions record the 2026-10-01 planning frontier. |
 | [DriverDisclosure.prototype.html](../web/src/features/racing/DriverDisclosure.prototype.html) | Historical 2026-10-01 synthetic disclosure exploration; open the standalone HTML locally. Its illustrative row model is superseded by the accepted architecture and is not deployed enforcement. |
-| [design/percentile-history-ownership.md](design/percentile-history-ownership.md) | Reproducible synthetic Percentile Rank history assessment, proposed ownership alternatives and five maintainer decisions required before future implementation; no semantics approved. |
+| [design/percentile-history-ownership.md](design/percentile-history-ownership.md) | Historical synthetic Percentile Rank history assessment and implementation alternatives; its five policies were subsequently accepted in ADR 0007, with implementation pending. |
 | [design/driver-disclosure-ownership.md](design/driver-disclosure-ownership.md) | Accepted Driver authorization, publication, and copy-lifecycle architecture, with interfaces and implementation proof obligations; distinct from implemented behavior. |
 | [design/driver-acceptance-and-rollout.md](design/driver-acceptance-and-rollout.md) | Accepted scenario/evidence matrix, implementation readiness, migration safeguards, and staged pilot/expansion gates; validation remains to be executed. |
 | [design/driver-implementation-handoff.md](design/driver-implementation-handoff.md) | Bounded implementation slices, evidence prerequisites, and links to their authoritative work briefs. |
@@ -44,6 +44,7 @@ This directory contains public, contributor-safe project documentation.
 | [../SECURITY.md](../SECURITY.md) | Vulnerability reporting policy. |
 | [../CHANGELOG.md](../CHANGELOG.md) | Public release notes. |
 | [../CONTEXT.md](../CONTEXT.md) | Domain-language glossary — canonical terms (e.g. Series/Season, the Race Session/Split/Subsession hierarchy, User/Driver identity, Venue/Track, Race Lap/Uploaded Lap evidence, Percentile Rank/Top Share) shared across the product and its docs. |
+| [adr/0007-percentile-history-is-scoped-by-evidence-selection.md](adr/0007-percentile-history-is-scoped-by-evidence-selection.md) | Accepted selection-scoped history, canonical selection, chronology, missing-evidence and transition policies; implementation pending. |
 | [adr/](adr/) | Architecture decision records — why a structural decision was made and what alternative was rejected, not just what shipped. |
 
 ## Private docs
