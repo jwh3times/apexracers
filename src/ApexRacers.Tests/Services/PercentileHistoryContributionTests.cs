@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Collections.Immutable;
 using ApexRacers.Api.Services.PercentileHistory;
 using ApexRacers.Core;
@@ -137,6 +138,16 @@ public sealed class PercentileHistoryContributionTests
         Assert.Equal(new PersonalBest(110, LapEvidence.RaceLap), result.Contributions[0].PersonalBest);
         Assert.Equal(Preparation, result.Contributions[0].Preparation);
         Assert.Equal(Sources, result.Contributions[0].Sources);
+    }
+
+    [Fact]
+    public void InitialPurposeVersionZeroIsARealPreparationVersionButNegativeIsNot()
+    {
+        var personal = Context with { Owner = Context.Owner with { Kind = PercentileOwnerKind.Personal }, GrantId = Guid.NewGuid(), OwnerRevision = 1 };
+        var reading = Reading(30) with { Context = personal, Preparation = Preparation with { Version = 0 } };
+        Assert.Equal(30, PercentileHistoryContributions.Build(personal, Requested, [reading]).ExpectedPercentile);
+        Assert.Throws<ArgumentException>(() => PercentileHistoryContributions.Build(personal, Requested,
+            [reading with { Preparation = Preparation with { Version = -1 } }]));
     }
 
     [Fact]

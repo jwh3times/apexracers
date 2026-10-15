@@ -13,6 +13,7 @@ public static class RealAcquisitionGuard
             || await db.Subsessions.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
             || await db.SubsessionResults.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
             || await db.CarPercentileResults.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
+            || await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
             || await db.Rivals.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
             || await db.SeasonCarBops.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)
             || await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().AnyAsync(s => s.Provenance == DataProvenance.Demo, ct)

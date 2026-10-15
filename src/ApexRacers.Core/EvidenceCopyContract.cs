@@ -33,6 +33,8 @@ public sealed record BopBatch(SeasonCarBop Copy) : EvidenceBatch;
 public sealed record WeatherBatch(Guid WeekId, string Payload) : EvidenceBatch;
 public sealed record ScheduleEvidenceBatch(IReadOnlyList<SeasonCarBop> Bops, IReadOnlyList<WeatherBatch> Weather) : EvidenceBatch;
 public sealed record PercentileBatch(CarPercentileResult Copy) : EvidenceBatch;
+/// <summary>Explicit selection/owner classification; legacy PercentileBatch never enters this family.</summary>
+public sealed record ClassifiedPercentileBatch(ClassifiedCarPercentileResult Copy) : EvidenceBatch;
 public sealed record FollowBatch(Rival Copy) : EvidenceBatch;
 public sealed record AuthorizedNameBatch(Guid GrantId) : EvidenceBatch;
 

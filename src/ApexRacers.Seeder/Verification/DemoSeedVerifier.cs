@@ -138,6 +138,7 @@ public static class DemoSeedVerifier
         var demoBops = await db.SeasonCarBops.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-demo-bop", demoBops == 0, $"{demoBops} Demo BoP rows remain"));
         var demoPercentiles = await db.CarPercentileResults.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
+        demoPercentiles += await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-demo-percentiles", demoPercentiles == 0, $"{demoPercentiles} Demo percentile rows remain"));
         var demoFollows = await db.Rivals.IgnoreQueryFilters().CountAsync(s => s.Provenance == DataProvenance.Demo, ct);
         checks.Add(new("no-demo-follows", demoFollows == 0, $"{demoFollows} Demo follows remain"));

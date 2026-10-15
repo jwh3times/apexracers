@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Security.Cryptography;
 using System.Text;
 using ApexRacers.Core;
@@ -158,8 +159,14 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
                     && p.Kind == EvidencePurposeKind.Personal && p.OriginalEndedAt == null && p.Generation == c.Generation
                     && p.GrantId == owner.GrantId && p.GrantRevision == owner.Revision)));
 
+    // Reviewed compatibility: the original typed calculator admitted every locally supported
+    // upload type. This adapter names that selection explicitly; it never labels old stored rows.
+    public Task<PrivateOwnerPercentile?> CalculatePercentileAsync(DriverAccess owner, Guid weekId, int carId,
+        CancellationToken ct = default) =>
+        CalculatePercentileAsync(owner, weekId, carId, PercentileSelection.FromRequest(true, null), ct);
+
     public async Task<PrivateOwnerPercentile?> CalculatePercentileAsync(DriverAccess owner, Guid weekId, int carId,
-        CancellationToken ct = default)
+        PercentileSelection selection, CancellationToken ct = default)
     {
         await CheckOwnerAsync(owner, ct);
         var copies = new EvidenceCopyLifecycle(db, clock, journal);
@@ -175,8 +182,10 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
             .Select(w => new { w.RaceWeekIndex, w.StartDate, w.EndTime }).ToListAsync(ct);
         var window = RaceWeekWindow.ForSeason(weeks.Select(w => (w.RaceWeekIndex, w.StartDate, w.EndTime)))
             .Single(w => w.RaceWeekIndex == week.RaceWeekIndex).Window;
+        var selectedTypes = selection.IncludedTypes.ToArray();
         var sessionQuery = AvailableSessions(owner).Where(s => s.CarId == carId
-            && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End);
+            && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End
+            && selectedTypes.Contains(s.SessionType));
         var uploadSources = await (from session in sessionQuery
                                    join marker in db.EvidenceCopyMarkers.AsNoTracking() on session.EvidenceCopyId equals marker.Id
                                    select new EvidenceSourceVersion(marker.Id, marker.Version)).ToListAsync(ct);
@@ -187,8 +196,8 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
         // cannot drop an old input from the dependency set after the Field was calculated.
         var results = await (from r in db.SubsessionResults.AsNoTracking()
                              join marker in db.EvidenceCopyMarkers.AsNoTracking() on r.EvidenceCopyId equals marker.Id
-                             where r.CarId == carId && r.Subsession.SeasonId == week.SeasonId
-            && r.Subsession.RaceWeekIndex == week.RaceWeekIndex && r.Subsession.OfficialSession
+                             where r.CarId == carId && r.Subsession.WeekId == week.Id
+            && r.Subsession.TrackId == week.TrackId && r.Subsession.OfficialSession
             && r.BestLapSeconds > 0
                              select new { r.CustId, r.BestLapSeconds, Source = new EvidenceSourceVersion(marker.Id, marker.Version) }).ToListAsync(ct);
         var byDriver = results.GroupBy(r => r.CustId).ToDictionary(g => g.Key, g => g.Min(r => r.BestLapSeconds));
@@ -201,29 +210,32 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
             FieldPercentile.TopSharePercent(best.Value.LapSeconds, other), FieldPercentile.FieldSize(other));
         var sources = uploadSources.Concat(results.Select(r => r.Source)).Distinct().ToArray();
         var seriesId = await db.Seasons.Where(s => s.Id == week.SeasonId).Select(s => s.SeriesId).SingleAsync(ct);
-        // The copy module atomically replaces this purpose/key; source clocks stay intact.
+        var winningUploadType = best.Value.Evidence == LapEvidence.UploadedLap
+            ? sessions.Where(s => s.Laps.Any(l => l.LapTimeSeconds == best.Value.LapSeconds))
+                .OrderBy(s => s.Id).Select(s => (LapSessionType?)s.SessionType).First()
+            : null;
+        var copy = new ClassifiedCarPercentileResult
+        {
+            Id = Guid.NewGuid(), UserId = owner.Scope.UserId, CustomerId = owner.Scope.CustomerId,
+            Provenance = owner.Scope.Provenance, OwnerKind = PercentileOwnerKind.Personal,
+            GrantId = owner.GrantId, GrantRevision = owner.Revision,
+            SelectionPolicyVersion = selection.PolicyVersion, SelectionKey = selection.Key,
+            CarId = carId, WeekId = weekId, SeriesId = seriesId,
+            PercentileRank = percentile.PercentileRank, TopSharePercent = percentile.TopSharePercent,
+            SampleSize = percentile.FieldSize, PersonalBestLapSeconds = percentile.LapSeconds,
+            PersonalBestLapEvidence = percentile.Evidence, UploadedSessionType = winningUploadType, ComputedAt = Now
+        };
+        // One stable full owner/selection key; no selection-less row is copied or inferred.
         var receipt = await copies.CaptureAsync(uploadReceipt.PurposeId, EvidenceCopyKind.PersonalDerivative,
-            $"private-percentile:{owner.Scope.UserId}:{weekId}:{carId}", sources, ct);
-        // Capture resolves the derivative's key and concrete dependencies. Its later purpose
-        // read must never authorize an input set prepared against an earlier version.
+            ClassifiedPercentileContract.Key(copy), sources, ct);
+        // A later purpose read cannot authorize inputs prepared against an earlier generation.
         receipt = receipt with
         {
             Generation = uploadReceipt.Generation,
             PurposeVersion = uploadReceipt.PurposeVersion,
             OriginalAcquiredAt = uploadReceipt.OriginalAcquiredAt
         };
-        await copies.CommitAsync(receipt, new PercentileBatch(new CarPercentileResult
-        {
-            Id = Guid.NewGuid(),
-            UserId = owner.Scope.UserId,
-            CarId = carId,
-            WeekId = weekId,
-            SeriesId = seriesId,
-            PercentileRank = percentile.PercentileRank,
-            TopSharePercent = percentile.TopSharePercent,
-            SampleSize = percentile.FieldSize,
-            ComputedAt = Now
-        }), ct);
+        await copies.CommitAsync(receipt, new ClassifiedPercentileBatch(copy), ct);
         return percentile;
     }
 

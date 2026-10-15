@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Collections.Immutable;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;

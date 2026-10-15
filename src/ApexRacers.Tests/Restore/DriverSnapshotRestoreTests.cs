@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
+using ApexRacers.Core.PercentileHistory;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using ApexRacers.Tests.Lifecycle;
@@ -48,6 +49,8 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
             DateTimeOffset acquired;
             Guid week;
             Guid grantId;
+            Guid derivativeCopy;
+            DateTimeOffset derivativeAcquired;
             await using (var db = test.OpenPrimary())
             {
                 var store = new DriverAuthorityStore(db, clock);
@@ -59,6 +62,13 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                 var percentile = await uploads.CalculatePercentileAsync(owner, week, 99, ct);
                 Assert.Equal(83.33333333333333, percentile!.PercentileRank, 10);
                 Assert.Equal(3, percentile.FieldSize);
+                var derivative = Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(ct));
+                Assert.Equal(PercentileSelection.FromRequest(true, null).Key, derivative.SelectionKey);
+                Assert.Equal(PercentileOwnerKind.Personal, derivative.OwnerKind);
+                Assert.Equal(scope.CustomerId, derivative.CustomerId);
+                Assert.Equal(grantId, derivative.GrantId);
+                derivativeCopy = derivative.EvidenceCopyId!.Value;
+                derivativeAcquired = (await db.EvidenceCopyMarkers.SingleAsync(m => m.Id == derivativeCopy, ct)).OriginalAcquiredAt;
                 await store.CommitCopyAsync(owner, "synthetic restore owner/name copy", test.Journal, ct);
                 prepared = await uploads.CaptureAsync(owner, ct);
                 var marker = await db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Kind == EvidenceCopyKind.PrivateUpload && m.UnavailableAt == null, ct);
@@ -86,11 +96,17 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                 await using (var restored = test.OpenPrimary())
                 {
                     Assert.True((await restored.DriverAuthorizationGrants.SingleAsync(g => g.Id == grantId, ct)).PersonalConsentVersion is not null);
-                    Assert.NotEmpty(await restored.CarPercentileResults.IgnoreQueryFilters().ToListAsync(ct));
+                    var restoredReading = Assert.Single(await restored.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(ct));
+                    Assert.Equal(derivativeCopy, restoredReading.EvidenceCopyId);
+                    Assert.Equal(scope.CustomerId, restoredReading.CustomerId);
+                    Assert.Equal(grantId, restoredReading.GrantId);
+                    Assert.Equal(PercentileSelection.FromRequest(true, null).Key, restoredReading.SelectionKey);
+                    Assert.Equal(derivativeAcquired, (await restored.EvidenceCopyMarkers.SingleAsync(m => m.Id == derivativeCopy, ct)).OriginalAcquiredAt);
                     Assert.NotEmpty(await restored.DriverTrackedCopies.ToListAsync(ct));
                     Assert.Equal(acquired, (await restored.EvidenceCopyMarkers.SingleAsync(m => m.Id == originalCopy, ct)).OriginalAcquiredAt);
                     var authority = new DriverAuthorization(new(restored, clock), test.Journal, new UnavailableDriverOwnershipProof(), clock);
                     Assert.True((await authority.RecoverAsync(new(loss.OperationId, grantId, scope, kind, loss.OriginalLossAt), ct)).Completed);
+                    Assert.Empty(await restored.ClassifiedCarPercentileResults.ToListAsync(ct));
                     await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new PrivateUploadStore(restored, clock, test.Journal)
                         .CommitAsync(prepared, Data(clock.GetUtcNow().AddSeconds(1), 80), ct));
                 }
@@ -122,7 +138,7 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                     await new EvidenceCopyLifecycle(overdue, clock, test.Journal).ReconcileAsync(ct);
                     Assert.Empty(await overdue.PrivateUploadSessions.ToListAsync(ct));
                     Assert.Empty(await overdue.PrivateUploadedLaps.ToListAsync(ct));
-                    Assert.Empty(await overdue.CarPercentileResults.IgnoreQueryFilters().ToListAsync(ct));
+                    Assert.Empty(await overdue.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(ct));
                     Assert.Empty(await overdue.DriverTrackedCopies.ToListAsync(ct));
                     var marker = await overdue.EvidenceCopyMarkers.SingleAsync(m => m.Id == originalCopy, ct);
                     Assert.Equal(acquired, marker.OriginalAcquiredAt);

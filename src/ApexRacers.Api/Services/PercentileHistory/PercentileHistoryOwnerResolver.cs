@@ -1,14 +1,10 @@
+using ApexRacers.Core.PercentileHistory;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexRacers.Api.Services.PercentileHistory;
-
-public enum PercentileOwnerKind { DemoSubject, Personal }
-
-/// <summary>Identity data, never a persistence or publication capability. No stored claim is used.</summary>
-public sealed record PercentileOwnerIdentity(Guid UserId, long CustomerId, DataProvenance Provenance, PercentileOwnerKind Kind);
 
 /// <summary>A resolution-time snapshot only. Later preparation, commit and protected dispatch must
 /// re-resolve current authority and compare generations; retaining this object grants no access.</summary>

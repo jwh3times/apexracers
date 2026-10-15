@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using ApexRacers.Api.Services.PercentileHistory;
 using ApexRacers.Core.Models;
 using Xunit;

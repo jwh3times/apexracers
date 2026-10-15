@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Security.Cryptography;
 using System.Text;
 using ApexRacers.Core;
@@ -20,10 +21,12 @@ public sealed class SyntheticEvidenceWriter
     private readonly DateTimeOffset _openedAt;
     private readonly Dictionary<Guid, long> _sources;
     private readonly Dictionary<(Guid WeekId, int CarId), HashSet<Guid>> _fieldSources;
+    private readonly Dictionary<(Guid WeekId, int CarId), HashSet<Guid>> _classifiedFieldSources;
     private bool _failed;
 
     private SyntheticEvidenceWriter(AppDbContext db, TimeProvider clock, EvidencePurpose purpose,
-        Dictionary<Guid, long> sources, Dictionary<(Guid, int), HashSet<Guid>> fieldSources)
+        Dictionary<Guid, long> sources, Dictionary<(Guid, int), HashSet<Guid>> fieldSources,
+        Dictionary<(Guid, int), HashSet<Guid>> classifiedFieldSources)
     {
         _db = db;
         _clock = clock;
@@ -33,6 +36,7 @@ public sealed class SyntheticEvidenceWriter
         _openedAt = DriverAuthorizationPolicy.DurableTime(clock.GetUtcNow());
         _sources = sources;
         _fieldSources = fieldSources;
+        _classifiedFieldSources = classifiedFieldSources;
     }
 
     public static async Task<SyntheticEvidenceWriter> OpenAsync(AppDbContext db, CancellationToken ct = default,
@@ -51,7 +55,8 @@ public sealed class SyntheticEvidenceWriter
         var fields = await db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
             .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct);
         var fieldSources = fields.GroupBy(r => (r.WeekId, r.CarId)).ToDictionary(g => g.Key, g => g.Select(r => r.CopyId).ToHashSet());
-        return new(db, clock, purpose, sources, fieldSources);
+        var classifiedFields = await ClassifiedFieldSourcesAsync(db, ct);
+        return new(db, clock, purpose, sources, fieldSources, classifiedFields);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
@@ -108,12 +113,37 @@ public sealed class SyntheticEvidenceWriter
                 }
                 if (kind == EvidenceCopyKind.PersonalDerivative)
                 {
-                    var result = (CarPercentileResult)group.Single().Entity;
-                    var sourceIds = await _db.SubsessionResults.Where(r => r.CarId == result.CarId && r.Subsession.WeekId == result.WeekId)
-                        .Select(r => r.EvidenceCopyId).Distinct().ToListAsync(ct);
-                    var stagedFields = managed.Where(e => e.Entity is Subsession s && s.WeekId == result.WeekId)
+                    var entity = group.Single().Entity;
+                    var (carId, weekId) = entity switch
+                    {
+                        CarPercentileResult legacy => (legacy.CarId, legacy.WeekId),
+                        ClassifiedCarPercentileResult classified => (classified.CarId, classified.WeekId),
+                        _ => throw new EvidenceCopyUnavailableException()
+                    };
+                    int? classifiedTrackId = null;
+                    if (entity is ClassifiedCarPercentileResult classifiedCopy)
+                    {
+                        classifiedTrackId = await _db.Weeks.Where(w => w.Id == weekId)
+                            .Select(w => (int?)w.TrackId).SingleOrDefaultAsync(ct);
+                        if (classifiedCopy.OwnerKind != PercentileOwnerKind.DemoSubject
+                            || classifiedCopy.PersonalBestLapEvidence != LapEvidence.RaceLap
+                            || !await _db.Users.AnyAsync(u => u.Id == classifiedCopy.UserId, ct)
+                            || !await _db.Weeks.AnyAsync(w => w.Id == weekId && w.Season.SeriesId == classifiedCopy.SeriesId, ct))
+                            throw new EvidenceCopyUnavailableException();
+                        classifiedCopy.ReadingRevision = marker.Version;
+                        classifiedCopy.PreparationPurposeId = _purposeId;
+                        classifiedCopy.PreparationGeneration = _generation;
+                        classifiedCopy.PreparationVersion = _version;
+                    }
+                    var sourceQuery = _db.SubsessionResults.Where(r => r.CarId == carId && r.Subsession.WeekId == weekId);
+                    if (entity is ClassifiedCarPercentileResult)
+                        sourceQuery = sourceQuery.Where(r => r.BestLapSeconds > 0 && r.Subsession.TrackId == classifiedTrackId);
+                    var sourceIds = await sourceQuery.Select(r => r.EvidenceCopyId).Distinct().ToListAsync(ct);
+                    var stagedFields = managed.Where(e => e.Entity is Subsession s && s.WeekId == weekId
+                            && (classifiedTrackId == null || s.TrackId == classifiedTrackId))
                         .Select(e => e.Entity.EvidenceCopyId).ToArray();
-                    var captured = _fieldSources.GetValueOrDefault((result.WeekId, result.CarId)) ?? [];
+                    var capturedFields = entity is ClassifiedCarPercentileResult ? _classifiedFieldSources : _fieldSources;
+                    var captured = capturedFields.GetValueOrDefault((weekId, carId)) ?? [];
                     var current = sourceIds.OfType<Guid>().ToHashSet();
                     if (!captured.SetEquals(current)) throw new EvidenceCopyUnavailableException();
                     var actualSources = captured.Concat(stagedFields.OfType<Guid>()).Distinct().ToArray();
@@ -148,14 +178,28 @@ public sealed class SyntheticEvidenceWriter
             await _db.Entry(purpose).ReloadAsync(ct);
             var savedFields = await _db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
                 .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct);
+            var savedClassifiedFields = await ClassifiedFieldSourcesAsync(_db, ct);
             await tx.CommitAsync(ct);
             _version = purpose.EvidenceVersion;
             _fieldSources.Clear();
             foreach (var group in savedFields.GroupBy(r => (r.WeekId, r.CarId)))
                 _fieldSources[group.Key] = group.Select(r => r.CopyId).ToHashSet();
+            _classifiedFieldSources.Clear();
+            foreach (var pair in savedClassifiedFields) _classifiedFieldSources[pair.Key] = pair.Value;
             return saved;
         }
         catch { _failed = true; _db.ChangeTracker.Clear(); throw; }
+    }
+
+    // New-policy Fields use exact layout identity and timed rows. The legacy snapshot above
+    // deliberately keeps its historical query contract until the separate reader/writer cutover.
+    private static async Task<Dictionary<(Guid, int), HashSet<Guid>>> ClassifiedFieldSourcesAsync(AppDbContext db, CancellationToken ct)
+    {
+        var fields = await db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null
+                && r.BestLapSeconds > 0 && r.Subsession.TrackId == r.Subsession.Week!.TrackId)
+            .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value })
+            .Distinct().ToListAsync(ct);
+        return fields.GroupBy(r => (r.WeekId, r.CarId)).ToDictionary(g => g.Key, g => g.Select(r => r.CopyId).ToHashSet());
     }
 
     private async Task<EvidenceCopyMarker> MarkerAsync(EvidencePurpose purpose, EvidenceCopyKind kind, string key, CancellationToken ct)
@@ -185,6 +229,7 @@ public sealed class SyntheticEvidenceWriter
         SubsessionResult c => (EvidenceCopyKind.OfficialField, $"field:{c.SubsessionId}"),
         SeasonCarBop c => (EvidenceCopyKind.Bop, $"bop:{c.SeasonId}:{c.RaceWeekIndex}:{c.CarId}"),
         CarPercentileResult c => (EvidenceCopyKind.PersonalDerivative, $"percentile:{c.Id}"),
+        ClassifiedCarPercentileResult c => (EvidenceCopyKind.PersonalDerivative, ClassifiedPercentileContract.Key(c)),
         Rival c => (EvidenceCopyKind.Follow, $"follow:{c.Id}"),
         _ => throw new EvidenceCopyUnavailableException(),
     };
