@@ -254,10 +254,10 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.NotNull(first);
         Assert.Equal(90, first.LapSeconds);
         Assert.Equal(LapEvidence.UploadedLap, first.Evidence);
-        Assert.Equal(83.33333333333333, first.PercentileRank, 10);
+        Assert.Equal(90, first.PercentileRank, 10);
         Assert.Equal(1, first.FieldPosition);
-        Assert.Equal(34, first.TopSharePercent);
-        Assert.Equal(3, first.FieldSize);
+        Assert.Equal(20, first.TopSharePercent);
+        Assert.Equal(5, first.FieldSize);
         Assert.Equal(first, await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct));
         var derived = await f.Db.ClassifiedCarPercentileResults.SingleAsync(Ct);
         Assert.Equal(2, await f.Db.EvidenceCopyDependencies.CountAsync(d => d.CopyId == derived.EvidenceCopyId, Ct));
@@ -269,7 +269,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         await f.Authority.TransitionAsync(f.Scope, DriverLifecycleKind.WithdrawPersonal, Guid.NewGuid(), Ct);
         await new EvidenceCopyLifecycle(f.Db, f.Clock).ReconcileAsync(Ct);
         Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
-        Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
+        Assert.Equal(5, await f.Db.SubsessionResults.CountAsync(Ct));
         Assert.Equal(2, await f.Db.PrivateUploadSessions.CountAsync(Ct));
     }
 
@@ -320,6 +320,42 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
+    public async Task PersonalMultiCarRefreshUsesOnePreparationAndKeepsSelectedTypedUploadHistoriesIndependent()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        f.Db.Cars.Add(new() { Id = 100, Name = "Second synthetic Car", NameAbbreviated = "SC" });
+        await f.Db.SaveChangesAsync(Ct);
+        var week = await FieldAsync(f);
+        var fieldPurpose = await f.Db.EvidenceCopyMarkers.Where(c => c.Kind == EvidenceCopyKind.OfficialField)
+            .Select(c => c.PurposeId).SingleAsync(Ct);
+        var copies = new EvidenceCopyLifecycle(f.Db, f.Clock, f.Journal);
+        var receipt = await copies.CaptureAsync(fieldPurpose, EvidenceCopyKind.OfficialField, "second-Car-field", ct: Ct);
+        await copies.CommitAsync(receipt, new OfficialFieldBatch(new() { Id = 2, SeasonId = 1, WeekId = week,
+            TrackId = 42, OfficialSession = true, StartTime = f.Clock.Now },
+            new[] { 200d, 180d, 190d, 210d, 220d }.Select((lap, i) => new SubsessionResult
+            { SubsessionId = 2, CustId = i == 0 ? f.Scope.CustomerId : 80000 + i, CarId = 100, CarClassId = 1, BestLapSeconds = lap }).ToArray()), Ct);
+        await f.Uploads.CommitAsync(await f.Uploads.CaptureAsync(owner, Ct), f.Data(90, 0) with { SessionType = LapSessionType.Practice }, Ct);
+        await f.Uploads.CommitAsync(await f.Uploads.CaptureAsync(owner, Ct), f.Data(170, 0) with { CarId = 100, SessionType = LapSessionType.Race }, Ct);
+        var module = new PercentileRefresh(f.Db, f.Clock, f.Journal);
+        var practice = PercentileSelection.FromRequest(true, [LapSessionType.Practice]);
+        var selected = await module.RefreshPersonalAsync(owner, practice, 1, [week], [99, 100], Ct);
+        Assert.Equal(4, selected.Measurements.SourceQueries);
+        Assert.Equal(2, selected.ChangedRows);
+        Assert.Equal(90, selected.Readings.Single(r => r.CarId == 99).PersonalBest!.Value.LapSeconds);
+        Assert.Equal(200, selected.Readings.Single(r => r.CarId == 100).PersonalBest!.Value.LapSeconds);
+        var firstRows = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().ToListAsync(Ct);
+        Assert.Equal(2, firstRows.Count);
+        Assert.Single(firstRows.Select(r => (r.PreparationPurposeId, r.PreparationGeneration, r.PreparationVersion)).Distinct());
+        var all = await module.RefreshPersonalAsync(owner, PercentileSelection.FromRequest(true, null), 1, [week], [99, 100], Ct);
+        Assert.Equal(4, all.Measurements.SourceQueries);
+        Assert.Equal(170, all.Readings.Single(r => r.CarId == 100).PersonalBest!.Value.LapSeconds);
+        Assert.Equal(4, await f.Db.ClassifiedCarPercentileResults.CountAsync(Ct));
+        var kept = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().Where(r => r.SelectionKey == practice.Key).ToListAsync(Ct);
+        Assert.Equal(firstRows.Select(r => r.EvidenceCopyId).Order(), kept.Select(r => r.EvidenceCopyId).Order());
+    }
+
+    [Fact]
     public async Task ClassifiedBatchCannotReuseAnotherSelectionKeyOrOverwriteOriginalOwnerHistory()
     {
         await using var f = await CreateAsync();
@@ -364,10 +400,10 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Null(source.UnavailableAt);
         var current = await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct);
         Assert.Equal(85, current!.LapSeconds);
-        Assert.Equal(83.33333333333333, current.PercentileRank, 10);
+        Assert.Equal(90, current.PercentileRank, 10);
         Assert.Single(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
         Assert.Equal(2, await f.Db.PrivateUploadSessions.CountAsync(Ct));
-        Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
+        Assert.Equal(5, await f.Db.SubsessionResults.CountAsync(Ct));
     }
 
     [Theory]
@@ -454,8 +490,8 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Null((await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Id == originalField.Id, Ct)).UnavailableAt);
         Assert.Equal(preparation.PurposeVersion, (await f.Uploads.CaptureAsync(owner, Ct)).PurposeVersion);
         var fresh = await f.Uploads.CalculatePercentileAsync(owner, week, 99, Ct);
-        Assert.Equal(4, fresh!.FieldSize);
-        Assert.Equal(87.5, fresh.PercentileRank);
+        Assert.Equal(6, fresh!.FieldSize);
+        Assert.Equal(91.66666666666667, fresh.PercentileRank, 10);
         Assert.Equal(3, await f.Db.EvidenceCopyDependencies.CountAsync(Ct));
     }
 
@@ -474,7 +510,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Empty(await f.Db.ClassifiedCarPercentileResults.ToListAsync(Ct));
         await new EvidenceCopyLifecycle(f.Db, f.Clock).ReconcileAsync(Ct);
         Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
-        Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
+        Assert.Equal(5, await f.Db.SubsessionResults.CountAsync(Ct));
     }
 
     [Theory]
@@ -597,7 +633,9 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         }, [
             new() { SubsessionId = 1, CustId = f.Scope.CustomerId, CarId = 99, CarClassId = 1, BestLapSeconds = 105 },
             new() { SubsessionId = 1, CustId = 22222, CarId = 99, CarClassId = 1, BestLapSeconds = 100 },
-            new() { SubsessionId = 1, CustId = 33333, CarId = 99, CarClassId = 1, BestLapSeconds = 110 }]), Ct);
+            new() { SubsessionId = 1, CustId = 33333, CarId = 99, CarClassId = 1, BestLapSeconds = 110 },
+            new() { SubsessionId = 1, CustId = 44445, CarId = 99, CarClassId = 1, BestLapSeconds = 115 },
+            new() { SubsessionId = 1, CustId = 55555, CarId = 99, CarClassId = 1, BestLapSeconds = 120 }]), Ct);
         return weekId;
     }
 

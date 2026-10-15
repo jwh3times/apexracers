@@ -1,19 +1,17 @@
-using System.Text.Json;
+using System.Data.Common;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-/// <summary>
-/// Investigation #352: direct legacy service seams on fabricated PostgreSQL rows, not Live
-/// authorization, protected publication, migration evidence or approved history semantics.
-/// No percentile cache is seeded: every reading is produced by an actual service operation.
-/// </summary>
+/// <summary>Successive PostgreSQL service calls for the accepted refresh contract. The original
+/// #352 observation artifacts remain historical; these current tests establish neither Live nor HTTP authority.</summary>
 [Collection(PostgreSqlCollection.Name)]
 public class PercentileHistoryCharacterizationTests(PostgreSqlFixture fixture)
 {
@@ -22,163 +20,225 @@ public class PercentileHistoryCharacterizationTests(PostgreSqlFixture fixture)
     private static readonly PersonalBestEvidence RaceOnly = PersonalBestEvidence.OfficialRaceLapsOnly;
 
     [Fact]
-    public async Task LegacyReal_ComputeUploadedCannotCache_RecommendationHistoryThenRaceOnlyAnalyticsRetainsUploadedRank()
+    public async Task RealClaimAndQuarantineCannotCreateOrMixPersonalHistory()
     {
         await using var db = await fixture.CreateDbContextAsync(Ct);
         var graph = await SeedAsync(db);
-        AddUpload(db, graph, 90, LapSessionType.Practice);
-        await db.SaveChangesAsync(Ct);
-        var calc = Calculator(db);
-        var computed = Assert.IsType<ApexRacers.Api.Dtos.PercentileResultDto>(await calc.ComputeAndCacheAsync(
-            1, 0, 1, graph.CustomerId, Uploaded, graph.UserId, Ct));
-        Assert.Equal(90, computed.PercentileRank);
-        Assert.Equal(LapEvidence.UploadedLap, computed.YourBestLapEvidence);
-        Assert.Empty(await db.CarPercentileResults.ToListAsync(Ct));
-        Assert.Null(await Subject(db).GetSubjectDriverCustIdAsync(graph.UserId, Ct));
-
-        var recommendation = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
-            1, 0, graph.CustomerId, Uploaded, Ct));
-        Assert.Equal(90, recommendation.PercentileRank);
-        var analytics = Assert.Single(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
-        Assert.Equal(90, analytics.LatestPercentileRank);
-        Assert.Equal(110, analytics.PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.RaceLap, analytics.PersonalBestLapEvidence);
-        Observe("real-upload-race-only", new { computed.PercentileRank, recommendation.ExpectedPercentile,
-            analytics.LatestPercentileRank, analytics.PersonalBestLapSeconds, analytics.PersonalBestLapEvidence,
-            computePersisted = false, recommendationPersisted = true });
-    }
-
-    [Fact]
-    public async Task LegacyReal_ChangedSessionSelectionReplacesSameWeekReadingWithoutDoubleCounting()
-    {
-        await using var db = await fixture.CreateDbContextAsync(Ct);
-        var graph = await SeedAsync(db);
-        AddUpload(db, graph, 90, LapSessionType.Practice);
-        AddUpload(db, graph, 102, LapSessionType.Race);
-        await db.SaveChangesAsync(Ct);
-        var service = new CarRecommendationService(db);
-        var practice = Assert.Single(await service.GetRecommendationsAsync(1, 0, graph.CustomerId,
-            PersonalBestEvidence.FromRequest(true, [LapSessionType.Practice]), Ct));
-        Assert.Equal(90, practice.PercentileRank);
-        var raceUpload = Assert.Single(await service.GetRecommendationsAsync(1, 0, graph.CustomerId,
-            PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]), Ct));
-        Assert.Equal(70, raceUpload.PercentileRank);
-        Assert.Equal(70, raceUpload.ExpectedPercentile);
-        var official = Assert.Single(await service.GetMyPercentilesAsync(1, 0, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(50, official.PercentileRank);
-        var repeated = Assert.Single(await service.GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(50, repeated.ExpectedPercentile);
-        Assert.Single(await db.CarPercentileResults.ToListAsync(Ct));
-        Observe("session-replacement", new { practice = practice.PercentileRank, raceUpload = raceUpload.PercentileRank,
-            official = official.PercentileRank, repeated.ExpectedPercentile, rows = 1 });
-    }
-
-    [Fact]
-    public async Task Demo_BothWritersRefreshSameWeek_ThresholdCrossingReplacesEligibleContribution()
-    {
-        var options = await fixture.CreateOptionsAsync(Ct);
-        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
-        DbContextFactory.InstallStoredEvidenceFixtures(db);
-        var graph = await SeedAsync(db, DemoData.DriverCustId);
-        db.FeatureFlags.Add(new FeatureFlag { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = true, MinimumRole = "Standard" });
-        await db.SaveChangesAsync(Ct);
-        Assert.Equal(DemoData.DriverCustId, await Subject(db).GetSubjectDriverCustIdAsync(graph.UserId, Ct));
-        var calc = Calculator(db);
-        await calc.ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
-        var second = new Week { Id = Guid.NewGuid(), SeasonId = 10, RaceWeekIndex = 1, TrackId = 101,
-            StartDate = graph.Week.StartDate.AddDays(7), EndTime = graph.Week.EndTime!.Value.AddDays(7) };
-        db.Weeks.Add(second);
-        await db.SaveChangesAsync(Ct);
-        var s = new Subsession { Id = 2, SeasonId = 10, WeekId = second.Id, TrackId = 101, RaceWeekIndex = 1 };
-        db.SubsessionResults.AddRange(Field(s, graph.CustomerId, [90, 100, 105, 115]));
-        await db.SaveChangesAsync(Ct);
-        await calc.ComputeAndCacheAsync(1, 1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
-        var rec = new CarRecommendationService(db);
-        var initial = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(40, initial.ExpectedPercentile); // week 0: 50; week 1: 30
-
-        // Fabricated retained-source corrections use the fixture's ordinary model, not production
-        // SQL fences. Synthetic writer refresh still enforces its actual copy lifecycle.
-        var removed = await db.SubsessionResults.SingleAsync(r => r.SubsessionId == 2 && r.BestLapSeconds == 115, Ct);
-        db.SubsessionResults.Remove(removed);
-        await db.SaveChangesAsync(Ct);
-        var down = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(50, down.ExpectedPercentile);
-        var smallCalc = await calc.ComputeAndCacheAsync(1, 1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
-        Assert.Equal(4, smallCalc!.SampleSize);
-        var small = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(50, small.ExpectedPercentile);
-        Assert.False(small.IsPercentilePresentable);
-        Assert.Single(Assert.Single(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct)).PercentileHistory);
-        db.SubsessionResults.Add(new SubsessionResult { SubsessionId = 2, CustId = 9999, CarId = 1, CarClassId = 1, BestLapSeconds = 120 });
-        await db.SaveChangesAsync(Ct);
-        var grown = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(40, grown.ExpectedPercentile);
-        var repeat = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, Ct));
-        Assert.Equal(40, repeat.ExpectedPercentile);
-        Assert.Equal(2, await db.CarPercentileResults.CountAsync(Ct));
-        Observe("threshold-and-two-writers", new { initial.ExpectedPercentile, undersizedExpected = small.ExpectedPercentile,
-            grownExpected = grown.ExpectedPercentile, repeatedExpected = repeat.ExpectedPercentile, rows = 2 });
-    }
-
-    [Fact]
-    public async Task Demo_ArbitraryDriverComputeDoesNotReplaceCallerHistory_ClaimIsNotSubject()
-    {
-        var options = await fixture.CreateOptionsAsync(Ct);
-        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
-        DbContextFactory.InstallStoredEvidenceFixtures(db);
-        var graph = await SeedAsync(db, DemoData.DriverCustId);
-        db.FeatureFlags.Add(new FeatureFlag { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = true, MinimumRole = "Standard" });
-        var user = await db.Users.SingleAsync(Ct);
-        user.IRacingCustomerId = 777;
-        AddUpload(db, graph, 90, LapSessionType.Practice);
-        await db.SaveChangesAsync(Ct);
-        Assert.Empty(await db.UploadedLaps.ToListAsync(Ct)); // Demo cannot read quarantined legacy uploads.
-        Assert.Equal(DemoData.DriverCustId, await Subject(db).GetSubjectDriverCustIdAsync(graph.UserId, Ct));
-        var demoComputed = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, DemoData.DriverCustId, Uploaded, graph.UserId, Ct);
-        Assert.Equal(LapEvidence.RaceLap, demoComputed!.YourBestLapEvidence);
-        var own = await db.CarPercentileResults.AsNoTracking().SingleAsync(Ct);
-        var other = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, 1000, Uploaded, graph.UserId, Ct);
-        Assert.NotNull(other);
-        var retained = await db.CarPercentileResults.AsNoTracking().SingleAsync(Ct);
-        Assert.Equal(own.PercentileRank, retained.PercentileRank);
-        Assert.Equal(own.ComputedAt, retained.ComputedAt);
-        Assert.Equal(1, await db.CarPercentileResults.CountAsync(Ct));
-        var recommendation = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
-            1, 0, DemoData.DriverCustId, RaceOnly, Ct));
-        Assert.Equal(50, recommendation.ExpectedPercentile);
-        Assert.Equal(own.ComputedAt, (await db.CarPercentileResults.AsNoTracking().SingleAsync(Ct)).ComputedAt);
-        var analytics = Assert.Single(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
-        Assert.Null(analytics.PersonalBestLapSeconds);
-        Assert.Equal(0, analytics.TotalWeeks);
-        Assert.Equal(50, analytics.LatestPercentileRank);
-        Observe("subject-ownership", new { analytics.PersonalBestLapSeconds, analytics.TotalWeeks, recommendation.ExpectedPercentile,
-            demoUploadedVisible = false, demoComputed.YourBestLapEvidence, recommendationPersisted = false,
-            claimedCustomerId = 777, subjectCustomerId = DemoData.DriverCustId,
-            own.PercentileRank, otherRank = other!.PercentileRank, retained = true });
-    }
-
-    [Fact]
-    public async Task LegacyReal_UploadSelectionUsesTrackIdAndHalfOpenWeek_ExcludedFastestKeepsItsDate()
-    {
-        await using var db = await fixture.CreateDbContextAsync(Ct);
-        var graph = await SeedAsync(db);
-        db.Tracks.Add(new Track { Id = 102, Name = "Synthetic shared venue", ConfigName = "Other layout" });
-        AddUpload(db, graph, 1, LapSessionType.Practice, trackId: 102);
-        AddUpload(db, graph, 2, LapSessionType.Practice, at: graph.Week.EndTime!.Value);
-        AddUpload(db, graph, 3, LapSessionType.Practice, at: graph.Week.EndTime.Value.AddHours(1));
         AddUpload(db, graph, 90, LapSessionType.Practice);
         await db.SaveChangesAsync(Ct);
         var computed = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, Uploaded, graph.UserId, Ct);
-        Assert.Equal(90, computed!.YourBestLapSeconds);
-        Assert.Equal(2, computed.UploadedBestOutsideWeek!.LapSeconds);
-        Assert.Equal(graph.Week.EndTime.Value, computed.UploadedBestOutsideWeek.RecordedAt);
-        var rec = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(1, 0, graph.CustomerId, Uploaded, Ct));
-        Assert.Equal(90, rec.BestLapSeconds);
-        var analytics = Assert.Single(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, Uploaded, Ct));
-        Assert.Equal(90, analytics.PersonalBestLapSeconds);
-        Observe("track-week-scope", new { computed.YourBestLapSeconds, excluded = computed.UploadedBestOutsideWeek,
-            analytics.PersonalBestLapSeconds });
+        Assert.Equal(50, computed!.PercentileRank);
+        Assert.Equal(LapEvidence.RaceLap, computed.YourBestLapEvidence);
+        var recommendation = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, Uploaded, graph.UserId, Ct));
+        Assert.Equal(50, recommendation.PercentileRank);
+        Assert.Null(recommendation.ExpectedPercentile);
+        Assert.Empty(await db.CarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+    }
+
+    [Fact]
+    public async Task BothApiWritersShareClassifiedRowsAndIndependentSelectionsWithoutClaimOwnership()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        (await db.Users.SingleAsync(Ct)).IRacingCustomerId = 777;
+        AddUpload(db, graph, 1, LapSessionType.Practice);
+        await db.SaveChangesAsync(Ct);
+        var computed = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        Assert.Equal(50, computed!.PercentileRank);
+        Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        var rec = new CarRecommendationService(db);
+        var repeated = Assert.Single(await rec.GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Equal(50, repeated.ExpectedPercentile);
+        var raceRow = Assert.Single(await db.ClassifiedCarPercentileResults.AsNoTracking().ToListAsync(Ct));
+        Assert.Equal(RaceOnly.Selection.Key, raceRow.SelectionKey);
+        Assert.Equal(graph.UserId, raceRow.UserId);
+        Assert.Equal(DemoData.DriverCustId, raceRow.CustomerId);
+        Assert.Equal(110, raceRow.PersonalBestLapSeconds);
+        await rec.GetRecommendationsAsync(1, 0, graph.CustomerId, Uploaded, graph.UserId, Ct);
+        Assert.Equal(2, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
+        var stable = await db.ClassifiedCarPercentileResults.AsNoTracking().OrderBy(r => r.SelectionKey)
+            .Select(r => new { r.Id, r.ComputedAt, r.EvidenceCopyId }).ToListAsync(Ct);
+        var other = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, 1000, Uploaded, graph.UserId, Ct);
+        Assert.Equal(90, other!.PercentileRank);
+        await rec.GetRecommendationsAsync(1, 0, 1000, Uploaded, graph.UserId, Ct);
+        Assert.Equal(stable, await db.ClassifiedCarPercentileResults.AsNoTracking().OrderBy(r => r.SelectionKey)
+            .Select(r => new { r.Id, r.ComputedAt, r.EvidenceCopyId }).ToListAsync(Ct));
+        Assert.Empty(await db.CarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await db.UploadedLaps.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task BothWritersReplaceThresholdContributionAndRemoveWeekWithNoPersonalBest()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        var second = new Week { Id = Guid.NewGuid(), SeasonId = 10, RaceWeekIndex = 1, TrackId = 101,
+            StartDate = graph.Week.StartDate.AddDays(7), EndTime = graph.Week.EndTime!.Value.AddDays(7) };
+        db.Weeks.Add(second);
+        var s = new Subsession { Id = 2, SeasonId = 10, WeekId = second.Id, TrackId = 101, RaceWeekIndex = 1 };
+        db.SubsessionResults.AddRange(Field(s, graph.CustomerId, [90, 100, 105, 115]));
+        await db.SaveChangesAsync(Ct);
+        var calc = Calculator(db); var rec = new CarRecommendationService(db);
+        await calc.ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        await calc.ComputeAndCacheAsync(1, 1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        Assert.Equal(40, Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct)).ExpectedPercentile);
+        await RewriteAsync(db, 2, rows => db.SubsessionResults.Remove(rows.Single(r => r.BestLapSeconds == 115)));
+        var small = await calc.ComputeAndCacheAsync(1, 1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        Assert.Equal(4, small!.SampleSize);
+        Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        var under = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.False(under.IsPercentilePresentable); Assert.Equal(50, under.ExpectedPercentile);
+        Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        await RewriteAsync(db, 2, rows => db.SubsessionResults.Add(new() { SubsessionId = 2, CustId = 9999,
+            CarId = 1, CarClassId = 1, BestLapSeconds = 120 }));
+        Assert.Equal(40, Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct)).ExpectedPercentile);
+        Assert.Equal(40, Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct)).ExpectedPercentile);
+        Assert.Equal(2, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
+        await RewriteAsync(db, 2, rows => db.SubsessionResults.Remove(rows.Single(r => r.CustId == graph.CustomerId)));
+        Assert.Null(await calc.ComputeAndCacheAsync(1, 1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        var projected = Assert.Single(await rec.GetRecommendationsAsync(1, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Null(projected.PercentileRank); Assert.Null(projected.BestLapSeconds);
+        Assert.Equal(50, projected.ExpectedPercentile);
+        Assert.Equal(graph.Week.Id, Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct)).WeekId);
+    }
+
+    [Fact]
+    public async Task WrongTrackCannotChangeEitherApiWritersFieldOrPersonalBest()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        db.Tracks.Add(new() { Id = 102, Name = "Synthetic shared venue", ConfigName = "Other layout" });
+        var wrong = new Subsession { Id = 3, SeasonId = 10, WeekId = graph.Week.Id, TrackId = 102, RaceWeekIndex = 0 };
+        var wrongRows = Field(wrong, graph.CustomerId, [2, 3, 4, 5]).ToArray();
+        wrongRows.Single(r => r.CustId == graph.CustomerId).BestLapSeconds = 1;
+        db.SubsessionResults.AddRange(wrongRows);
+        await db.SaveChangesAsync(Ct);
+        var computed = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        Assert.Equal(50, computed!.PercentileRank); Assert.Equal(5, computed.SampleSize);
+        var rec = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Equal(50, rec.PercentileRank); Assert.Equal(5, rec.FieldSize); Assert.Equal(110, rec.BestLapSeconds);
+        Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task QuarantinedTypesDatesAndTrackIdsNeverBecomeAuthorizedEvidence()
+    {
+        await using var db = await fixture.CreateDbContextAsync(Ct);
+        var graph = await SeedAsync(db);
+        db.Tracks.Add(new() { Id = 102, Name = "Synthetic shared venue", ConfigName = "Other layout" });
+        AddUpload(db, graph, 1, LapSessionType.Unknown, trackId: 102);
+        AddUpload(db, graph, 2, LapSessionType.Race, at: graph.Week.EndTime!.Value);
+        AddUpload(db, graph, 3, LapSessionType.Practice);
+        await db.SaveChangesAsync(Ct);
+        foreach (var evidence in new[] { RaceOnly, Uploaded, PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]) })
+        {
+            var result = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, evidence, graph.UserId, Ct);
+            Assert.Equal(110, result!.YourBestLapSeconds); Assert.Null(result.UploadedBestOutsideWeek);
+            Assert.Equal(LapEvidence.RaceLap, result.YourBestLapEvidence);
+        }
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await db.CarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task RecommendationsAverageDistinctWeeksAcrossSeasonsThroughRequestedDateOnly()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        db.Seasons.AddRange(new Season { Id = 9, SeriesId = 1, Year = 2026, Quarter = 3 },
+            new Season { Id = 11, SeriesId = 1, Year = 2027, Quarter = 1, Active = true });
+        void Add(int id, int season, int index, int days, double[] others)
+        {
+            var week = new Week { Id = Guid.NewGuid(), SeasonId = season, RaceWeekIndex = index, TrackId = 101,
+                StartDate = graph.Week.StartDate.AddDays(days) };
+            db.Weeks.Add(week);
+            var race = new Subsession { Id = id, SeasonId = season, RaceWeekIndex = index,
+                WeekId = week.Id, TrackId = 101 };
+            db.SubsessionResults.AddRange(Field(race, graph.CustomerId, others));
+        }
+        Add(9, 9, 0, -14, [120, 125, 130, 135]); // 90, earlier Season
+        Add(10, 9, 1, 0, [90, 100, 105, 115]);  // 30, distinct Week on requested date
+        Add(11, 11, 0, 21, [80, 90, 100, 105]); // 10, future Season cannot contribute
+        await db.SaveChangesAsync(Ct);
+        var result = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Equal(50, result.PercentileRank);
+        Assert.Equal(170.0 / 3, result.ExpectedPercentile!.Value, 10);
+        var repeated = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Equal(result.ExpectedPercentile, repeated.ExpectedPercentile);
+        Assert.Equal(4, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task RecommendationChronologyUsesDateWitnessedByRefreshAfterCallerPreRead()
+    {
+        var interceptor = new CorrectRequestedDate();
+        var options = await fixture.CreateOptionsAsync(Ct, interceptor);
+        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        DbContextFactory.InstallStoredEvidenceFixtures(db);
+        db.FeatureFlags.Add(new() { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = true, MinimumRole = "Standard" });
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        var other = new Week { Id = Guid.NewGuid(), SeasonId = 10, RaceWeekIndex = 1, TrackId = 101,
+            StartDate = graph.Week.StartDate.AddDays(-4) };
+        db.Weeks.Add(other);
+        db.SubsessionResults.AddRange(Field(new Subsession { Id = 8, SeasonId = 10, WeekId = other.Id,
+            TrackId = 101, RaceWeekIndex = 1 }, graph.CustomerId, [120, 125, 130, 135]));
+        await db.SaveChangesAsync(Ct);
+        interceptor.Correct = async token =>
+        {
+            var plainOptions = fixture.WithInterceptors(options);
+            await using var correction = new AppDbContext(plainOptions, new IRacingDataScope(DataProvenance.Demo));
+            await correction.Weeks.Where(w => w.Id == graph.Week.Id)
+                .ExecuteUpdateAsync(u => u.SetProperty(w => w.StartDate, graph.Week.StartDate.AddDays(-7)), token);
+        };
+        var result = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.True(interceptor.Applied);
+        Assert.Equal(50, result.ExpectedPercentile); // Earlier caller date would have included rank90.
+        Assert.Equal(2, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
+    }
+
+    private sealed class CorrectRequestedDate : DbCommandInterceptor
+    {
+        public Func<CancellationToken, Task>? Correct { get; set; }
+        public bool Applied { get; private set; }
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            // Caller projections do not read EndTime; the module's calendar witness does.
+            if (!Applied && Correct is not null && command.CommandText.Contains("FROM iracing.\"Weeks\"", StringComparison.Ordinal)
+                && command.CommandText.Contains("\"EndTime\"", StringComparison.Ordinal))
+            {
+                Applied = true;
+                await Correct(cancellationToken);
+            }
+            return result;
+        }
+    }
+
+    private async Task<AppDbContext> DemoAsync()
+    {
+        var options = await fixture.CreateOptionsAsync(Ct);
+        var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        DbContextFactory.InstallStoredEvidenceFixtures(db);
+        db.FeatureFlags.Add(new() { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = true, MinimumRole = "Standard" });
+        await db.SaveChangesAsync(Ct);
+        return db;
+    }
+
+    private static async Task RewriteAsync(AppDbContext db, int subsession, Action<List<SubsessionResult>> change)
+    {
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, Ct);
+        var header = await db.Subsessions.SingleAsync(s => s.Id == subsession, Ct);
+        var rows = await db.SubsessionResults.Where(r => r.SubsessionId == subsession).ToListAsync(Ct);
+        db.Entry(header).State = EntityState.Modified;
+        foreach (var row in rows) db.Entry(row).State = EntityState.Modified;
+        change(rows);
+        await writer.SaveChangesAsync(Ct);
     }
 
     private static SubjectDriverContext Subject(AppDbContext db) => new(db, new FeatureFlagEligibility(db));
@@ -214,17 +274,4 @@ public class PercentileHistoryCharacterizationTests(PostgreSqlFixture fixture)
             CarId = 1, TrackId = trackId, LapTimeSeconds = lap, SessionType = type,
             RecordedAt = at ?? new DateTimeOffset(graph.Week.StartDate.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero) });
 
-    private static void Observe(string name, object outcome)
-    {
-        // MTP starts inside bin/<configuration>/net10.0; keep optional observations in the
-        // repository's ignored evidence directory instead of treating copied binaries as a root.
-        var root = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (!File.Exists(Path.Combine(root.FullName, "ApexRacers.sln")) && root.Parent is { } parent)
-            root = parent;
-        var directory = Path.Combine(root.FullName, "TestResults", "352-history");
-        Directory.CreateDirectory(directory);
-        File.WriteAllText(Path.Combine(directory, name + ".json"), JsonSerializer.Serialize(new
-        { scenario = name, boundary = "fabricated PostgreSQL direct legacy service seam; no Live authorization", outcome },
-            new JsonSerializerOptions { WriteIndented = true }));
-    }
 }

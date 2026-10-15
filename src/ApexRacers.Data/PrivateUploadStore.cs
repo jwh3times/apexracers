@@ -169,74 +169,14 @@ public sealed class PrivateUploadStore(AppDbContext db, TimeProvider clock, IDri
         PercentileSelection selection, CancellationToken ct = default)
     {
         await CheckOwnerAsync(owner, ct);
-        var copies = new EvidenceCopyLifecycle(db, clock, journal);
-        // Reconcile older invalidated summaries before freezing the preparation version:
-        // their physical deletion can itself advance the same purpose's evidence version.
-        await copies.ReconcileAsync(ct);
-        // Capture before reading sources. A concurrent loss, source replacement or correction
-        // invalidates the commit; freshly calculated output is never returned after a failed commit.
-        var uploadReceipt = await CaptureAsync(owner, ct);
-        var week = await db.Weeks.AsNoTracking().SingleOrDefaultAsync(w => w.Id == weekId, ct);
-        if (week is null) return null;
-        var weeks = await db.Weeks.Where(w => w.SeasonId == week.SeasonId)
-            .Select(w => new { w.RaceWeekIndex, w.StartDate, w.EndTime }).ToListAsync(ct);
-        var window = RaceWeekWindow.ForSeason(weeks.Select(w => (w.RaceWeekIndex, w.StartDate, w.EndTime)))
-            .Single(w => w.RaceWeekIndex == week.RaceWeekIndex).Window;
-        var selectedTypes = selection.IncludedTypes.ToArray();
-        var sessionQuery = AvailableSessions(owner).Where(s => s.CarId == carId
-            && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End
-            && selectedTypes.Contains(s.SessionType));
-        var uploadSources = await (from session in sessionQuery
-                                   join marker in db.EvidenceCopyMarkers.AsNoTracking() on session.EvidenceCopyId equals marker.Id
-                                   select new EvidenceSourceVersion(marker.Id, marker.Version)).ToListAsync(ct);
-        var sessions = await sessionQuery.Include(s => s.Laps).ToListAsync(ct);
-        if (sessions.Count != uploadSources.Count || sessions.Any(s => !uploadSources.Any(v => v.CopyId == s.EvidenceCopyId)))
-            throw new EvidenceCopyUnavailableException();
-        // Read each official row and its immutable copy version together, so a replacement
-        // cannot drop an old input from the dependency set after the Field was calculated.
-        var results = await (from r in db.SubsessionResults.AsNoTracking()
-                             join marker in db.EvidenceCopyMarkers.AsNoTracking() on r.EvidenceCopyId equals marker.Id
-                             where r.CarId == carId && r.Subsession.WeekId == week.Id
-            && r.Subsession.TrackId == week.TrackId && r.Subsession.OfficialSession
-            && r.BestLapSeconds > 0
-                             select new { r.CustId, r.BestLapSeconds, Source = new EvidenceSourceVersion(marker.Id, marker.Version) }).ToListAsync(ct);
-        var byDriver = results.GroupBy(r => r.CustId).ToDictionary(g => g.Key, g => g.Min(r => r.BestLapSeconds));
-        var uploaded = sessions.SelectMany(s => s.Laps).Select(l => (double?)l.LapTimeSeconds).DefaultIfEmpty().Min();
-        var best = PersonalBest.Select(byDriver.TryGetValue(owner.Scope.CustomerId, out var raced) ? raced : (double?)null, uploaded);
-        if (best is null || results.Count == 0) return null;
-        var other = byDriver.Where(d => d.Key != owner.Scope.CustomerId).Select(d => d.Value).ToList();
-        var percentile = new PrivateOwnerPercentile(best.Value.LapSeconds, best.Value.Evidence,
-            FieldPercentile.Rank(best.Value.LapSeconds, other), FieldPercentile.Position(best.Value.LapSeconds, other),
-            FieldPercentile.TopSharePercent(best.Value.LapSeconds, other), FieldPercentile.FieldSize(other));
-        var sources = uploadSources.Concat(results.Select(r => r.Source)).Distinct().ToArray();
-        var seriesId = await db.Seasons.Where(s => s.Id == week.SeasonId).Select(s => s.SeriesId).SingleAsync(ct);
-        var winningUploadType = best.Value.Evidence == LapEvidence.UploadedLap
-            ? sessions.Where(s => s.Laps.Any(l => l.LapTimeSeconds == best.Value.LapSeconds))
-                .OrderBy(s => s.Id).Select(s => (LapSessionType?)s.SessionType).First()
+        var seriesId = await db.Weeks.Where(w => w.Id == weekId).Select(w => (int?)w.Season.SeriesId).SingleOrDefaultAsync(ct);
+        if (seriesId is null) return null;
+        var batch = await new PercentileRefresh(db, clock, journal).RefreshPersonalAsync(owner, selection, seriesId.Value, [weekId], [carId], ct);
+        var reading = batch.Readings.Single();
+        return reading.PersonalBest is { } best
+            ? new(best.LapSeconds, best.Evidence, reading.PercentileRank!.Value, reading.FieldPosition!.Value,
+                reading.TopSharePercent!.Value, reading.FieldSize!.Value)
             : null;
-        var copy = new ClassifiedCarPercentileResult
-        {
-            Id = Guid.NewGuid(), UserId = owner.Scope.UserId, CustomerId = owner.Scope.CustomerId,
-            Provenance = owner.Scope.Provenance, OwnerKind = PercentileOwnerKind.Personal,
-            GrantId = owner.GrantId, GrantRevision = owner.Revision,
-            SelectionPolicyVersion = selection.PolicyVersion, SelectionKey = selection.Key,
-            CarId = carId, WeekId = weekId, SeriesId = seriesId,
-            PercentileRank = percentile.PercentileRank, TopSharePercent = percentile.TopSharePercent,
-            SampleSize = percentile.FieldSize, PersonalBestLapSeconds = percentile.LapSeconds,
-            PersonalBestLapEvidence = percentile.Evidence, UploadedSessionType = winningUploadType, ComputedAt = Now
-        };
-        // One stable full owner/selection key; no selection-less row is copied or inferred.
-        var receipt = await copies.CaptureAsync(uploadReceipt.PurposeId, EvidenceCopyKind.PersonalDerivative,
-            ClassifiedPercentileContract.Key(copy), sources, ct);
-        // A later purpose read cannot authorize inputs prepared against an earlier generation.
-        receipt = receipt with
-        {
-            Generation = uploadReceipt.Generation,
-            PurposeVersion = uploadReceipt.PurposeVersion,
-            OriginalAcquiredAt = uploadReceipt.OriginalAcquiredAt
-        };
-        await copies.CommitAsync(receipt, new ClassifiedPercentileBatch(copy), ct);
-        return percentile;
     }
 
     public async Task<PrivateCleanupStatus> InspectUserAsync(Guid userId, CancellationToken ct = default)

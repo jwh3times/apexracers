@@ -73,7 +73,9 @@ log sink or restored environment. Independent journal/retention/restore follow-u
 
 ## Useful owner analytics and protected HTTP
 
-`ReadBestsAsync` returns exact all-time Uploaded Bests grouped by catalog IDs. Personal percentile
+`ReadBestsAsync` returns exact all-time Uploaded Bests grouped by catalog IDs. Typed percentile
+calculation now delegates to the [shared refresh](percentile-history-refresh.md); original grant,
+journal and preparation checks remain mandatory. Personal percentile
 calculation uses only uploads in the same `RaceWeekWindow`, exact official Field membership and
 `PersonalBest.Select` / `FieldPercentile`. A Race Best wins a tie, the owner is counted once, and
 faster excluded-week uploads remain available in the all-time inventory. Typed derivatives now use classified owner/selection identities in

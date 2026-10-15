@@ -1,4 +1,5 @@
 using ApexRacers.Core.Models;
+using ApexRacers.Core.PercentileHistory;
 
 namespace ApexRacers.Api.Services;
 
@@ -16,6 +17,8 @@ public sealed class PersonalBestEvidence(
     public static PersonalBestEvidence OfficialRaceLapsOnly { get; } = new(false, null);
 
     public bool IncludesUploadedLaps { get; } = includesUploadedLaps;
+
+    public PercentileSelection Selection => PercentileSelection.FromRequest(IncludesUploadedLaps, uploadedLapTypes);
 
     public static PersonalBestEvidence FromRequest(
         bool includeUploadedLaps,

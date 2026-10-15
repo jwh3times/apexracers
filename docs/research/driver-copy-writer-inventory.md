@@ -10,12 +10,13 @@ Read the [accepted ownership architecture](../design/driver-disclosure-ownership
 [implemented lifecycle spine](driver-lifecycle-admission-spine.md) together. Existing namespace
 selection, name stripping, TTLs and route refusal do not establish collection purpose.
 
-Current percentile storage is staged as documented in the
-[selection-scoped storage cutover](percentile-history-storage.md): ordinary Demo history uses
-`LegacyUnclassifiedPercentileResults`; typed private-upload calculations and fresh classified Demo
-seeding use `SelectionScopedCarPercentileResults`. Both families participate in physical cleanup,
-source invalidation and acquisition-transition inventory. The evidence below retains its original
-#371 scope and does not claim integrated history readers or shared refresh.
+Current percentile production uses the [shared refresh](percentile-history-refresh.md) and
+[selection-scoped storage cutover](percentile-history-storage.md). API Demo writers, typed
+private-upload calculations and fresh classified Demo seeding use `SelectionScopedCarPercentileResults`;
+legacy analytics and the Seeder compatibility step retain `LegacyUnclassifiedPercentileResults`.
+Both families participate in physical cleanup, source invalidation and acquisition-transition
+inventory. The evidence below retains its original #371 scope; coherent analytics and protected
+reader integration remain separate.
 
 ## Physical copies and participating writers
 

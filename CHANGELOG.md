@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Unified percentile history refresh across API writers, verified private-upload calculations and
+  fresh Demo seeding. Repeated Weeks replace their own canonical selection; missing Personal Bests
+  and Fields below five remove stale contributions without altering another selection or Driver.
+- Resolved history owners from the authenticated User instead of account claims, excluded quarantined
+  uploads and legacy cache fallbacks, and bounded Expected Percentile by the requested Week's
+  witnessed date across Seasons. Strategy and Week Detail use the same refreshed readings.
+- Batched source preparation and classified commits, checking complete input sets and catalog
+  windows through commit while preserving original source clocks. Source loss, additions and
+  concurrent catalog changes cannot publish a stale prepared batch.
 
 ## [15.0.0] - 2026-10-15
 

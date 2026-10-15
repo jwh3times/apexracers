@@ -3,20 +3,13 @@ using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-/// <summary>
-/// The Uploaded Lap side of the percentile calculation, which is bounded to the Race Week the
-/// Field belongs to.
-///
-/// <para><b>Why PostgreSQL rather than the fast SQLite context.</b> Scoping Uploaded Laps to a
-/// Race Week filters on a <see cref="DateTimeOffset"/> range (<c>RecordedAt &gt;= start</c> and
-/// <c>RecordedAt &lt; end</c>). The production provider translates that; SQLite cannot, and fails
-/// at runtime rather than at compile time. These cases therefore run against the real provider,
-/// for the same reason <c>ExternalDataCacheCleanupServiceTests</c> does.</para>
-/// </summary>
+/// <summary>Quarantined uploads never become personal evidence through a claim-only legacy API.
+/// Authorized typed selection/window behavior is exercised through the shared PostgreSQL refresh.</summary>
 [Collection(PostgreSqlCollection.Name)]
 public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture postgres)
 {
@@ -99,14 +92,10 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
             seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: 1,
             evidence: evidence, callerUserId: userId, ct: Ct);
 
-    // ── The Race Week bound ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task UploadedLapInsideTheRaceWeek_Counts()
+    public async Task ClaimedInWeekQuarantinedUpload_CannotChangeRaceReading()
     {
-        // Field of 5, the driver's own race lap is 80s and their uploaded lap of 65s was driven
-        // during this Race Week. Official only: 2 slower + 0.5 tied, over 5 = 50th percentile.
-        // With uploaded laps: 65 beats three others, so 3 + 0.5 over 5 = 70th.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -127,16 +116,13 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         Assert.Equal(LapEvidence.RaceLap, official.YourBestLapEvidence);
 
         Assert.NotNull(withUploaded);
-        Assert.Equal(70.0, withUploaded.PercentileRank);
-        Assert.Equal(LapEvidence.UploadedLap, withUploaded.YourBestLapEvidence);
+        Assert.Equal(50.0, withUploaded.PercentileRank);
+        Assert.Equal(LapEvidence.RaceLap, withUploaded.YourBestLapEvidence);
     }
 
     [Fact]
     public async Task UploadedLapOutsideTheRaceWeek_DoesNotCount()
     {
-        // The same 65s lap, driven five days before this Race Week opened. A Race Best belongs to
-        // one Race Week, so an out-of-week lap must not take the percentile from it — that is the
-        // dry-practice-lap-against-a-wet-week case this bound exists for.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -158,10 +144,8 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
     }
 
     [Fact]
-    public async Task ReportedWeekEndTime_BoundsTheWeekRatherThanSevenDays()
+    public async Task QuarantinedUploadAfterReportedWeekEndCannotSupplyEvidence()
     {
-        // iRacing closes a Race Week at 21:00 UTC on the seventh day, not at midnight. A lap at
-        // 22:00 that day is outside the week, which start plus seven days would have admitted.
         var reportedEnd = new DateTimeOffset(2026, 6, 21, 21, 0, 0, TimeSpan.Zero);
         var afterClose = new DateTimeOffset(2026, 6, 21, 22, 0, 0, TimeSpan.Zero);
 
@@ -181,10 +165,9 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         Assert.Equal(LapEvidence.RaceLap, result.YourBestLapEvidence);
     }
 
-    // ── Disclosing what the bound excluded ────────────────────────────────────
 
     [Fact]
-    public async Task FasterUploadedLapOutsideTheWeek_IsReportedWithTheDateItWasDriven()
+    public async Task QuarantinedUploadDatesAndTimes_AreNotDisclosed()
     {
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
@@ -199,16 +182,14 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
 
         Assert.NotNull(result);
         var excluded = result.UploadedBestOutsideWeek;
-        Assert.NotNull(excluded);
-        Assert.Equal(65.0, excluded.LapSeconds);
-        // The date must be the excluded lap's own, not the newest lap in some group.
-        Assert.Equal(BeforeWeek, excluded.RecordedAt);
+        Assert.Null(excluded);
+        Assert.Equal(80.0, result.YourBestLapSeconds);
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
     public async Task SlowerUploadedLapOutsideTheWeek_IsNotReported()
     {
-        // It would have changed nothing, so saying so on every visit would be noise.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -227,9 +208,6 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
     [Fact]
     public async Task OfficialRaceLapsOnly_ReportsNothingExcluded()
     {
-        // The driver did not ask for Uploaded Laps to count, so an uploaded lap is not something
-        // this Race Week's bound withheld from them — reporting it would answer a question nobody
-        // asked.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -245,13 +223,10 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         Assert.Null(result.UploadedBestOutsideWeek);
     }
 
-    // ── Cases carried over from the SQLite suite ──────────────────────────────
 
     [Fact]
-    public async Task DriverNotInRaceField_InWeekUploadedLapStillYieldsAPercentile()
+    public async Task DriverNotInRaceField_QuarantinedUploadCannotInventAPercentile()
     {
-        // custId=1 never raced this week. Their in-week uploaded lap of 65s joins a field of 3,
-        // making 4: 2 slower + 0.5 tied, over 4 = 62.5.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -266,16 +241,13 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
         var withUploaded = await ComputeAsync(db, userId, PersonalBestEvidence.FromRequest(true, null));
 
         Assert.Null(official);
-        Assert.NotNull(withUploaded);
-        Assert.Equal(62.5, withUploaded.PercentileRank, tolerance: 1e-10);
-        Assert.Equal(LapEvidence.UploadedLap, withUploaded.YourBestLapEvidence);
+        Assert.Null(withUploaded);
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
-    public async Task UnknownTypedLapPassesAnActiveSessionTypeFilter()
+    public async Task UnknownQuarantinedLapCannotBypassTheAuthorityBoundary()
     {
-        // Laps uploaded before SessionType was tracked default to Unknown. They must always pass
-        // through a session-type filter so pre-migration data is never silently dropped.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
         var userId = Guid.NewGuid();
@@ -288,9 +260,8 @@ public class PercentileCalculationServiceUploadedLapTests(PostgreSqlFixture post
 
         var result = await ComputeAsync(db, userId, PersonalBestEvidence.FromRequest(true, [LapSessionType.Race]));
 
-        Assert.NotNull(result);
-        // 65s beats both others in a Field of 3: 2 + 0.5, over 3.
-        Assert.Equal(250.0 / 3, result.PercentileRank, tolerance: 1e-10);
+        Assert.Null(result);
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]

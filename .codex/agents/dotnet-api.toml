@@ -36,7 +36,7 @@ AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` 
   - `Rank` is a percentile rank in the ordinary statistical sense: `(slower + 0.5 × tied) / fieldSize`, the driver included in their own denominator, ties split. It does not reach 0 or 100, and a lone driver sits at 50. Do not "fix" it back to strictly-slower-over-others — see `CONTEXT.md`'s Competitiveness section.
   - **A DTO's `FieldSize` is `FieldPercentile.FieldSize(otherLaps)`, not the row count you queried.** The queried rows contain the driver only when they actually raced, so reporting their count makes the same number mean two different things. A projected-only recommendation has no current-week Field membership and therefore carries `FieldSize: null`.
   - **A Top Share cannot be derived from a percentile rank** — the rank splits ties and counts the driver in its denominator, so it does not invert. Compute it with `TopSharePercent` server-side and carry it on the DTO; that is why `CarPercentileResult` stores it rather than recomputing on read.
-  - Distinct from `CarRecommendationService`'s `RunningAveragePercentile`, which averages successive percentile *readings* into an Expected Percentile. The recommendation contract carries that value in `ExpectedPercentile`; it is never substituted into `PercentileRank` and has no Field Position, Top Share, or Field Size.
+  - Distinct from Expected Percentile, which averages distinct eligible Weeks from the shared refresh through the requested Week’s witnessed start date. The recommendation contract carries that value in `ExpectedPercentile`; it is never substituted into `PercentileRank` and has no Field Position, Top Share, or Field Size.
 - The race-vs-uploaded choice behind a Personal Best is never re-compared inline either: call
   `ApexRacers.Core.PersonalBest.Select(raceBest, uploadedBest)` (nullable overload) or
   `Select(raceBest, uploadedBest)` (non-nullable overload, for a caller that has already proved the
@@ -471,6 +471,13 @@ other direction: it would process forwarded headers in environments with no fron
 CI) and, with `KnownProxies` cleared, hand any caller the address the rate limiter partitions on.
 `ForwardedHeadersPolicy.IsEnabledByHost` only logs a startup warning when the setting is absent — it
 never changes what gets registered.
+
+## Percentile refresh
+
+Read docs/research/percentile-history-refresh.md before changing percentile writers or batch
+preparation. Data.PercentileRefresh owns eligible retained inputs and classified replacement/removal.
+API callers pass authenticated User identity and resolve Demo eligibility; typed Personal production
+rechecks its original verified grant and journal. Coherent analytics/protected readers remain separate.
 
 ## Scoped Driver reference integration
 

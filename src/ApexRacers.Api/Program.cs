@@ -230,6 +230,7 @@ builder.Services.AddHostedService<ExternalDataCacheCleanupService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<WeekCarStatsService>();
+builder.Services.AddScoped<PercentileRefresh>();
 builder.Services.AddScoped<PercentileCalculationService>();
 builder.Services.AddScoped<CarRecommendationService>();
 builder.Services.AddScoped<StrategyService>();

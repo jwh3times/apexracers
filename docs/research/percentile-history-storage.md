@@ -4,6 +4,11 @@ Implementation for [#426](https://github.com/jwh3times/apexracers/issues/426), f
 [ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md) and
 [the selection/owner contracts](percentile-history-contracts.md).
 
+The later [shared refresh](percentile-history-refresh.md) integrates API writers, typed private-upload
+calculation and fresh Demo seeding. Its current behavior supersedes the producer staging described
+below; legacy analytics and broad coherent reader integration remain #428 work. The migration and
+historical evidence below retain their original #426 scope.
+
 ## Staged storage families
 
 The cutover separates classified history from the existing legacy runtime rather than inferring

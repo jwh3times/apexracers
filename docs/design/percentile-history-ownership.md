@@ -35,7 +35,13 @@ The Demo ownership result is service-level evidence; this investigation did not 
 The fixture uses `EnsureCreated`, not the production migration fences. The threshold case changes
 fabricated retained source rows directly; it is not a source-correction or acquisition protocol rehearsal.
 
-### Reproduce
+### Reproduce the historical investigation
+
+The following command and source hash refer to commit
+[`8607f0f34b2e9075b62e2f5bca5d60edb689ef13`](https://github.com/jwh3times/apexracers/commit/8607f0f34b2e9075b62e2f5bca5d60edb689ef13).
+Use a separate checkout at that commit to reproduce these original observations. The current test
+class now verifies [the accepted refresh behavior](../research/percentile-history-refresh.md) and
+does not regenerate the historical #352 observations.
 
 Docker must be running. The checked-in fixture uses `postgres:18.0-alpine`; the measured run used
 .NET SDK 10.0.112 with the repository's Microsoft Testing Platform runner. From the public root:
@@ -47,7 +53,7 @@ dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
   --results-directory "$PWD/TestResults/352-history"
 ```
 
-The [test source](../../src/ApexRacers.Tests/Services/PercentileHistoryCharacterizationTests.cs)
+The [historical test source](https://github.com/jwh3times/apexracers/blob/8607f0f34b2e9075b62e2f5bca5d60edb689ef13/src/ApexRacers.Tests/Services/PercentileHistoryCharacterizationTests.cs)
 is the durable executable evidence. Its measured SHA-256 is
 `e5c87d27a40931c9bf2bd8687f1bb2f4a21a1b4ef8cae1213a8742517fbf9e47`.
 A [compact observation record](../research/evidence/percentile-history-352.json) preserves the
