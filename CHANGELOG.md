@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.0.0] - 2026-10-15
+
+### Added
+
+- Selection-scoped percentile storage with explicit owner, grant, evidence and preparation metadata,
+  coordinated typed derivative keys, and fresh Race-only Demo seeding independent of account claims.
+
+### Changed
+
+- **Breaking:** moved the legacy percentile table behind a forward-only schema fence. Older binaries
+  cannot read or write the upgraded table; recovery requires current migrations and enforcement.
+  Legacy rows and clocks are preserved without inferred selection or authority.
+- Kept current Demo history on its separate legacy path while shared refresh and coherent reader
+  integration remain pending; cleanup and teardown now cover both storage families.
+
 ## [14.0.20] - 2026-10-14
 
 ### Added
@@ -1755,7 +1770,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.20...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.0.0...HEAD
+[15.0.0]: https://github.com/jwh3times/apexracers/compare/v14.0.20...v15.0.0
 [14.0.20]: https://github.com/jwh3times/apexracers/compare/v14.0.19...v14.0.20
 [14.0.19]: https://github.com/jwh3times/apexracers/compare/v14.0.18...v14.0.19
 [14.0.18]: https://github.com/jwh3times/apexracers/compare/v14.0.17...v14.0.18

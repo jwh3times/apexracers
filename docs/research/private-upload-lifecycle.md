@@ -76,7 +76,9 @@ log sink or restored environment. Independent journal/retention/restore follow-u
 `ReadBestsAsync` returns exact all-time Uploaded Bests grouped by catalog IDs. Personal percentile
 calculation uses only uploads in the same `RaceWeekWindow`, exact official Field membership and
 `PersonalBest.Select` / `FieldPercentile`. A Race Best wins a tie, the owner is counted once, and
-faster excluded-week uploads remain available in the all-time inventory. Typed derivatives record
+faster excluded-week uploads remain available in the all-time inventory. Typed derivatives now use classified owner/selection identities in
+`SelectionScopedCarPercentileResults` under the [storage cutover](percentile-history-storage.md),
+separately from ordinary legacy Demo history. They record
 both contributing private and independently retained official copy versions; source loss prevents
 reuse and rebuild requires currently authorized inputs.
 
