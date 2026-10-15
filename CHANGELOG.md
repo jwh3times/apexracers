@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [15.0.1] - 2026-10-15
+
 ### Fixed
 
 - Unified percentile history refresh across API writers, verified private-upload calculations and
@@ -1780,7 +1784,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.0.1...HEAD
+[15.0.1]: https://github.com/jwh3times/apexracers/compare/v15.0.0...v15.0.1
 [15.0.0]: https://github.com/jwh3times/apexracers/compare/v14.0.20...v15.0.0
 [14.0.20]: https://github.com/jwh3times/apexracers/compare/v14.0.19...v14.0.20
 [14.0.19]: https://github.com/jwh3times/apexracers/compare/v14.0.18...v14.0.19
