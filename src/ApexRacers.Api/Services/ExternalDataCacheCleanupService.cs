@@ -25,6 +25,7 @@ public class ExternalDataCacheCleanupService(IServiceScopeFactory scopeFactory, 
         removed += await db.Subsessions.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
         removed += await db.SeasonCarBops.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
         removed += await db.CarPercentileResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
+        removed += await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
         removed += await db.Rivals.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
         removed += await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().Where(c => c.EvidenceCopyId == null).ExecuteDeleteAsync(ct);
         removed += await db.Weeks.Where(w => w.WeatherEvidenceCopyId == null && w.WeatherSummaryJson != null)

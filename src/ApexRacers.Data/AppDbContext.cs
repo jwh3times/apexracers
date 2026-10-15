@@ -1,5 +1,6 @@
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
+using ApexRacers.Core.PercentileHistory;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
     public DbSet<PrivateUploadSession> PrivateUploadSessions => Set<PrivateUploadSession>();
     public DbSet<PrivateUploadedLap> PrivateUploadedLaps => Set<PrivateUploadedLap>();
     public DbSet<CarPercentileResult> CarPercentileResults => Set<CarPercentileResult>();
+    public DbSet<ClassifiedCarPercentileResult> ClassifiedCarPercentileResults => Set<ClassifiedCarPercentileResult>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<Track> Tracks => Set<Track>();
     public DbSet<CarClass> CarClasses => Set<CarClass>();
@@ -154,6 +156,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
             Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
                 && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
                 && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Kind >= EvidencePurposeKind.SyntheticPreview && p.Kind <= EvidencePurposeKind.Sharing && p.Generation == c.Generation && p.OriginalEndedAt == null)));
+        modelBuilder.Entity<ClassifiedCarPercentileResult>().HasQueryFilter(r =>
+            Provenance == DataProvenance.Demo && r.Provenance == Provenance && r.SelectionPolicyVersion == 1
+            && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId && c.Kind == EvidenceCopyKind.PersonalDerivative
+                && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null
+                && c.Version == r.ReadingRevision && c.PurposeId == r.PreparationPurposeId && c.Generation == r.PreparationGeneration
+                && EvidencePurposes.Any(p => p.Id == c.PurposeId && p.Provenance == Provenance && p.Generation == c.Generation
+                    && p.OriginalEndedAt == null && ((r.OwnerKind == PercentileOwnerKind.DemoSubject && p.Kind == EvidencePurposeKind.SyntheticPreview)
+                        || (r.OwnerKind == PercentileOwnerKind.Personal && p.Kind == EvidencePurposeKind.Personal
+                            && p.GrantId == r.GrantId && p.GrantRevision == r.GrantRevision
+                            && DriverAuthorizationGrants.Any(g => g.Id == r.GrantId && g.UserId == r.UserId
+                                && g.CustomerId == r.CustomerId && g.Provenance == Provenance && g.Revision == r.GrantRevision
+                                && g.BindingActive && g.ProofValid && g.PersonalConsentVersion != null))))));
         modelBuilder.Entity<Rival>().HasQueryFilter(r =>
             Provenance != DataProvenance.Unknown && r.Provenance == Provenance && EvidenceCopyMarkers.Any(c => c.Id == r.EvidenceCopyId
                 && c.Provenance == Provenance && c.UnavailableAt == null && c.VerifiedRemovedAt == null

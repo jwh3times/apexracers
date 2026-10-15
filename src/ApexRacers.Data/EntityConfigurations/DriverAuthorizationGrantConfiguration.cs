@@ -16,6 +16,7 @@ public sealed class DriverAuthorizationGrantConfiguration : IEntityTypeConfigura
             table.HasCheckConstraint("CK_DriverGrant_SharingPersonal", "\"SharingConsentVersion\" IS NULL OR \"PersonalConsentVersion\" IS NOT NULL");
         });
         builder.HasKey(g => g.Id);
+        builder.HasAlternateKey(g => new { g.Id, g.UserId, g.CustomerId, g.Provenance });
         builder.Property(g => g.Revision).IsConcurrencyToken();
         builder.Property(g => g.PersonalConsentVersion).HasMaxLength(128);
         builder.Property(g => g.SharingConsentVersion).HasMaxLength(128);

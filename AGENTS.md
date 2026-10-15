@@ -718,7 +718,8 @@ indexes, FK/`OnDelete` behavior).
 | `PrivateUploadSession` / `PrivateUploadedLap` | Typed verified-owner source and cascading Timed Laps, bound to original User/Driver/provenance and an evidence-copy marker |
 | `DriverOperatingRecord` | Singleton controlled synthetic operating state, decision history, budget-window usage and reservations; see the operating admission boundary above |
 | `UploadedLap`                                                        | Legacy claim-attributed Uploaded Lap; `DriverCustId` is the Driver the file named (null = not established); not promoted into verified private sources |
-| `CarPercentileResult`                                                | cached percentile rank + top share per (Provenance, UserId, CarId, SeriesId, WeekId)                                                                                                                                                                                  |
+| `CarPercentileResult`                                                | Legacy selection-less cache in `iracing.LegacyUnclassifiedPercentileResults`; ordinary Demo writers/readers remain here pending history integration                                                                                                                                                                                  |
+| `ClassifiedCarPercentileResult` | Classified current reading in `iracing.SelectionScopedCarPercentileResults`, bound to owner, canonical selection, Personal Best and preparation/source metadata; controlled synthetic typed private-upload and fresh Demo seed producers only pending shared runtime integration |
 | `FeatureFlag`                                                        | feature flag (`Key` unique; `MinimumRole`)                                                                                                                                                                                                                |
 | `RefreshToken`                                                       | rotating refresh token (SHA-256 `TokenHash`; `identity` schema)                                                                                                                                                                                           |
 | `ExternalDataCache`                                                  | mapped evidence (`Provenance` + `CacheKey` unique, owned DTO JSON) — backs `CachedIRacingClient`                                                                                                                                                            |
@@ -736,6 +737,12 @@ coordinates only: `SeasonIngest` owns season/schedule relational upserts, `Subse
 subsession/result field mapping, and `WeatherIngest` / `TrackStateIngest` map nested SDK blocks to owned
 Core snapshots. (See `dotnet-api`.)
 
+**Percentile storage cutover:** read `docs/research/percentile-history-storage.md` before changing
+history storage, typed percentile copies, Demo seed classification or restore. Migration
+`ClassifyPercentileHistory` preserves unclassified rows under a new physical name and fences old
+binaries; it is forward-only. Classified and legacy families stay separate until shared refresh
+and coherent readers are integrated. No old row acquires selection or Driver authority.
+
 ### Data source strategy — persist vs cache (read before adding an iRacing-backed feature)
 
 Three ways iRacing data reaches a read path. Pick deliberately:
@@ -752,7 +759,7 @@ Three ways iRacing data reaches a read path. Pick deliberately:
    **mapped DTOs** as JSON with a per-call TTL. Backs progression, profile, race history, lap data,
    world records, leaderboards, standings, race guide, driver search.
 3. **Persisted user-owned data**: typed `PrivateUploadSession` / `PrivateUploadedLap` under verified
-   Personal authority, legacy `UploadedLap`, `Rival`, `CarPercentileResult`, Identity. Stored User or
+   Personal authority, classified `ClassifiedCarPercentileResult`, legacy `UploadedLap`, `Rival`, `CarPercentileResult`, Identity. Stored User or
    Driver identifiers alone do not authorize reading this material.
 
 Choose **persist (#1)** if you need to query/filter/aggregate/join it in SQL, it's canonical/shared, or

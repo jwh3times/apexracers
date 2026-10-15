@@ -54,6 +54,7 @@ if (ciMode)
 {
     Console.WriteLine("CI mode (--ci): seeding a fully synthetic catalog (no response objects required)…");
     await new CiCatalogSeeder(db).SeedAsync();
+    await new ApexRacers.Seeder.Demo.DemoPercentileSeeder(db).SeedAsync();
 
     if (seedDemo)
     {
@@ -640,6 +641,9 @@ else
     }
 }
 
+// Legacy Step 7 stays a separate compatibility surface until the shared reader cutover.
+// This fresh producer never promotes those rows or derives a Subject Driver from a claim.
+await new ApexRacers.Seeder.Demo.DemoPercentileSeeder(db).SeedAsync();
 Console.WriteLine("\nSeeding complete.");
 
 if (seedDemo)

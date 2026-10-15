@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Security.Cryptography;
 using System.Text;
 using ApexRacers.Core;
@@ -66,6 +67,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             || await db.Subsessions.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.SubsessionResults.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.CarPercentileResults.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
+            || await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.Rivals.IgnoreQueryFilters().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.Set<ScopedDriverReference>().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
             || await db.Set<PrivateDriverFollow>().AnyAsync(c => c.Provenance == DataProvenance.Demo, ct)
@@ -169,7 +171,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 await RemovePhysicalAsync(prior.Select(c => c.Id).ToArray(), ct);
                 foreach (var old in prior) old.VerifiedRemovedAt = Now;
             }
-            await StageBatchAsync(marker, purpose, batch, ct);
+            await StageBatchAsync(marker, purpose, batch, receipt, ct);
             db.EvidenceCopyMarkers.Add(marker);
             foreach (var source in receipt.Sources)
                 db.EvidenceCopyDependencies.Add(new() { CopyId = marker.Id, SourceCopyId = source.CopyId, SourceVersion = source.Version });
@@ -349,7 +351,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         }
     }
 
-    private async Task StageBatchAsync(EvidenceCopyMarker marker, EvidencePurpose purpose, EvidenceBatch batch, CancellationToken ct)
+    private async Task StageBatchAsync(EvidenceCopyMarker marker, EvidencePurpose purpose, EvidenceBatch batch, EvidenceWriteReceipt receipt, CancellationToken ct)
     {
         void Stamp(IManagedEvidence copy)
         {
@@ -441,6 +443,10 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 week.DemoWeatherSummaryJson = weather.Payload;
                 week.DemoWeatherEvidenceCopyId = marker.Id;
                 break;
+            case ClassifiedPercentileBatch classified when marker.Kind == EvidenceCopyKind.PersonalDerivative:
+                await StageClassifiedPercentileAsync(classified.Copy, marker, purpose, receipt, ct);
+                Stamp(classified.Copy);
+                break;
             case PercentileBatch derivative when marker.Kind == EvidenceCopyKind.PersonalDerivative:
                 if (purpose.Kind != EvidencePurposeKind.SyntheticPreview)
                 {
@@ -481,6 +487,78 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                     ? EvidenceRetention.NameRemovalDueAt(lossAt) : EvidenceRetention.PurposeRemovalDueAt(lossAt));
             }
         }
+    }
+
+    private async Task StageClassifiedPercentileAsync(ClassifiedCarPercentileResult copy, EvidenceCopyMarker marker,
+        EvidencePurpose purpose, EvidenceWriteReceipt receipt, CancellationToken ct)
+    {
+        string key;
+        try { key = ClassifiedPercentileContract.Key(copy); }
+        catch (ArgumentException) { throw new EvidenceCopyUnavailableException(); }
+        if (copy.Provenance != purpose.Provenance || marker.KeyHash != PercentileHistoryKey.Hash(key)
+            || !await db.Users.AnyAsync(u => u.Id == copy.UserId, ct)) throw new EvidenceCopyUnavailableException();
+        DriverAccess? personalOwner = null;
+        if (purpose.Kind == EvidencePurposeKind.SyntheticPreview)
+        {
+            if (copy.OwnerKind != PercentileOwnerKind.DemoSubject) throw new EvidenceCopyUnavailableException();
+        }
+        else
+        {
+            var owner = await db.DriverAuthorizationGrants.AsNoTracking().SingleOrDefaultAsync(g => g.Id == purpose.GrantId, ct);
+            if (purpose.Kind != EvidencePurposeKind.Personal || owner is null
+                || copy.OwnerKind != PercentileOwnerKind.Personal || copy.GrantId != owner.Id
+                || copy.UserId != owner.UserId || copy.CustomerId != owner.CustomerId || copy.Provenance != owner.Provenance
+                || copy.GrantRevision != purpose.GrantRevision || copy.GrantRevision != owner.Revision)
+                throw new EvidenceCopyUnavailableException();
+            personalOwner = new(new(owner.UserId, owner.CustomerId, owner.Provenance), owner.Id, owner.Revision, DriverConsentScope.Personal, null);
+        }
+        var week = await db.Weeks.AsNoTracking().SingleOrDefaultAsync(w => w.Id == copy.WeekId, ct);
+        if (week is null || !await db.Seasons.AnyAsync(s => s.Id == week.SeasonId && s.SeriesId == copy.SeriesId, ct))
+            throw new EvidenceCopyUnavailableException();
+        var sourceIds = receipt.Sources.Select(s => s.CopyId).ToArray();
+        var sources = await db.EvidenceCopyMarkers.AsNoTracking().Where(c => sourceIds.Contains(c.Id)).ToListAsync(ct);
+        if (sources.Any(s => s.Kind is not (EvidenceCopyKind.OfficialField or EvidenceCopyKind.PrivateUpload)))
+            throw new EvidenceCopyUnavailableException();
+        var officialIds = await db.SubsessionResults.AsNoTracking()
+            .Where(r => r.CarId == copy.CarId && r.Subsession.WeekId == copy.WeekId && r.Subsession.TrackId == week.TrackId
+                && r.Subsession.OfficialSession && r.BestLapSeconds > 0 && r.EvidenceCopyId != null)
+            .Select(r => r.EvidenceCopyId!.Value).Distinct().ToListAsync(ct);
+        if (!officialIds.ToHashSet().SetEquals(sources.Where(s => s.Kind == EvidenceCopyKind.OfficialField).Select(s => s.Id)))
+            throw new EvidenceCopyUnavailableException();
+        var selection = PercentileSelection.FromStorage(copy.SelectionPolicyVersion, copy.SelectionKey);
+        var allowedTypes = selection.IncludedTypes.ToArray();
+        var seasonWeeks = await db.Weeks.Where(w => w.SeasonId == week.SeasonId)
+            .Select(w => new { w.RaceWeekIndex, w.StartDate, w.EndTime }).ToListAsync(ct);
+        var window = RaceWeekWindow.ForSeason(seasonWeeks.Select(w => (w.RaceWeekIndex, w.StartDate, w.EndTime)))
+            .Single(w => w.RaceWeekIndex == week.RaceWeekIndex).Window;
+        var privateIds = personalOwner is null ? [] : await new PrivateUploadStore(db, clock, journal!).AvailableSessions(personalOwner)
+            .Where(s => s.CarId == copy.CarId && s.TrackId == week.TrackId && s.RecordedAt >= window.Start && s.RecordedAt < window.End
+                && allowedTypes.Contains(s.SessionType)).Select(s => s.EvidenceCopyId).ToListAsync(ct);
+        if (!privateIds.ToHashSet().SetEquals(sources.Where(s => s.Kind == EvidenceCopyKind.PrivateUpload).Select(s => s.Id))
+            || officialIds.Count == 0) throw new EvidenceCopyUnavailableException();
+
+        // A regrant can use a new purpose for the same original association. Replace only this
+        // exact classified identity, preserving and tightening the old marker's original loss clock.
+        var oldRows = await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().Where(r => r.Provenance == copy.Provenance
+            && r.UserId == copy.UserId && r.CustomerId == copy.CustomerId && r.OwnerKind == copy.OwnerKind && r.GrantId == copy.GrantId
+            && r.CarId == copy.CarId && r.SeriesId == copy.SeriesId && r.WeekId == copy.WeekId
+            && r.SelectionPolicyVersion == copy.SelectionPolicyVersion && r.SelectionKey == copy.SelectionKey).ToListAsync(ct);
+        foreach (var old in oldRows)
+        {
+            var oldMarker = await db.EvidenceCopyMarkers.SingleOrDefaultAsync(c => c.Id == old.EvidenceCopyId, ct)
+                ?? throw new EvidenceCopyUnavailableException();
+            if (oldMarker.KeyHash != marker.KeyHash) throw new EvidenceCopyUnavailableException();
+            MarkUnavailable(oldMarker, Now, Now);
+            await InvalidateDependentsAsync(oldMarker.Id, Now, ct);
+            await db.SaveChangesAsync(ct);
+            await RemovePhysicalAsync([oldMarker.Id], ct);
+            oldMarker.VerifiedRemovedAt = Now;
+            db.Entry(old).State = EntityState.Detached;
+        }
+        copy.ReadingRevision = marker.Version;
+        copy.PreparationPurposeId = receipt.PurposeId;
+        copy.PreparationGeneration = receipt.Generation;
+        copy.PreparationVersion = receipt.PurposeVersion;
     }
 
     internal async Task ApplyGrantLossAsync(DriverAuthorizationGrant grant, DriverLifecycleIntent intent, CancellationToken ct)
@@ -534,6 +612,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         await db.Subsessions.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.SeasonCarBops.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.CarPercentileResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
+        await db.ClassifiedCarPercentileResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.PrivateUploadSessions.Where(c => ids.Contains(c.EvidenceCopyId)).ExecuteDeleteAsync(ct);
         await db.Rivals.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.AuthorizedDriverNameCopies.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);

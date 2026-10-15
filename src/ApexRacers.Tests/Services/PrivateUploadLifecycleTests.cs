@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Data.Common;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
@@ -258,7 +259,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Equal(34, first.TopSharePercent);
         Assert.Equal(3, first.FieldSize);
         Assert.Equal(first, await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct));
-        var derived = await f.Db.CarPercentileResults.SingleAsync(Ct);
+        var derived = await f.Db.ClassifiedCarPercentileResults.SingleAsync(Ct);
         Assert.Equal(2, await f.Db.EvidenceCopyDependencies.CountAsync(d => d.CopyId == derived.EvidenceCopyId, Ct));
         using var outside = FakeIbtBuilder.Build(laps: 1, lapTime: 80, customerId: f.Scope.CustomerId,
             sessionDate: f.Clock.Now.AddDays(-10).ToUnixTimeSeconds());
@@ -267,9 +268,78 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         Assert.Equal(first, await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct));
         await f.Authority.TransitionAsync(f.Scope, DriverLifecycleKind.WithdrawPersonal, Guid.NewGuid(), Ct);
         await new EvidenceCopyLifecycle(f.Db, f.Clock).ReconcileAsync(Ct);
-        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
         Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
         Assert.Equal(2, await f.Db.PrivateUploadSessions.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ClassifiedSelectionsCoexistAndRefreshOnlyTheirOwnStableCopyIdentity()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        var practice = f.Data(90, 0) with { SessionType = LapSessionType.Practice };
+        await f.Uploads.CommitAsync(await f.Uploads.CaptureAsync(owner, Ct), practice, Ct);
+        f.Clock.Now = f.Clock.Now.AddSeconds(1);
+        await f.Uploads.CommitAsync(await f.Uploads.CaptureAsync(owner, Ct), f.Data(102, 0) with { SessionType = LapSessionType.Race }, Ct);
+        var week = await FieldAsync(f);
+        var originalSources = await f.Db.EvidenceCopyMarkers.AsNoTracking()
+            .Where(c => c.Kind == EvidenceCopyKind.PrivateUpload || c.Kind == EvidenceCopyKind.OfficialField).ToListAsync(Ct);
+        var selections = new[] { PercentileSelection.FromRequest(false, null), PercentileSelection.FromRequest(true, [LapSessionType.Practice]),
+            PercentileSelection.FromRequest(true, [LapSessionType.Race]), PercentileSelection.FromRequest(true, null) };
+        foreach (var selection in selections)
+            Assert.NotNull(await f.Uploads.CalculatePercentileAsync(owner, week, 99, selection, Ct));
+        var rows = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().ToDictionaryAsync(r => r.SelectionKey, Ct);
+        Assert.Equal(4, rows.Count);
+        Assert.Equal(105, rows[selections[0].Key].PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, rows[selections[0].Key].PersonalBestLapEvidence);
+        Assert.Equal(90, rows[selections[1].Key].PersonalBestLapSeconds);
+        Assert.Equal(LapSessionType.Practice, rows[selections[1].Key].UploadedSessionType);
+        Assert.Equal(102, rows[selections[2].Key].PersonalBestLapSeconds);
+        foreach (var row in rows.Values)
+        {
+            var marker = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Id == row.EvidenceCopyId, Ct);
+            Assert.Equal(PercentileHistoryKey.Hash(ClassifiedPercentileContract.Key(row)), marker.KeyHash);
+            Assert.Equal(owner.GrantId, row.GrantId);
+            Assert.Equal(owner.Revision, row.GrantRevision);
+            Assert.Equal(owner.Scope.CustomerId, row.CustomerId);
+        }
+        await f.Uploads.CalculatePercentileAsync(owner, week, 99, selections[1], Ct);
+        var refreshed = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().ToDictionaryAsync(r => r.SelectionKey, Ct);
+        Assert.Equal(4, refreshed.Count);
+        Assert.Equal(2, refreshed[selections[1].Key].ReadingRevision);
+        foreach (var selection in selections.Where(s => s != selections[1]))
+            Assert.Equal(rows[selection.Key].EvidenceCopyId, refreshed[selection.Key].EvidenceCopyId);
+        foreach (var original in originalSources)
+        {
+            var source = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Id == original.Id, Ct);
+            Assert.Equal(original.OriginalAcquiredAt, source.OriginalAcquiredAt);
+            Assert.Null(source.UnavailableAt);
+        }
+        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ClassifiedBatchCannotReuseAnotherSelectionKeyOrOverwriteOriginalOwnerHistory()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        await f.UploadAsync(90);
+        var week = await FieldAsync(f);
+        await f.Uploads.CalculatePercentileAsync(owner, week, 99, Ct);
+        var original = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().SingleAsync(Ct);
+        var copies = new EvidenceCopyLifecycle(f.Db, f.Clock, f.Journal);
+        var sources = await f.Db.EvidenceCopyDependencies.Where(d => d.CopyId == original.EvidenceCopyId)
+            .Select(d => new EvidenceSourceVersion(d.SourceCopyId, d.SourceVersion)).ToArrayAsync(Ct);
+        var receipt = await copies.CaptureAsync(original.PreparationPurposeId, EvidenceCopyKind.PersonalDerivative,
+            ClassifiedPercentileContract.Key(original), sources, Ct);
+        original.Id = Guid.NewGuid();
+        original.SelectionKey = PercentileSelection.FromRequest(true, [LapSessionType.Practice]).Key;
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => copies.CommitAsync(receipt, new ClassifiedPercentileBatch(original), Ct));
+        var kept = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().SingleAsync(Ct);
+        Assert.Equal("v1:1:63", kept.SelectionKey);
+        Assert.Equal(1, kept.ReadingRevision);
+        Assert.Equal(90, kept.PersonalBestLapSeconds);
     }
 
     [Fact]
@@ -280,12 +350,12 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         await f.UploadAsync(90);
         var weekId = await FieldAsync(f);
         await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct);
-        var oldSummary = await f.Db.CarPercentileResults.AsNoTracking().SingleAsync(Ct);
+        var oldSummary = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().SingleAsync(Ct);
         var original = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Kind == EvidenceCopyKind.PrivateUpload, Ct);
         var delayed = await f.Uploads.CaptureAsync(owner, Ct);
         f.Clock.Now = f.Clock.Now.AddSeconds(1);
         await f.UploadAsync(85);
-        Assert.Empty(await f.Db.CarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.ToListAsync(Ct));
         var summaryMarker = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Id == oldSummary.EvidenceCopyId, Ct);
         Assert.Equal(f.Clock.Now, summaryMarker.UnavailableAt);
         await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => f.Uploads.CommitAsync(delayed, f.Data(80, 1), Ct));
@@ -295,7 +365,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         var current = await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct);
         Assert.Equal(85, current!.LapSeconds);
         Assert.Equal(83.33333333333333, current.PercentileRank, 10);
-        Assert.Single(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Single(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
         Assert.Equal(2, await f.Db.PrivateUploadSessions.CountAsync(Ct));
         Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
     }
@@ -333,7 +403,7 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         var calculating = new PrivateUploadStore(reader, f.Clock, f.Journal);
         await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => calculating.CalculatePercentileAsync(owner, weekId, 99, Ct));
         Assert.True(gate.Reached);
-        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
         Assert.Equal(85, (await f.Uploads.CalculatePercentileAsync(owner, weekId, 99, Ct))!.LapSeconds);
     }
 
@@ -355,7 +425,38 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new PrivateUploadStore(reader, f.Clock, f.Journal)
             .CalculatePercentileAsync(owner, weekId, 99, Ct));
         Assert.True(gate.Reached);
-        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task NewlyAddedOfficialFieldAfterReadCannotCommitStaleCompleteInputSet()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        await f.UploadAsync(90);
+        var week = await FieldAsync(f);
+        var originalField = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Kind == EvidenceCopyKind.OfficialField, Ct);
+        var preparation = await f.Uploads.CaptureAsync(owner, Ct);
+        var gate = new AfterRead("FROM iracing.\"RaceEvidenceResults\"", async () =>
+        {
+            await using var writer = f.Restart();
+            var copies = new EvidenceCopyLifecycle(writer, f.Clock, f.Journal);
+            var receipt = await copies.CaptureAsync(originalField.PurposeId, EvidenceCopyKind.OfficialField, "synthetic-additional-field", ct: Ct);
+            await copies.CommitAsync(receipt, new OfficialFieldBatch(new() { Id = 2, SeasonId = 1, WeekId = week,
+                TrackId = 42, OfficialSession = true, StartTime = f.Clock.Now },
+                [new() { SubsessionId = 2, CustId = 44444, CarId = 99, CarClassId = 1, BestLapSeconds = 95 }]), Ct);
+        });
+        await using var reader = new AppDbContext(postgres.WithInterceptors(f.Options, gate), new IRacingDataScope(DataProvenance.Demo));
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new PrivateUploadStore(reader, f.Clock, f.Journal)
+            .CalculatePercentileAsync(owner, week, 99, Ct));
+        Assert.True(gate.Reached);
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Null((await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(c => c.Id == originalField.Id, Ct)).UnavailableAt);
+        Assert.Equal(preparation.PurposeVersion, (await f.Uploads.CaptureAsync(owner, Ct)).PurposeVersion);
+        var fresh = await f.Uploads.CalculatePercentileAsync(owner, week, 99, Ct);
+        Assert.Equal(4, fresh!.FieldSize);
+        Assert.Equal(87.5, fresh.PercentileRank);
+        Assert.Equal(3, await f.Db.EvidenceCopyDependencies.CountAsync(Ct));
     }
 
     [Fact]
@@ -370,9 +471,9 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
         await using (var raw = f.Restart())
             await raw.PrivateUploadedLaps.Where(l => l.SessionId == session.Id).ExecuteDeleteAsync(Ct);
         Assert.False(await f.Uploads.SnapshotCurrentAsync(owner, snapshot, Ct));
-        Assert.Empty(await f.Db.CarPercentileResults.ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.ToListAsync(Ct));
         await new EvidenceCopyLifecycle(f.Db, f.Clock).ReconcileAsync(Ct);
-        Assert.Empty(await f.Db.CarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
         Assert.Equal(3, await f.Db.SubsessionResults.CountAsync(Ct));
     }
 

@@ -2,14 +2,17 @@
 
 Implementation slice [#425](https://github.com/jwh3times/apexracers/issues/425) follows
 [accepted ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md).
-It establishes contracts for the shared history module. Selection-scoped persistence, writer
-cutover and reader integration remain in [#426](https://github.com/jwh3times/apexracers/issues/426),
+It establishes contracts for the shared history module. The subsequent
+[storage cutover](percentile-history-storage.md) implements [#426](https://github.com/jwh3times/apexracers/issues/426).
+Shared refresh and coherent reader integration remain in
 [#427](https://github.com/jwh3times/apexracers/issues/427) and
 [#428](https://github.com/jwh3times/apexracers/issues/428).
 
 ## Selection identity
 
-The new module owns immutable, canonical evidence selections under an explicit reviewed policy
+Canonical selection and owner identity data now live in `ApexRacers.Core.PercentileHistory`, shared
+by API, Data and Seeder. The API retains owner resolution, result contracts and pure contribution
+accounting. The module owns immutable, canonical evidence selections under an explicit reviewed policy
 version. Race-only ignores uploaded-type arguments. Null and empty uploaded selections mean
 unrestricted; restricted selections are sets with order and repetitions ignored and the existing
 implicit inclusion of Unknown preserved. Unknown-only is restricted, and an explicit list of all
@@ -39,6 +42,7 @@ History results carry a classified selection, owner identity and Personal Best c
 An Uploaded Lap also carries its winning session type and must satisfy that selection; a Race Lap
 cannot carry an uploaded session type. Explicit empty source sets can describe missing evidence,
 but a positive Personal Best requires source dependencies. Source ordering does not change identity.
+Preparation generation is positive and its version may be zero; source versions and reading revisions remain positive.
 For a given Car, Series and selection, each distinct Week contributes at most once. Eligible Weeks
 have a Personal Best, a Field of at least five, and a start date at or before the requested Week's
 start date. Distinct Week identities may cross Seasons. Missing evidence and undersized Fields
@@ -59,8 +63,10 @@ Recommendation ordering, presentation and world-record overlays remain outside h
 Focused tests exercise canonical equivalence and separation, versioned type admission, chronology,
 missing evidence, presentability, duplicate contributions and controlled owner resolution.
 PostgreSQL owner cases exercise actual synthetic authorization and independent journal behavior;
-they do not establish Live permission or protected HTTP/migration acceptance. Existing history
-writers and readers retain their current behavior until the dependent slices replace them.
+they do not establish Live permission or protected HTTP/migration acceptance. Legacy Demo history
+writers and readers retain their current behavior; the storage slice adds
+classified typed private-upload and fresh Demo seed producers without switching ordinary readers.
+Shared refresh and coherent readers remain dependent work.
 
 Reproduce the three focused classes from the repository root with Docker running:
 

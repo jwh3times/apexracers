@@ -31,7 +31,8 @@ Two schemas in one database:
 | `RaceEvidenceSubsessions` | composite PK      | One Split of a Race Session (RaceSessionId, SeasonId, RaceWeekIndex, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitIndex, SplitCount, TeamEntryCount, AiEntryCount); nullable indexed `RaceSessionId` persists iRacing's `session_id` so sibling Splits can be grouped, while null identifies a row ingested before it was persisted. `WeatherJson` / `TrackStateJson` serialize owned `WeatherSnapshot` / `TrackStateSnapshot` contracts. `SplitIndex` / `SplitCount` are nullable and derived at ingest by ranking the payload's Splits on Strength of Field, not iRacing fields; null is an unknown position and must never be read as index 0. `TeamEntryCount` / `AiEntryCount` are likewise nullable — they count the payload entries that produced no `SubsessionResult` row, so null means never counted rather than a complete field |
 | `RaceEvidenceResults` | composite   | One Race Result per Driver (Provenance, SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …). The composite key assumes a Customer ID, so team entries are not representable                                     |
 | `ScopedSeasonCarBops` | composite   | Per-week BoP for one car (Provenance, SeasonId, RaceWeekIndex, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
-| `ScopedCarPercentileResults` | Guid PK   | Cache — one row per (Provenance, UserId, CarId, SeriesId, WeekId); upserted on each compute                                                                              |
+| `LegacyUnclassifiedPercentileResults` | Guid PK | Legacy `CarPercentileResult` cache — one row per (Provenance, UserId, CarId, SeriesId, WeekId); ordinary Demo history remains here until integrated refresh/readers                                                                              |
+| `SelectionScopedCarPercentileResults` | Guid PK | `ClassifiedCarPercentileResult`; controlled Demo provenance only, unique owner/selection/Series/Car/Week identity, composite original grant binding, restricted source marker/preparation FKs; no classified backfill from legacy rows |
 | `QuarantinedUploadedLaps` | Guid PK | Physical table for legacy `UploadedLap` rows; original User/catalog FKs and telemetry dates preserved, recorder identity does not authorize attribution. Current cleanup uses the existing `UploadedLaps` DbSet through its fenced mapping. |
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
 | `MappedDataCaches` | int PK      | Backs `CachedIRacingClient` get-or-fetch; unique index on (`Provenance`, `CacheKey`) (max length 200); `Payload` is the serialized DTO JSON, `ExpiresAt` drives TTL eviction |
@@ -146,6 +147,9 @@ without a migration plan.
 
 ## Critical indexes
 
+`SelectionScopedCarPercentileResults` has unique `IX_ClassifiedPercentile_Identity` over
+`(Provenance, UserId, OwnerKind, CustomerId, SelectionKey, SeriesId, CarId, WeekId)`.
+
 `DriverAuthorizationGrants` is unique by `(Provenance, UserId, CustomerId)` and, for active bindings,
 by `(Provenance, CustomerId)` and `(Provenance, UserId)`. `DriverPublicationAdmissions` indexes
 `(GrantId, Purpose, TerminalAt)` and `Incarnation`; expiry is excluded from drain authority.
@@ -233,6 +237,12 @@ Key access patterns to be aware of:
 - **Percentile query** (`PercentileCalculationService`): resolves `Week.Id` (Guid) via `Season` join on `SeriesId`, then queries `SubsessionResults` (joined through `Subsession`) for driver best and field distribution. The caller's `UserId` (from JWT sub) is used for cache writes and personal lap lookup; the public `customerId` (iRacing customer ID query param) is used only for race field lookup.
 - **Recommendations** (`CarRecommendationService`): joins `Seasons → SeasonCars → Cars` to find cars available in a series this week, then cross-references `CarPercentileResults` for the authenticated user.
 - **Analytics** (`UserAnalyticsService`): loads `CarPercentileResults` joined with `Car` and `Week` for a user's history across series.
+- **Classified percentile persistence**: grant revision is checked metadata rather than another
+  contribution. Composite grant FK binds original
+  `(GrantId, UserId, CustomerId, Provenance)`; preparation and copy-marker bindings remain mandatory.
+  Evaluate owner/selection/Series and Week-refresh query plans before adding secondary indexes.
+  Current two-row synthetic plans establish no scale-performance claim. The project guide points
+  to the storage/restore contract and staged legacy/classified producer split.
 - **CarPercentileResult writes**: Demo calculations open a `SyntheticEvidenceWriter` before reading
   contributing Fields, then save through its atomic source-version check. Check-then-insert-or-update
   alone is not an evidence write contract; ordinary Real derivative persistence remains unavailable

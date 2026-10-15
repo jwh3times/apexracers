@@ -1,3 +1,4 @@
+using ApexRacers.Core.PercentileHistory;
 using System.Collections.Immutable;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
@@ -57,7 +58,7 @@ public static class PercentileHistoryContributions
     private static void Validate(PercentileHistoryReading reading)
     {
         if (reading.Week.Id == Guid.Empty || reading.FieldSize < 0 || reading.ReadingRevision <= 0
-            || reading.Preparation.PurposeId == Guid.Empty || reading.Preparation.Generation <= 0 || reading.Preparation.Version <= 0
+            || reading.Preparation.PurposeId == Guid.Empty || reading.Preparation.Generation <= 0 || reading.Preparation.Version < 0
             || reading.Sources.IsDefault || (reading.PersonalBest is not null && reading.Sources.Length == 0)
             || reading.Sources.Any(s => s.CopyId == Guid.Empty || s.Version <= 0)
             || reading.Sources.Select(s => s.CopyId).Distinct().Count() != reading.Sources.Length)

@@ -8,7 +8,7 @@ public class CarPercentileResultConfiguration : IEntityTypeConfiguration<CarPerc
 {
     public void Configure(EntityTypeBuilder<CarPercentileResult> builder)
     {
-        builder.ToTable("ScopedCarPercentileResults");
+        builder.ToTable("LegacyUnclassifiedPercentileResults");
         builder.HasKey(r => r.Id);
 
         builder.HasOne<ApplicationUser>()

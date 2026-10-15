@@ -7,7 +7,7 @@
 BEGIN;
 SELECT pg_advisory_xact_lock(370);
 LOCK TABLE iracing."FeatureFlags", iracing."MappedDataCaches", iracing."RaceEvidenceSubsessions",
-    iracing."RaceEvidenceResults", iracing."ScopedCarPercentileResults", iracing."ScopedRivals",
+    iracing."RaceEvidenceResults", iracing."LegacyUnclassifiedPercentileResults", iracing."SelectionScopedCarPercentileResults", iracing."ScopedRivals",
     iracing."ScopedSeasonCarBops", iracing."Weeks" IN ACCESS EXCLUSIVE MODE;
 DO $$
 BEGIN
@@ -40,7 +40,8 @@ DO $$ BEGIN
 END $$;
 DELETE FROM iracing."RaceEvidenceResults" WHERE "Provenance" = 2;
 DELETE FROM iracing."RaceEvidenceSubsessions" WHERE "Provenance" = 2;
-DELETE FROM iracing."ScopedCarPercentileResults" WHERE "Provenance" = 2;
+DELETE FROM iracing."LegacyUnclassifiedPercentileResults" WHERE "Provenance" = 2;
+DELETE FROM iracing."SelectionScopedCarPercentileResults" WHERE "Provenance" = 2;
 DELETE FROM iracing."ScopedRivals" WHERE "Provenance" = 2;
 DELETE FROM iracing."MappedDataCaches" WHERE "Provenance" = 2;
 DELETE FROM iracing."ScopedSeasonCarBops" WHERE "Provenance" = 2;

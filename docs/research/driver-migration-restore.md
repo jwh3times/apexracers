@@ -5,6 +5,12 @@ disposable PostgreSQL 18.0 databases. Ordinary Real ownership, collection-purpos
 catalog adapters remain unavailable. These controlled synthetic scenarios do not admit a live
 scope or replace the full #380 acceptance gate.
 
+The later [percentile storage cutover](percentile-history-storage.md) adds a separate forward-only
+physical table fence and historical-schema dump/restore/upgrade evidence. It preserves unclassified
+rows without promoting them; its complementary typed-copy cases retain source/copy clocks and
+independent journal denial. These additions do not enlarge the historical binary rehearsal below
+or establish production activation controls.
+
 ## Rollback fence
 
 The pinned pre-lifecycle commit is `abf8050f3d12b0b667c3501d3246416a0c9feca8`.

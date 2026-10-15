@@ -16,7 +16,8 @@
 BEGIN;
 
 -- ── 1. Derived / computed data ────────────────────────────────────────────────
-DELETE FROM iracing."ScopedCarPercentileResults";
+DELETE FROM iracing."LegacyUnclassifiedPercentileResults";
+DELETE FROM iracing."SelectionScopedCarPercentileResults";
 
 -- ── 2. Race results and subsessions ──────────────────────────────────────────
 -- SubsessionResults cascade automatically when Subsessions are deleted.
