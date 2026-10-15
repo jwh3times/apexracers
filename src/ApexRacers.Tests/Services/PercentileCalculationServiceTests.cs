@@ -122,7 +122,7 @@ public class PercentileCalculationServiceTests
     }
 
     [Fact]
-    public async Task ComputeAndCacheAsync_DemoSubject_CreatesCarPercentileResult()
+    public async Task ComputeAndCacheAsync_RealClaimAndDemoFlag_DoNotCreateHistory()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
@@ -134,15 +134,13 @@ public class PercentileCalculationServiceTests
 
         await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: DemoData.DriverCustId, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
-        var cached = Assert.Single(db.CarPercentileResults);
-        Assert.Equal(userId, cached.UserId);
-        Assert.Equal(50, cached.PercentileRank);
-        Assert.Equal(100, cached.TopSharePercent);
-        Assert.Equal(1, cached.SampleSize);
+        Assert.Empty(db.CarPercentileResults);
+        Assert.Empty(db.ClassifiedCarPercentileResults);
+
     }
 
     [Fact]
-    public async Task ComputeAndCacheAsync_CachedResultExists_UpdatesExistingRow()
+    public async Task ComputeAndCacheAsync_RealLookup_DoesNotRelabelLegacyRow()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, carClass, subsession) = SeedWeekAndCar(db);
@@ -157,10 +155,10 @@ public class PercentileCalculationServiceTests
         await CreateService(db).ComputeAndCacheAsync(seriesId: 1, raceWeekIndex: 1, carId: 1, customerId: DemoData.DriverCustId, evidence: OfficialEvidence, callerUserId: userId, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(db.CarPercentileResults);
-        Assert.Equal(50.0, db.CarPercentileResults.Single().PercentileRank);
-        Assert.Equal(100, db.CarPercentileResults.Single().TopSharePercent);
-        Assert.Equal(1, db.CarPercentileResults.Single().SampleSize);
-        Assert.True(db.CarPercentileResults.Single().ComputedAt > oldTime);
+        Assert.Equal(25.0, db.CarPercentileResults.Single().PercentileRank);
+        Assert.Equal(2, db.CarPercentileResults.Single().SampleSize);
+        Assert.Equal(oldTime, db.CarPercentileResults.Single().ComputedAt);
+        Assert.Empty(db.ClassifiedCarPercentileResults);
     }
 
     [Fact]
@@ -246,14 +244,14 @@ public class PercentileCalculationServiceTests
     }
 
     [Theory]
-    [InlineData("Alpha", true, true, true, 1L)]
+    [InlineData("Alpha", true, true, false, 1L)]
     [InlineData("Alpha", true, false, false, 1L)]
     [InlineData("Standard", true, true, false, 1L)]
     [InlineData("Standard", true, false, false, 1L)]
     [InlineData("Alpha", false, true, false, 1L)]
     [InlineData("Alpha", false, false, false, 1L)]
-    [InlineData("Alpha", true, true, true, null)]
-    public async Task ComputeAndCacheAsync_DemoEligibility_CachesOnlyResolvedSubject(
+    [InlineData("Alpha", true, true, false, null)]
+    public async Task ComputeAndCacheAsync_RealNamespace_DemoEligibilityCannotAuthorizeHistory(
         string roleName, bool demoEnabled, bool lookupDemo, bool shouldCache, long? claimedCustomerId)
     {
         await using var db = DbContextFactory.Create();
@@ -281,14 +279,9 @@ public class PercentileCalculationServiceTests
         Assert.NotNull(result);
         Assert.Equal(customerId, result.CustomerId);
         var rows = await db.CarPercentileResults.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
-        if (shouldCache)
-        {
-            var row = Assert.Single(rows);
-            Assert.Equal(userId, row.UserId);
-            Assert.Equal(result.PercentileRank, row.PercentileRank);
-        }
-        else
-            Assert.Empty(rows);
+        Assert.False(shouldCache);
+        Assert.Empty(await db.ClassifiedCarPercentileResults.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(rows);
     }
 
     [Fact]

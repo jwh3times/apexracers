@@ -31,6 +31,6 @@ public class RecommendationsController(
         var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
 
         return Ok(await recommendations.GetRecommendationsAsync(
-            seriesId, raceWeekIndex, subjectDriverCustId, evidence, ct));
+            seriesId, raceWeekIndex, subjectDriverCustId, evidence, userId, ct));
     }
 }

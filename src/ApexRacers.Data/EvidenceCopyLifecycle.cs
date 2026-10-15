@@ -285,7 +285,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             await pending.CountAsync(ct), await pending.CountAsync(c => c.RemovalDueAt < Now, ct));
     }
 
-    private async Task<EvidencePurpose> CurrentPurposeAsync(Guid id, EvidenceCopyKind kind, bool collection, CancellationToken ct)
+    internal async Task<EvidencePurpose> CurrentPurposeAsync(Guid id, EvidenceCopyKind kind, bool collection, CancellationToken ct)
     {
         var purpose = await db.EvidencePurposes.SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new EvidenceCopyUnavailableException();
         await db.Entry(purpose).ReloadAsync(ct);
@@ -473,10 +473,13 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         }
     }
 
-    internal async Task InvalidateDependentsAsync(Guid sourceId, DateTimeOffset lossAt, CancellationToken ct)
+    internal Task InvalidateDependentsAsync(Guid sourceId, DateTimeOffset lossAt, CancellationToken ct) =>
+        InvalidateDependentsAsync([sourceId], lossAt, ct);
+
+    internal async Task InvalidateDependentsAsync(IReadOnlyCollection<Guid> sourceIds, DateTimeOffset lossAt, CancellationToken ct)
     {
-        var frontier = new[] { sourceId };
-        var visited = new HashSet<Guid> { sourceId };
+        var frontier = sourceIds.Distinct().ToArray();
+        var visited = frontier.ToHashSet();
         while (frontier.Length != 0)
         {
             var children = await db.EvidenceCopyDependencies.Where(d => frontier.Contains(d.SourceCopyId)).Select(d => d.CopyId).Distinct().ToListAsync(ct);
@@ -605,7 +608,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         }
     }
 
-    private async Task RemovePhysicalAsync(Guid[] ids, CancellationToken ct)
+    internal async Task RemovePhysicalAsync(Guid[] ids, CancellationToken ct)
     {
         await db.ExternalDataCaches.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);
         await db.SubsessionResults.IgnoreQueryFilters().Where(c => c.EvidenceCopyId != null && ids.Contains(c.EvidenceCopyId.Value)).ExecuteDeleteAsync(ct);

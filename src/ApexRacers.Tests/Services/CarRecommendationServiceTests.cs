@@ -122,7 +122,7 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_ComputesAverageExpectedPercentileWithinSeriesWhenNoCacheExists()
+    public async Task GetRecommendationsAsync_AnonymousLookupCannotAcquireHistoricalExpectedPercentile()
     {
         await using var db = DbContextFactory.Create();
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -133,7 +133,7 @@ public class CarRecommendationServiceTests
         AddResult(db, subsession, car1, carClass, custId: 300, lapSeconds: 90);
         AddResult(db, subsession, car1, carClass, custId: 400, lapSeconds: 100);
 
-        // Two prior weeks in this Series: ranks 90 and 50, so Expected Percentile is 70.
+        // Prior race evidence alone cannot create personal history for a direct Driver lookup.
         var prevTrack = new Track { Id = 88, Name = "Mugello", ConfigName = "GP" };
         var prevWeek = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 2, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-14)), TrackId = 88, Track = prevTrack, Season = week.Season };
         var prevWeek2 = new Week { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), TrackId = 88, Track = prevTrack, Season = week.Season };
@@ -156,21 +156,12 @@ public class CarRecommendationServiceTests
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
-        var dto = Assert.Single(result);
-        Assert.Null(dto.BestLapSeconds);
-        // No lap, so no evidence produced one — the two are absent together.
-        Assert.Null(dto.BestLapEvidence);
-        Assert.Null(dto.PercentileRank);
-        Assert.Equal(70, dto.ExpectedPercentile);
-        Assert.Null(dto.TopSharePercent);
-        Assert.Null(dto.FieldSize);
-        Assert.False(dto.IsPercentilePresentable);
-        // 70th percentile in [70, 80, 90, 100]: pos = 3 x 0.3 = 0.9 → 79 s.
-        Assert.Equal(79, dto.ProjectedLapSeconds, tolerance: 1e-6);
+        Assert.Empty(result); // A lookup has no personal history capability, even with retained Race Laps.
+        Assert.Empty(db.ClassifiedCarPercentileResults);
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_ProjectsLapTimeFromCachedPercentile_WhenNoLapThisWeek()
+    public async Task GetRecommendationsAsync_LegacyCacheCannotSupplyAProjectedReading()
     {
         await using var db = DbContextFactory.Create();
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -192,16 +183,9 @@ public class CarRecommendationServiceTests
 
         var result = await CreateService(db).GetRecommendationsAsync(seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: OfficialEvidence, ct: TestContext.Current.CancellationToken);
 
-        var dto = Assert.Single(result);
-        Assert.Equal(1, dto.CarId);
-        Assert.Null(dto.BestLapSeconds);
-        Assert.Null(dto.BestLapEvidence);
-        Assert.Null(dto.PercentileRank);
-        Assert.Equal(50.0, dto.ExpectedPercentile);
-        Assert.Null(dto.FieldSize);
-        Assert.False(dto.IsPercentilePresentable);
-        // 50th percentile in [70, 80, 90]: pos = (3-1) * (1-0.5) = 1.0 → index 1 = 80 s
-        Assert.Equal(80.0, dto.ProjectedLapSeconds, tolerance: 1e-6);
+        Assert.Empty(result);
+        Assert.Equal(50, Assert.Single(db.CarPercentileResults).PercentileRank);
+        Assert.Empty(db.ClassifiedCarPercentileResults);
     }
 
     [Fact]
@@ -234,10 +218,10 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_ActualPath_UpdatesExistingCacheRow_AndSwapsRunningAverage()
+    public async Task GetRecommendationsAsync_ClaimedLookupLeavesLegacyHistoryUntouched()
     {
-        // A cache row already exists for THIS week, so the running-average takes the swap branch
-        // (prior.Sum - oldReading + new) and the cache is updated in place — not duplicated.
+        // A conflicting legacy reading must neither supply Expected Percentile nor be relabelled
+        // by the direct Driver lookup, which has no authenticated history owner.
         await using var db = DbContextFactory.Create();
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -265,15 +249,15 @@ public class CarRecommendationServiceTests
         var dto = result.Single(r => r.CarId == car1.Id);
         // Field of 5: (4 slower + 0.5 tied) / 5.
         Assert.Equal(90, dto.PercentileRank!.Value, tolerance: 1e-10);
-        Assert.Equal(90, dto.ExpectedPercentile!.Value, tolerance: 1e-10);
+        Assert.Null(dto.ExpectedPercentile);
         Assert.Equal(5, dto.FieldSize);
 
         var rows = db.CarPercentileResults
             .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
-        Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(90, rows[0].PercentileRank, tolerance: 1e-10);
-        Assert.Equal(20, rows[0].TopSharePercent); // 1st of 5
-        Assert.Equal(5, rows[0].SampleSize);  // refreshed to the current field size
+        Assert.Single(rows);
+        Assert.Equal(40, rows[0].PercentileRank);
+        Assert.Equal(99, rows[0].SampleSize);
+        Assert.Empty(db.ClassifiedCarPercentileResults);
     }
 
     [Fact]
@@ -318,7 +302,7 @@ public class CarRecommendationServiceTests
             evidence: PersonalBestEvidence.OfficialRaceLapsOnly,
             ct: TestContext.Current.CancellationToken);
 
-        var entry = Assert.Single(result); // only car1 (raced); car2 is projected-only → excluded
+        var entry = Assert.Single(result); // Only car1 has a current Race Best for this Driver.
         Assert.Equal(car1.Id, entry.CarId);
         // Field of 5: (4 slower + 0.5 tied) / 5.
         Assert.Equal(90, entry.PercentileRank, tolerance: 1e-10);
@@ -347,7 +331,7 @@ public class CarRecommendationServiceTests
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_UndersizedRowBecomesPresentable_AddsInsteadOfSubtractingOldReading()
+    public async Task GetRecommendationsAsync_PresentableRaceCannotPromoteUnclassifiedHistory()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -367,11 +351,13 @@ public class CarRecommendationServiceTests
             1, 1, 1, OfficialEvidence, TestContext.Current.CancellationToken));
 
         Assert.Equal(90, dto.PercentileRank);
-        Assert.Equal(85, dto.ExpectedPercentile); // (prior 80 + current 90) / 2; old 40 was excluded.
+        Assert.Null(dto.ExpectedPercentile);
+        Assert.Equal(2, db.CarPercentileResults.Count());
+        Assert.Empty(db.ClassifiedCarPercentileResults);
     }
 
     [Fact]
-    public async Task GetRecommendationsAsync_PresentableRowBecomesUndersized_RemovesOldReadingFromExpectedPercentile()
+    public async Task GetRecommendationsAsync_UndersizedRaceCannotRetainUnclassifiedExpectedPercentile()
     {
         await using var db = DbContextFactory.Create();
         var (week, car, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -388,7 +374,9 @@ public class CarRecommendationServiceTests
             1, 1, 1, OfficialEvidence, TestContext.Current.CancellationToken));
 
         Assert.NotNull(dto.PercentileRank);
-        Assert.Equal(80, dto.ExpectedPercentile); // old current-week 40 was removed; new rank is undersized.
+        Assert.Null(dto.ExpectedPercentile);
+        Assert.Equal(2, db.CarPercentileResults.Count());
+        Assert.Empty(db.ClassifiedCarPercentileResults);
         Assert.Equal(2, dto.FieldSize);
         Assert.False(dto.IsPercentilePresentable);
     }

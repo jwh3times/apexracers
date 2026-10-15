@@ -49,16 +49,13 @@ remaining provider/client/quota and deployed prerequisites.
 - **Series and week browsing:** view active series, current race weeks, eligible cars,
   track context, and aggregate lap-time statistics.
 - **Percentile calculation:** compare a driver's lap time against the field for a
-  series, week, and car. Results for the caller's Subject Driver are saved for analytics and
-  recommendations; looking up another Driver does not change that history. Eligible demo users
-  save results for the Demo Driver. Personal Best surfaces
-  consistently use official race laps by default and let the driver opt in uploaded laps
-  with an optional session-type filter; that choice follows them between related pages.
-  Each Personal Best is shown with the evidence that produced it, so a lap set in an
-  official race can be told from one drawn from uploaded telemetry. An uploaded lap only
-  counts toward that week's Personal Best if it was driven during that race week; a
-  faster uploaded lap from outside the week is called out separately rather than
-  silently dropped. Percentile and placement headlines appear only once five drivers
+  series, week, and car. Eligible demo users save classified results for the Demo Driver;
+  looking up another Driver does not change that history. Canonical evidence selections retain
+  separate histories, and refreshing the same Week replaces its contribution. Demo Subjects use
+  synthetic Race Evidence; verified typed private-upload calculations retain their separate
+  authorization, session-type and Race Week rules. Quarantined uploads do not supply those results.
+  Each Personal Best carries the evidence that produced it. Coherent analytics and protected
+  reader integration remain pending; see [the refresh contract](research/percentile-history-refresh.md). Percentile and placement headlines appear only once five drivers
   have set a time; smaller fields report their driver count without presenting a
   coarse position as a meaningful competitiveness result.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
@@ -66,7 +63,10 @@ remaining provider/client/quota and deployed prerequisites.
   Race Week shows its Field Size and, when the field is large enough, the driver's Percentile Rank;
   a projected-only car instead labels the historical Expected Percentile used for its projection
   and claims no place in that Field.
-  Undersized readings do not influence expected-percentile history or driver analytics.
+  Expected Percentile averages distinct eligible Weeks in the same Series and selection through
+  the requested Week, including across Seasons. Missing Personal Bests and Fields below five
+  contribute nothing; an empty history stays absent. Legacy analytics remain a separate reader
+  pending integration.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
 - **Telemetry:** controlled synthetic uploads now require verified ownership and personal opt-in;

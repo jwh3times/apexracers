@@ -4,8 +4,8 @@ Implementation slice [#425](https://github.com/jwh3times/apexracers/issues/425) 
 [accepted ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md).
 It establishes contracts for the shared history module. The subsequent
 [storage cutover](percentile-history-storage.md) implements [#426](https://github.com/jwh3times/apexracers/issues/426).
-Shared refresh and coherent reader integration remain in
-[#427](https://github.com/jwh3times/apexracers/issues/427) and
+Shared refresh [#427](https://github.com/jwh3times/apexracers/issues/427) is implemented in
+[its runtime contract](percentile-history-refresh.md). Coherent reader/protected integration remains
 [#428](https://github.com/jwh3times/apexracers/issues/428).
 
 ## Selection identity
@@ -49,13 +49,13 @@ start date. Distinct Week identities may cross Seasons. Missing evidence and und
 contribute nothing; an empty eligible history has no Expected Percentile, rather than zero.
 
 Conflicting snapshots of the same Week cannot be reconciled by selecting an arbitrary revision or
-newest computation clock. The contribution module rejects conflict; the future authorized source
-and persistence module must produce the coherent snapshot. Pure aggregation does not establish
+newest computation clock. The contribution module rejects conflict; the implemented shared refresh
+coordinates source preparation and persistence for an explicit batch. Pure aggregation does not establish
 source freshness or authorization. Exact Track identity, Week bounds, tie arithmetic and the
 Subject's once-only Field contribution remain governed by the existing Core modules.
 
-The batch request/result contracts describe the future refresh seam without exposing a generic
-repository, adding a throw-only writer implementation, or registering a new runtime producer.
+The initial batch request/result contracts describe data identity, not permission. The implemented
+Data refresh owns the runtime producer protocol; see its separate contract.
 Recommendation ordering, presentation and world-record overlays remain outside history ownership.
 
 ## Validation and limits
@@ -63,10 +63,9 @@ Recommendation ordering, presentation and world-record overlays remain outside h
 Focused tests exercise canonical equivalence and separation, versioned type admission, chronology,
 missing evidence, presentability, duplicate contributions and controlled owner resolution.
 PostgreSQL owner cases exercise actual synthetic authorization and independent journal behavior;
-they do not establish Live permission or protected HTTP/migration acceptance. Legacy Demo history
-writers and readers retain their current behavior; the storage slice adds
-classified typed private-upload and fresh Demo seed producers without switching ordinary readers.
-Shared refresh and coherent readers remain dependent work.
+they do not establish Live permission or protected HTTP/migration acceptance. The later shared
+refresh integrates API and typed/seed producers. Legacy analytics and broader coherent/protected
+reader integration remain #428 work.
 
 Reproduce the three focused classes from the repository root with Docker running:
 

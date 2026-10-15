@@ -60,8 +60,8 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                 await uploads.CommitAsync(await uploads.CaptureAsync(owner, ct), Data(clock.GetUtcNow(), 90), ct);
                 week = await SeedOfficialFieldAsync(db, clock, test.Journal, scope.CustomerId, ct);
                 var percentile = await uploads.CalculatePercentileAsync(owner, week, 99, ct);
-                Assert.Equal(83.33333333333333, percentile!.PercentileRank, 10);
-                Assert.Equal(3, percentile.FieldSize);
+                Assert.Equal(90, percentile!.PercentileRank, 10);
+                Assert.Equal(5, percentile.FieldSize);
                 var derivative = Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(ct));
                 Assert.Equal(PercentileSelection.FromRequest(true, null).Key, derivative.SelectionKey);
                 Assert.Equal(PercentileOwnerKind.Personal, derivative.OwnerKind);
@@ -146,7 +146,7 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                     Assert.Equal(loss.OriginalLossAt.AddDays(kind == DriverLifecycleKind.DeleteUser ? 7 : 97), marker.RemovalDueAt);
                     Assert.NotNull(marker.VerifiedRemovedAt);
                     Assert.False((await new EvidenceCopyLifecycle(overdue, clock, test.Journal).InspectAsync(ct)).BackupExpiryVerified);
-                    Assert.Equal(new long[] { scope.CustomerId, 22222, 33333 }.Order(), await overdue.SubsessionResults.OrderBy(r => r.CustId).Select(r => r.CustId).ToArrayAsync(ct));
+                    Assert.Equal(new long[] { scope.CustomerId, 22222, 33333, 44444, 55555 }.Order(), await overdue.SubsessionResults.OrderBy(r => r.CustId).Select(r => r.CustId).ToArrayAsync(ct));
                     Assert.True(await overdue.Subsessions.AnyAsync(s => s.OfficialSession && s.WeekId == week, ct));
                     if (kind == DriverLifecycleKind.DeleteUser)
                     {
@@ -213,7 +213,9 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
         await copies.CommitAsync(receipt, new OfficialFieldBatch(new() { Id = 1, SeasonId = 1, WeekId = week, TrackId = 42, OfficialSession = true, StartTime = clock.GetUtcNow() },
             [new() { SubsessionId = 1, CustId = customer, CarId = 99, CarClassId = 1, BestLapSeconds = 105 },
              new() { SubsessionId = 1, CustId = 22222, CarId = 99, CarClassId = 1, BestLapSeconds = 100 },
-             new() { SubsessionId = 1, CustId = 33333, CarId = 99, CarClassId = 1, BestLapSeconds = 110 }]), ct);
+             new() { SubsessionId = 1, CustId = 33333, CarId = 99, CarClassId = 1, BestLapSeconds = 110 },
+             new() { SubsessionId = 1, CustId = 44444, CarId = 99, CarClassId = 1, BestLapSeconds = 115 },
+             new() { SubsessionId = 1, CustId = 55555, CarId = 99, CarClassId = 1, BestLapSeconds = 120 }]), ct);
         return week;
     }
 }

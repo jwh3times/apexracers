@@ -34,7 +34,7 @@ Two schemas in one database:
 | `RaceEvidenceSubsessions` | composite PK      | One Split of a Race Session (RaceSessionId, SeasonId, RaceWeekIndex, WeekId, TrackId, OfficialSession, EventStrengthOfField, StartTime, SplitIndex, SplitCount, TeamEntryCount, AiEntryCount); nullable indexed `RaceSessionId` persists iRacing's `session_id` so sibling Splits can be grouped, while null identifies a row ingested before it was persisted. `WeatherJson` / `TrackStateJson` serialize owned `WeatherSnapshot` / `TrackStateSnapshot` contracts. `SplitIndex` / `SplitCount` are nullable and derived at ingest by ranking the payload's Splits on Strength of Field, not iRacing fields; null is an unknown position and must never be read as index 0. `TeamEntryCount` / `AiEntryCount` are likewise nullable — they count the payload entries that produced no `SubsessionResult` row, so null means never counted rather than a complete field |
 | `RaceEvidenceResults` | composite   | One Race Result per Driver (Provenance, SubsessionId, CustId, CarId, CarClassId, BestLapSeconds, FinishPosition, Incidents, …). The composite key assumes a Customer ID, so team entries are not representable                                     |
 | `ScopedSeasonCarBops` | composite   | Per-week BoP for one car (Provenance, SeasonId, RaceWeekIndex, CarId); `CarId` has no FK (BoP ingestion order never blocks on catalog)                                      |
-| `LegacyUnclassifiedPercentileResults` | Guid PK | Legacy `CarPercentileResult` cache — one row per (Provenance, UserId, CarId, SeriesId, WeekId); ordinary Demo history remains here until integrated refresh/readers                                                                              |
+| `LegacyUnclassifiedPercentileResults` | Guid PK | Legacy `CarPercentileResult` cache — one row per (Provenance, UserId, CarId, SeriesId, WeekId); legacy analytics/seed compatibility remains here until coherent reader integration                                                                              |
 | `SelectionScopedCarPercentileResults` | Guid PK | `ClassifiedCarPercentileResult`; controlled Demo provenance only, unique owner/selection/Series/Car/Week identity, composite original grant binding, restricted source marker/preparation FKs; no classified backfill from legacy rows |
 | `QuarantinedUploadedLaps` | Guid PK | Physical table for legacy `UploadedLap` rows; original User/catalog FKs and telemetry dates preserved, recorder identity does not authorize attribution. Current cleanup uses the existing `UploadedLaps` DbSet through its fenced mapping. |
 | `FeatureFlags`         | int PK      | Unique index on `Key`                                                                                                                                        |
@@ -237,8 +237,11 @@ and database fences; those focused boundaries do not justify raw SQL in feature 
 
 Key access patterns to be aware of:
 
-- **Percentile query** (`PercentileCalculationService`): resolves `Week.Id` (Guid) via `Season` join on `SeriesId`, then queries `SubsessionResults` (joined through `Subsession`) for driver best and field distribution. The caller's `UserId` (from JWT sub) is used for cache writes and personal lap lookup; the public `customerId` (iRacing customer ID query param) is used only for race field lookup.
-- **Recommendations** (`CarRecommendationService`): joins `Seasons → SeasonCars → Cars` to find cars available in a series this week, then cross-references `CarPercentileResults` for the authenticated user.
+- **Percentile refresh** (`Data.PercentileRefresh`): API own-Subject calls, verified typed Personal
+  calculation and fresh Demo seeding share bulk source reads and one coordinated commit. Read
+  docs/research/percentile-history-refresh.md before changing source queries, catalog locking or
+  replacement/removal. Recommendation history uses classified fresh readings through the requested
+  Week's witnessed start date; arbitrary Driver lookup remains transient.
 - **Analytics** (`UserAnalyticsService`): loads `CarPercentileResults` joined with `Car` and `Week` for a user's history across series.
 - **Classified percentile persistence**: grant revision is checked metadata rather than another
   contribution. Composite grant FK binds original
@@ -246,15 +249,13 @@ Key access patterns to be aware of:
   Evaluate owner/selection/Series and Week-refresh query plans before adding secondary indexes.
   Current two-row synthetic plans establish no scale-performance claim. The project guide points
   to the storage/restore contract and staged legacy/classified producer split.
-- **CarPercentileResult writes**: Demo calculations open a `SyntheticEvidenceWriter` before reading
-  contributing Fields, then save through its atomic source-version check. Check-then-insert-or-update
-  alone is not an evidence write contract; ordinary Real derivative persistence remains unavailable
-  until its feature authority is integrated.
+- **Legacy percentile writes**: the Seeder compatibility step retains its SyntheticEvidenceWriter
+  protocol until coherent analytics readers are integrated. Classified runtime production goes
+  through PercentileRefresh; ordinary Real derivative persistence remains unavailable.
 - **Refresh token rotation**: consumption is a conditional `ExecuteUpdateAsync` (`Where(t => t.Id == id && t.RevokedAt == null)`, setting `RevokedAt`) rather than a tracked-entity update, so the database — not an earlier read — picks exactly one winner when two requests present the same token concurrently (GHSA-87m2-6r5g-9q47); an explicit transaction wraps that update and the new row's insert so both still land atomically. `RevokeAllActiveAsync` is likewise a set-based `ExecuteUpdateAsync`, re-run in a loop until a pass revokes zero rows rather than a single sweep, so a `RefreshToken` inserted mid-revocation is still caught.
 - **Uploaded Best projection** (`UploadedBestQuery`): groups `UploadedLap` rows by `{ CarId, TrackId }` — identifiers, not the `Car.Name`/`Track.Name`/`Track.ConfigName` labels (a Track's `Name` belongs to the venue and is shared by every layout there, so a label-keyed group merges layouts the moment iRacing's labelling stops disambiguating them). Those labels still ride along via `g.First()`, and selecting them from navigation properties alongside the `Min`/`Count`/`Max` aggregates is a shape neither Npgsql nor SQLite translates. It runs `.ToListAsync()` first and groups in memory rather than pushing the `GroupBy` into SQL; the same untranslatable-shape family as the order/project-by-entity-columns-before-DTO rule in AGENTS.md's Testing section (positional-record DTO properties don't translate as `ORDER BY`/`SELECT` targets either). Follow this pattern for any new query that selects a navigation-property-derived label alongside aggregates.
-- **Race Week window scoping** (`PercentileCalculationService`, `CarRecommendationService`,
-  `UserAnalyticsService`): an Uploaded Lap counts toward a Personal Best only when
-  `UploadedLap.RecordedAt` falls inside the Race Week's `Core.RaceWeekWindow` — `RecordedAt >= Start &&
+- **Race Week window scoping** (`PercentileRefresh`, legacy `UserAnalyticsService`): typed uploads use `PrivateUploadSession.RecordedAt`, while legacy analytics retains
+  `UploadedLap.RecordedAt`. Both timestamps must fall inside the Race Week's `Core.RaceWeekWindow` — `RecordedAt >= Start &&
   RecordedAt < End`, pushed into SQL as an ordinary `Where`. This range **does not translate on
   SQLite**, only on Npgsql, so tests exercising it live in `PostgreSqlCollection` classes rather than
   the fast SQLite ones — a concrete instance of the `DateTimeOffset` translation gap AGENTS.md's

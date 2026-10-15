@@ -69,7 +69,7 @@ public class StrategyService(
         var (riskLevel, riskNote) = StrategyAnalysis.WeatherRisk(
             weather?.PrecipChancePct ?? 0, fieldRainCapable);
 
-        // Personal overlay — only when the caller resolves to a linked iRacing cust_id.
+        // Personal overlay uses the authenticated User and their resolved Subject Driver.
         var subjectDriverCustId = userId is null
             ? null
             : await subjectDriverContext.GetSubjectDriverCustIdAsync(userId.Value, ct);
@@ -80,6 +80,7 @@ public class StrategyService(
                 raceWeekIndex,
                 subjectDriverCustId!.Value,
                 PersonalBestEvidence.OfficialRaceLapsOnly,
+                userId,
                 ct))
                 .ToDictionary(r => r.CarId)
             : [];

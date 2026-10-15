@@ -3,19 +3,13 @@ using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-/// <summary>
-/// The Uploaded Lap side of car recommendations, which is bounded to the Race Week being
-/// recommended for.
-///
-/// <para><b>Why PostgreSQL rather than the fast SQLite context.</b> Scoping Uploaded Laps to a
-/// Race Week filters on a <see cref="DateTimeOffset"/> range, which the production provider
-/// translates and SQLite does not — it fails at runtime rather than at compile time. See
-/// <see cref="PercentileCalculationServiceUploadedLapTests"/>, which splits for the same reason.</para>
-/// </summary>
+/// <summary>Legacy uploaded rows and unclassified history cannot select a User or a Personal Best.
+/// Positive typed upload calculations belong to the authorized shared refresh tests.</summary>
 [Collection(PostgreSqlCollection.Name)]
 public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres)
 {
@@ -91,23 +85,20 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
             RecordedAt = recordedAt,
         });
 
-    private static Task<List<CarRecommendationDto>> RecommendAsync(
+    private static async Task<List<CarRecommendationDto>> RecommendAsync(
         AppDbContext db, PersonalBestEvidence evidence) =>
-        new CarRecommendationService(db).GetRecommendationsAsync(
-            seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
+        await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 1, 1, evidence, await db.Users.Select(u => u.Id).SingleAsync(Ct), Ct);
 
-    private static Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
+    private static async Task<List<WeekCarPercentileDto>> GetMyPercentilesAsync(
         AppDbContext db, PersonalBestEvidence evidence) =>
-        new CarRecommendationService(db).GetMyPercentilesAsync(
-            seriesId: 1, raceWeekIndex: 1, customerId: 1, evidence: evidence, ct: Ct);
+        await new CarRecommendationService(db).GetMyPercentilesAsync(
+            1, 1, 1, evidence, await db.Users.Select(u => u.Id).SingleAsync(Ct), Ct);
 
-    // ── The Race Week bound ───────────────────────────────────────────────────
 
     [Fact]
     public async Task UploadedLapOutsideTheRaceWeek_DoesNotReachTheRecommendation()
     {
-        // The driver raced this car at 90s and holds a 65s uploaded lap from before the week
-        // opened. Recommendations must rank them on the week's evidence, not on an older lap.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         AddResult(db, subsession, car1, carClass, custId: 1, lapSeconds: 90);
@@ -127,9 +118,6 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
     [Fact]
     public async Task CarWithOnlyAnOutOfWeekUploadedLap_DoesNotAppearAtAll()
     {
-        // The uploaded-lap path is what puts a car the driver has not raced onto the board. With
-        // the lap outside the week there is no evidence for this week, so the car drops out
-        // rather than being ranked on a lap from another one.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
@@ -143,10 +131,9 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         Assert.Empty(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null)));
     }
 
-    // ── Cases carried over from the SQLite suite ──────────────────────────────
 
     [Fact]
-    public async Task InWeekUploadedLap_PutsACarTheDriverDidNotRaceOnTheBoard()
+    public async Task InWeekQuarantinedUploadCannotPutAnUnracedCarOnTheBoard()
     {
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -158,20 +145,12 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         AddUploadedLap(db, userId, carId: 1, lapSeconds: 65.0, recordedAt: InsideWeek);
         await db.SaveChangesAsync(Ct);
 
-        var dto = Assert.Single(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null)));
-
-        Assert.Equal(1, dto.CarId);
-        Assert.Equal(65.0, dto.BestLapSeconds);
-        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
-        // 65s beats all 3 in a Field of 4: 3 + 0.5, over 4 = 87.5%.
-        Assert.Equal(87.5, dto.PercentileRank!.Value, tolerance: 1e-6);
-        Assert.Null(dto.ExpectedPercentile); // Current Field has only four Drivers.
-        Assert.Equal(25, dto.TopSharePercent); // 1st of 4
-        Assert.Equal(4, dto.FieldSize);
+        Assert.Empty(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null)));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
-    public async Task InWeekUploadedLap_ReplacesASlowerRaceLapAndSaysSo()
+    public async Task InWeekQuarantinedUploadCannotReplaceRaceLap()
     {
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -185,14 +164,12 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
 
         var dto = Assert.Single(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null)));
 
-        Assert.Equal(65.0, dto.BestLapSeconds);
-        // The driver did race this car this week, so the number alone cannot tell them the ranked
-        // lap was an uploaded one. The evidence is what makes that legible.
-        Assert.Equal(LapEvidence.UploadedLap, dto.BestLapEvidence);
+        Assert.Equal(90.0, dto.BestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, dto.BestLapEvidence);
     }
 
     [Fact]
-    public async Task GetMyPercentilesAsync_CarriesUploadedLapEvidence()
+    public async Task GetMyPercentilesAsync_QuarantinedUploadRetainsRaceEvidence()
     {
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -209,13 +186,12 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
         var dto = Assert.Single(await GetMyPercentilesAsync(
             db, PersonalBestEvidence.FromRequest(true, null)));
 
-        Assert.Equal(LapEvidence.UploadedLap, dto.PersonalBestLapEvidence);
+        Assert.Equal(LapEvidence.RaceLap, dto.PersonalBestLapEvidence);
     }
 
     [Fact]
     public async Task SessionTypeFilter_ExcludesAMismatchedUploadedLap()
     {
-        // The uploaded lap is a Practice lap and the filter is Race-only, so the car drops out.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
@@ -230,10 +206,8 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
     }
 
     [Fact]
-    public async Task SessionTypeFilter_StillIncludesAnUnknownTypedLap()
+    public async Task UnknownQuarantinedUploadCannotInventPersonalEvidence()
     {
-        // Laps uploaded before SessionType tracking was added have SessionType=Unknown. They must
-        // always be included when a filter is active, never silently excluded.
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (_, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
         AddResult(db, subsession, car1, carClass, custId: 100, lapSeconds: 70);
@@ -244,13 +218,12 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
             sessionType: LapSessionType.Unknown);
         await db.SaveChangesAsync(Ct);
 
-        var dto = Assert.Single(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null)));
-
-        Assert.Equal(65.0, dto.BestLapSeconds);
+        Assert.Empty(await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, [LapSessionType.Race])));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
-    public async Task UploadedLapPath_UpdatesAnExistingCacheRowInPlace()
+    public async Task QuarantinedUploadAndLegacyCacheCannotProduceOrRefreshAReading()
     {
         await using var db = await postgres.CreateDbContextAsync(Ct);
         var (week, car1, _, carClass, subsession) = SeedWeekWithTwoCars(db);
@@ -272,15 +245,10 @@ public class CarRecommendationServiceUploadedLapTests(PostgreSqlFixture postgres
 
         var result = await RecommendAsync(db, PersonalBestEvidence.FromRequest(true, null));
 
-        var dto = result.Single(r => r.CarId == car1.Id);
-        Assert.Equal(65.0, dto.BestLapSeconds);
-        Assert.Equal(87.5, dto.PercentileRank); // 65s beats all 3 in a Field of 4
-        Assert.Null(dto.ExpectedPercentile); // Old presentable row is removed; current Field is undersized.
-        Assert.Equal(4, dto.FieldSize);
-
-        var rows = db.CarPercentileResults
-            .Where(r => r.UserId == userId && r.CarId == car1.Id && r.WeekId == week.Id).ToList();
-        Assert.Single(rows);                  // updated in place, not duplicated
-        Assert.Equal(87.5, rows[0].PercentileRank);
+        Assert.Empty(result);
+        var legacy = Assert.Single(await db.CarPercentileResults.ToListAsync(Ct));
+        Assert.Equal(50, legacy.PercentileRank);
+        Assert.Equal(new DateTimeOffset(2026, 6, 16, 0, 0, 0, TimeSpan.Zero), legacy.ComputedAt);
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 }

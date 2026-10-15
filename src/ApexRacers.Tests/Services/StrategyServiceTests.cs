@@ -10,7 +10,8 @@ using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class StrategyServiceTests
+[Collection(PostgreSqlCollection.Name)]
+public class StrategyServiceTests(PostgreSqlFixture postgres)
 {
     private const int SeriesId = 444;
     private const int SeasonId = 6115;
@@ -38,9 +39,9 @@ public class StrategyServiceTests
     /// a richly-specced track, two cars (BMW rain-capable, Porsche not), and BoP for both weeks.
     /// </summary>
     private static async Task<AppDbContext> SeededAsync(
-        decimal precip = 5m, bool active = true, bool withWeather = true)
+        decimal precip = 5m, bool active = true, bool withWeather = true, AppDbContext? retainedDb = null)
     {
-        var db = DbContextFactory.Create();
+        var db = retainedDb ?? DbContextFactory.Create();
         var series = new Series { Id = SeriesId, Name = "GT Sprint" };
         var season = new Season { Id = SeasonId, SeriesId = SeriesId, Active = active, Year = 2026, Quarter = 2, Series = series };
         var track = new Track
@@ -158,7 +159,10 @@ public class StrategyServiceTests
     [Fact]
     public async Task GetStrategyAsync_DemoCaller_OverlaysRecommendationAndOrdersByRecommendationRank()
     {
-        await using var db = await SeededAsync();
+        var options = await postgres.CreateOptionsAsync(Ct);
+        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        DbContextFactory.InstallStoredEvidenceFixtures(db);
+        await SeededAsync(withWeather: false, retainedDb: db);
 
         // An eligible Demo caller whose synthetic Driver beat the field this week.
         var userId = Guid.NewGuid();
@@ -181,15 +185,19 @@ public class StrategyServiceTests
         AddResult(db, subsession, Porsche, carClass, custId: 103, lapSeconds: 75);
         AddResult(db, subsession, Porsche, carClass, custId: 104, lapSeconds: 80);
         AddResult(db, subsession, Porsche, carClass, custId: 105, lapSeconds: 85);
+        var priorWeek = await db.Weeks.SingleAsync(w => w.SeasonId == SeasonId && w.RaceWeekIndex == 1, Ct);
+        var prior = new Subsession { Id = -2, SeasonId = SeasonId, RaceWeekIndex = 1, WeekId = priorWeek.Id,
+            TrackId = priorWeek.TrackId, StartTime = DateTimeOffset.UtcNow.AddDays(-8) };
+        db.Subsessions.Add(prior);
+        AddResult(db, prior, Porsche, carClass, DemoData.DriverCustId, 75);
+        AddResult(db, prior, Porsche, carClass, 201, 65);
+        AddResult(db, prior, Porsche, carClass, 202, 70);
+        AddResult(db, prior, Porsche, carClass, 203, 80);
+        AddResult(db, prior, Porsche, carClass, 204, 85);
         db.CarPercentileResults.Add(new CarPercentileResult
         {
-            UserId = userId,
-            CarId = Porsche,
-            SeriesId = SeriesId,
-            WeekId = Guid.NewGuid(),
-            PercentileRank = 50,
-            SampleSize = 5,
-            ComputedAt = DateTimeOffset.UtcNow.AddDays(-7),
+            UserId = userId, CarId = Porsche, SeriesId = SeriesId, WeekId = priorWeek.Id,
+            PercentileRank = 99, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7)
         });
         await db.SaveChangesAsync(Ct);
 
@@ -219,6 +227,11 @@ public class StrategyServiceTests
         Assert.Null(porsche.FieldSize);
         Assert.False(porsche.IsPercentilePresentable);
         Assert.NotNull(porsche.ProjectedLapSeconds);
+        Assert.Equal(99, Assert.Single(await db.CarPercentileResults.ToListAsync(Ct)).PercentileRank);
+        var stored = Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        Assert.Equal(Porsche, stored.CarId);
+        Assert.Equal(priorWeek.Id, stored.WeekId);
+        Assert.Equal(50, stored.PercentileRank);
     }
 
     [Fact]

@@ -44,6 +44,6 @@ public class WeekController(
             .GetRequiredSubjectDriverCustIdAsync(userId, ct);
         var evidence = PersonalBestEvidence.FromRequest(includeUploadedLaps, uploadedLapTypes);
         return Ok(await recommendations.GetMyPercentilesAsync(
-            seriesId, raceWeekIndex, subjectDriverCustId, evidence, ct));
+            seriesId, raceWeekIndex, subjectDriverCustId, evidence, userId, ct));
     }
 }
