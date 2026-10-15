@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [14.0.20] - 2026-10-14
+
+### Added
+
+- Canonical versioned evidence selections, authenticated history-owner resolution and tested
+  percentile-history contribution contracts, preparing the accepted policy for coordinated storage
+  and reader integration while retaining current runtime history behavior.
+
 ## [14.0.19] - 2026-10-14
 
 ### Changed
@@ -1747,7 +1755,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.19...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v14.0.20...HEAD
+[14.0.20]: https://github.com/jwh3times/apexracers/compare/v14.0.19...v14.0.20
 [14.0.19]: https://github.com/jwh3times/apexracers/compare/v14.0.18...v14.0.19
 [14.0.18]: https://github.com/jwh3times/apexracers/compare/v14.0.17...v14.0.18
 [14.0.17]: https://github.com/jwh3times/apexracers/compare/v14.0.16...v14.0.17
