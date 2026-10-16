@@ -201,6 +201,23 @@ public sealed class DemoCacheSeeder(AppDbContext context)
     /// <summary>Runs every demo seed step in order. Safe to re-run (each step upserts).</summary>
     public async Task SeedAllAsync(CancellationToken ct)
     {
+        // Completed catalog/race graphs must not be rescanned by every mapped cache save.
+        // Detect explicitly even when the caller disabled automatic detection: any pending
+        // work keeps the entire graph and follows the existing typed writer semantics.
+        var tracker = db.ChangeTracker;
+        var automatic = tracker.AutoDetectChangesEnabled;
+        try
+        {
+            tracker.AutoDetectChangesEnabled = false;
+            tracker.DetectChanges();
+            if (!tracker.HasChanges())
+                tracker.Clear();
+        }
+        finally
+        {
+            tracker.AutoDetectChangesEnabled = automatic;
+        }
+
         await SeedMembersAsync(ct);
         await SeedActivityAsync(ct);
         await SeedLeaderboardsAsync(ct);
