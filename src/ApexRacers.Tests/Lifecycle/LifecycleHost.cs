@@ -3,6 +3,8 @@ using System.Net;
 using ApexRacers.Api.Middleware;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
+using ApexRacers.Core.PercentileHistory;
+using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -140,6 +142,20 @@ internal static class LifecycleHost
             var authority = new DriverAuthorization(store, journal, proof, TimeProvider.System);
             var publication = new DriverPublication(authority, store, journal, incarnation, new HttpPublicationObserver(gates, id, admissions), operating: new SyntheticDriverOperatingStore(db, TimeProvider.System));
             var result = await publication.ReadSyntheticUploadedBestsAsync(scope, new(db, TimeProvider.System, journal), context.RequestAborted);
+            await result.ExecuteResultAsync(new ActionContext { HttpContext = context });
+        });
+        app.MapGet("/percentile-history/{id}", async (string id, bool? uploaded, bool? practiceOnly, int? series, HttpContext context) =>
+        {
+            await using var db = UploadDb();
+            var store = new DriverAuthorityStore(db, TimeProvider.System);
+            var authority = new DriverAuthorization(store, journal, proof, TimeProvider.System);
+            var history = new PercentileRefresh(db, TimeProvider.System, journal);
+            var publication = new PercentileHistoryPublication(db, authority, store, journal, history, incarnation,
+                new HttpPublicationObserver(gates, id, admissions), new SyntheticDriverOperatingStore(db, TimeProvider.System));
+            var userId = Guid.Parse(context.User.FindFirst("sub")!.Value);
+            var selection = PercentileSelection.FromRequest(uploaded ?? true,
+                practiceOnly == true ? [LapSessionType.Practice] : null);
+            var result = await publication.ReadPersonalAsync(userId, selection, series, context.RequestAborted);
             await result.ExecuteResultAsync(new ActionContext { HttpContext = context });
         });
         app.MapGet("/private/{id}", async (string id, string? actor, HttpContext context) =>

@@ -42,6 +42,16 @@ export interface TelemetryUploadResult {
 }
 
 export interface WeeklyPercentile {
+  weekId: string;
+  weekStartDate: string; // ISO 8601
+  seasonId: number;
+  trackId: number;
+  personalBestLapSeconds: number;
+  personalBestLapEvidence: LapEvidence;
+  uploadedSessionType: LapSessionType | null;
+  medianLapSeconds: number;
+  selectionKey: string;
+  selectionPolicyVersion: number;
   raceWeekIndex: number;
   trackName: string;
   configName: string | null;
@@ -68,6 +78,9 @@ export interface UploadedBestOutsideWeek {
 }
 
 export interface CarAnalytics {
+  customerId: number;
+  selectionKey: string;
+  selectionPolicyVersion: number;
   carId: number;
   carName: string;
   seriesId: number;

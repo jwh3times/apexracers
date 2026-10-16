@@ -18,6 +18,9 @@ function race(overrides: Partial<RaceGuideEntry> = {}): RaceGuideEntry {
 
 function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): CarAnalytics {
   return {
+    customerId: 100001,
+    selectionKey: 'v1:0:0',
+    selectionPolicyVersion: 1,
     carId: 1,
     carName: 'BMW M4 GT3',
     seriesId: 1,
@@ -31,6 +34,16 @@ function analytics(history: number[], overrides: Partial<CarAnalytics> = {}): Ca
     medianLapSeconds: null,
     totalWeeks: history.length,
     percentileHistory: history.map((percentileRank, i) => ({
+      weekId: `00000000-0000-0000-0000-${String(i + 1).padStart(12, '0')}`,
+      weekStartDate: `2026-0${i + 1}-01T00:00:00Z`,
+      seasonId: 2026,
+      trackId: 1,
+      personalBestLapSeconds: 130,
+      personalBestLapEvidence: 'RaceLap',
+      uploadedSessionType: null,
+      medianLapSeconds: 135,
+      selectionKey: 'v1:0:0',
+      selectionPolicyVersion: 1,
       raceWeekIndex: i + 1,
       trackName: 'Spa',
       configName: null,

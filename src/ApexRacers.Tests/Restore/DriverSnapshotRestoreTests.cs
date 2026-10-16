@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ApexRacers.Api.Services;
+using ApexRacers.Api.Dtos;
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Core.PercentileHistory;
@@ -80,6 +81,24 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                 Assert.Equal(90, Assert.Single((await useful.Content.ReadFromJsonAsync<PrivateUploadedBest[]>(ct))!).BestLapSeconds);
                 await test.WaitAsync("before-backup", "checkpointed");
             }
+            using (var history = await test.Publisher.Client.GetAsync("/percentile-history/history-before-backup?uploaded=true&series=1", ct))
+            {
+                history.EnsureSuccessStatusCode();
+                var reading = Assert.Single(Assert.Single((await history.Content.ReadFromJsonAsync<CarAnalyticsDto[]>(ct))!).PercentileHistory);
+                Assert.Equal(90, reading.PercentileRank);
+                Assert.Equal(90, reading.PersonalBestLapSeconds);
+                Assert.Equal(LapEvidence.UploadedLap, reading.PersonalBestLapEvidence);
+                Assert.Equal(5, reading.SampleSize);
+                await test.WaitAsync("history-before-backup", "checkpointed");
+            }
+            // A coherent read can replace a derivative. Pin the copy actually present in the
+            // captured snapshot, while checking that the retained upload's acquisition did not move.
+            await using (var current = test.OpenPrimary())
+            {
+                derivativeCopy = Assert.Single(await current.ClassifiedCarPercentileResults.ToListAsync(ct)).EvidenceCopyId!.Value;
+                derivativeAcquired = (await current.EvidenceCopyMarkers.SingleAsync(m => m.Id == derivativeCopy, ct)).OriginalAcquiredAt;
+                Assert.Equal(acquired, (await current.EvidenceCopyMarkers.SingleAsync(m => m.Id == originalCopy, ct)).OriginalAcquiredAt);
+            }
             var snapshot = await PrimarySnapshot.CaptureAsync(postgres, test.PrimaryConnection, ct);
             var passed = false;
             DriverLifecycleOutcome? loss = null;
@@ -90,8 +109,10 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                 await snapshot.RestoreAsync(postgres, test.PrimaryConnection, ct);
                 await test.RestartBothAsync();
                 await DeniedAsync(test, "before-reconcile");
+                await DeniedHistoryAsync(test, "history-before-reconcile");
                 await test.FaultPublisherAsync("journal-read");
                 await DeniedAsync(test, "unknown-current-enforcement");
+                await DeniedHistoryAsync(test, "history-unknown-current-enforcement");
                 await test.ClearPublisherFaultAsync("journal-read");
                 await using (var restored = test.OpenPrimary())
                 {
@@ -111,9 +132,12 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                         .CommitAsync(prepared, Data(clock.GetUtcNow().AddSeconds(1), 80), ct));
                 }
                 await DeniedAsync(test, "after-reconcile-closed");
+                await DeniedHistoryAsync(test, "history-after-reconcile");
                 if (kind != DriverLifecycleKind.DeleteUser)
                 {
-                    clock.Set(loss.OriginalLossAt.AddDays(1));
+                    // The child HTTP hosts use the system clock. Recover while both clocks are
+                    // current; advancing only the parent would put a new purpose in their future.
+                    clock.Set(TimeProvider.System.GetUtcNow());
                     await using var recovered = test.OpenPrimary();
                     var fresh = await new DriverAuthorityStore(recovered, clock).GrantAsync(Proof(scope, clock), Personal, test.Journal, ct);
                     Assert.Equal(90, Assert.Single(await new PrivateUploadStore(recovered, clock, test.Journal).ReadBestsAsync(fresh, ct)).BestLapSeconds);
@@ -123,10 +147,21 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
                     useful.EnsureSuccessStatusCode();
                     Assert.Equal(90, Assert.Single((await useful.Content.ReadFromJsonAsync<PrivateUploadedBest[]>(ct))!).BestLapSeconds);
                     await test.WaitAsync("recovered-original", "checkpointed");
+                    using (var history = await test.Publisher.Client.GetAsync("/percentile-history/history-recovered-original?uploaded=true&series=1", ct))
+                    {
+                        history.EnsureSuccessStatusCode();
+                        var weekly = Assert.Single(Assert.Single((await history.Content.ReadFromJsonAsync<CarAnalyticsDto[]>(ct))!).PercentileHistory);
+                        Assert.Equal(90, weekly.PercentileRank);
+                        Assert.Equal(90, weekly.PersonalBestLapSeconds);
+                        Assert.Equal(week, weekly.WeekId);
+                        await test.WaitAsync("history-recovered-original", "checkpointed");
+                    }
+                    Assert.Equal(acquired, (await recovered.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == active.Id, ct)).OriginalAcquiredAt);
                     // Restore the same pre-loss bytes again: recovery is never inferred from the backup.
                     await snapshot.RestoreAsync(postgres, test.PrimaryConnection, ct);
                     await test.RestartBothAsync();
                     await DeniedAsync(test, "second-restore");
+                    await DeniedHistoryAsync(test, "history-second-restore");
                 }
                 clock.Set(loss.OriginalLossAt.AddDays(kind == DriverLifecycleKind.DeleteUser ? 8 : 98));
                 await using (var overdue = test.OpenPrimary())
@@ -190,6 +225,16 @@ public sealed class DriverSnapshotRestoreTests(PostgreSqlFixture postgres)
         Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         var body = await response.Content.ReadAsStringAsync(test.CancellationToken);
         Assert.DoesNotContain("bestLapSeconds", body); Assert.DoesNotContain("Synthetic Restore Driver", body);
+    }
+
+    private static async Task DeniedHistoryAsync(LifecycleTopology test, string id)
+    {
+        using var response = await test.Publisher.Client.GetAsync("/percentile-history/" + id + "?uploaded=true&series=1", test.CancellationToken);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        var body = await response.Content.ReadAsStringAsync(test.CancellationToken);
+        Assert.DoesNotContain("percentileHistory", body);
+        Assert.DoesNotContain("personalBestLapSeconds", body);
     }
 
     private static async Task<Guid> SeedOfficialFieldAsync(AppDbContext db, ReferenceClock clock, IDriverEnforcementJournal journal, int customer, CancellationToken ct)

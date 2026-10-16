@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { api, type Series, type CarAnalytics } from '../../services/api';
+import { api, type CarAnalytics } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatLapTime } from '../../utils/lapTime';
 import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidence';
+import { raceWeekLabel } from '../../utils/raceWeek';
 import { topShareLabel } from '../../utils/percentile';
 import Sparkline from '../../components/Sparkline';
 import ResourceView from '../../components/ResourceView';
@@ -14,13 +15,14 @@ import { usePaceSource } from '../../context/PaceSourceContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function trendAxisLabels(history: { computedAt: string }[]): [string, string] {
-  const start = new Date(history[0].computedAt);
-  const end = new Date(history[history.length - 1].computedAt);
-  if (start.getFullYear() !== end.getFullYear()) {
-    return [String(start.getFullYear()), String(end.getFullYear())];
+function trendAxisLabels(history: { weekStartDate: string }[]): [string, string] {
+  const start = new Date(history[0].weekStartDate);
+  const end = new Date(history[history.length - 1].weekStartDate);
+  if (start.getUTCFullYear() !== end.getUTCFullYear()) {
+    return [String(start.getUTCFullYear()), String(end.getUTCFullYear())];
   }
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   return [fmt(start), fmt(end)];
 }
 
@@ -41,12 +43,11 @@ function FeaturedCarCard({
   data: CarAnalytics;
   flipLabels?: boolean;
 }) {
+  const latest = data.percentileHistory.at(-1);
   const improving = isImproving(data.percentileHistory);
-  const lapDelta =
-    data.personalBestLapSeconds != null && data.medianLapSeconds != null
-      ? data.personalBestLapSeconds - data.medianLapSeconds
-      : null;
-  const isGold = data.bestPercentileRank >= 95;
+  const lapDelta = latest != null ? latest.personalBestLapSeconds - latest.medianLapSeconds : null;
+  const latestRank = latest?.percentileRank ?? data.latestPercentileRank;
+  const isGold = latestRank >= 95;
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
   const [trendStart, trendEnd] =
     data.percentileHistory.length >= 2 ? trendAxisLabels(data.percentileHistory) : ['', ''];
@@ -81,19 +82,26 @@ function FeaturedCarCard({
               isGold ? 'text-gold' : 'text-primary-container'
             }`}
           >
-            {topShareLabel(data.latestTopSharePercent)}
+            {topShareLabel(latest?.topSharePercent ?? data.latestTopSharePercent)}
           </div>
           {isGold && (
             <span className="mb-1 px-2 py-0.5 rounded-[6px] bg-gold text-black text-[11px] font-bold">
               ELITE
             </span>
           )}
-          {!isGold && data.bestPercentileRank >= 80 && (
+          {!isGold && latestRank >= 80 && (
             <span className="mb-1 px-2 py-0.5 rounded-[6px] border border-primary-container/30 bg-primary-container/10 text-primary-container text-[11px] font-bold">
               PRO TIER
             </span>
           )}
         </div>
+
+        {latest && (
+          <p className="text-small-fluid text-on-surface-variant">
+            {raceWeekLabel(latest.raceWeekIndex)} · {latest.trackName}
+            {latest.configName ? ` — ${latest.configName}` : ''}
+          </p>
+        )}
 
         {sparkData.length >= 2 && (
           <div className="w-full flex flex-col gap-1.5">
@@ -113,25 +121,25 @@ function FeaturedCarCard({
               {data.totalWeeks}
             </p>
           </div>
-          {data.personalBestLapSeconds != null && (
+          {latest != null && (
             <div>
-              <p className="text-th text-on-surface-variant">Best Lap</p>
+              <p className="text-th text-on-surface-variant">Latest Week Best Lap</p>
               <p className="font-mono text-mono-fluid font-semibold text-primary-container mt-0.5">
-                {formatLapTime(data.personalBestLapSeconds)}
+                {formatLapTime(latest.personalBestLapSeconds)}
               </p>
-              {data.personalBestLapEvidence != null && (
+              {latest.personalBestLapEvidence != null && (
                 <p
                   className="text-small-fluid text-on-surface-variant mt-0.5"
-                  title={lapEvidenceDescription(data.personalBestLapEvidence)}
+                  title={lapEvidenceDescription(latest.personalBestLapEvidence)}
                 >
-                  {lapEvidenceLabel(data.personalBestLapEvidence)}
+                  {lapEvidenceLabel(latest.personalBestLapEvidence)}
                 </p>
               )}
             </div>
           )}
           {lapDelta != null && (
             <div>
-              <p className="text-th text-on-surface-variant">Best vs Median</p>
+              <p className="text-th text-on-surface-variant">Latest Week Best vs Median</p>
               <p
                 className={`font-mono text-mono-fluid font-semibold mt-0.5 ${lapDelta < 0 ? 'text-primary-container' : 'text-error'}`}
               >
@@ -153,6 +161,7 @@ function SecondaryCarCard({
   data: CarAnalytics;
   flipLabels?: boolean;
 }) {
+  const latest = data.percentileHistory.at(-1);
   const improving = isImproving(data.percentileHistory);
   const sparkData = data.percentileHistory.map(h => h.percentileRank);
   const [trendStart, trendEnd] =
@@ -176,8 +185,15 @@ function SecondaryCarCard({
         </div>
 
         <div className="font-mono text-[22px] font-bold text-primary-container leading-none">
-          {topShareLabel(data.latestTopSharePercent)}
+          {topShareLabel(latest?.topSharePercent ?? data.latestTopSharePercent)}
         </div>
+
+        {latest && (
+          <p className="text-small-fluid text-on-surface-variant">
+            {raceWeekLabel(latest.raceWeekIndex)} · {latest.trackName}
+            {latest.configName ? ` — ${latest.configName}` : ''}
+          </p>
+        )}
 
         {sparkData.length >= 2 && (
           <div className="w-full flex flex-col gap-1">
@@ -195,19 +211,19 @@ function SecondaryCarCard({
             <span className="text-on-surface-variant">Weeks: </span>
             <span className="text-on-surface font-semibold">{data.percentileHistory.length}</span>
           </div>
-          {data.personalBestLapSeconds != null && (
+          {latest != null && (
             <div>
-              <span className="text-on-surface-variant">Best: </span>
+              <span className="text-on-surface-variant">Latest week best: </span>
               <span className="text-primary-container font-semibold font-mono">
-                {formatLapTime(data.personalBestLapSeconds)}
+                {formatLapTime(latest.personalBestLapSeconds)}
               </span>
-              {data.personalBestLapEvidence != null && (
+              {latest.personalBestLapEvidence != null && (
                 <span
                   className="text-on-surface-variant"
-                  title={lapEvidenceDescription(data.personalBestLapEvidence)}
+                  title={lapEvidenceDescription(latest.personalBestLapEvidence)}
                 >
                   {' '}
-                  ({lapEvidenceLabel(data.personalBestLapEvidence).toLowerCase()})
+                  ({lapEvidenceLabel(latest.personalBestLapEvidence).toLowerCase()})
                 </span>
               )}
             </div>
@@ -227,8 +243,6 @@ export default function AnalyticsPage() {
   const [seriesSelection, setSeriesSelection] = useState<number | null>(null);
   const [carSelection, setCarSelection] = useState<number | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
-  const [computing, setComputing] = useState(false);
-  const [computeError, setComputeError] = useState<string | null>(null);
 
   const seriesResource = useResource(signal => api.getSeries(signal), []);
   const series = seriesResource.status === 'ok' ? seriesResource.data : [];
@@ -243,7 +257,7 @@ export default function AnalyticsPage() {
   );
   const allAnalyticsResource = useDriverResource(
     signal => api.getMyAnalytics(undefined, evidenceOptions, signal),
-    [user, viewMode, evidenceOptions],
+    [user, viewMode, refreshVersion, evidenceOptions],
     {
       enabled: !!user && viewMode === 'car',
       fallbackMessage: 'Failed to load analytics.',
@@ -251,22 +265,6 @@ export default function AnalyticsPage() {
   );
   const analytics = analyticsResource.status === 'ok' ? analyticsResource.data : [];
   const allAnalytics = allAnalyticsResource.status === 'ok' ? allAnalyticsResource.data : [];
-
-  // Computing recommendations upserts the CarPercentileResult rows analytics reads,
-  // so one call populates a first-visit-empty view (works in demo and live modes).
-  const computePercentiles = async (sel: Series) => {
-    if (sel.currentRaceWeekIndex == null) return;
-    setComputing(true);
-    setComputeError(null);
-    try {
-      await api.getRecommendations(sel.id, sel.currentRaceWeekIndex, evidenceOptions);
-      setRefreshVersion(version => version + 1);
-    } catch {
-      setComputeError('Could not compute percentiles — try the Recommendations page.');
-    } finally {
-      setComputing(false);
-    }
-  };
 
   if (!user) {
     return (
@@ -307,8 +305,6 @@ export default function AnalyticsPage() {
   const displayAnalytics =
     viewMode === 'series' ? analytics : allAnalytics.filter(a => a.carId === selectedCarId);
   const [featuredCard, ...otherCards] = displayAnalytics;
-
-  const selectedSeries = series.find(s => s.id === selectedSeriesId) ?? null;
 
   return (
     <main className="page-wrap">
@@ -423,29 +419,15 @@ export default function AnalyticsPage() {
               <Link to="/series" className="text-primary-container underline hover:opacity-80">
                 Browse series
               </Link>{' '}
-              and compute your percentile to start tracking trends.
+              to find racing opportunities. Analytics uses eligible laps for your selected pace
+              source.
             </p>
-            {selectedSeries && selectedSeries.currentRaceWeekIndex != null && (
-              <>
-                <p className="text-body-fluid text-on-surface-variant">
-                  Analytics builds from your computed percentiles — nothing here yet.
-                </p>
-                <button
-                  onClick={() => void computePercentiles(selectedSeries)}
-                  disabled={computing}
-                  className="btn-fluid bg-primary-container text-on-primary-container rounded-lg font-semibold disabled:opacity-60"
-                >
-                  {computing ? 'Computing…' : 'Compute my percentiles'}
-                </button>
-                {computeError && <p className="text-small-fluid text-error">{computeError}</p>}
-                <Link
-                  to="/recommendations"
-                  className="text-small-fluid text-primary-container underline"
-                >
-                  Or open Recommendations
-                </Link>
-              </>
-            )}
+            <button
+              onClick={() => setRefreshVersion(version => version + 1)}
+              className="btn-fluid bg-primary-container text-on-primary-container rounded-lg font-semibold"
+            >
+              Refresh analytics
+            </button>
           </div>
         )}
 
@@ -463,11 +445,15 @@ export default function AnalyticsPage() {
             <Link to="/series" className="text-primary-container underline hover:opacity-80">
               Browse series
             </Link>{' '}
-            and compute your percentile to start tracking trends.
+            to find racing opportunities. Analytics uses eligible laps for your selected pace
+            source.
           </p>
-          <Link to="/recommendations" className="text-small-fluid text-primary-container underline">
-            Or open Recommendations
-          </Link>
+          <button
+            onClick={() => setRefreshVersion(version => version + 1)}
+            className="btn-fluid bg-primary-container text-on-primary-container rounded-lg font-semibold"
+          >
+            Refresh analytics
+          </button>
         </div>
       )}
 

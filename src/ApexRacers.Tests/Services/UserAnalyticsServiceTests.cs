@@ -1,428 +1,287 @@
+using ApexRacers.Api.Dtos;
 using ApexRacers.Api.Services;
+using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
 using ApexRacers.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ApexRacers.Tests.Services;
 
-public class UserAnalyticsServiceTests
+/// <summary>Current analytics is reconstructed from retained, classified PostgreSQL evidence.
+/// The fixture adapter supplies synthetic retained sources; it establishes neither acquisition nor Live authority.</summary>
+[Collection(PostgreSqlCollection.Name)]
+public sealed class UserAnalyticsServiceTests(PostgreSqlFixture postgres)
 {
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+    private static readonly PersonalBestEvidence RaceOnly = PersonalBestEvidence.OfficialRaceLapsOnly;
+
     [Fact]
-    public async Task GetAnalyticsAsync_NoPercentileData_ReturnsEmptyList()
+    public async Task NoRetainedEvidenceOrUnknownUserReturnsEmptyHistory()
     {
-        await using var db = DbContextFactory.Create();
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            Guid.NewGuid(), null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-        Assert.Empty(result);
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        await db.SaveChangesAsync(Ct);
+        Assert.Empty(await ReadAsync(db, user));
+        Assert.Empty(await ReadAsync(db, Guid.NewGuid()));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_UndersizedFieldReading_IsExcluded()
+    public async Task SingleReadingCarriesTheSameSubjectPersonalBestRankFieldAndSelection()
     {
-        await using var db = DbContextFactory.Create();
-        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var userId = Guid.NewGuid();
-        db.Users.Add(MakeUser(userId, iracingId: 42));
-        db.CarPercentileResults.Add(new CarPercentileResult
-        {
-            UserId = userId,
-            CarId = car.Id,
-            SeriesId = 1,
-            WeekId = week.Id,
-            PercentileRank = 50,
-            SampleSize = 1,
-            ComputedAt = DateTimeOffset.UtcNow,
-            Car = car,
-            Week = week,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly,
-            TestContext.Current.CancellationToken);
-
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async Task GetAnalyticsAsync_SingleCarResult_ReturnsCorrectDto()
-    {
-        await using var db = DbContextFactory.Create();
-        var (series, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var carClass = AddCarClass(db, id: 1);
-        var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
-        var userId = Guid.NewGuid();
-        db.Users.Add(MakeUser(userId, iracingId: 42));
-        db.CarPercentileResults.Add(new CarPercentileResult
-        {
-            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
-            PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
-            Car = car, Week = week,
-        });
-        // Driver 42's race best
-        AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5);
-        // Another driver
-        AddResult(db, subsession, car, carClass, custId: 99, lapSeconds: 65.0);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-
-        Assert.Single(result);
-        var dto = result[0];
-        Assert.Equal(car.Id, dto.CarId);
-        Assert.Equal(car.Name, dto.CarName);
-        Assert.Equal(series.Id, dto.SeriesId);
-        Assert.Equal(series.Name, dto.SeriesName);
-        Assert.Equal(85.0, dto.LatestPercentileRank);
-        Assert.Equal(85.0, dto.BestPercentileRank);
-        Assert.Equal(62.5, dto.PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.RaceLap, dto.PersonalBestLapEvidence);
+        await using var db = await CreateAsync();
+        var user = AddUser(db, 777);
+        var (week, car) = Graph(db, 1, 101);
+        AddField(db, week, car, 65, [60, 70, 80, 90]);
+        await db.SaveChangesAsync(Ct);
+        var dto = Assert.Single(await ReadAsync(db, user));
+        var reading = Assert.Single(dto.PercentileHistory);
+        Assert.Equal(car.Id, dto.CarId); Assert.Equal(1, dto.SeriesId);
+        Assert.Equal(DemoData.DriverCustId, dto.CustomerId);
+        Assert.Equal(70, dto.LatestPercentileRank); Assert.Equal(70, dto.BestPercentileRank);
+        Assert.Equal(65, reading.PersonalBestLapSeconds);
+        Assert.Equal(LapEvidence.RaceLap, reading.PersonalBestLapEvidence);
+        Assert.Equal(70, reading.PercentileRank); Assert.Equal(40, reading.TopSharePercent);
+        Assert.Equal(5, reading.SampleSize); Assert.Equal(70, reading.MedianLapSeconds);
+        Assert.Equal(week.Id, reading.WeekId); Assert.Equal(week.SeasonId, reading.SeasonId);
+        Assert.Equal(week.StartDate, reading.WeekStartDate); Assert.Equal(week.TrackId, reading.TrackId);
+        Assert.Equal(RaceOnly.Selection.Key, reading.SelectionKey);
+        Assert.Equal(RaceOnly.Selection.PolicyVersion, reading.SelectionPolicyVersion);
+        Assert.Equal(reading.SelectionKey, dto.SelectionKey);
         Assert.Equal(1, dto.TotalWeeks);
-        Assert.Single(dto.PercentileHistory);
+        Assert.Empty(await db.CarPercentileResults.ToListAsync(Ct));
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_UploadedLapBeatsRaceBest_OverridesPersonalBest()
+    public async Task SelectionHistoriesStaySeparateAndQuarantinedUploadsNeverOverlayDemo()
     {
-        // A telemetry UploadedLap at the same car+track is faster than the race best, so the
-        // analytics personal-best is overlaid from it (UserAnalyticsService lines 95-99).
-        await using var db = DbContextFactory.Create();
-        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var carClass = AddCarClass(db, id: 1);
-        var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
-        var userId = Guid.NewGuid();
-        db.Users.Add(MakeUser(userId, iracingId: 42));
-        db.CarPercentileResults.Add(new CarPercentileResult
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (week, car) = Graph(db, 1, 101);
+        AddField(db, week, car, 80, [60, 70, 90, 95]);
+        db.UploadedLaps.Add(new() { UserId = user, CarId = car.Id, TrackId = week.TrackId,
+            LapTimeSeconds = 1, SessionType = LapSessionType.Race, RecordedAt = DateTimeOffset.UtcNow.AddDays(-2) });
+        await db.SaveChangesAsync(Ct);
+        var selections = new[] { RaceOnly, PersonalBestEvidence.FromRequest(true, null),
+            PersonalBestEvidence.FromRequest(true, [LapSessionType.Practice]) };
+        foreach (var selection in selections)
         {
-            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
-            PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
-            Car = car, Week = week,
-        });
-        AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5); // race best
-        db.UploadedLaps.Add(new UploadedLap
-        {
-            UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
-            SessionType = LapSessionType.Race,
-            // Inside this Race Week, which begins seven days ago — an Uploaded Lap counts toward a
-            // Race Week only when it was driven during it.
-            RecordedAt = InsideWeekOne,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var officialOnly = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-        var withUploaded = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
-        var practiceOnly = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null,
-            PersonalBestEvidence.FromRequest(true, [LapSessionType.Practice]),
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(62.5, officialOnly[0].PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.RaceLap, officialOnly[0].PersonalBestLapEvidence);
-        Assert.Equal(60.0, withUploaded[0].PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.UploadedLap, withUploaded[0].PersonalBestLapEvidence);
-        Assert.Equal(62.5, practiceOnly[0].PersonalBestLapSeconds);
-        // The session-type filter excluded the uploaded lap, so the Race Best stands and the
-        // evidence follows it rather than naming a lap that was filtered out.
-        Assert.Equal(LapEvidence.RaceLap, practiceOnly[0].PersonalBestLapEvidence);
+            var reading = Assert.Single(Assert.Single(await ReadAsync(db, user, selection)).PercentileHistory);
+            Assert.Equal(80, reading.PersonalBestLapSeconds); Assert.Equal(50, reading.PercentileRank);
+            Assert.Equal(LapEvidence.RaceLap, reading.PersonalBestLapEvidence); Assert.Null(reading.UploadedSessionType);
+            Assert.Equal(selection.Selection.Key, reading.SelectionKey);
+        }
+        Assert.Equal(3, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
+        Assert.Equal(80, Assert.Single(await ReadAsync(db, user)).PersonalBestLapSeconds);
+        Assert.Equal(3, await db.ClassifiedCarPercentileResults.CountAsync(Ct));
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_MultipleWeeks_BuildsOrderedTrendHistory()
+    public async Task WeeklyPersonalBestAndMedianStayPairedWhenSummaryFastestAndBestRankComeFromOtherWeek()
     {
-        await using var db = DbContextFactory.Create();
-        var series = new Series { Id = 1, Name = "GT3 Cup" };
-        var season = new Season { Id = 10, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var car = new Car { Id = 1, Name = "Porsche 992", NameAbbreviated = "P" };
-        var week1 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, raceWeekIndex: 1, trackName: "Monza", season: season, trackId: 101);
-        var week2 = MakeWeek(id: Guid.NewGuid(), seasonId: 10, raceWeekIndex: 2, trackName: "Spa", season: season, trackId: 102);
-        db.Series.Add(series);
-        db.Seasons.Add(season);
-        db.Cars.Add(car);
-        db.Tracks.AddRange(week1.Track, week2.Track);
-        db.Weeks.AddRange(week1, week2);
-
-        var userId = Guid.NewGuid();
-        db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 60.0, SampleSize = 80, ComputedAt = DateTimeOffset.UtcNow.AddDays(-14), Car = car, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 80.0, SampleSize = 90, ComputedAt = DateTimeOffset.UtcNow.AddDays(-7), Car = car, Week = week2 });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-
-        Assert.Single(result);
-        var dto = result[0];
-        Assert.Equal(2, dto.PercentileHistory.Count);
-        Assert.Equal(60.0, dto.PercentileHistory[0].PercentileRank);
-        Assert.Equal(80.0, dto.PercentileHistory[1].PercentileRank);
-        Assert.Equal(80.0, dto.LatestPercentileRank);
-        Assert.Equal(80.0, dto.BestPercentileRank);
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (first, car) = Graph(db, 1, 101, days: -14);
+        var (last, _) = Graph(db, 1, 102, index: 1, days: -7);
+        AddField(db, first, car, 60, [65, 70, 75, 80]);
+        AddField(db, last, car, 110, [90, 100, 105, 120]);
+        await db.SaveChangesAsync(Ct);
+        var dto = Assert.Single(await ReadAsync(db, user));
+        Assert.Equal(new[] { first.Id, last.Id }, dto.PercentileHistory.Select(r => r.WeekId));
+        Assert.Equal(2, dto.TotalWeeks);
+        Assert.Equal(90, dto.BestPercentileRank); Assert.Equal(30, dto.LatestPercentileRank);
+        Assert.Equal(60, dto.PersonalBestLapSeconds); // Explicit aggregate across Weeks remains distinct.
+        Assert.Equal(70, dto.MedianLapSeconds); // Compatibility summary: best-rank Week.
+        var latest = dto.PercentileHistory[^1];
+        Assert.Equal(110, latest.PersonalBestLapSeconds); Assert.Equal(105, latest.MedianLapSeconds);
+        Assert.Equal(dto.LatestPercentileRank, latest.PercentileRank);
+        Assert.Equal(LapEvidence.RaceLap, latest.PersonalBestLapEvidence);
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_SeriesFilter_ExcludesOtherSeries()
+    public async Task SeriesFilterUsesOnlyItsCurrentSourceCatalog()
     {
-        await using var db = DbContextFactory.Create();
-        var (_, _, week1, car1) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var (_, _, week2, car2) = SeedBaseGraph(db, seriesId: 2, raceWeekIndex: 1);
-
-        var userId = Guid.NewGuid();
-        db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = car1.Id, SeriesId = 1, WeekId = week1.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = car2.Id, SeriesId = 2, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week2 });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, seriesId: 1, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-
-        Assert.Single(result);
-        Assert.Equal(car1.Id, result[0].CarId);
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (first, car1) = Graph(db, 1, 101);
+        var (other, car2) = Graph(db, 2, 201);
+        AddField(db, first, car1, 60, [65, 70, 75, 80]);
+        AddField(db, other, car2, 75, [65, 70, 80, 85]);
+        await db.SaveChangesAsync(Ct);
+        Assert.Equal(2, (await ReadAsync(db, user)).Count);
+        var dto = Assert.Single(await new UserAnalyticsService(db).GetAnalyticsAsync(user, 1, RaceOnly, Ct));
+        Assert.Equal(1, dto.SeriesId); Assert.Equal(car1.Id, dto.CarId);
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_UploadedLapOutsideTheRaceWeek_DoesNotOverrideTheRaceBest()
+    public async Task DemoWithoutAClaimStillResolvesItsOwnSyntheticSubject()
     {
-        // Same setup as the override case, but the uploaded lap was driven before this Race Week
-        // opened. A Race Best belongs to one Race Week, so a lap from outside it cannot stand in
-        // as that week's Personal Best however fast it was.
-        await using var db = DbContextFactory.Create();
-        var (_, season, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var carClass = AddCarClass(db, id: 1);
-        var subsession = AddSubsession(db, id: -1, seasonId: season.Id, weekId: week.Id, trackId: week.TrackId);
-        var userId = Guid.NewGuid();
-        db.Users.Add(MakeUser(userId, iracingId: 42));
-        db.CarPercentileResults.Add(new CarPercentileResult
-        {
-            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
-            PercentileRank = 85.0, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow,
-            Car = car, Week = week,
-        });
-        AddResult(db, subsession, car, carClass, custId: 42, lapSeconds: 62.5);
-        db.UploadedLaps.Add(new UploadedLap
-        {
-            UserId = userId, CarId = car.Id, TrackId = week.TrackId, LapTimeSeconds = 60.0,
-            SessionType = LapSessionType.Race,
-            RecordedAt = DateTimeOffset.UtcNow.AddDays(-30),
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var withUploaded = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
-
-        Assert.Equal(62.5, withUploaded[0].PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.RaceLap, withUploaded[0].PersonalBestLapEvidence);
+        await using var db = await CreateAsync();
+        var user = AddUser(db, null);
+        var (week, car) = Graph(db, 1, 101);
+        AddField(db, week, car, 65, [60, 70, 80, 90]);
+        await db.SaveChangesAsync(Ct);
+        var dto = Assert.Single(await ReadAsync(db, user));
+        Assert.Equal(DemoData.DriverCustId, dto.CustomerId);
+        Assert.Equal(65, dto.PersonalBestLapSeconds);
+        Assert.Equal(70, dto.LatestPercentileRank);
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_NoIRacingId_UsesOnlyAllowedUploadedEvidence()
+    public async Task MultipleCarsAreSortedByTheirOwnBestCurrentReading()
     {
-        await using var db = DbContextFactory.Create();
-        var (_, _, week, car) = SeedBaseGraph(db, seriesId: 1, raceWeekIndex: 1);
-        var userId = Guid.NewGuid();
-        db.Users.Add(MakeUser(userId, iracingId: null));
-        db.CarPercentileResults.Add(new CarPercentileResult
-        {
-            UserId = userId, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
-            PercentileRank = 75.0, SampleSize = 60, ComputedAt = DateTimeOffset.UtcNow,
-            Car = car, Week = week,
-        });
-        db.UploadedLaps.Add(new UploadedLap
-        {
-            UserId = userId,
-            CarId = car.Id,
-            TrackId = week.TrackId,
-            LapTimeSeconds = 61.25,
-            SessionType = LapSessionType.Practice,
-            RecordedAt = InsideWeekOne,
-        });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var service = new UserAnalyticsService(db);
-        var officialOnly = await service.GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-        var withUploaded = await service.GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.FromRequest(true, null), TestContext.Current.CancellationToken);
-
-        Assert.Null(Assert.Single(officialOnly).PersonalBestLapSeconds);
-        Assert.Null(Assert.Single(officialOnly).PersonalBestLapEvidence);
-        Assert.Equal(61.25, Assert.Single(withUploaded).PersonalBestLapSeconds);
-        Assert.Equal(LapEvidence.UploadedLap, Assert.Single(withUploaded).PersonalBestLapEvidence);
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (week, car) = Graph(db, 1, 101);
+        var other = new Car { Id = 999, Name = "Second synthetic Car", NameAbbreviated = "SSC" };
+        db.Cars.Add(other);
+        AddField(db, week, car, 70, [60, 65, 80, 90]);
+        AddField(db, week, other, 50, [60, 70, 80, 90]);
+        await db.SaveChangesAsync(Ct);
+        var result = await ReadAsync(db, user);
+        Assert.Equal(new[] { other.Id, car.Id }, result.Select(r => r.CarId));
+        Assert.Equal(90, result[0].BestPercentileRank); Assert.Equal(50, result[1].BestPercentileRank);
     }
 
     [Fact]
-    public async Task GetAnalyticsAsync_MultipleCarsSortedByBestPercentileDescending()
+    public async Task LosingPresentableFieldOrPersonalBestRemovesPreviousHeadlineContribution()
     {
-        await using var db = DbContextFactory.Create();
-        var series = new Series { Id = 1, Name = "GT3 Cup" };
-        var season = new Season { Id = 10, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var week = MakeWeek(Guid.NewGuid(), 10, 1, "Spa", season, trackId: 201);
-        var car1 = new Car { Id = 1, Name = "Porsche 992", NameAbbreviated = "P" };
-        var car2 = new Car { Id = 2, Name = "Ferrari GT3", NameAbbreviated = "F" };
-        db.Series.Add(series);
-        db.Seasons.Add(season);
-        db.Tracks.Add(week.Track);
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (week, car) = Graph(db, 1, 101);
+        var race = AddField(db, week, car, 65, [60, 70, 80, 90]);
+        await db.SaveChangesAsync(Ct);
+        Assert.Single(await ReadAsync(db, user));
+        await RewriteAsync(db, race.Id, rows => db.SubsessionResults.Remove(rows.Single(r => r.BestLapSeconds == 90)));
+        Assert.Empty(await ReadAsync(db, user));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        await RewriteAsync(db, race.Id, rows => db.SubsessionResults.AddRange(
+            new SubsessionResult { SubsessionId = race.Id, CustId = 9998, CarId = car.Id, CarClassId = 1, BestLapSeconds = 95 },
+            new SubsessionResult { SubsessionId = race.Id, CustId = 9999, CarId = car.Id, CarClassId = 1, BestLapSeconds = 100 }));
+        Assert.Single(await ReadAsync(db, user));
+        await RewriteAsync(db, race.Id, rows => db.SubsessionResults.Remove(rows.Single(r => r.CustId == DemoData.DriverCustId)));
+        Assert.Empty(await ReadAsync(db, user));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task CompleteSourceLossCannotResurrectStoredHistory()
+    {
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (week, car) = Graph(db, 1, 101);
+        var race = AddField(db, week, car, 65, [60, 70, 80, 90]);
+        await db.SaveChangesAsync(Ct);
+        Assert.Single(await ReadAsync(db, user));
+        var marker = Assert.Single(await db.ClassifiedCarPercentileResults.ToListAsync(Ct)).EvidenceCopyId;
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, Ct);
+        db.SubsessionResults.RemoveRange(await db.SubsessionResults.Where(r => r.SubsessionId == race.Id).ToListAsync(Ct));
+        db.Subsessions.Remove(race);
+        await writer.SaveChangesAsync(Ct);
+        Assert.Empty(await ReadAsync(db, user));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        Assert.NotNull((await db.EvidenceCopyMarkers.SingleAsync(m => m.Id == marker, Ct)).UnavailableAt);
+    }
+
+    [Theory]
+    [InlineData(DataProvenance.Real, true)]
+    [InlineData(DataProvenance.Demo, false)]
+    public async Task RealClaimOrDisabledDemoCannotReadEvenAConflictingLegacyCache(DataProvenance provenance, bool enabled)
+    {
+        await using var db = await CreateAsync(provenance, enabled);
+        var user = AddUser(db, 42);
+        var (week, car) = Graph(db, 1, 101);
+        AddField(db, week, car, 65, [60, 70, 80, 90]);
+        db.CarPercentileResults.Add(new() { UserId = user, CarId = car.Id, SeriesId = 1, WeekId = week.Id,
+            PercentileRank = 99, TopSharePercent = 1, SampleSize = 100, ComputedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync(Ct);
+        Assert.Empty(await ReadAsync(db, user));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        Assert.Equal(99, Assert.Single(await db.CarPercentileResults.ToListAsync(Ct)).PercentileRank);
+    }
+
+    [Fact]
+    public async Task EqualStartDatesAcrossSeasonsRemainDistinctWithStableChronologicalPairing()
+    {
+        await using var db = await CreateAsync();
+        var user = AddUser(db);
+        var (week, car) = Graph(db, 1, 101);
+        db.Seasons.Add(new() { Id = 11, SeriesId = 1, Year = 2026, Quarter = 3 });
+        var other = new Week { Id = Guid.NewGuid(), SeasonId = 11, RaceWeekIndex = 0, TrackId = 101, StartDate = week.StartDate };
+        db.Weeks.Add(other);
+        AddField(db, week, car, 60, [65, 70, 75, 80]);
+        AddField(db, other, car, 75, [65, 70, 80, 85]);
+        await db.SaveChangesAsync(Ct);
+        var dto = Assert.Single(await ReadAsync(db, user));
+        Assert.Equal(new[] { week.Id, other.Id }.Order(), dto.PercentileHistory.Select(r => r.WeekId));
+        Assert.Equal(2, dto.TotalWeeks);
+        Assert.All(dto.PercentileHistory, r => Assert.Equal(week.StartDate, r.WeekStartDate));
+        Assert.Equal(dto.PercentileHistory[^1].PercentileRank, dto.LatestPercentileRank);
+        Assert.Equal(dto.PercentileHistory.Select(r => r.WeekId), Assert.Single(await ReadAsync(db, user)).PercentileHistory.Select(r => r.WeekId));
+    }
+
+    private static Task<List<CarAnalyticsDto>> ReadAsync(AppDbContext db, Guid user, PersonalBestEvidence? evidence = null) =>
+        new UserAnalyticsService(db).GetAnalyticsAsync(user, null, evidence ?? RaceOnly, Ct);
+
+    private async Task<AppDbContext> CreateAsync(DataProvenance provenance = DataProvenance.Demo, bool enabled = true)
+    {
+        var options = await postgres.CreateOptionsAsync(Ct);
+        var db = new AppDbContext(options, new IRacingDataScope(provenance));
+        DbContextFactory.InstallStoredEvidenceFixtures(db);
+        db.FeatureFlags.Add(new() { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = enabled, MinimumRole = "Standard" });
+        await db.SaveChangesAsync(Ct);
+        return db;
+    }
+
+    private static Guid AddUser(AppDbContext db, long? claim = 777)
+    {
+        var id = Guid.NewGuid();
+        db.Users.Add(new() { Id = id, DisplayName = "Synthetic User", IRacingCustomerId = claim });
+        return id;
+    }
+
+    private static (Week Week, Car Car) Graph(AppDbContext db, int series, int track, int index = 0, int days = -7)
+    {
+        if (!db.Series.Local.Any(s => s.Id == series))
+        {
+            db.Series.Add(new() { Id = series, Name = $"Synthetic Series {series}" });
+            db.Seasons.Add(new() { Id = series * 10, SeriesId = series, Year = 2026, Quarter = 4, Active = true });
+        }
+        if (!db.Tracks.Local.Any(t => t.Id == track)) db.Tracks.Add(new() { Id = track, Name = "Shared venue", ConfigName = $"Layout {track}" });
+        var week = new Week { Id = Guid.NewGuid(), SeasonId = series * 10, RaceWeekIndex = index, TrackId = track,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(days) };
         db.Weeks.Add(week);
-        db.Cars.AddRange(car1, car2);
-
-        var userId = Guid.NewGuid();
-        db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week.Id, PercentileRank = 70.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car1, Week = week },
-            new CarPercentileResult { UserId = userId, CarId = 2, SeriesId = 1, WeekId = week.Id, PercentileRank = 90.0, SampleSize = 50, ComputedAt = DateTimeOffset.UtcNow, Car = car2, Week = week });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-
-        Assert.Equal(2, result.Count);
-        Assert.Equal(2, result[0].CarId);
-        Assert.Equal(1, result[1].CarId);
-    }
-
-    [Fact]
-    public async Task GetAnalyticsAsync_MedianComputedFromBestPercentileWeek()
-    {
-        await using var db = DbContextFactory.Create();
-        var series = new Series { Id = 1, Name = "GT3 Cup" };
-        var season = new Season { Id = 10, SeriesId = 1, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var car = new Car { Id = 1, Name = "Porsche 992", NameAbbreviated = "P" };
-        var week1 = MakeWeek(Guid.NewGuid(), 10, 1, "Monza", season, trackId: 301); // best percentile week
-        var week2 = MakeWeek(Guid.NewGuid(), 10, 2, "Spa", season, trackId: 302);
-        db.Series.Add(series);
-        db.Seasons.Add(season);
-        db.Cars.Add(car);
-        db.Tracks.AddRange(week1.Track, week2.Track);
-        db.Weeks.AddRange(week1, week2);
-        var carClass = AddCarClass(db, id: 1);
-        var subsession1 = AddSubsession(db, id: -1, seasonId: 10, weekId: week1.Id, trackId: 301);
-        var subsession2 = AddSubsession(db, id: -2, seasonId: 10, weekId: week2.Id, trackId: 302);
-
-        var userId = Guid.NewGuid();
-        db.CarPercentileResults.AddRange(
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week1.Id, PercentileRank = 90.0, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week1 },
-            new CarPercentileResult { UserId = userId, CarId = 1, SeriesId = 1, WeekId = week2.Id, PercentileRank = 60.0, SampleSize = 5, ComputedAt = DateTimeOffset.UtcNow, Car = car, Week = week2 });
-
-        // week1 field laps: [60, 70, 80] → median = 70
-        AddResult(db, subsession1, car, carClass, custId: 1, lapSeconds: 70);
-        AddResult(db, subsession1, car, carClass, custId: 2, lapSeconds: 80);
-        AddResult(db, subsession1, car, carClass, custId: 3, lapSeconds: 60);
-
-        // week2 laps: different values — median should NOT be taken from here
-        AddResult(db, subsession2, car, carClass, custId: 1, lapSeconds: 100);
-        AddResult(db, subsession2, car, carClass, custId: 2, lapSeconds: 110);
-        AddResult(db, subsession2, car, carClass, custId: 3, lapSeconds: 120);
-
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await new UserAnalyticsService(db).GetAnalyticsAsync(
-            userId, null, PersonalBestEvidence.OfficialRaceLapsOnly, TestContext.Current.CancellationToken);
-
-        Assert.Single(result);
-        Assert.Equal(70.0, result[0].MedianLapSeconds);
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// A moment inside Race Week 1, which <see cref="MakeWeek"/> starts seven days ago. Uploaded
-    /// Laps are scoped to the Race Week they were driven in, so a fixture lap dated "now" would
-    /// fall just past the week's end rather than inside it.
-    /// </summary>
-    private static DateTimeOffset InsideWeekOne => DateTimeOffset.UtcNow.AddDays(-3);
-
-    private static (Series series, Season season, Week week, Car car) SeedBaseGraph(
-        AppDbContext db, int seriesId, int raceWeekIndex)
-    {
-        var series = new Series { Id = seriesId, Name = $"Series {seriesId}" };
-        var season = new Season { Id = seriesId * 10, SeriesId = seriesId, Year = 2026, Quarter = 2, Active = true, Series = series };
-        var trackId = seriesId * 100 + raceWeekIndex;
-        var week = MakeWeek(Guid.NewGuid(), season.Id, raceWeekIndex, $"Track-{seriesId}", season, trackId);
-        var car = new Car { Id = seriesId * 100 + 1, Name = $"Car {seriesId}", NameAbbreviated = $"C{seriesId}" };
-        db.Series.Add(series);
-        db.Seasons.Add(season);
-        db.Tracks.Add(week.Track);
-        db.Weeks.Add(week);
-        db.Cars.Add(car);
-        return (series, season, week, car);
-    }
-
-    private static Week MakeWeek(Guid id, int seasonId, int raceWeekIndex, string trackName, Season season, int trackId = 0)
-    {
-        var resolvedTrackId = trackId == 0 ? seasonId * 100 + raceWeekIndex : trackId;
-        var track = new Track { Id = resolvedTrackId, Name = trackName, ConfigName = "Full" };
-        return new Week
+        var car = db.Cars.Local.SingleOrDefault(c => c.Id == series * 100 + 1);
+        if (car is null)
         {
-            Id = id,
-            SeasonId = seasonId,
-            RaceWeekIndex = raceWeekIndex,
-            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7 * raceWeekIndex)),
-            TrackId = resolvedTrackId,
-            Track = track,
-            Season = season,
-        };
+            car = new() { Id = series * 100 + 1, Name = $"Synthetic Car {series}", NameAbbreviated = "SC" };
+            db.Cars.Add(car);
+        }
+        if (!db.CarClasses.Local.Any()) db.CarClasses.Add(new() { Id = 1, Name = "Synthetic Class", ShortName = "SC" });
+        return (week, car);
     }
 
-    private static CarClass AddCarClass(AppDbContext db, int id)
+    private static Subsession AddField(AppDbContext db, Week week, Car car, double best, double[] others)
     {
-        var carClass = new CarClass { Id = id, Name = "GT3", ShortName = "GT3", RelativeSpeed = 52 };
-        db.CarClasses.Add(carClass);
-        return carClass;
+        var race = new Subsession { Id = db.Subsessions.Local.Count + 1, SeasonId = week.SeasonId,
+            RaceWeekIndex = week.RaceWeekIndex, WeekId = week.Id, TrackId = week.TrackId };
+        db.Subsessions.Add(race);
+        db.SubsessionResults.AddRange(others.Select((lap, i) => new SubsessionResult { SubsessionId = race.Id,
+            CustId = 1000 + i, CarId = car.Id, CarClassId = 1, BestLapSeconds = lap }).Append(new()
+            { SubsessionId = race.Id, CustId = DemoData.DriverCustId, CarId = car.Id, CarClassId = 1, BestLapSeconds = best }));
+        return race;
     }
 
-    private static Subsession AddSubsession(AppDbContext db, int id, int seasonId, Guid weekId, int trackId)
+    private static async Task RewriteAsync(AppDbContext db, int race, Action<List<SubsessionResult>> mutate)
     {
-        var subsession = new Subsession
-        {
-            Id          = id,
-            SeasonId    = seasonId,
-            RaceWeekIndex  = 0,
-            WeekId      = weekId,
-            TrackId     = trackId,
-            StartTime   = DateTimeOffset.UtcNow.AddHours(-2),
-        };
-        db.Subsessions.Add(subsession);
-        return subsession;
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, Ct);
+        var header = await db.Subsessions.SingleAsync(r => r.Id == race, Ct);
+        var rows = await db.SubsessionResults.Where(r => r.SubsessionId == race).ToListAsync(Ct);
+        db.Entry(header).State = EntityState.Modified;
+        foreach (var row in rows) db.Entry(row).State = EntityState.Modified;
+        mutate(rows);
+        await writer.SaveChangesAsync(Ct);
     }
-
-    private static void AddResult(AppDbContext db, Subsession subsession, Car car, CarClass carClass, long custId, double lapSeconds)
-    {
-        db.SubsessionResults.Add(new SubsessionResult
-        {
-            SubsessionId            = subsession.Id,
-            CustId                  = custId,
-            CarId                   = car.Id,
-            CarClassId              = carClass.Id,
-            BestLapSeconds          = lapSeconds,
-            AverageLapSeconds       = lapSeconds * 1.01,
-            FinishPosition          = 0,
-            FinishPositionInClass   = 0,
-            StartingPosition        = 0,
-            StartingPositionInClass = 0,
-            Incidents               = 0,
-            LapsComplete            = 5,
-            LapsLead                = 0,
-            ChampPoints             = 0,
-            AggregateChampPoints    = 0,
-            NewIRating              = 1500,
-            OldIRating              = 1500,
-            NewCpi                  = 2.0,
-            OldCpi                  = 2.0,
-            ReasonOutId             = 0,
-            Division                = 1,
-        });
-    }
-
-    private static ApplicationUser MakeUser(Guid id, long? iracingId) =>
-        new ApplicationUser
-        {
-            Id = id,
-            IRacingCustomerId = iracingId,
-            DisplayName = "Test",
-            UserName = $"{id}@test.com",
-            Email = $"{id}@test.com",
-            SecurityStamp = "x",
-        };
 }

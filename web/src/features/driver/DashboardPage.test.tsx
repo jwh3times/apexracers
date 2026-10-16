@@ -131,6 +131,9 @@ const fullProfile: DriverProfile = {
 };
 
 const carAnalytics: CarAnalytics = {
+  customerId: 100001,
+  selectionKey: 'v1:0:0',
+  selectionPolicyVersion: 1,
   carId: 1,
   carName: 'Porsche 911',
   seriesId: 10,

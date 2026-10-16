@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { CarAnalytics } from '../src/services/api';
+import { formatLapTime } from '../src/utils/lapTime';
+import { lapEvidenceLabel } from '../src/utils/lapEvidence';
+import { raceWeekLabel } from '../src/utils/raceWeek';
+import { topShareLabel } from '../src/utils/percentile';
 
 const recipient = 'aaaaaaaa-3750-4000-8000-000000000001';
 const target = 'aaaaaaaa-3750-4000-8000-000000000002';
@@ -238,6 +243,115 @@ test('ordinary startup preserves useful credential-free Demo without granting Re
   await page.goto('http://127.0.0.1:8186/progression');
   await expect(page.getByRole('heading', { name: 'iRating & Safety Rating' })).toBeVisible();
   await expect(page.getByText(/iRating history \(/).first()).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Demo data' })).toBeVisible();
+
+  // The recipient was created after seeding and its token has no iRacing claim. A first
+  // analytics read must refresh retained Demo sources for the Demo Driver, not infer ownership.
+  const analyticsResponse = page.waitForResponse(
+    response => new URL(response.url()).pathname === '/api/users/me/analytics'
+  );
+  await page.goto('http://127.0.0.1:8186/analytics');
+  const initialResponse = await analyticsResponse;
+  expect(initialResponse.status()).toBe(200);
+  expect(initialResponse.headers()['cache-control']).toContain('no-store');
+  expect(initialResponse.headers()['x-apexracers-driver-evidence-namespace']).toBe('demo');
+  const initial = (await initialResponse.json()) as CarAnalytics[];
+  expect(initial.length).toBeGreaterThan(0);
+
+  async function expectCoherentAnalytics(rows: CarAnalytics[], selectionKey: string) {
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.customerId).toBe(100001);
+      expect(row.selectionKey).toBe(selectionKey);
+      expect(row.selectionPolicyVersion).toBe(1);
+      expect(row.percentileHistory.length).toBeGreaterThan(0);
+      for (const reading of row.percentileHistory) {
+        expect(reading.selectionKey).toBe(selectionKey);
+        expect(reading.selectionPolicyVersion).toBe(1);
+        expect(reading.weekId).toMatch(/^[0-9a-f-]{36}$/i);
+        expect(reading.trackId).toBeGreaterThan(0);
+        expect(reading.personalBestLapSeconds).toBeGreaterThan(0);
+        expect(reading.medianLapSeconds).toBeGreaterThan(0);
+        expect(reading.personalBestLapEvidence).toBe('RaceLap');
+      }
+      expect(row.percentileHistory.map(reading => reading.weekStartDate)).toEqual(
+        row.percentileHistory.map(reading => reading.weekStartDate).sort()
+      );
+      const latest = row.percentileHistory.at(-1)!;
+      expect(row.latestPercentileRank).toBe(latest.percentileRank);
+      expect(row.latestTopSharePercent).toBe(latest.topSharePercent);
+    }
+    const featured = rows[0];
+    const latest = featured.percentileHistory.at(-1)!;
+    const card = page.locator('.card-r').filter({
+      has: page.getByRole('heading', { name: featured.carName, exact: true }),
+    });
+    await expect(card).toBeVisible();
+    await expect(
+      card.getByText(topShareLabel(latest.topSharePercent), { exact: true })
+    ).toBeVisible();
+    await expect(
+      card.getByText(formatLapTime(latest.personalBestLapSeconds), { exact: true })
+    ).toBeVisible();
+    await expect(
+      card.getByText(lapEvidenceLabel(latest.personalBestLapEvidence), { exact: true })
+    ).toBeVisible();
+    await expect(
+      card.getByText(
+        `${raceWeekLabel(latest.raceWeekIndex)} · ${latest.trackName}${latest.configName ? ` — ${latest.configName}` : ''}`,
+        { exact: true }
+      )
+    ).toBeVisible();
+    const delta = latest.personalBestLapSeconds - latest.medianLapSeconds;
+    await expect(
+      card.getByText(`${delta < 0 ? '' : '+'}${delta.toFixed(3)}s`, { exact: true })
+    ).toBeVisible();
+    await expect(card.getByText('ELITE', { exact: true })).toHaveCount(
+      latest.percentileRank >= 95 ? 1 : 0
+    );
+    await expect(card.getByText('PRO TIER', { exact: true })).toHaveCount(
+      latest.percentileRank >= 80 && latest.percentileRank < 95 ? 1 : 0
+    );
+  }
+  await expectCoherentAnalytics(initial, 'v1:0:0');
+
+  // Hold the actual replacement HTTP request before it reaches the ordinary API. Old
+  // values must disappear while the new selection is still pending; no response is mocked.
+  let releaseSelection = () => {};
+  const selectionHeld = new Promise<void>(resolve => {
+    releaseSelection = resolve;
+  });
+  let selectionRequested = false;
+  await page.route('**/api/users/me/analytics?**', async route => {
+    if (new URL(route.request().url()).searchParams.get('includeUploadedLaps') === 'true') {
+      selectionRequested = true;
+      await selectionHeld;
+    }
+    await route.continue();
+  });
+  try {
+    const replacementResponse = page.waitForResponse(
+      response =>
+        new URL(response.url()).pathname === '/api/users/me/analytics' &&
+        new URL(response.url()).searchParams.get('includeUploadedLaps') === 'true'
+    );
+    await page.getByRole('radio', { name: /official \+ my uploaded laps/i }).click();
+    await expect.poll(() => selectionRequested).toBe(true);
+    await expect(page.getByRole('heading', { name: initial[0].carName, exact: true })).toHaveCount(
+      0
+    );
+    await expect(page.getByText('Latest Week Best vs Median', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Loading analytics…', { exact: true })).toBeVisible();
+    releaseSelection();
+    const replacement = await replacementResponse;
+    expect(replacement.status()).toBe(200);
+    expect(replacement.headers()['cache-control']).toContain('no-store');
+    expect(replacement.headers()['x-apexracers-driver-evidence-namespace']).toBe('demo');
+    await expectCoherentAnalytics((await replacement.json()) as CarAnalytics[], 'v1:1:63');
+  } finally {
+    releaseSelection();
+    await page.unroute('**/api/users/me/analytics?**');
+  }
   await expect(page.getByRole('status').filter({ hasText: 'Demo data' })).toBeVisible();
 });
 

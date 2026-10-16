@@ -19,88 +19,57 @@ public class PercentileCalculationService(
         Guid? callerUserId = null,
         CancellationToken ct = default)
     {
-        var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
-        if (seasonId is null) return null;
-
-        var week = await db.Weeks
-            .InSeason(seasonId.Value, raceWeekIndex)
-            .Select(w => new
-            {
-                w.Id,
-                w.TrackId,
-                SeriesName = w.Season.Series.Name,
-                TrackName = (string?)w.Track.Name,
-                TrackConfigName = (string?)w.Track.ConfigName,
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (week is null) return null;
-
-        // Best race lap per driver for this week+car (dedup multi-race entries)
-        var fieldByDriver = await db.SubsessionResults
-            .Where(r => r.Subsession.WeekId == week.Id && r.Subsession.TrackId == week.TrackId && r.CarId == carId && r.BestLapSeconds > 0)
-            .GroupBy(r => r.CustId)
-            .Select(g => new { CustId = g.Key, BestLap = g.Min(r => r.BestLapSeconds) })
-            .ToListAsync(ct);
-
-        var driverRaceBest = fieldByDriver.FirstOrDefault(d => d.CustId == customerId)?.BestLap;
-
-        // Only the authenticated User's currently resolved Demo Subject can refresh history.
-        // Arbitrary Driver lookups never select an owner through a stored claim.
-        RefreshedPercentile? refreshed = null;
         if (callerUserId is { } userId && db.Provenance == DataProvenance.Demo
             && (await subjectDriverContext.GetSubjectDriverAsync(userId, ct)) is
                 { Provenance: DataProvenance.Demo } subject && subject.CustomerId == customerId)
         {
-            var batch = await (refresh ?? new PercentileRefresh(db, TimeProvider.System,
-                new UnavailableDriverEnforcementJournal())).RefreshDemoAsync(
-                    userId, evidence.Selection, seriesId, [week.Id], [carId], ct);
-            refreshed = batch.Readings.SingleOrDefault();
-            if (refreshed is null) return null;
+            var snapshot = await (refresh ?? new PercentileRefresh(db, TimeProvider.System,
+                new UnavailableDriverEnforcementJournal())).ReadDemoHistoryAsync(userId, evidence.Selection, seriesId, ct);
+            var week = PercentileHistoryView.CurrentWeek(snapshot, seriesId, raceWeekIndex);
+            if (week is null) return null;
+            var reading = snapshot.Readings.SingleOrDefault(r => r.WeekId == week.WeekId && r.CarId == carId);
+            if (reading?.PersonalBest is not { } best) return null;
+            return await PresentAsync(seriesId, raceWeekIndex, carId, customerId, week.TrackId, week.SeriesName,
+                week.TrackName, week.TrackConfigName, best, reading.OtherDriversLaps,
+                reading.PercentileRank!.Value, reading.FieldPosition!.Value, reading.TopSharePercent!.Value,
+                reading.FieldSize!.Value, reading.ComputedAt, ct);
         }
-        // Quarantined legacy uploads cannot supply verified Personal evidence. Typed Personal
-        // calculations enter through the authorized refresh module, under their own grant.
-        if ((refreshed is null ? PersonalBest.Select(driverRaceBest, null) : refreshed.PersonalBest) is not { } driverBest) return null;
 
-        // Rank against other drivers' race laps only: the driver's own slower race result would
-        // otherwise count as one more driver beaten whenever an Uploaded Lap supersedes it.
-        var otherDriversLaps = refreshed?.OtherDriversLaps.ToList() ?? fieldByDriver
-            .Where(d => d.CustId != customerId)
-            .Select(d => d.BestLap)
-            .ToList();
+        // A different Driver's lookup does not select an owner or read private upload sources.
+        var seasonId = await db.CurrentSeasonIdAsync(seriesId, ct);
+        if (seasonId is null) return null;
+        var lookupWeek = await db.Weeks.InSeason(seasonId.Value, raceWeekIndex)
+            .Select(w => new { w.Id, w.TrackId, SeriesName = w.Season.Series.Name,
+                TrackName = (string?)w.Track.Name, TrackConfigName = (string?)w.Track.ConfigName })
+            .FirstOrDefaultAsync(ct);
+        if (lookupWeek is null) return null;
+        var field = await db.SubsessionResults.Where(r => r.Subsession.WeekId == lookupWeek.Id
+                && r.Subsession.TrackId == lookupWeek.TrackId && r.CarId == carId && r.BestLapSeconds > 0)
+            .GroupBy(r => r.CustId).Select(g => new { CustId = g.Key, BestLap = g.Min(r => r.BestLapSeconds) })
+            .ToListAsync(ct);
+        var raceBest = field.FirstOrDefault(r => r.CustId == customerId)?.BestLap;
+        if (PersonalBest.Select(raceBest, null) is not { } personalBest) return null;
+        var others = field.Where(r => r.CustId != customerId).Select(r => r.BestLap).ToList();
+        return await PresentAsync(seriesId, raceWeekIndex, carId, customerId, lookupWeek.TrackId,
+            lookupWeek.SeriesName, lookupWeek.TrackName, lookupWeek.TrackConfigName, personalBest, others,
+            FieldPercentile.Rank(personalBest.LapSeconds, others), FieldPercentile.Position(personalBest.LapSeconds, others),
+            FieldPercentile.TopSharePercent(personalBest.LapSeconds, others), FieldPercentile.FieldSize(others),
+            DateTimeOffset.UtcNow, ct);
+    }
 
-        // The Field is those drivers plus the subject on the lap actually being ranked — which is
-        // not the row bearing their customer id when an Uploaded Lap superseded it. Every metric
-        // below is computed over that same population, so the rank, the position, the median and
-        // the distribution can never disagree about who was counted.
-        var total = refreshed?.FieldSize ?? FieldPercentile.FieldSize(otherDriversLaps);
-        var percentileRank = refreshed?.PercentileRank ?? FieldPercentile.Rank(driverBest.LapSeconds, otherDriversLaps);
-        var fieldPosition = refreshed?.FieldPosition ?? FieldPercentile.Position(driverBest.LapSeconds, otherDriversLaps);
-        var topSharePercent = refreshed?.TopSharePercent ?? FieldPercentile.TopSharePercent(driverBest.LapSeconds, otherDriversLaps);
-
-        var computedAt = refreshed?.ComputedAt ?? DateTimeOffset.UtcNow;
-
-        // Field stats and distribution — over the same Field the rank was computed against, so a
-        // driver whose uploaded lap leads the Field sees a zero gap to the field best rather than
-        // a negative one against a race best they beat.
-        var sortedLaps = otherDriversLaps.Append(driverBest.LapSeconds).OrderBy(x => x).ToList();
-        var fieldBest = sortedLaps[0];
-        var fieldMedian = FieldPercentile.MedianOfSorted(sortedLaps);
-        var distribution = BuildDistribution(sortedLaps, driverBest.LapSeconds);
-
-        // World-record overlay (best-effort; null when iRacing isn't configured).
-        double? wrLap = worldRecords is null
-            ? null
-            : await worldRecords.GetWorldRecordLapSecondsAsync(carId, week.TrackId, ct);
-        double? wrGap = wrLap is null ? null : Math.Round(driverBest.LapSeconds - wrLap.Value, 4);
-
-        return new PercentileResultDto(
-            seriesId, raceWeekIndex, carId, customerId,
-            percentileRank, fieldPosition, topSharePercent, total,
-            FieldPercentile.IsPresentable(total), computedAt,
-            week.SeriesName, week.TrackName, ConfigurationName.NullIfAbsent(week.TrackConfigName),
-            driverBest.LapSeconds, driverBest.Evidence, fieldBest, fieldMedian,
-            distribution, wrLap, wrGap, UploadedBestOutsideWeek: null);
+    private async Task<PercentileResultDto> PresentAsync(int seriesId, int raceWeekIndex, int carId, long customerId,
+        int trackId, string seriesName, string? trackName, string? configName, PersonalBest best,
+        IReadOnlyList<double> others, double rank, int position, int topShare, int size,
+        DateTimeOffset computedAt, CancellationToken ct)
+    {
+        var sorted = others.Append(best.LapSeconds).Order().ToList();
+        var distribution = BuildDistribution(sorted, best.LapSeconds);
+        var worldRecord = worldRecords is null ? null : await worldRecords.GetWorldRecordLapSecondsAsync(carId, trackId, ct);
+        double? gap = worldRecord is null ? null : Math.Round(best.LapSeconds - worldRecord.Value, 4);
+        return new PercentileResultDto(seriesId, raceWeekIndex, carId, customerId, rank, position, topShare, size,
+            FieldPercentile.IsPresentable(size), computedAt, seriesName, trackName, ConfigurationName.NullIfAbsent(configName),
+            best.LapSeconds, best.Evidence, sorted[0], FieldPercentile.MedianOfSorted(sorted), distribution,
+            worldRecord, gap, UploadedBestOutsideWeek: null);
     }
 
     private static IReadOnlyList<DistributionBin> BuildDistribution(List<double> sortedLaps, double userBest)

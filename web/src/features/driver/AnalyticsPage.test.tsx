@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import AnalyticsPage from './AnalyticsPage';
-import { api, IRacingNotLinkedError } from '../../services/api';
+import { api, IRacingNotLinkedError, type CarAnalytics } from '../../services/api';
 import type { User } from '../../context/AuthContext';
 import { PaceSourceProvider } from '../../context/PaceSourceProvider';
 
@@ -26,7 +26,6 @@ vi.mock('../../services/api', async importOriginal => {
 
 const mockGetSeries = vi.mocked(api.getSeries);
 const mockGetMyAnalytics = vi.mocked(api.getMyAnalytics);
-const mockGetRecommendations = vi.mocked(api.getRecommendations);
 
 const MOCK_SERIES = [
   {
@@ -53,8 +52,11 @@ const MOCK_SERIES = [
   },
 ];
 
-const MOCK_ANALYTICS = [
+const MOCK_ANALYTICS: CarAnalytics[] = [
   {
+    customerId: 100001,
+    selectionKey: 'v1:0:0',
+    selectionPolicyVersion: 1,
     carId: 101,
     carName: 'Porsche 911 GT3 R',
     seriesId: 1,
@@ -69,6 +71,16 @@ const MOCK_ANALYTICS = [
     totalWeeks: 48,
     percentileHistory: [
       {
+        weekId: '00000000-0000-0000-0000-000000000001',
+        weekStartDate: '2026-01-01T00:00:00Z',
+        seasonId: 2024,
+        trackId: 1,
+        personalBestLapSeconds: 90,
+        personalBestLapEvidence: 'RaceLap',
+        uploadedSessionType: null,
+        medianLapSeconds: 95,
+        selectionKey: 'v1:0:0',
+        selectionPolicyVersion: 1,
         raceWeekIndex: 1,
         trackName: 'Monza',
         configName: 'GP',
@@ -78,6 +90,16 @@ const MOCK_ANALYTICS = [
         computedAt: '2026-01-01T00:00:00Z',
       },
       {
+        weekId: '00000000-0000-0000-0000-000000000002',
+        weekStartDate: '2026-01-08T00:00:00Z',
+        seasonId: 2024,
+        trackId: 2,
+        personalBestLapSeconds: 137.2,
+        personalBestLapEvidence: 'RaceLap',
+        uploadedSessionType: null,
+        medianLapSeconds: 139.5,
+        selectionKey: 'v1:0:0',
+        selectionPolicyVersion: 1,
         raceWeekIndex: 2,
         trackName: 'Spa',
         configName: 'Full',
@@ -89,6 +111,9 @@ const MOCK_ANALYTICS = [
     ],
   },
   {
+    customerId: 100001,
+    selectionKey: 'v1:0:0',
+    selectionPolicyVersion: 1,
     carId: 102,
     carName: 'BMW M4 GT3',
     seriesId: 1,
@@ -103,6 +128,16 @@ const MOCK_ANALYTICS = [
     totalWeeks: 20,
     percentileHistory: [
       {
+        weekId: '00000000-0000-0000-0000-000000000001',
+        weekStartDate: '2026-01-01T00:00:00Z',
+        seasonId: 2024,
+        trackId: 1,
+        personalBestLapSeconds: 90,
+        personalBestLapEvidence: 'RaceLap',
+        uploadedSessionType: null,
+        medianLapSeconds: 95,
+        selectionKey: 'v1:0:0',
+        selectionPolicyVersion: 1,
         raceWeekIndex: 1,
         trackName: 'Monza',
         configName: 'GP',
@@ -112,6 +147,16 @@ const MOCK_ANALYTICS = [
         computedAt: '2026-01-01T00:00:00Z',
       },
       {
+        weekId: '00000000-0000-0000-0000-000000000002',
+        weekStartDate: '2026-01-08T00:00:00Z',
+        seasonId: 2024,
+        trackId: 2,
+        personalBestLapSeconds: 137.2,
+        personalBestLapEvidence: 'RaceLap',
+        uploadedSessionType: null,
+        medianLapSeconds: 139.5,
+        selectionKey: 'v1:0:0',
+        selectionPolicyVersion: 1,
         raceWeekIndex: 2,
         trackName: 'Spa',
         configName: 'Full',
@@ -147,7 +192,6 @@ describe('AnalyticsPage', () => {
     };
     mockGetSeries.mockResolvedValue([]);
     mockGetMyAnalytics.mockResolvedValue([]);
-    mockGetRecommendations.mockResolvedValue([]);
   });
 
   it('shows sign-in prompt when user is not authenticated', () => {
@@ -184,7 +228,7 @@ describe('AnalyticsPage', () => {
     });
   });
 
-  it('applies the active evidence choice to series analytics and percentile computation', async () => {
+  it('applies the active evidence choice when refreshing analytics', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     renderPage();
     await screen.findByRole('radiogroup', { name: /how we calculate your pace/i });
@@ -198,13 +242,10 @@ describe('AnalyticsPage', () => {
         expect.any(AbortSignal)
       )
     );
-    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
-    await waitFor(() =>
-      expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
-        includeUploadedLaps: true,
-        uploadedLapTypes: undefined,
-      })
-    );
+    const beforeRefresh = mockGetMyAnalytics.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: /refresh analytics/i }));
+    await waitFor(() => expect(mockGetMyAnalytics).toHaveBeenCalledTimes(beforeRefresh + 1));
+    expect(api.getRecommendations).not.toHaveBeenCalled();
   });
 
   it('renders featured car name and TOP X% percentile label', async () => {
@@ -246,10 +287,17 @@ describe('AnalyticsPage', () => {
     await waitFor(() => expect(screen.getAllByText('Race lap').length).toBeGreaterThan(0));
   });
 
-  it('says so when the best lap across the counted weeks was an uploaded one', async () => {
+  it('names the evidence of the latest Week reading even when the aggregate differs', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetMyAnalytics.mockResolvedValue([
-      { ...MOCK_ANALYTICS[0], personalBestLapEvidence: 'UploadedLap' as const },
+      {
+        ...MOCK_ANALYTICS[0],
+        percentileHistory: MOCK_ANALYTICS[0].percentileHistory.map(row => ({
+          ...row,
+          personalBestLapEvidence: 'UploadedLap' as const,
+          uploadedSessionType: 'Practice' as const,
+        })),
+      },
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Uploaded lap')).toBeInTheDocument());
@@ -265,60 +313,22 @@ describe('AnalyticsPage', () => {
     expect(screen.getByRole('link', { name: /browse series/i })).toHaveClass('underline');
   });
 
-  // ── First-visit "Compute my percentiles" CTA (T15) ─────────────────────────
-
-  it('empty series analytics shows the compute CTA and populates on click', async () => {
+  it('refreshes an empty series directly without requiring recommendations', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetMyAnalytics.mockResolvedValueOnce([]).mockResolvedValueOnce(MOCK_ANALYTICS);
     renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /compute my percentiles/i })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
-
-    // MOCK_SERIES[0] has id 1 and currentRaceWeekIndex 5
-    await waitFor(() =>
-      expect(mockGetRecommendations).toHaveBeenCalledWith(1, 5, {
-        includeUploadedLaps: false,
-        uploadedLapTypes: undefined,
-      })
-    );
-    await waitFor(() => {
-      expect(mockGetMyAnalytics).toHaveBeenCalledTimes(2);
-      expect(screen.getByText('Porsche 911 GT3 R')).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByRole('button', { name: /refresh analytics/i }));
+    expect(await screen.findByText('Porsche 911 GT3 R')).toBeInTheDocument();
+    expect(mockGetMyAnalytics).toHaveBeenCalledTimes(2);
+    expect(api.getRecommendations).not.toHaveBeenCalled();
   });
 
-  it('hides the compute CTA when the series has no current week', async () => {
-    mockGetSeries.mockResolvedValue([{ ...MOCK_SERIES[0], currentRaceWeekIndex: null }]);
-    mockGetMyAnalytics.mockResolvedValue([]);
-    renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByText(/no percentile data for this series/i)).toBeInTheDocument();
-    });
-    expect(
-      screen.queryByRole('button', { name: /compute my percentiles/i })
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows an inline error when compute fails', async () => {
+  it('reports a failed analytics refresh without retaining earlier results', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
-    mockGetMyAnalytics.mockResolvedValue([]);
-    mockGetRecommendations.mockRejectedValue(new Error('compute boom'));
+    mockGetMyAnalytics.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('Refresh failed'));
     renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /compute my percentiles/i })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /compute my percentiles/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/could not compute percentiles/i)).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByRole('button', { name: /refresh analytics/i }));
+    expect(await screen.findByText('Refresh failed')).toBeInTheDocument();
   });
 
   it('calls getMyAnalytics with the new seriesId when a different series is selected', async () => {
@@ -409,6 +419,11 @@ describe('AnalyticsPage', () => {
         latestPercentileRank: 97,
         latestTopSharePercent: 3,
         bestTopSharePercent: 3,
+        percentileHistory: MOCK_ANALYTICS[0].percentileHistory.map(row => ({
+          ...row,
+          percentileRank: 97,
+          topSharePercent: 3,
+        })),
       },
     ]);
     renderPage();
@@ -418,7 +433,14 @@ describe('AnalyticsPage', () => {
   it('renders a positive Best-vs-Median delta when the best lap is slower than the median', async () => {
     mockGetSeries.mockResolvedValue(MOCK_SERIES);
     mockGetMyAnalytics.mockResolvedValue([
-      { ...MOCK_ANALYTICS[0], personalBestLapSeconds: 141.0, medianLapSeconds: 139.5 },
+      {
+        ...MOCK_ANALYTICS[0],
+        percentileHistory: MOCK_ANALYTICS[0].percentileHistory.map(row => ({
+          ...row,
+          personalBestLapSeconds: 141,
+          medianLapSeconds: 139.5,
+        })),
+      },
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('+1.500s')).toBeInTheDocument());
@@ -430,14 +452,73 @@ describe('AnalyticsPage', () => {
       {
         ...MOCK_ANALYTICS[0],
         percentileHistory: [
-          { ...MOCK_ANALYTICS[0].percentileHistory[0], computedAt: '2025-12-01T00:00:00Z' },
-          { ...MOCK_ANALYTICS[0].percentileHistory[1], computedAt: '2026-01-08T00:00:00Z' },
+          {
+            ...MOCK_ANALYTICS[0].percentileHistory[0],
+            weekStartDate: '2025-12-01T00:00:00Z',
+            computedAt: '2026-09-01T00:00:00Z',
+          },
+          {
+            ...MOCK_ANALYTICS[0].percentileHistory[1],
+            weekStartDate: '2026-01-08T00:00:00Z',
+            computedAt: '2026-09-01T00:00:00Z',
+          },
         ],
       },
     ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('2025')).toBeInTheDocument());
     expect(screen.getByText('2026')).toBeInTheDocument();
+  });
+
+  it('compares the latest Week lap with its own Track median and tier', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics.mockResolvedValue([
+      {
+        ...MOCK_ANALYTICS[0],
+        personalBestLapSeconds: 60,
+        medianLapSeconds: 65,
+        bestPercentileRank: 99,
+        bestTopSharePercent: 1,
+        percentileHistory: [
+          {
+            ...MOCK_ANALYTICS[0].percentileHistory[0],
+            personalBestLapSeconds: 60,
+            medianLapSeconds: 65,
+            percentileRank: 99,
+            topSharePercent: 1,
+          },
+          {
+            ...MOCK_ANALYTICS[0].percentileHistory[1],
+            personalBestLapSeconds: 141,
+            medianLapSeconds: 139.5,
+            percentileRank: 70,
+            topSharePercent: 30,
+          },
+        ],
+      },
+    ]);
+    renderPage();
+    expect(await screen.findByText('+1.500s')).toBeInTheDocument();
+    expect(screen.getByText('2:21.000')).toBeInTheDocument();
+    expect(screen.getByText('Week 3 · Spa — Full')).toBeInTheDocument();
+    expect(screen.getByText('TOP 30%')).toBeInTheDocument();
+    expect(screen.queryByText('1:00.000')).not.toBeInTheDocument();
+    expect(screen.queryByText('ELITE')).not.toBeInTheDocument();
+    expect(screen.queryByText('PRO TIER')).not.toBeInTheDocument();
+  });
+
+  it('clears the previous pace reading while a new source selection is pending', async () => {
+    mockGetSeries.mockResolvedValue(MOCK_SERIES);
+    mockGetMyAnalytics
+      .mockResolvedValueOnce(MOCK_ANALYTICS)
+      .mockImplementation(() => new Promise(() => {}));
+    renderPage();
+    expect(await screen.findByText('Porsche 911 GT3 R')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /official \+ my uploaded laps/i }));
+    expect(screen.queryByText('Porsche 911 GT3 R')).not.toBeInTheDocument();
+    expect(screen.queryByText('TOP 8%')).not.toBeInTheDocument();
+    expect(screen.queryByText('2:17.200')).not.toBeInTheDocument();
+    expect(screen.getByText(/loading analytics/i)).toBeInTheDocument();
   });
 
   it('shows the shared account-link prompt for a typed 409', async () => {
