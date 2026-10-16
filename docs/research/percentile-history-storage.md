@@ -6,8 +6,13 @@ Implementation for [#426](https://github.com/jwh3times/apexracers/issues/426), f
 
 The later [shared refresh](percentile-history-refresh.md) integrates API writers, typed private-upload
 calculation and fresh Demo seeding. Its current behavior supersedes the producer staging described
-below; legacy analytics and broad coherent reader integration remain #428 work. The migration and
+below. The subsequent reader contract supersedes the temporary legacy analytics staging. The migration and
 historical evidence below retain their original #426 scope.
+
+The subsequent [coherent readers](percentile-history-readers.md) add catalog discovery, immutable
+snapshot witnesses, idempotent unchanged history reads and controlled Personal dispatch. Current
+analytics and fresh seeding use classified history; historical staging and measurements below
+retain their original slice scope. No Real adapter or inherited catalog approval is established.
 
 ## Staged storage families
 

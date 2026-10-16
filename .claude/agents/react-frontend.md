@@ -140,6 +140,12 @@ Week Detail's compact `WeekCarPercentile` retains `personalBestLapEvidence` even
 lap time; render `lapEvidenceLabel` beneath its "Your pct" chip and use `lapEvidenceDescription` for
 the explanatory title rather than reducing the row to its Top Share alone.
 
+Analytics history uses required Week ID/start date, Season/Track identity, weekly Personal Best and
+Field median, evidence and canonical selection. Headline and pace delta use the last chronological
+weekly row together; top-level aggregate fastest Personal Best and best-rank-Week median are
+compatibility summaries, not a comparable pair. Clear held results when selection changes. Read
+docs/research/percentile-history-readers.md before changing this snapshot/display contract.
+
 ### Race week numbering contract
 
 Every race-week position the API returns, every route param, and every `api.ts` call is the **Race Week

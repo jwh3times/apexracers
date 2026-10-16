@@ -13,10 +13,11 @@ selection, name stripping, TTLs and route refusal do not establish collection pu
 Current percentile production uses the [shared refresh](percentile-history-refresh.md) and
 [selection-scoped storage cutover](percentile-history-storage.md). API Demo writers, typed
 private-upload calculations and fresh classified Demo seeding use `SelectionScopedCarPercentileResults`;
-legacy analytics and the Seeder compatibility step retain `LegacyUnclassifiedPercentileResults`.
+current coherent readers use the same classified family; old `LegacyUnclassifiedPercentileResults`
+rows remain preserved and excluded, and the Seeder compatibility writer is removed.
 Both families participate in physical cleanup, source invalidation and acquisition-transition
-inventory. The evidence below retains its original #371 scope; coherent analytics and protected
-reader integration remain separate.
+inventory. The evidence below retains its original #371 scope; controlled coherent/protected reader evidence is documented in the
+[reader contract](percentile-history-readers.md), separately from this historical #371 evidence.
 
 ## Physical copies and participating writers
 

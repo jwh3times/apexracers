@@ -54,8 +54,8 @@ remaining provider/client/quota and deployed prerequisites.
   separate histories, and refreshing the same Week replaces its contribution. Demo Subjects use
   synthetic Race Evidence; verified typed private-upload calculations retain their separate
   authorization, session-type and Race Week rules. Quarantined uploads do not supply those results.
-  Each Personal Best carries the evidence that produced it. Coherent analytics and protected
-  reader integration remain pending; see [the refresh contract](research/percentile-history-refresh.md). Percentile and placement headlines appear only once five drivers
+  Each Personal Best carries the evidence that produced it. Coherent analytics use the same classified history; verified Personal dispatch is exercised only in
+  controlled synthetic hosts. See [the reader contract](research/percentile-history-readers.md). Percentile and placement headlines appear only once five drivers
   have set a time; smaller fields report their driver count without presenting a
   coarse position as a meaningful competitiveness result.
 - **Car recommendations:** order cars by the lap time the signed-in driver is projected
@@ -65,8 +65,8 @@ remaining provider/client/quota and deployed prerequisites.
   and claims no place in that Field.
   Expected Percentile averages distinct eligible Weeks in the same Series and selection through
   the requested Week, including across Seasons. Missing Personal Bests and Fields below five
-  contribute nothing; an empty history stays absent. Legacy analytics remain a separate reader
-  pending integration.
+  contribute nothing; an empty history stays absent. Analytics displays each Week with its own Personal Best, evidence, Field median and Track;
+  the latest chronological Week supplies the card headline and pace comparison.
 - **Strategy briefings:** summarize track, pit, weather, BoP, and personal context for
   a race week.
 - **Telemetry:** controlled synthetic uploads now require verified ownership and personal opt-in;
