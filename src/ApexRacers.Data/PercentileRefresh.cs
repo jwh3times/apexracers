@@ -25,9 +25,45 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
         int seriesId, IReadOnlyCollection<Guid> weekIds, IReadOnlyCollection<int> carIds, CancellationToken ct = default) =>
         (await RefreshAsync([requestedOwner.Scope.UserId], requestedOwner, selection, seriesId, weekIds, carIds, false, false, ct)).Batch;
 
+    // Every Demo User shares one synthetic source purpose. Serialize discovered readers before
+    // preparation so their own derived writes cannot invalidate overlapping unchanged inputs.
+    // This is separate from 370: retained-source writers can still change inputs and deny commit.
+    private const long DemoHistoryReadGate = 428;
+
     public async Task<PercentileHistorySnapshot> ReadDemoHistoryAsync(Guid userId, PercentileSelection selection,
-        int? seriesId = null, CancellationToken ct = default) =>
-        (await RefreshAsync([userId], null, selection, seriesId, [], [], true, true, ct)).Snapshot!;
+        int? seriesId = null, CancellationToken ct = default)
+    {
+        if (!db.Database.IsNpgsql())
+            return (await RefreshAsync([userId], null, selection, seriesId, [], [], true, true, ct)).Snapshot!;
+        // Keep ONE physical session open across the existing short capture/commit transactions.
+        // A second pooled gate connection per waiter could starve the active reader's connection.
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_lock({DemoHistoryReadGate})", ct);
+            return (await RefreshAsync([userId], null, selection, seriesId, [], [], true, true, ct)).Snapshot!;
+        }
+        finally
+        {
+            try
+            {
+                // Acquisition can race cancellation: unlock unconditionally with independent time,
+                // even when the acquiring statement threw before reporting success to the client.
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_unlock({DemoHistoryReadGate})", cleanup.Token);
+            }
+            catch
+            {
+                // EF refcount-close alone may leave a caller-opened physical session alive, and
+                // pooled reset can be deferred. Discard this session before reporting failure.
+                var connection = (NpgsqlConnection)db.Database.GetDbConnection();
+                NpgsqlConnection.ClearPool(connection);
+                await connection.CloseAsync();
+                throw;
+            }
+            finally { await db.Database.CloseConnectionAsync(); }
+        }
+    }
 
     public async Task<PercentileHistorySnapshot> ReadPersonalHistoryAsync(DriverAccess owner, PercentileSelection selection,
         int? seriesId = null, CancellationToken ct = default) =>

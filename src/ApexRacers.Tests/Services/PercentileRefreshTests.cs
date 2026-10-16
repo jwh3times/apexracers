@@ -6,10 +6,14 @@ using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Core.PercentileHistory;
 using ApexRacers.Data;
+using ApexRacers.Api.Services;
+using ApexRacers.Seeder;
+using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
+using Npgsql;
 
 namespace ApexRacers.Tests.Services;
 
@@ -316,6 +320,153 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
         Artifact("discovered-history-measurements", new { small, batch });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OverlappingColdUserDemoReadsDoNotInvalidateEachOtherWhenNoSourceChanged(bool differentUser)
+    {
+        await using var f = await CreateAsync(1, 1);
+        await f.Refresh.ReadDemoHistoryAsync(f.User, RaceOnly, ct: Ct);
+        var newUser = Guid.NewGuid();
+        f.Db.Users.Add(new() { Id = newUser, DisplayName = "Claimless post-seed User" });
+        var secondUser = differentUser ? Guid.NewGuid() : newUser;
+        if (differentUser) f.Db.Users.Add(new() { Id = secondUser, DisplayName = "Another claimless User" });
+        await f.Db.SaveChangesAsync(Ct);
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new AfterSourceRead(async () => { reached.TrySetResult(); await release.Task.WaitAsync(Ct); });
+        // Both readers must progress with only two shared physical connections. An auxiliary
+        // pooled gate connection per waiter would starve the active reader's source connection.
+        var pool = new NpgsqlConnectionStringBuilder(f.Db.Database.GetConnectionString()) { MaxPoolSize = 2, Pooling = true };
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(pool.ConnectionString).Options;
+        await using var firstDb = new AppDbContext(postgres.WithInterceptors(options, gate), new IRacingDataScope(DataProvenance.Demo));
+        await using var secondDb = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        var first = new PercentileRefresh(firstDb, TimeProvider.System, new UnavailableDriverEnforcementJournal())
+            .ReadDemoHistoryAsync(newUser, RaceOnly, ct: Ct);
+        await reached.Task.WaitAsync(Ct);
+        var second = new PercentileRefresh(secondDb, TimeProvider.System, new UnavailableDriverEnforcementJournal())
+            .ReadDemoHistoryAsync(secondUser, RaceOnly, ct: Ct);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        await using var observer = f.Open();
+        try
+        {
+            // Wait for the second actual request either to finish or to wait at history-read
+            // admission. A retained-source writer is never held behind this test barrier.
+            while (!second.IsCompleted)
+            {
+                if (await observer.Database.SqlQueryRaw<bool>("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND wait_event = 'advisory') AS \"Value\"").SingleAsync(timeout.Token)) break;
+                await Task.Delay(10, timeout.Token);
+            }
+        }
+        finally { release.TrySetResult(); }
+        var histories = await Task.WhenAll(first, second);
+        Assert.All(histories, history => Assert.True(Assert.Single(history.Readings).IsPresentable));
+        Assert.Single(await f.Db.ClassifiedCarPercentileResults.Where(r => r.UserId == newUser).ToListAsync(Ct));
+        Assert.Single(await f.Db.ClassifiedCarPercentileResults.Where(r => r.UserId == secondUser).ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task CancellationWhileWaitingForDemoGateReleasesWaiterWithoutUnlockingCurrentHolder()
+    {
+        await using var f = await CreateAsync(1, 1);
+        await using var holder = f.Open();
+        await holder.Database.OpenConnectionAsync(Ct);
+        await holder.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(428)", Ct);
+        try
+        {
+            using var request = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            await using var waitingDb = f.Open();
+            var waiting = new PercentileRefresh(waitingDb, TimeProvider.System, new UnavailableDriverEnforcementJournal())
+                .ReadDemoHistoryAsync(f.User, RaceOnly, ct: request.Token);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            deadline.CancelAfter(TimeSpan.FromSeconds(10));
+            await using var probe = f.Open();
+            while (!await probe.Database.SqlQueryRaw<bool>("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND wait_event = 'advisory') AS \"Value\"").SingleAsync(deadline.Token))
+                await Task.Delay(10, deadline.Token);
+            request.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting.WaitAsync(deadline.Token));
+            Assert.False(await probe.Database.SqlQueryRaw<bool>("SELECT pg_try_advisory_lock(428) AS \"Value\"").SingleAsync(Ct));
+            Assert.Empty(await f.Db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+        }
+        finally
+        {
+            await holder.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(428)", Ct);
+            await holder.Database.CloseConnectionAsync();
+        }
+        Assert.True(Assert.Single((await f.Refresh.ReadDemoHistoryAsync(f.User, RaceOnly, ct: Ct)).Readings).IsPresentable);
+    }
+
+    [Fact]
+    public async Task CancellationAfterServerAcquiresGateStillUnlocksCallerOpenedPhysicalSession()
+    {
+        await using var f = await CreateAsync(1, 1);
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var fault = new DemoGateFault(request, failUnlock: false);
+        await using var db = f.Open(fault);
+        await db.Database.OpenConnectionAsync(Ct); // Caller owns a separate EF open count.
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new PercentileRefresh(db, TimeProvider.System,
+                new UnavailableDriverEnforcementJournal()).ReadDemoHistoryAsync(f.User, RaceOnly, ct: request.Token));
+            Assert.True(fault.Reached);
+            Assert.Equal(System.Data.ConnectionState.Open, db.Database.GetDbConnection().State);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            deadline.CancelAfter(TimeSpan.FromSeconds(5));
+            Assert.True(Assert.Single((await f.Refresh.ReadDemoHistoryAsync(f.User, RaceOnly, ct: deadline.Token)).Readings).IsPresentable);
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+    }
+
+    [Fact]
+    public async Task UncertainGateUnlockDiscardsEvenCallerOpenedSessionAndDoesNotReturnPreparedSuccess()
+    {
+        await using var f = await CreateAsync(1, 1);
+        var fault = new DemoGateFault(null, failUnlock: true);
+        await using var db = f.Open(fault);
+        await db.Database.OpenConnectionAsync(Ct);
+        var originalPid = await db.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync(Ct);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new PercentileRefresh(db, TimeProvider.System,
+            new UnavailableDriverEnforcementJournal()).ReadDemoHistoryAsync(f.User, RaceOnly, ct: Ct));
+        Assert.True(fault.Reached);
+        Assert.Equal(System.Data.ConnectionState.Closed, db.Database.GetDbConnection().State);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        while (await f.Db.Database.SqlQuery<bool>($"SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid = {originalPid}) AS \"Value\"").SingleAsync(deadline.Token))
+            await Task.Delay(10, deadline.Token);
+        Assert.True(Assert.Single((await f.Refresh.ReadDemoHistoryAsync(f.User, RaceOnly, ct: deadline.Token)).Readings).IsPresentable);
+    }
+
+    [Fact]
+    public async Task FreshClaimlessUserAfterActualCiDemoSeedCanReadOrdinaryAnalytics()
+    {
+        var options = await postgres.CreateOptionsAsync(Ct);
+        await using (var setup = new AppDbContext(options))
+        { await setup.Database.EnsureDeletedAsync(Ct); await setup.Database.MigrateAsync(Ct); }
+        var user = Guid.NewGuid();
+        await using (var seed = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo)))
+        {
+            await new CiCatalogSeeder(seed).SeedAsync();
+            await new DemoPercentileSeeder(seed).SeedAsync(Ct);
+            await new DemoCacheSeeder(seed).SeedAllAsync(Ct);
+            seed.Users.Add(new() { Id = user, DisplayName = "New claimless Demo User", EmailConfirmed = true });
+            var flag = await seed.FeatureFlags.SingleAsync(f => f.Key == "iracing-demo", Ct);
+            flag.IsEnabled = true; flag.MinimumRole = "Standard";
+            await seed.SaveChangesAsync(Ct);
+        }
+        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        var analytics = await new UserAnalyticsService(db).GetAnalyticsAsync(user, CiCatalog.SeriesId,
+            PersonalBestEvidence.FromRequest(true, null), Ct);
+        Assert.Equal(CiCatalog.CarIds.Length, analytics.Count);
+        Assert.All(analytics, car =>
+        {
+            Assert.Equal(DemoData.DriverCustId, car.CustomerId);
+            Assert.Equal(CiCatalog.WeekCount, car.TotalWeeks);
+            Assert.All(car.PercentileHistory, week => Assert.Equal(LapEvidence.RaceLap, week.PersonalBestLapEvidence));
+        });
+        Assert.Null((await db.Users.FindAsync([user], Ct))!.IRacingCustomerId);
+    }
+
     private async Task<Fixture> CreateAsync(int weeks, int cars)
     {
         var options = await postgres.CreateOptionsAsync(Ct);
@@ -375,6 +526,24 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
         { Note(command); return ValueTask.FromResult(result); }
         public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(DbCommand command, CommandEventData data, InterceptionResult<object> result, CancellationToken ct = default)
         { Note(command); return ValueTask.FromResult(result); }
+    }
+    private sealed class DemoGateFault(CancellationTokenSource? cancellation, bool failUnlock) : DbCommandInterceptor
+    {
+        public bool Reached { get; private set; }
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData data,
+            InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            if (failUnlock && command.CommandText.Contains("pg_advisory_unlock(", StringComparison.Ordinal))
+            { Reached = true; throw new InvalidOperationException("Controlled uncertain unlock."); }
+            return ValueTask.FromResult(result);
+        }
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData data,
+            int result, CancellationToken ct = default)
+        {
+            if (!failUnlock && command.CommandText.Contains("pg_advisory_lock(", StringComparison.Ordinal))
+            { Reached = true; cancellation!.Cancel(); ct.ThrowIfCancellationRequested(); }
+            return ValueTask.FromResult(result);
+        }
     }
     private sealed class HistoryCommands : DbCommandInterceptor
     {
