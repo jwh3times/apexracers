@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.0] - 2026-10-16
+
+### Added
+
+- Weekly analytics now include the winning Personal Best, evidence, Track, Field median and
+  canonical selection alongside the rank. Cards display those values from the same latest Week,
+  and trends use Week dates across Seasons.
+
+### Fixed
+
+- Read analytics, recommendations, Week Detail and Strategy from complete selection-scoped history
+  snapshots. Demo uses the resolved Subject Driver; Expected Percentile includes each eligible
+  Week through the requested Week's date and omits missing Personal Bests or Fields below five.
+- Discover new and empty Week/Car targets, reject changed source or catalog witnesses, and reuse
+  unchanged readings without renewing their original clocks. Removed the Seeder's legacy
+  claim-based history writer.
+- Queue overlapping Demo history reads before preparation so navigation requests do not invalidate
+  one another's unchanged inputs.
+- Validate controlled Personal history through protected response dispatch, source races,
+  withdrawal/deletion and restore boundaries. Live authorization remains unavailable.
+
 ## [15.0.1] - 2026-10-15
 
 ### Fixed
@@ -1784,7 +1805,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.0.1...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.0...HEAD
+[15.1.0]: https://github.com/jwh3times/apexracers/compare/v15.0.1...v15.1.0
 [15.0.1]: https://github.com/jwh3times/apexracers/compare/v15.0.0...v15.0.1
 [15.0.0]: https://github.com/jwh3times/apexracers/compare/v14.0.20...v15.0.0
 [14.0.20]: https://github.com/jwh3times/apexracers/compare/v14.0.19...v14.0.20

@@ -4,6 +4,11 @@ Implementation for [#427](https://github.com/jwh3times/apexracers/issues/427), f
 [ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md) and
 [the storage cutover](percentile-history-storage.md).
 
+The subsequent [coherent readers](percentile-history-readers.md) add catalog discovery, immutable
+snapshot witnesses, idempotent unchanged history reads and controlled Personal dispatch. Current
+analytics and fresh seeding use classified history; historical staging and measurements below
+retain their original slice scope. No Real adapter or inherited catalog approval is established.
+
 ## Shared production
 
 `Data.PercentileRefresh` owns one explicit Series/Week/Car batch: source eligibility, exact Track
@@ -48,7 +53,7 @@ StartDate, with each distinct Week counted once across Seasons. Later Weeks are 
 empty average is null. Presentation, recommendation ordering and world-record overlays remain
 outside the refresh module.
 
-## Scope still pending
+## Scope at the #427 implementation slice
 
 These are controlled synthetic and explicit retained-source batches. Ordinary Real routes remain
 unavailable; returned calculation data is not a protected HTTP result or Live permission.

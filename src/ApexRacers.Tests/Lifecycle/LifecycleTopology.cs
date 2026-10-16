@@ -154,7 +154,8 @@ internal sealed class LifecycleTopology(
             await Operating.OperatingFixtures.SeedAsync(db,
                 [new("synthetic-owner-v1", "personal", OperatingWork.Publication),
                  new("synthetic-sharing-v1", "sharing", OperatingWork.Publication),
-                 new("synthetic-uploaded-bests-v1", "personal", OperatingWork.Publication)],
+                 new("synthetic-uploaded-bests-v1", "personal", OperatingWork.Publication),
+                 new("synthetic-percentile-history-v1", "personal", OperatingWork.Publication)],
                 [SyntheticLifecycleActors.Owner, SyntheticLifecycleActors.Other], ct);
             db.Users.AddRange(new ApplicationUser { Id = SyntheticLifecycleActors.Owner, DisplayName = "Synthetic owner", EmailConfirmed = true },
                 new ApplicationUser { Id = SyntheticLifecycleActors.Other, DisplayName = "Synthetic recipient", EmailConfirmed = true });

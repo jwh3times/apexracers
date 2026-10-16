@@ -1,6 +1,6 @@
 # Percentile history is scoped by evidence selection
 
-Status: **accepted by the maintainer on 2026-10-14; contracts, storage and shared refresh implemented; coherent reader/protected integration pending**.
+Status: **accepted by the maintainer on 2026-10-14; contracts, storage, shared refresh and controlled coherent readers implemented; Real activation remains unavailable**.
 
 The maintainer accepted all five policies following the [#352 investigation](../design/percentile-history-ownership.md).
 Stored ranks can otherwise describe a different evidence selection from the displayed Personal Best,

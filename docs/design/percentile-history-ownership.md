@@ -1,7 +1,8 @@
 # Percentile Rank history ownership — investigation #352
 
 Status: **historical investigation; its five policies were subsequently accepted on 2026-10-14 in
-[ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md); implementation pending**.
+[ADR 0007](../adr/0007-percentile-history-is-scoped-by-evidence-selection.md); controlled implementation
+is documented in [coherent readers](../research/percentile-history-readers.md), with Real activation unavailable**.
 The original assessment and proposal below preserve the investigation-time distinction between
 evidence and decisions. Investigation completed
 2026-10-14 against production baseline `74f2c4e8738752441c599d2812e9c7ca04a0dc08`

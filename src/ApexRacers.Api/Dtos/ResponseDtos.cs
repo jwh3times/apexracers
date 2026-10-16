@@ -1,4 +1,5 @@
 using ApexRacers.Core.Models;
+using System.Text.Json.Serialization;
 
 namespace ApexRacers.Api.Dtos;
 
@@ -146,12 +147,24 @@ public record WeeklyPercentileDto(
     double PercentileRank,
     int TopSharePercent,
     int SampleSize,
-    DateTimeOffset ComputedAt);
+    DateTimeOffset ComputedAt,
+    Guid WeekId,
+    DateOnly WeekStartDate,
+    int SeasonId,
+    int TrackId,
+    double PersonalBestLapSeconds,
+    LapEvidence PersonalBestLapEvidence,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] LapSessionType? UploadedSessionType,
+    double MedianLapSeconds,
+    string SelectionKey,
+    int SelectionPolicyVersion);
 
 /// <summary>
 /// Per-Car percentile history for one Series. <c>PersonalBestLapEvidence</c> names which evidence
 /// produced <c>PersonalBestLapSeconds</c> — the fastest across every Race Week counted here — and
-/// is null exactly when that lap is.
+/// is null exactly when that lap is. MedianLapSeconds retains the best-ranked Week's Field median;
+/// use an individual PercentileHistory reading's PB, median and Track together for comparison.
+/// Latest refers to chronological Week order, not refresh time.
 /// </summary>
 public record CarAnalyticsDto(
     int CarId,
@@ -166,7 +179,10 @@ public record CarAnalyticsDto(
     LapEvidence? PersonalBestLapEvidence,
     double? MedianLapSeconds,
     int TotalWeeks,
-    IReadOnlyList<WeeklyPercentileDto> PercentileHistory);
+    IReadOnlyList<WeeklyPercentileDto> PercentileHistory,
+    long CustomerId,
+    string SelectionKey,
+    int SelectionPolicyVersion);
 
 /// <summary>A single point in a member chart time series (iRating/SR/TT over time).</summary>
 public record TimeSeriesPointDto(string When, int Value);

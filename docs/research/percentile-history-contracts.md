@@ -8,6 +8,11 @@ Shared refresh [#427](https://github.com/jwh3times/apexracers/issues/427) is imp
 [its runtime contract](percentile-history-refresh.md). Coherent reader/protected integration remains
 [#428](https://github.com/jwh3times/apexracers/issues/428).
 
+The subsequent [coherent readers](percentile-history-readers.md) add catalog discovery, immutable
+snapshot witnesses, idempotent unchanged history reads and controlled Personal dispatch. Current
+analytics and fresh seeding use classified history; historical staging and measurements below
+retain their original slice scope. No Real adapter or inherited catalog approval is established.
+
 ## Selection identity
 
 Canonical selection and owner identity data now live in `ApexRacers.Core.PercentileHistory`, shared
@@ -65,7 +70,7 @@ missing evidence, presentability, duplicate contributions and controlled owner r
 PostgreSQL owner cases exercise actual synthetic authorization and independent journal behavior;
 they do not establish Live permission or protected HTTP/migration acceptance. The later shared
 refresh integrates API and typed/seed producers. Legacy analytics and broader coherent/protected
-reader integration remain #428 work.
+reader integration were subsequent #428 work, now documented in the reader contract.
 
 Reproduce the three focused classes from the repository root with Docker running:
 
