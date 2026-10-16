@@ -139,5 +139,5 @@ blended canonical selection displays. Artifacts are retained in `TestResults/428
 the original failed run remains preserved.
 
 Matrix names, collector mapping and admitted catalog receipt remain unchanged. This focused executed
-browser case does not replace the full hosted Driver privacy gate, which remains pending, or establish
-Live eligibility.
+browser case does not replace the full hosted Driver privacy gate, whose result is recorded by the
+PR's required status check, or establish Live eligibility.
