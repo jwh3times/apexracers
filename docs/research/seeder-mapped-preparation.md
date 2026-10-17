@@ -88,7 +88,7 @@ investigation retain their original meaning and instrumentation limits.
 Receipts are local ignored `TestResults/437-fixed/summary.json`, `manifest.json`, per-pass tracking,
 counts and logs. They contain aggregate diagnostics; captured input files and credential values
 remain private. The actual measured source is the revision above, not a reconstructed timing from
-the earlier SQL investigation. Full CI suites and coverage are separate pending validation.
+the earlier SQL investigation. Full CI suites and coverage are validated separately from these local measurements.
 
 ## Reproduce the durable checks
 
