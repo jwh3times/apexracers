@@ -92,7 +92,11 @@ can establish those outcomes.
 grant/journal checks, durable withdrawal, dependency invalidation and verified live erasure. Copy
 markers remain after physical deletion so a retry cannot reuse a forgotten key generation.
 `SyntheticEvidenceWriter` binds a preview session before work, records contributing Field versions
-before calculations, checks the complete source set at commit, and becomes unusable after failure.
+before derivative calculations, checks the complete prepared source set at commit, and becomes
+unusable after failure. `OpenMappedAsync` skips unrelated legacy/classified Field discovery only
+when no derivative is pending; pending derivatives retain full opening preparation. A mapped-only
+session cannot admit derivatives added later or recapture preparation during save. Generic
+`OpenAsync` stays fully prepared. See [mapped preparation](seeder-mapped-preparation.md).
 It cannot import another purpose's private material. API Demo mutations, both Seeder paths, mapped
 Demo upserts and BoP/weather builders participate. Worker collection resolves an issued purpose before
 provider acquisition; `SubsessionMapper.ToBatch` preserves all classified Customer IDs plus Team/AI
