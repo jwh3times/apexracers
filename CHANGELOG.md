@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.2] - 2026-10-16
+
+### Fixed
+
+- Release completed Seeder tracking before Demo cache writes so repeated mapped saves no longer rescan the full race/result graph. Preserve pending writes, original source clocks and provenance checks; verify captured-input and synthetic CI seeding on fresh and repeated runs.
+
 ## [15.1.0] - 2026-10-16
 
 ### Added
@@ -1805,7 +1811,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.2...HEAD
+[15.1.2]: https://github.com/jwh3times/apexracers/compare/v15.1.1...v15.1.2
 [15.1.0]: https://github.com/jwh3times/apexracers/compare/v15.0.1...v15.1.0
 [15.0.1]: https://github.com/jwh3times/apexracers/compare/v15.0.0...v15.0.1
 [15.0.0]: https://github.com/jwh3times/apexracers/compare/v14.0.20...v15.0.0
