@@ -22,7 +22,7 @@ public static class DemoCache
 
     public static async Task UpsertAsync<T>(AppDbContext db, string key, T value, CancellationToken ct)
     {
-        var writer = await SyntheticEvidenceWriter.OpenAsync(db, ct);
+        var writer = await SyntheticEvidenceWriter.OpenMappedAsync(db, ct);
         MappedEvidenceContract.RequireOwned<T>();
         var json = JsonSerializer.Serialize(value);
         var row = await db.ExternalDataCaches.FirstOrDefaultAsync(

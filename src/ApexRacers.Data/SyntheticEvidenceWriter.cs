@@ -22,11 +22,12 @@ public sealed class SyntheticEvidenceWriter
     private readonly Dictionary<Guid, long> _sources;
     private readonly Dictionary<(Guid WeekId, int CarId), HashSet<Guid>> _fieldSources;
     private readonly Dictionary<(Guid WeekId, int CarId), HashSet<Guid>> _classifiedFieldSources;
+    private readonly bool _fieldsPrepared;
     private bool _failed;
 
     private SyntheticEvidenceWriter(AppDbContext db, TimeProvider clock, EvidencePurpose purpose,
         Dictionary<Guid, long> sources, Dictionary<(Guid, int), HashSet<Guid>> fieldSources,
-        Dictionary<(Guid, int), HashSet<Guid>> classifiedFieldSources)
+        Dictionary<(Guid, int), HashSet<Guid>> classifiedFieldSources, bool fieldsPrepared)
     {
         _db = db;
         _clock = clock;
@@ -37,10 +38,35 @@ public sealed class SyntheticEvidenceWriter
         _sources = sources;
         _fieldSources = fieldSources;
         _classifiedFieldSources = classifiedFieldSources;
+        _fieldsPrepared = fieldsPrepared;
     }
 
-    public static async Task<SyntheticEvidenceWriter> OpenAsync(AppDbContext db, CancellationToken ct = default,
+    public static Task<SyntheticEvidenceWriter> OpenAsync(AppDbContext db, CancellationToken ct = default,
+        TimeProvider? clock = null) => OpenPreparedAsync(db, true, ct, clock);
+
+    /// <summary>Prepare a mapped Demo write without unrelated Field discovery. Pending derivatives
+    /// retain full preparation at this opening point; adding a derivative later requires a new full
+    /// session opened before its calculation, never a late preparation during SaveChanges.</summary>
+    public static Task<SyntheticEvidenceWriter> OpenMappedAsync(AppDbContext db, CancellationToken ct = default,
         TimeProvider? clock = null)
+    {
+        var tracker = db.ChangeTracker;
+        var automatic = tracker.AutoDetectChangesEnabled;
+        bool pendingDerivative;
+        try
+        {
+            tracker.AutoDetectChangesEnabled = false;
+            tracker.DetectChanges();
+            pendingDerivative = tracker.Entries<IManagedEvidence>().Any(e =>
+                e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted
+                && e.Entity is CarPercentileResult or ClassifiedCarPercentileResult);
+        }
+        finally { tracker.AutoDetectChangesEnabled = automatic; }
+        return OpenPreparedAsync(db, pendingDerivative, ct, clock);
+    }
+
+    private static async Task<SyntheticEvidenceWriter> OpenPreparedAsync(AppDbContext db, bool prepareFields,
+        CancellationToken ct, TimeProvider? clock)
     {
         clock ??= TimeProvider.System;
         var lifecycle = new EvidenceCopyLifecycle(db, clock);
@@ -52,11 +78,16 @@ public sealed class SyntheticEvidenceWriter
                 && (p.Id == id || p.Kind == EvidencePurposeKind.IndependentOfficial || p.Kind == EvidencePurposeKind.AuthorizedHistory)))
             .Select(c => new { c.Id, c.Version, c.ExpiresAt }).ToListAsync(ct);
         var sources = candidates.Where(c => c.ExpiresAt is null || c.ExpiresAt > clock.GetUtcNow()).ToDictionary(c => c.Id, c => c.Version);
-        var fields = await db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
-            .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct);
-        var fieldSources = fields.GroupBy(r => (r.WeekId, r.CarId)).ToDictionary(g => g.Key, g => g.Select(r => r.CopyId).ToHashSet());
-        var classifiedFields = await ClassifiedFieldSourcesAsync(db, ct);
-        return new(db, clock, purpose, sources, fieldSources, classifiedFields);
+        Dictionary<(Guid, int), HashSet<Guid>> fieldSources = [];
+        Dictionary<(Guid, int), HashSet<Guid>> classifiedFields = [];
+        if (prepareFields)
+        {
+            var fields = await db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
+                .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct);
+            fieldSources = fields.GroupBy(r => (r.WeekId, r.CarId)).ToDictionary(g => g.Key, g => g.Select(r => r.CopyId).ToHashSet());
+            classifiedFields = await ClassifiedFieldSourcesAsync(db, ct);
+        }
+        return new(db, clock, purpose, sources, fieldSources, classifiedFields, prepareFields);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
@@ -72,6 +103,8 @@ public sealed class SyntheticEvidenceWriter
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            if (!_fieldsPrepared && managed.Any(e => e.Entity is CarPercentileResult or ClassifiedCarPercentileResult))
+                throw new EvidenceCopyUnavailableException(); // Never capture a witness after its calculation.
             if (_db.Database.IsNpgsql())
                 await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({370L})", ct);
             var purpose = await _db.EvidencePurposes.SingleAsync(p => p.Id == _purposeId, ct);
@@ -174,18 +207,23 @@ public sealed class SyntheticEvidenceWriter
                 entry.Entity.DemoWeatherEvidenceCopyId = marker.Id;
             }
             purpose.EvidenceVersion++;
+            // Internal marker/preparation assignments must persist with caller auto-detection disabled.
+            if (!_db.ChangeTracker.AutoDetectChangesEnabled) _db.ChangeTracker.DetectChanges();
             var saved = await _db.SaveChangesAsync(ct);
             await _db.Entry(purpose).ReloadAsync(ct);
-            var savedFields = await _db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
-                .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct);
-            var savedClassifiedFields = await ClassifiedFieldSourcesAsync(_db, ct);
+            var savedFields = _fieldsPrepared ? await _db.SubsessionResults.Where(r => r.Subsession.WeekId != null && r.EvidenceCopyId != null)
+                .Select(r => new { WeekId = r.Subsession.WeekId!.Value, r.CarId, CopyId = r.EvidenceCopyId!.Value }).Distinct().ToListAsync(ct) : null;
+            var savedClassifiedFields = _fieldsPrepared ? await ClassifiedFieldSourcesAsync(_db, ct) : null;
             await tx.CommitAsync(ct);
             _version = purpose.EvidenceVersion;
-            _fieldSources.Clear();
-            foreach (var group in savedFields.GroupBy(r => (r.WeekId, r.CarId)))
-                _fieldSources[group.Key] = group.Select(r => r.CopyId).ToHashSet();
-            _classifiedFieldSources.Clear();
-            foreach (var pair in savedClassifiedFields) _classifiedFieldSources[pair.Key] = pair.Value;
+            if (savedFields is not null)
+            {
+                _fieldSources.Clear();
+                foreach (var group in savedFields.GroupBy(r => (r.WeekId, r.CarId)))
+                    _fieldSources[group.Key] = group.Select(r => r.CopyId).ToHashSet();
+                _classifiedFieldSources.Clear();
+                foreach (var pair in savedClassifiedFields!) _classifiedFieldSources[pair.Key] = pair.Value;
+            }
             return saved;
         }
         catch { _failed = true; _db.ChangeTracker.Clear(); throw; }
