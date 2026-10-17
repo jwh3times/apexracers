@@ -90,6 +90,28 @@ counts and logs. They contain aggregate diagnostics; captured input files and cr
 remain private. The actual measured source is the revision above, not a reconstructed timing from
 the earlier SQL investigation. Full CI suites and coverage are validated separately from these local measurements.
 
+## Original CI validation and browser test correction
+
+The initial general CI checks passed all 1,460 backend cases with zero failures/skips and 86.17%
+branch coverage, 815 frontend cases (96.89% line / 90.9% branch coverage), and 39 standard plus six
+Driver-display browser cases. The separate formal privacy run passed its 1,460 backend cases but
+only five of six browser cases. Its failed report is retained under local ignored
+`TestResults/438-privacy-original`; no retry replaces that outcome.
+
+Trace review proved the test's broad analytics wait matched a superseded unfiltered 200 response
+while the selected Series 9900 request remained pending. The page correctly displayed Loading.
+The corrected test deterministically orders real requests, verifies clearing while the selected
+Series request is held, then binds response and card assertions to that Series and evidence
+selection. Every returned row must match the selected Series. It changes no product behavior,
+payloads, timeout/retry policy, test names, collector, matrix or catalog receipt.
+
+An immediate failing proof observed response Series ID null versus selected 9900. After correction,
+all six original browser cases passed on a fresh fixture with zero retries, skips or flaky results.
+Both local outcomes are retained in `TestResults/438-browser-diagnosis-red` and
+`TestResults/438-browser-diagnosis-green`. Fresh required CI checks validate the updated test
+separately; the original failed formal report remains failed. The benchmark's measured Data source
+and recorded results are unchanged by this browser-test correction.
+
 ## Reproduce the durable checks
 
 With Docker running, from the public root:
