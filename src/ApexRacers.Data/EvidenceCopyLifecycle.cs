@@ -479,15 +479,66 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
     internal async Task InvalidateDependentsAsync(IReadOnlyCollection<Guid> sourceIds, DateTimeOffset lossAt, CancellationToken ct)
     {
         var frontier = sourceIds.Distinct().ToArray();
-        var visited = frontier.ToHashSet();
+        var discovered = frontier.ToHashSet();
+        var edges = new Dictionary<Guid, HashSet<Guid>>();
         while (frontier.Length != 0)
         {
-            var children = await db.EvidenceCopyDependencies.Where(d => frontier.Contains(d.SourceCopyId)).Select(d => d.CopyId).Distinct().ToListAsync(ct);
-            frontier = children.Where(visited.Add).ToArray();
-            foreach (var copy in await db.EvidenceCopyMarkers.Where(c => frontier.Contains(c.Id)).ToListAsync(ct))
+            var dependencies = await db.EvidenceCopyDependencies.Where(d => frontier.Contains(d.SourceCopyId))
+                .Select(d => new { d.SourceCopyId, d.CopyId }).ToListAsync(ct);
+            var next = new HashSet<Guid>();
+            foreach (var dependency in dependencies)
             {
-                MarkUnavailable(copy, lossAt, copy.Kind == EvidenceCopyKind.AuthorizedName
-                    ? EvidenceRetention.NameRemovalDueAt(lossAt) : EvidenceRetention.PurposeRemovalDueAt(lossAt));
+                if (!edges.TryGetValue(dependency.SourceCopyId, out var children))
+                    edges[dependency.SourceCopyId] = children = [];
+                children.Add(dependency.CopyId);
+                if (discovered.Add(dependency.CopyId)) next.Add(dependency.CopyId);
+            }
+            frontier = next.ToArray();
+        }
+        // Raw SQL or another context may already have tightened a tracked marker's clocks.
+        // Merge only earlier persisted loss/deadlines, preserving pending application changes.
+        var retained = await db.EvidenceCopyMarkers.AsNoTracking().Where(c => discovered.Contains(c.Id)).ToListAsync(ct);
+        var tracked = db.ChangeTracker.Entries<EvidenceCopyMarker>().ToDictionary(e => e.Entity.Id, e => e.Entity);
+        var copies = new Dictionary<Guid, EvidenceCopyMarker>();
+        foreach (var persisted in retained)
+        {
+            if (tracked.TryGetValue(persisted.Id, out var copy))
+            {
+                if (persisted.UnavailableAt is { } originalLoss)
+                    copy.UnavailableAt = Earliest(copy.UnavailableAt, originalLoss);
+                if (persisted.RemovalDueAt is { } originalDue)
+                    copy.RemovalDueAt = Earliest(copy.RemovalDueAt, originalDue);
+                if (persisted.VerifiedRemovedAt is { } originalRemoval)
+                    copy.VerifiedRemovedAt = originalRemoval;
+            }
+            else
+            {
+                copy = persisted;
+                db.EvidenceCopyMarkers.Attach(copy);
+            }
+            copies[copy.Id] = copy;
+        }
+        var earliest = new Dictionary<Guid, DateTimeOffset>();
+        var pending = new Queue<Guid>();
+        foreach (var sourceId in sourceIds.Distinct())
+        {
+            earliest[sourceId] = copies.TryGetValue(sourceId, out var source) ? EffectiveLoss(source, lossAt) : lossAt;
+            pending.Enqueue(sourceId);
+        }
+        while (pending.TryDequeue(out var sourceId))
+        {
+            if (!edges.TryGetValue(sourceId, out var children)) continue;
+            foreach (var childId in children)
+            {
+                if (!copies.TryGetValue(childId, out var copy)) continue;
+                var cutoff = EffectiveLoss(copy, earliest[sourceId]);
+                if (earliest.TryGetValue(childId, out var previous) && previous <= cutoff) continue;
+                earliest[childId] = cutoff;
+                var due = sourceIds.Contains(childId) && copy.RemovalDueAt is { } originalDue
+                    ? originalDue : copy.Kind == EvidenceCopyKind.AuthorizedName
+                        ? EvidenceRetention.NameRemovalDueAt(cutoff) : EvidenceRetention.PurposeRemovalDueAt(cutoff);
+                MarkUnavailable(copy, cutoff, due);
+                pending.Enqueue(childId);
             }
         }
     }
@@ -630,10 +681,15 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             .Select(c => (long?)c.Version).MaxAsync(ct) ?? 0;
     private DateTimeOffset Now => DriverAuthorizationPolicy.DurableTime(clock.GetUtcNow());
     private static DateTimeOffset Earliest(DateTimeOffset? previous, DateTimeOffset incoming) => previous < incoming ? previous.Value : incoming;
+    private static DateTimeOffset EffectiveLoss(EvidenceCopyMarker copy, DateTimeOffset lossAt) =>
+        Earliest(copy.UnavailableAt, Earliest(copy.ExpiresAt, lossAt));
+
     internal static void MarkUnavailable(EvidenceCopyMarker copy, DateTimeOffset lossAt, DateTimeOffset dueAt)
     {
-        copy.UnavailableAt = Earliest(copy.UnavailableAt, lossAt);
+        copy.UnavailableAt = EffectiveLoss(copy, lossAt);
         copy.RemovalDueAt = Earliest(copy.RemovalDueAt, dueAt);
+        if (copy.Kind == EvidenceCopyKind.MappedCache && copy.ExpiresAt is { } expiry)
+            copy.RemovalDueAt = Earliest(copy.RemovalDueAt, EvidenceRetention.MappedRemovalDueAt(expiry));
     }
     public async Task WithdrawNameBearingCacheAsync(Guid copyId, CancellationToken ct = default)
     {
