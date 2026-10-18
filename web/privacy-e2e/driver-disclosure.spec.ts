@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Response } from '@playwright/test';
 import type { CarAnalytics } from '../src/services/api';
 import { formatLapTime } from '../src/utils/lapTime';
 import { lapEvidenceLabel } from '../src/utils/lapEvidence';
@@ -247,11 +247,61 @@ test('ordinary startup preserves useful credential-free Demo without granting Re
 
   // The recipient was created after seeding and its token has no iRacing claim. A first
   // analytics read must refresh retained Demo sources for the Demo Driver, not infer ownership.
-  const analyticsResponse = page.waitForResponse(
-    response => new URL(response.url()).pathname === '/api/users/me/analytics'
-  );
-  await page.goto('http://127.0.0.1:8186/analytics');
-  const initialResponse = await analyticsResponse;
+  // Force the original failure ordering with real requests: an unfiltered read settles
+  // before the catalog selects a Series, while its replacement remains held.
+  let releaseCatalog = () => {};
+  let releaseCurrent = () => {};
+  const catalogHeld = new Promise<void>(resolve => {
+    releaseCatalog = resolve;
+  });
+  const currentHeld = new Promise<void>(resolve => {
+    releaseCurrent = resolve;
+  });
+  let currentRequested = false;
+  await page.route('**/api/series', async route => {
+    await catalogHeld;
+    await route.continue();
+  });
+  await page.route('**/api/users/me/analytics?**', async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.has('seriesId') && !url.searchParams.has('includeUploadedLaps')) {
+      currentRequested = true;
+      await currentHeld;
+    }
+    await route.continue();
+  });
+  let initialResponse: Response;
+  let selectedSeriesId = '';
+  try {
+    const analyticsResponse = page.waitForResponse(
+      response => new URL(response.url()).pathname === '/api/users/me/analytics'
+    );
+    await page.goto('http://127.0.0.1:8186/analytics');
+    initialResponse = await analyticsResponse;
+    expect(initialResponse.status()).toBe(200);
+    releaseCatalog();
+    await expect.poll(() => currentRequested).toBe(true);
+    selectedSeriesId = await page.getByLabel('Series:', { exact: true }).inputValue();
+    expect(new URL(initialResponse.url()).searchParams.get('seriesId')).toBeNull();
+    await expect(page.getByText('Loading analytics…', { exact: true })).toBeVisible();
+    await expect(page.getByText('Latest Week Best vs Median', { exact: true })).toHaveCount(0);
+    const currentResponse = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === '/api/users/me/analytics' &&
+        url.searchParams.get('seriesId') === selectedSeriesId &&
+        !url.searchParams.has('includeUploadedLaps')
+      );
+    });
+    releaseCurrent();
+    initialResponse = await currentResponse;
+    expect(new URL(initialResponse.url()).searchParams.get('seriesId')).toBe(selectedSeriesId);
+  } finally {
+    releaseCatalog();
+    releaseCurrent();
+    await page.unroute('**/api/series');
+    await page.unroute('**/api/users/me/analytics?**');
+  }
   expect(initialResponse.status()).toBe(200);
   expect(initialResponse.headers()['cache-control']).toContain('no-store');
   expect(initialResponse.headers()['x-apexracers-driver-evidence-namespace']).toBe('demo');
@@ -261,6 +311,7 @@ test('ordinary startup preserves useful credential-free Demo without granting Re
   async function expectCoherentAnalytics(rows: CarAnalytics[], selectionKey: string) {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
+      expect(String(row.seriesId)).toBe(selectedSeriesId);
       expect(row.customerId).toBe(100001);
       expect(row.selectionKey).toBe(selectionKey);
       expect(row.selectionPolicyVersion).toBe(1);
@@ -333,6 +384,7 @@ test('ordinary startup preserves useful credential-free Demo without granting Re
     const replacementResponse = page.waitForResponse(
       response =>
         new URL(response.url()).pathname === '/api/users/me/analytics' &&
+        new URL(response.url()).searchParams.get('seriesId') === selectedSeriesId &&
         new URL(response.url()).searchParams.get('includeUploadedLaps') === 'true'
     );
     await page.getByRole('radio', { name: /official \+ my uploaded laps/i }).click();

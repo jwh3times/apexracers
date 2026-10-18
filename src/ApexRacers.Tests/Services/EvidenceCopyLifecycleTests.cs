@@ -174,7 +174,8 @@ public sealed class EvidenceCopyLifecycleTests(PostgreSqlFixture postgres)
     public async Task RawWeatherRemovalInvalidatesDescendantsAndPreparedWrites(bool deleteWeek)
     {
         var options = await MigratedOptionsAsync();
-        var clock = new CopyClock();
+        // Raw SQL removal uses PostgreSQL's clock; keep this retained-source scenario unexpired.
+        var clock = TimeProvider.System;
         await using var db = Demo(options);
         var week = await CatalogAsync(db);
         var lifecycle = new EvidenceCopyLifecycle(db, clock);
