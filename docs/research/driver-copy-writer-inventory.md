@@ -86,6 +86,15 @@ official-purpose termination by original termination plus seven days. Backup and
 retention require their separately tracked deployed observations; no synthetic time advancement
 can establish those outcomes.
 
+Effective copy loss is the earliest applicable incoming loss, own expiry and persisted loss clock.
+Dependency propagation preserves that earliest loss through transitive paths, converging across
+shared descendants and cycles. Existing removal deadlines can only tighten; mapped expiry retains
+its original 48-hour bound and names retain their 24-hour bound. Root-specific private-upload
+retention remains governed by its existing lifecycle contract. A bulk persisted-clock merge preserves
+pending application changes and the exact existing physical-removal receipt rather than treating a
+tracked entity as newer evidence. Forward migration `20261018124545_PreserveEvidenceCopyClocks`
+replaces the loss-propagation function without rewriting stored rows; recovery remains forward-only.
+
 ## Implemented boundary
 
 `EvidenceCopyLifecycle` owns typed preparation receipts, atomic closed batches, original clocks,
@@ -128,9 +137,16 @@ With Docker running, execute from the repository root:
 
 ```bash
 dotnet test --filter-class ApexRacers.Tests.Services.EvidenceCopyLifecycleTests
+dotnet test --project src/ApexRacers.Tests/ApexRacers.Tests.csproj \
+  --filter-class ApexRacers.Tests.Services.EvidenceCopyClockTests \
+    ApexRacers.Tests.Services.EvidenceCopyClockMigrationTests
 dotnet test
 dotnet ef migrations has-pending-model-changes --project src/ApexRacers.Data --startup-project src/ApexRacers.Api
 ```
+
+The focused copy-clock and migration classes passed fourteen actual PostgreSQL cases. They cover
+clock preservation, dependency convergence, rollback/retry and populated-schema forward upgrade;
+this focused result is separate from full-suite and integrated privacy validation.
 
 The lifecycle suite applies actual PostgreSQL migrations for old-writer and source-deletion checks.
 It covers delayed writes after closure/restart, competing preparations, unchanged original deadlines,

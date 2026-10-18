@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.4] - 2026-10-18
+
+### Security
+
+- Preserve original expiry and earliest cleanup clocks when source removal, replacement or purpose closure reaches overdue copies. Keep dependent-copy invalidation and cleanup retries consistent without extending retention deadlines.
+
 ## [15.1.3] - 2026-10-17
 
 ### Fixed
@@ -1817,7 +1823,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.3...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.4...HEAD
+[15.1.4]: https://github.com/jwh3times/apexracers/compare/v15.1.3...v15.1.4
 [15.1.3]: https://github.com/jwh3times/apexracers/compare/v15.1.2...v15.1.3
 [15.1.2]: https://github.com/jwh3times/apexracers/compare/v15.1.1...v15.1.2
 [15.1.0]: https://github.com/jwh3times/apexracers/compare/v15.0.1...v15.1.0
