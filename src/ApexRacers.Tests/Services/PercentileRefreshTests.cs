@@ -58,6 +58,46 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
         Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().Where(r => r.SelectionKey == RaceOnly.Key).ToListAsync(Ct));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BatchReplacementRetiresTrackedAndUntrackedReadingsWithoutResurrectingOldRows(bool trackOldRows)
+    {
+        await using var f = await CreateAsync(2, 2);
+        await f.Refresh.RefreshDemoAsync(f.User, RaceOnly, 1, f.Weeks, [1, 2], Ct);
+        var oldRows = await f.Db.ClassifiedCarPercentileResults.AsNoTracking().ToListAsync(Ct);
+        var oldIds = oldRows.Select(r => r.EvidenceCopyId!.Value).ToArray();
+        var original = await f.Db.EvidenceCopyMarkers.AsNoTracking().Where(m => oldIds.Contains(m.Id)).ToListAsync(Ct);
+        await using var reader = f.Open();
+        if (trackOldRows)
+        {
+            await reader.ClassifiedCarPercentileResults.ToListAsync(Ct);
+            await reader.EvidenceCopyMarkers.Where(m => oldIds.Contains(m.Id)).ToListAsync(Ct);
+        }
+        var refresh = new PercentileRefresh(reader, TimeProvider.System, new UnavailableDriverEnforcementJournal());
+
+        var result = await refresh.RefreshDemoAsync(f.User, RaceOnly, 1, f.Weeks, [1, 2], Ct);
+
+        Assert.Equal(4, result.ChangedRows);
+        // An unrelated later save must not retry updates to physically retired classified rows.
+        var user = await reader.Users.SingleAsync(u => u.Id == f.User, Ct);
+        user.DisplayName = "Updated synthetic User";
+        await reader.SaveChangesAsync(Ct);
+        Assert.DoesNotContain(reader.ChangeTracker.Entries<ClassifiedCarPercentileResult>(),
+            e => oldIds.Contains(e.Entity.EvidenceCopyId ?? Guid.Empty));
+        var current = await reader.ClassifiedCarPercentileResults.IgnoreQueryFilters().AsNoTracking().ToListAsync(Ct);
+        Assert.Equal(4, current.Count);
+        Assert.DoesNotContain(current, r => oldIds.Contains(r.EvidenceCopyId!.Value));
+        foreach (var before in original)
+        {
+            var retired = await reader.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == before.Id, Ct);
+            Assert.Equal(before.OriginalAcquiredAt, retired.OriginalAcquiredAt);
+            Assert.NotNull(retired.UnavailableAt);
+            Assert.NotNull(retired.RemovalDueAt);
+            Assert.NotNull(retired.VerifiedRemovedAt);
+        }
+    }
+
     [Fact]
     public async Task MultiCarMultiWeekBatchHasConstantSourceAndSelectQueriesAndOneOriginalPreparationStamp()
     {

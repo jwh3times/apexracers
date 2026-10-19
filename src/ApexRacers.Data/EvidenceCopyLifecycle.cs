@@ -158,19 +158,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             };
             var prior = await db.EvidenceCopyMarkers.Where(c => c.PurposeId == purpose.Id && c.Kind == receipt.Kind
                 && c.KeyHash == receipt.KeyHash && c.VerifiedRemovedAt == null).ToListAsync(ct);
-            foreach (var old in prior)
-            {
-                MarkUnavailable(old, Now, Now);
-                await InvalidateDependentsAsync(old.Id, Now, ct);
-            }
-            // Persist the original loss clock before physical DELETE triggers observe it.
-            // Both writes remain inside this transaction and roll back together on failure.
-            if (prior.Count != 0)
-            {
-                await db.SaveChangesAsync(ct);
-                await RemovePhysicalAsync(prior.Select(c => c.Id).ToArray(), ct);
-                foreach (var old in prior) old.VerifiedRemovedAt = Now;
-            }
+            await RetireReplacedCopiesAsync(prior, ct);
             await StageBatchAsync(marker, purpose, batch, receipt, ct);
             db.EvidenceCopyMarkers.Add(marker);
             foreach (var source in receipt.Sources)
@@ -602,12 +590,7 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
             var oldMarker = await db.EvidenceCopyMarkers.SingleOrDefaultAsync(c => c.Id == old.EvidenceCopyId, ct)
                 ?? throw new EvidenceCopyUnavailableException();
             if (oldMarker.KeyHash != marker.KeyHash) throw new EvidenceCopyUnavailableException();
-            MarkUnavailable(oldMarker, Now, Now);
-            await InvalidateDependentsAsync(oldMarker.Id, Now, ct);
-            await db.SaveChangesAsync(ct);
-            await RemovePhysicalAsync([oldMarker.Id], ct);
-            oldMarker.VerifiedRemovedAt = Now;
-            db.Entry(old).State = EntityState.Detached;
+            await RetireReplacedCopiesAsync([oldMarker], ct);
         }
         copy.ReadingRevision = marker.Version;
         copy.PreparationPurposeId = receipt.PurposeId;
@@ -657,6 +640,46 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 await InvalidateDependentsAsync(copy.Id, Now, ct);
             }
         }
+    }
+
+    /// <summary>Retire caller-selected replacement copies inside the caller's coordinated transaction.
+    /// Selection, replacement staging and purpose-version advancement remain with the caller.
+    /// Loss is durable before physical-delete fences run; removal receipts join the caller's final save.
+    /// Cleanup and retained-payload rebinding have separate protocols and do not use this operation.</summary>
+    internal async Task RetireReplacedCopiesAsync(IReadOnlyCollection<EvidenceCopyMarker> replaced, CancellationToken ct)
+    {
+        if (replaced.Count == 0) return;
+        var tracked = db.ChangeTracker.Entries<EvidenceCopyMarker>().ToDictionary(e => e.Entity.Id, e => e.Entity);
+        var copies = new Dictionary<Guid, EvidenceCopyMarker>();
+        var lossAt = Now;
+        foreach (var selected in replaced)
+        {
+            if (!tracked.TryGetValue(selected.Id, out var copy))
+            {
+                copy = selected;
+                db.EvidenceCopyMarkers.Attach(copy);
+                tracked.Add(copy.Id, copy);
+            }
+            else
+            {
+                // A no-tracking selection must not overwrite pending changes on an attached marker.
+                if (selected.UnavailableAt is { } loss) copy.UnavailableAt = Earliest(copy.UnavailableAt, loss);
+                if (selected.RemovalDueAt is { } due) copy.RemovalDueAt = Earliest(copy.RemovalDueAt, due);
+                if (selected.VerifiedRemovedAt is { } removal) copy.VerifiedRemovedAt = removal;
+            }
+            MarkUnavailable(copy, lossAt, lossAt);
+            copies[copy.Id] = copy;
+        }
+        var ids = copies.Keys.ToArray();
+        // Also merges any earlier persisted clocks left by raw SQL or another context.
+        await InvalidateDependentsAsync(ids, lossAt, ct);
+        await db.SaveChangesAsync(ct);
+        await RemovePhysicalAsync(ids, ct);
+        // Bulk deletion bypasses EF tracking; retired classified rows must not be saved again.
+        foreach (var entry in db.ChangeTracker.Entries<ClassifiedCarPercentileResult>()
+                     .Where(e => ids.Contains(e.Entity.EvidenceCopyId ?? Guid.Empty)).ToArray())
+            entry.State = EntityState.Detached;
+        foreach (var copy in copies.Values) copy.VerifiedRemovedAt = Now;
     }
 
     internal async Task RemovePhysicalAsync(Guid[] ids, CancellationToken ct)

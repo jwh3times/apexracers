@@ -286,7 +286,6 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
                 if (old is not null)
                 {
                     if (oldMarker is null) throw new EvidenceCopyUnavailableException();
-                    EvidenceCopyLifecycle.MarkUnavailable(oldMarker, Now, Now);
                     removed.Add(oldMarker);
                 }
                 if (!eligible) continue;
@@ -313,26 +312,7 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
                 var observedCars = discover ? await DiscoverCarsAsync(users, owner, selection, seriesId, weeks, windows, ct) : null;
                 await transaction.CommitAsync(ct); return new(0, purpose.EvidenceVersion, observedCars);
             }
-            if (removed.Count > 0)
-            {
-                var tracked = db.ChangeTracker.Entries<EvidenceCopyMarker>().ToDictionary(e => e.Entity.Id);
-                foreach (var marker in removed)
-                {
-                    if (tracked.TryGetValue(marker.Id, out var entry)) entry.CurrentValues.SetValues(marker);
-                    else db.EvidenceCopyMarkers.Attach(marker).State = EntityState.Modified;
-                }
-                var ids = removed.Select(m => m.Id).ToArray();
-                await copies.InvalidateDependentsAsync(ids, Now, ct);
-                await db.SaveChangesAsync(ct); // Original loss metadata precedes physical DELETE fences.
-                await copies.RemovePhysicalAsync(ids, ct);
-                foreach (var entry in db.ChangeTracker.Entries<ClassifiedCarPercentileResult>().Where(e => ids.Contains(e.Entity.EvidenceCopyId ?? Guid.Empty)).ToArray())
-                    entry.State = EntityState.Detached;
-                foreach (var marker in removed)
-                {
-                    var attached = db.EvidenceCopyMarkers.Local.Single(m => m.Id == marker.Id);
-                    attached.VerifiedRemovedAt = Now;
-                }
-            }
+            await copies.RetireReplacedCopiesAsync(removed, ct);
             // SQL physical-delete fences may independently advance the purpose. Reload, then one
             // logical application advance, keeping EVERY reading stamped with the original receipt.
             await db.Entry(purpose).ReloadAsync(ct);

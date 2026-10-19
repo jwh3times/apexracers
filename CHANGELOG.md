@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Centralize copy retirement for ordinary and classified replacements and percentile refresh, keeping original clocks, descendant invalidation, physical removal and tracking reconciliation together inside the existing copy lifecycle.
 
 ## [15.1.4] - 2026-10-18
 
