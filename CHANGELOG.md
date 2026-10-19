@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.5] - 2026-10-19
+
+### Changed
+
+- Centralize copy retirement for ordinary and classified replacements and percentile refresh, keeping original clocks, descendant invalidation, physical removal and tracking reconciliation together inside the existing copy lifecycle.
+
 ## [15.1.4] - 2026-10-18
 
 ### Security
@@ -1823,7 +1829,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.5...HEAD
+[15.1.5]: https://github.com/jwh3times/apexracers/compare/v15.1.4...v15.1.5
 [15.1.4]: https://github.com/jwh3times/apexracers/compare/v15.1.3...v15.1.4
 [15.1.3]: https://github.com/jwh3times/apexracers/compare/v15.1.2...v15.1.3
 [15.1.2]: https://github.com/jwh3times/apexracers/compare/v15.1.1...v15.1.2

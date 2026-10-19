@@ -356,6 +356,42 @@ public sealed class PrivateUploadLifecycleTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
+    public async Task ClassifiedBatchReplacementAcrossPurposesRetiresOnlyTheSelectedOldIdentity()
+    {
+        await using var f = await CreateAsync();
+        var owner = await f.GrantAsync();
+        await f.UploadAsync(90);
+        var week = await FieldAsync(f);
+        await f.Uploads.CalculatePercentileAsync(owner, week, 99, Ct);
+        var old = await f.Db.ClassifiedCarPercentileResults.SingleAsync(Ct);
+        var oldMarker = await f.Db.EvidenceCopyMarkers.SingleAsync(m => m.Id == old.EvidenceCopyId, Ct);
+        var sources = await f.Db.EvidenceCopyDependencies.Where(d => d.CopyId == old.EvidenceCopyId)
+            .Select(d => new EvidenceSourceVersion(d.SourceCopyId, d.SourceVersion)).ToArrayAsync(Ct);
+        var copies = new EvidenceCopyLifecycle(f.Db, f.Clock, f.Journal);
+        var purpose = await copies.OpenSyntheticPurposeAsync(EvidencePurposeKind.Personal, access: owner, ct: Ct);
+        Assert.NotEqual(old.PreparationPurposeId, purpose);
+        var receipt = await copies.CaptureAsync(purpose, EvidenceCopyKind.PersonalDerivative,
+            ClassifiedPercentileContract.Key(old), sources, Ct);
+        var replacement = new ClassifiedCarPercentileResult();
+        f.Db.Entry(replacement).CurrentValues.SetValues(old);
+        replacement.Id = Guid.NewGuid();
+
+        var committed = await copies.CommitAsync(receipt, new ClassifiedPercentileBatch(replacement), Ct);
+
+        Assert.Equal(EntityState.Detached, f.Db.Entry(old).State);
+        var kept = Assert.Single(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().AsNoTracking().ToListAsync(Ct));
+        Assert.Equal(replacement.Id, kept.Id);
+        Assert.Equal(committed.CopyId, kept.EvidenceCopyId);
+        Assert.Equal(purpose, kept.PreparationPurposeId);
+        var retired = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == oldMarker.Id, Ct);
+        Assert.Equal(oldMarker.OriginalAcquiredAt, retired.OriginalAcquiredAt);
+        Assert.NotNull(retired.UnavailableAt);
+        Assert.NotNull(retired.VerifiedRemovedAt);
+        Assert.Equal(5, await f.Db.SubsessionResults.CountAsync(Ct));
+        Assert.Single(await f.Db.PrivateUploadSessions.ToListAsync(Ct));
+    }
+
+    [Fact]
     public async Task ClassifiedBatchCannotReuseAnotherSelectionKeyOrOverwriteOriginalOwnerHistory()
     {
         await using var f = await CreateAsync();

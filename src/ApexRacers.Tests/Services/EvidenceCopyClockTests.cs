@@ -203,6 +203,61 @@ public sealed class EvidenceCopyClockTests(PostgreSqlFixture postgres)
         await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => lifecycle.CommitAsync(stale, Cache(stale, TimeSpan.FromDays(30)), Ct));
     }
 
+    [Fact]
+    public async Task FailedReplacementAfterPhysicalDeleteRollsBackPayloadLossAndRemovalReceipt()
+    {
+        var failure = new FailedReplacement();
+        await using var db = await CreateAsync(failure);
+        var clock = new CopyClock(TimeProvider.System.GetUtcNow().AddHours(-1));
+        var lifecycle = new EvidenceCopyLifecycle(db, clock);
+        var purpose = await lifecycle.OpenSyntheticPurposeAsync(ct: Ct);
+        var receipt = await lifecycle.CaptureAsync(purpose, EvidenceCopyKind.MappedCache, "replacement-rollback", ct: Ct);
+        var original = await lifecycle.CommitAsync(receipt, Cache(receipt, TimeSpan.FromDays(1)), Ct);
+        var before = await db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == original.CopyId, Ct);
+        clock.Advance(TimeSpan.FromMinutes(1));
+        var replacement = await lifecycle.CaptureAsync(purpose, EvidenceCopyKind.MappedCache, "replacement-rollback", ct: Ct);
+        failure.Armed = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => lifecycle.CommitAsync(replacement,
+            Cache(replacement, TimeSpan.FromDays(1)), Ct));
+
+        Assert.True(failure.Reached);
+        Assert.Empty(db.ChangeTracker.Entries());
+        await db.SaveChangesAsync(Ct); // No abandoned retirement can leak into a subsequent save.
+        var rolledBack = await db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == original.CopyId, Ct);
+        Assert.Equal(before.UnavailableAt, rolledBack.UnavailableAt);
+        Assert.Equal(before.RemovalDueAt, rolledBack.RemovalDueAt);
+        Assert.Null(rolledBack.VerifiedRemovedAt);
+        Assert.Equal(original.CopyId, Assert.Single(await db.ExternalDataCaches.IgnoreQueryFilters().ToListAsync(Ct)).EvidenceCopyId);
+
+        var next = await lifecycle.CommitAsync(replacement, Cache(replacement, TimeSpan.FromDays(1)), Ct);
+        var retired = await db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == original.CopyId, Ct);
+        Assert.Equal(before.OriginalAcquiredAt, retired.OriginalAcquiredAt);
+        Assert.Equal(before.ExpiresAt, retired.ExpiresAt);
+        Assert.Equal(clock.GetUtcNow(), retired.UnavailableAt);
+        Assert.Equal(clock.GetUtcNow(), retired.RemovalDueAt);
+        Assert.Equal(clock.GetUtcNow(), retired.VerifiedRemovedAt);
+        Assert.Equal(next.CopyId, Assert.Single(await db.ExternalDataCaches.IgnoreQueryFilters().ToListAsync(Ct)).EvidenceCopyId);
+    }
+
+    private sealed class FailedReplacement : DbCommandInterceptor
+    {
+        public bool Armed { get; set; }
+        public bool Reached { get; private set; }
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            // Mapped payload deletion precedes this statement in physical removal.
+            if (Armed && command.CommandText.Contains("DELETE") && command.CommandText.Contains("RaceEvidenceResults"))
+            {
+                Armed = false;
+                Reached = true;
+                throw new InvalidOperationException("Controlled replacement failure after mapped deletion.");
+            }
+            return ValueTask.FromResult(result);
+        }
+    }
+
     private sealed class FailedErasure : DbCommandInterceptor
     {
         public bool Armed { get; set; }

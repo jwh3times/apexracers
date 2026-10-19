@@ -100,6 +100,17 @@ replaces the loss-propagation function without rewriting stored rows; recovery r
 `EvidenceCopyLifecycle` owns typed preparation receipts, atomic closed batches, original clocks,
 grant/journal checks, durable withdrawal, dependency invalidation and verified live erasure. Copy
 markers remain after physical deletion so a retry cannot reuse a forgotten key generation.
+
+Replacement retirement is concentrated in `EvidenceCopyLifecycle.RetireReplacedCopiesAsync`.
+Ordinary copy commit, exact classified-identity replacement and batched percentile refresh select
+obsolete markers and retain their existing transactions and coordination. The shared operation
+reconciles tracked/untracked markers without overwriting pending metadata, preserves earliest loss
+and deadlines, invalidates descendants, persists loss before physical-delete fences, removes physical
+copies, detaches retired classified rows and stages verified-removal receipts for the enclosing final
+save. Purpose reload and version advancement remain with the enclosing replacement. Cleanup,
+schedule BoP accounting, synthetic payload rebinding and upload restoration retain their separate
+protocols. This refactor adds no schema, adapter or Live authorization.
+
 `SyntheticEvidenceWriter` binds a preview session before work, records contributing Field versions
 before derivative calculations, checks the complete prepared source set at commit, and becomes
 unusable after failure. `OpenMappedAsync` skips unrelated legacy/classified Field discovery only
