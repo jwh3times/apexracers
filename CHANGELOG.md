@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Centralize Demo history admission for analytics, percentile calculation and car recommendations while preserving caller-specific unavailable results, transient Driver lookups and injected lifecycle dependencies.
 
 ## [15.1.8] - 2026-10-20
 

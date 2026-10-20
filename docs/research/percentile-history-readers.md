@@ -49,6 +49,23 @@ renews acquisition/retention clocks or falls back to unclassified history. No mi
 The Seeder's legacy claim-based percentile compatibility step is removed; fresh seed production is
 classified only. Old rows remain preserved, excluded and subject to existing cleanup.
 
+## Demo caller admission
+
+`Api.Services.DemoHistoryAccess` owns the common Demo-history entry path for analytics,
+percentile calculation and car recommendations. It checks the DbContext's Demo provenance,
+the explicit caller User, the current `SubjectDriverContext` resolution and, when supplied,
+the requested Customer ID before invoking discovered history. Stored claims and arbitrary
+Driver IDs do not select an owner. The module uses each caller's injected Subject Driver
+resolver and refresh module; standalone construction defaults remain inside this module.
+
+A null result means Demo history did not apply before admission. Analytics returns an empty
+result in that case; calculation and recommendations retain their transient public-Field
+lookup. An admitted empty snapshot stays on the history path. Resolver and refresh failures,
+including cancellation, propagate rather than selecting a fallback. Canonical evidence selection
+and Series scope pass through to `PercentileRefresh`, which retains ownership of source
+eligibility, acquisition clocks, the Demo session gate and snapshot witnesses. Personal protected
+publication and ordinary startup's unavailable Live adapters remain independent.
+
 ## Coherent projection and browser display
 
 Percentile calculation, recommendations, Week Detail and Strategy resolve their current Season and

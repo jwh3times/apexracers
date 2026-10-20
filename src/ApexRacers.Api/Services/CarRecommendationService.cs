@@ -10,6 +10,8 @@ namespace ApexRacers.Api.Services;
 public class CarRecommendationService(AppDbContext db, SubjectDriverContext? subjects = null,
     PercentileRefresh? refresh = null)
 {
+    private DemoHistoryAccess History { get; } = new(db, subjects, refresh);
+
     // Direct Driver lookup is deliberately transient. Only the explicit authenticated-User
     // overload can refresh personal history; claims never recover a User identity.
     public Task<List<CarRecommendationDto>> GetRecommendationsAsync(int seriesId, int raceWeekIndex,
@@ -19,13 +21,8 @@ public class CarRecommendationService(AppDbContext db, SubjectDriverContext? sub
     public async Task<List<CarRecommendationDto>> GetRecommendationsAsync(int seriesId, int raceWeekIndex,
         long customerId, PersonalBestEvidence evidence, Guid? callerUserId, CancellationToken ct = default)
     {
-        var subjectContext = subjects ?? new SubjectDriverContext(db, new FeatureFlagEligibility(db));
-        if (callerUserId is { } userId && db.Provenance == DataProvenance.Demo
-            && (await subjectContext.GetSubjectDriverAsync(userId, ct)) is
-                { Provenance: DataProvenance.Demo } subject && subject.CustomerId == customerId)
+        if (await History.ReadAsync(callerUserId, evidence, seriesId, customerId, ct) is { } snapshot)
         {
-            var snapshot = await (refresh ?? new PercentileRefresh(db, TimeProvider.System,
-                new UnavailableDriverEnforcementJournal())).ReadDemoHistoryAsync(userId, evidence.Selection, seriesId, ct);
             var week = PercentileHistoryView.CurrentWeek(snapshot, seriesId, raceWeekIndex);
             if (week is null) return [];
             var averages = snapshot.Readings.Where(r => r.SeriesId == seriesId && r.WeekStartDate <= week.StartDate

@@ -10,6 +10,8 @@ namespace ApexRacers.Api.Services;
 public class PercentileCalculationService(
     AppDbContext db, SubjectDriverContext subjectDriverContext, WorldRecordService? worldRecords = null, PercentileRefresh? refresh = null)
 {
+    private DemoHistoryAccess History { get; } = new(db, subjectDriverContext, refresh);
+
     public async Task<PercentileResultDto?> ComputeAndCacheAsync(
         int seriesId,
         int raceWeekIndex,
@@ -19,12 +21,8 @@ public class PercentileCalculationService(
         Guid? callerUserId = null,
         CancellationToken ct = default)
     {
-        if (callerUserId is { } userId && db.Provenance == DataProvenance.Demo
-            && (await subjectDriverContext.GetSubjectDriverAsync(userId, ct)) is
-                { Provenance: DataProvenance.Demo } subject && subject.CustomerId == customerId)
+        if (await History.ReadAsync(callerUserId, evidence, seriesId, customerId, ct) is { } snapshot)
         {
-            var snapshot = await (refresh ?? new PercentileRefresh(db, TimeProvider.System,
-                new UnavailableDriverEnforcementJournal())).ReadDemoHistoryAsync(userId, evidence.Selection, seriesId, ct);
             var week = PercentileHistoryView.CurrentWeek(snapshot, seriesId, raceWeekIndex);
             if (week is null) return null;
             var reading = snapshot.Readings.SingleOrDefault(r => r.WeekId == week.WeekId && r.CarId == carId);
