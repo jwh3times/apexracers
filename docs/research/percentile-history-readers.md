@@ -35,8 +35,16 @@ than silently extending it. Catalog contention refuses the read without retrying
 
 The snapshot retains the resulting purpose version after its own commit, plus original authority,
 source and catalog witnesses. `SnapshotCurrentAsync` checks those original witnesses again; it does
-not bless a changed snapshot through a fresh capture. Unchanged history reads reuse valid classified
-rows, markers and original source clocks. Explicit refresh remains replacement; neither operation
+not bless a changed snapshot through a fresh capture. Commit and final currentness checks use one
+private `HistoryWitness` and `RequireCurrentWitnessAsync` implementation inside `PercentileRefresh`,
+under the same advisory/catalog lock ordering. Explicit matrices validate only their requested
+Weeks, complete-calendar window dependencies and full target source sets; discovered histories
+validate the complete original catalog, discovered Car universe and labels as well. A null discovery
+set denotes an explicit matrix; an empty discovered set still participates in full validation.
+Only the snapshot's own resulting purpose version and post-commit discovery set advance; original
+owner authority, source inputs, catalog and acquisition time remain captured. Commit refusal still
+throws; a failed held-snapshot check returns false. Protected currentness remains PostgreSQL-only.
+Unchanged history reads reuse valid classified rows, markers and original source clocks. Explicit refresh remains replacement; neither operation
 renews acquisition/retention clocks or falls back to unclassified history. No migration is added.
 The Seeder's legacy claim-based percentile compatibility step is removed; fresh seed production is
 classified only. Old rows remain preserved, excluded and subject to existing cleanup.
