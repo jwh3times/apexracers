@@ -103,11 +103,7 @@ function SeriesCard({ s }: { s: Series }) {
   );
 
   if (active) {
-    return (
-      <Link to={`/series/${s.id}/weeks/${s.currentRaceWeekIndex}`} aria-label={s.name}>
-        {inner}
-      </Link>
-    );
+    return <Link to={`/series/${s.id}/weeks/${s.currentRaceWeekIndex}`}>{inner}</Link>;
   }
 
   return <div>{inner}</div>;
