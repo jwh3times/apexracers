@@ -19,6 +19,167 @@ public class PercentileHistoryCharacterizationTests(PostgreSqlFixture fixture)
     private static readonly PersonalBestEvidence Uploaded = PersonalBestEvidence.FromRequest(true, null);
     private static readonly PersonalBestEvidence RaceOnly = PersonalBestEvidence.OfficialRaceLapsOnly;
 
+    [Theory]
+    [InlineData("no-caller")]
+    [InlineData("unknown-user")]
+    [InlineData("other-driver")]
+    [InlineData("disabled-demo")]
+    public async Task IneligibleHistoryRetainsCallerSpecificFallbackWithoutClassifiedWrites(string refusal)
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        if (refusal == "disabled-demo")
+        {
+            (await db.FeatureFlags.SingleAsync(Ct)).IsEnabled = false;
+            await db.SaveChangesAsync(Ct);
+        }
+        Guid? caller = refusal switch
+        {
+            "no-caller" => null,
+            "unknown-user" => Guid.NewGuid(),
+            _ => graph.UserId
+        };
+        var customerId = refusal == "other-driver" ? 1000 : graph.CustomerId;
+        var result = await Calculator(db).ComputeAndCacheAsync(1, 0, 1, customerId, Uploaded, caller, Ct);
+        Assert.Equal(refusal == "other-driver" ? 90 : 50, result!.PercentileRank);
+        Assert.Equal(LapEvidence.RaceLap, result.YourBestLapEvidence);
+        var recommendation = Assert.Single(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, customerId, Uploaded, caller, Ct));
+        Assert.Null(recommendation.ExpectedPercentile);
+        Assert.Equal(result.PercentileRank, recommendation.PercentileRank);
+        if (refusal is "unknown-user" or "disabled-demo")
+            Assert.Empty(await new UserAnalyticsService(db).GetAnalyticsAsync(caller!.Value, 1, Uploaded, Ct));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task SelectedUnavailableSubjectScopePropagatesBeforeHistoryOrTransientFallback()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        var subjects = new SubjectDriverContext(db, new FeatureFlagEligibility(db),
+            new IRacingDataScope(DataProvenance.Unknown));
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
+            new UserAnalyticsService(db, subjects).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
+            new PercentileCalculationService(db, subjects).ComputeAndCacheAsync(
+                1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        await Assert.ThrowsAsync<IRacingNotConfiguredException>(() =>
+            new CarRecommendationService(db, subjects).GetRecommendationsAsync(
+                1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task RealNamespaceShortCircuitsUnavailableSubjectResolver()
+    {
+        await using var db = await fixture.CreateDbContextAsync(Ct);
+        var graph = await SeedAsync(db);
+        var subjects = new SubjectDriverContext(db, new FeatureFlagEligibility(db),
+            new IRacingDataScope(DataProvenance.Unknown));
+        Assert.Empty(await new UserAnalyticsService(db, subjects).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+        Assert.NotNull(await new PercentileCalculationService(db, subjects).ComputeAndCacheAsync(
+            1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Single(await new CarRecommendationService(db, subjects).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task SelectedDemoScopeOverridesDisabledFlagAndInjectedRefreshClockIsPreserved()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        (await db.FeatureFlags.SingleAsync(Ct)).IsEnabled = false;
+        (await db.Users.SingleAsync(Ct)).IRacingCustomerId = null;
+        await db.SaveChangesAsync(Ct);
+        var subjects = new SubjectDriverContext(db, new FeatureFlagEligibility(db),
+            new IRacingDataScope(DataProvenance.Demo));
+        var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 60);
+        var refresh = new PercentileRefresh(db, new FrozenClock(now), new UnavailableDriverEnforcementJournal());
+        var result = await new PercentileCalculationService(db, subjects, refresh: refresh).ComputeAndCacheAsync(
+            1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct);
+        Assert.Equal(now, result!.ComputedAt);
+        var recommendation = Assert.Single(await new CarRecommendationService(db, subjects, refresh)
+            .GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Equal(result.PercentileRank, recommendation.ExpectedPercentile);
+        Assert.Single(await new UserAnalyticsService(db, subjects, refresh).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+        Assert.Equal(now, Assert.Single(await db.ClassifiedCarPercentileResults.AsNoTracking().ToListAsync(Ct)).ComputedAt);
+    }
+
+    [Fact]
+    public async Task CallerCancellationPropagatesAcrossAllDemoReaders()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new UserAnalyticsService(db)
+            .GetAnalyticsAsync(graph.UserId, 1, RaceOnly, cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Calculator(db).ComputeAndCacheAsync(
+            1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new CarRecommendationService(db)
+            .GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, graph.UserId, cancellation.Token));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task AdmittedEmptyHistoryDoesNotRunTransientFieldQueries()
+    {
+        var options = await fixture.CreateOptionsAsync(Ct, new RejectTransientFieldRead());
+        await using var db = new AppDbContext(options, new IRacingDataScope(DataProvenance.Demo));
+        DbContextFactory.InstallStoredEvidenceFixtures(db);
+        db.FeatureFlags.Add(new() { Key = "iracing-demo", Name = "Synthetic preview", IsEnabled = true, MinimumRole = "Standard" });
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        var writer = await SyntheticEvidenceWriter.OpenAsync(db, Ct);
+        db.SubsessionResults.RemoveRange(await db.SubsessionResults.ToListAsync(Ct));
+        await writer.SaveChangesAsync(Ct);
+        // Prove this guard sees the production transient query, even over an empty Field.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Calculator(db).ComputeAndCacheAsync(
+            1, 0, 1, graph.CustomerId, RaceOnly, ct: Ct));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new CarRecommendationService(db)
+            .GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, Ct));
+        Assert.Null(await Calculator(db).ComputeAndCacheAsync(1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Empty(await new CarRecommendationService(db).GetRecommendationsAsync(
+            1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        Assert.Empty(await new UserAnalyticsService(db).GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+    }
+
+    [Fact]
+    public async Task AdmittedHistoryRefreshFailurePropagatesInsteadOfReadingTransientField()
+    {
+        await using var db = await DemoAsync();
+        var graph = await SeedAsync(db, DemoData.DriverCustId);
+        await db.EvidenceCopyMarkers.Where(m => m.Kind == EvidenceCopyKind.OfficialField)
+            .ExecuteUpdateAsync(u => u.SetProperty(m => m.ExpiresAt, DateTimeOffset.UtcNow.AddMinutes(-1)), Ct);
+        // Legacy query availability alone is not sufficient for classified refresh admission.
+        Assert.Equal(5, await db.SubsessionResults.CountAsync(Ct));
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => Calculator(db).ComputeAndCacheAsync(
+            1, 0, 1, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new CarRecommendationService(db)
+            .GetRecommendationsAsync(1, 0, graph.CustomerId, RaceOnly, graph.UserId, Ct));
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() => new UserAnalyticsService(db)
+            .GetAnalyticsAsync(graph.UserId, 1, RaceOnly, Ct));
+        Assert.Empty(await db.ClassifiedCarPercentileResults.ToListAsync(Ct));
+    }
+
+    private sealed class RejectTransientFieldRead : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("GROUP BY", StringComparison.Ordinal)
+                && command.CommandText.Contains("\"RaceEvidenceResults\"", StringComparison.Ordinal))
+                throw new InvalidOperationException("An admitted empty history must not enter transient Field queries.");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class FrozenClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
     [Fact]
     public async Task RealClaimAndQuarantineCannotCreateOrMixPersonalHistory()
     {

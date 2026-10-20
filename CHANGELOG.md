@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.9] - 2026-10-20
+
+### Changed
+
+- Centralize Demo history admission for analytics, percentile calculation and car recommendations while preserving caller-specific unavailable results, transient Driver lookups and injected lifecycle dependencies.
+
 ## [15.1.8] - 2026-10-20
 
 ### Changed
@@ -1855,7 +1861,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.8...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.9...HEAD
+[15.1.9]: https://github.com/jwh3times/apexracers/compare/v15.1.8...v15.1.9
 [15.1.8]: https://github.com/jwh3times/apexracers/compare/v15.1.7...v15.1.8
 [15.1.7]: https://github.com/jwh3times/apexracers/compare/v15.1.6...v15.1.7
 [15.1.6]: https://github.com/jwh3times/apexracers/compare/v15.1.5...v15.1.6
