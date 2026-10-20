@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Centralize percentile-history witness validation for refresh commits and held snapshots while preserving explicit-matrix scope, complete discovery, original authority and source evidence, and post-commit currentness.
 
 ## [15.1.6] - 2026-10-19
 
