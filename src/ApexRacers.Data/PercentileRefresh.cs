@@ -85,6 +85,13 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
     private sealed record Preparation(Guid PurposeId, long Generation, long Version, DateTimeOffset AcquiredAt);
     private sealed record Cell(Guid WeekId, int CarId, RefreshedPercentile Reading, EvidenceSourceVersion[] Sources);
 
+    // Original prepared evidence, private to this module. Null DiscoveryCars means an explicit
+    // matrix; an empty array still witnesses a complete discovered universe with no Cars.
+    private sealed record HistoryWitness(Guid[] Users, DriverAccess? Owner, PercentileSelection Selection,
+        int? SeriesId, Catalog Catalog, List<CarInput> CarNames, WeekInput[] Weeks, int[] Cars,
+        Dictionary<Guid, RaceWeekWindow> Windows, Preparation Preparation, Inputs Inputs,
+        EvidenceSourceVersion[] Sources, int[]? DiscoveryCars);
+
     private async Task<RefreshOutcome> RefreshAsync(IReadOnlyCollection<Guid> requestedUsers, DriverAccess? owner,
         PercentileSelection selection, int? seriesId, IReadOnlyCollection<Guid> requestedWeeks,
         IReadOnlyCollection<int> requestedCars, bool idempotent, bool discover, CancellationToken ct)
@@ -126,17 +133,24 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
         var cells = Calculate(before, owner?.Scope.CustomerId ?? checked((int)DemoData.DriverCustId), users[0], selection,
             weeks, cars, windows);
         arithmetic.Stop();
-        var committed = await CommitAsync(users, owner, selection, seriesId, catalog, carNames, weeks, cars, windows, preparation, before, cells, idempotent, discover, ct);
+        var witness = new HistoryWitness(users, owner, selection, seriesId, catalog, carNames, weeks, cars,
+            windows, preparation, before, cells.SelectMany(c => c.Sources).Distinct().ToArray(), discover ? cars : null);
+        var committed = await CommitAsync(witness, cells, idempotent, ct);
         var readings = users.SelectMany(userId => cells.Select(c => c.Reading with { UserId = userId })).ToArray();
         var batch = new PercentileRefreshBatch(readings, committed.ChangedRows, new(weekIds.Length == 0 || cars.Length == 0 ? 0 : owner is null ? 2 : 4,
             2 * (before.Fields.Count + before.Uploads.Count), arithmetic.Elapsed.TotalMilliseconds, wall.Elapsed.TotalMilliseconds));
         if (!discover) return new(batch);
-        var witness = preparation with { Version = committed.Version };
+        // Only this read's own commit version and resulting discovery set advance. Authority,
+        // source inputs, catalog and original acquisition time remain the prepared evidence.
+        var snapshotWitness = witness with
+        {
+            Preparation = preparation with { Version = committed.Version },
+            DiscoveryCars = committed.DiscoveredCars ?? cars
+        };
         var snapshot = new PercentileHistorySnapshot(owner?.Scope.CustomerId ?? checked((int)DemoData.DriverCustId), selection,
             batch.Readings, weeks.Select(w => new PercentileHistoryWeekMetadata(w.Id, w.SeasonId, w.SeriesId, w.SeriesName,
                 w.RaceWeekIndex, w.TrackId, w.TrackName, w.TrackConfigName, w.StartDate)), catalog.Seasons,
-            carNames.ToDictionary(c => c.Id, c => c.Name), token => CurrentSnapshotAsync(users, owner, selection, seriesId,
-                catalog, carNames, weeks, cars, committed.DiscoveredCars ?? cars, windows, witness, before, cells, token));
+            carNames.ToDictionary(c => c.Id, c => c.Name), token => CurrentSnapshotAsync(snapshotWitness, token));
         return new(batch, snapshot);
     }
 
@@ -200,50 +214,22 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
         return output.ToArray();
     }
 
-    private async Task<CommitOutcome> CommitAsync(Guid[] users, DriverAccess? owner, PercentileSelection selection, int? seriesId, Catalog originalCatalog, List<CarInput> carNames,
-        WeekInput[] weeks, int[] cars, Dictionary<Guid, RaceWeekWindow> windows, Preparation preparation,
-        Inputs before, Cell[] cells, bool idempotent, bool discover, CancellationToken ct)
+    private async Task<CommitOutcome> CommitAsync(HistoryWitness witness, Cell[] cells, bool idempotent, CancellationToken ct)
     {
+        var users = witness.Users;
+        var owner = witness.Owner;
+        var selection = witness.Selection;
+        var seriesId = witness.SeriesId;
+        var cars = witness.Cars;
+        var weekIds = witness.Weeks.Select(w => w.Id).ToArray();
+        var preparation = witness.Preparation;
+        var discover = witness.DiscoveryCars is not null;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
-            if (db.Database.IsNpgsql())
-            {
-                // Ordinary copy writers already own 370 before updating catalog/weather. Acquire
-                // that coordination first, then fail closed if an independent catalog writer owns
-                // a table mutation lock; waiting here could invert its weather-trigger lock order.
-                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({370L})", ct);
-                await db.Database.ExecuteSqlRawAsync("LOCK TABLE iracing.\"Series\", iracing.\"Seasons\", iracing.\"Weeks\", iracing.\"Tracks\", iracing.\"Cars\" IN SHARE MODE NOWAIT", ct);
-            }
-            else if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite") throw new EvidenceCopyUnavailableException();
+            await LockHistoryCatalogAsync(ct);
             var copies = new EvidenceCopyLifecycle(db, clock, journal);
-            var purpose = await copies.CurrentPurposeAsync(preparation.PurposeId, EvidenceCopyKind.PersonalDerivative, true, ct);
-            if (purpose.Generation != preparation.Generation || purpose.EvidenceVersion != preparation.Version
-                || purpose.Kind != (owner is null ? EvidencePurposeKind.SyntheticPreview : EvidencePurposeKind.Personal)
-                || owner is not null && (purpose.GrantId != owner.GrantId || purpose.GrantRevision != owner.Revision)
-                || await db.Users.CountAsync(u => users.Contains(u.Id), ct) != users.Length)
-                throw new EvidenceCopyUnavailableException();
-            var weekIds = weeks.Select(w => w.Id).ToArray();
-            var currentCatalog = await ReadCatalogAsync(seriesId, ct);
-            var calendar = currentCatalog.Weeks;
-            if (discover && !SameCatalog(originalCatalog, currentCatalog)) throw new EvidenceCopyUnavailableException();
-            if (!weeks.OrderBy(w => w.Id).SequenceEqual(calendar.Where(w => weekIds.Contains(w.Id)).OrderBy(w => w.Id)))
-                throw new EvidenceCopyUnavailableException();
-            var currentWindows = Windows(calendar);
-            if (weeks.Any(w => windows[w.Id] != currentWindows[w.Id])) throw new EvidenceCopyUnavailableException();
-            if (discover)
-            {
-                var discovered = await DiscoverCarsAsync(users, owner, selection, seriesId, weeks, windows, ct);
-                if (!cars.ToHashSet().SetEquals(discovered)) throw new EvidenceCopyUnavailableException();
-                var names = await db.Cars.AsNoTracking().Where(c => cars.Contains(c.Id)).Select(c => new CarInput(c.Id, c.Name)).ToListAsync(ct);
-                if (!carNames.OrderBy(c => c.Id).SequenceEqual(names.OrderBy(c => c.Id))) throw new EvidenceCopyUnavailableException();
-            }
-            // Re-read ALL current eligible inputs once under coordination, including every empty
-            // target. New Fields/uploads and removals cannot be hidden by filtering to old source IDs.
-            var current = await ReadInputsAsync(owner, selection, weekIds, cars, weeks, windows, ct);
-            if (!SameInputs(before, current)) throw new EvidenceCopyUnavailableException();
-            var sources = cells.SelectMany(c => c.Sources).Distinct().ToArray();
-            await copies.CheckSourcesAsync(sources, purpose, ct);
+            var purpose = await RequireCurrentWitnessAsync(witness, copies, ct);
             var kind = owner is null ? PercentileOwnerKind.DemoSubject : PercentileOwnerKind.Personal;
             var customerId = owner?.Scope.CustomerId ?? checked((int)DemoData.DriverCustId);
             var grantId = owner?.GrantId;
@@ -309,7 +295,7 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
             }
             if (changed == 0)
             {
-                var observedCars = discover ? await DiscoverCarsAsync(users, owner, selection, seriesId, weeks, windows, ct) : null;
+                var observedCars = discover ? await DiscoverCarsAsync(users, owner, selection, seriesId, witness.Weeks, witness.Windows, ct) : null;
                 await transaction.CommitAsync(ct); return new(0, purpose.EvidenceVersion, observedCars);
             }
             await copies.RetireReplacedCopiesAsync(removed, ct);
@@ -325,7 +311,7 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
                     { CopyId = marker.Id, SourceCopyId = s.CopyId, SourceVersion = s.Version }));
             }
             await db.SaveChangesAsync(ct);
-            var finalCars = discover ? await DiscoverCarsAsync(users, owner, selection, seriesId, weeks, windows, ct) : null;
+            var finalCars = discover ? await DiscoverCarsAsync(users, owner, selection, seriesId, witness.Weeks, witness.Windows, ct) : null;
             await transaction.CommitAsync(ct);
             return new(changed, purpose.EvidenceVersion, finalCars);
         }
@@ -388,29 +374,69 @@ public sealed class PercentileRefresh(AppDbContext db, TimeProvider clock, IDriv
         && left.Seasons.OrderBy(s => s.SeasonId).SequenceEqual(right.Seasons.OrderBy(s => s.SeasonId))
         && left.Weeks.OrderBy(w => w.Id).SequenceEqual(right.Weeks.OrderBy(w => w.Id));
 
-    private async Task<bool> CurrentSnapshotAsync(Guid[] users, DriverAccess? owner, PercentileSelection selection,
-        int? seriesId, Catalog catalog, List<CarInput> carNames, WeekInput[] weeks, int[] cars, int[] expectedDiscoveryCars,
-        Dictionary<Guid, RaceWeekWindow> windows, Preparation preparation, Inputs before, Cell[] cells, CancellationToken ct)
+    private async Task LockHistoryCatalogAsync(CancellationToken ct)
+    {
+        if (db.Database.IsNpgsql())
+        {
+            // Ordinary copy writers own 370 before catalog/weather changes. Fail closed on
+            // independent catalog contention rather than invert that ordering or retry inputs.
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({370L})", ct);
+            await db.Database.ExecuteSqlRawAsync("LOCK TABLE iracing.\"Series\", iracing.\"Seasons\", iracing.\"Weeks\", iracing.\"Tracks\", iracing.\"Cars\" IN SHARE MODE NOWAIT", ct);
+        }
+        else if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite") throw new EvidenceCopyUnavailableException();
+    }
+
+    /// <summary>Validate original evidence under the caller's transaction and catalog locks.
+    /// Both commit and final snapshot checks cross this internal seam; no preparation is recaptured.</summary>
+    private async Task<EvidencePurpose> RequireCurrentWitnessAsync(HistoryWitness witness, EvidenceCopyLifecycle copies, CancellationToken ct)
+    {
+        var owner = witness.Owner;
+        var preparation = witness.Preparation;
+        var users = witness.Users;
+        var weeks = witness.Weeks;
+        var purpose = await copies.CurrentPurposeAsync(preparation.PurposeId, EvidenceCopyKind.PersonalDerivative, true, ct);
+        if (purpose.Generation != preparation.Generation || purpose.EvidenceVersion != preparation.Version
+            || purpose.Kind != (owner is null ? EvidencePurposeKind.SyntheticPreview : EvidencePurposeKind.Personal)
+            || owner is not null && (purpose.GrantId != owner.GrantId || purpose.GrantRevision != owner.Revision)
+            || await db.Users.CountAsync(u => users.Contains(u.Id), ct) != users.Length)
+            throw new EvidenceCopyUnavailableException();
+        var weekIds = weeks.Select(w => w.Id).ToArray();
+        var currentCatalog = await ReadCatalogAsync(witness.SeriesId, ct);
+        if (witness.DiscoveryCars is { } expectedCars)
+        {
+            // Complete catalog equality also covers every descriptor and window dependency.
+            if (!SameCatalog(witness.Catalog, currentCatalog)) throw new EvidenceCopyUnavailableException();
+            var discovered = await DiscoverCarsAsync(users, owner, witness.Selection, witness.SeriesId, weeks, witness.Windows, ct);
+            if (!expectedCars.ToHashSet().SetEquals(discovered)) throw new EvidenceCopyUnavailableException();
+            var names = await db.Cars.AsNoTracking().Where(c => witness.Cars.Contains(c.Id))
+                .Select(c => new CarInput(c.Id, c.Name)).ToListAsync(ct);
+            if (!witness.CarNames.OrderBy(c => c.Id).SequenceEqual(names.OrderBy(c => c.Id))) throw new EvidenceCopyUnavailableException();
+        }
+        else
+        {
+            // An explicit matrix depends on its target Weeks and their complete-calendar windows,
+            // not unrelated catalog growth outside those dependencies.
+            var calendar = currentCatalog.Weeks;
+            if (!weeks.OrderBy(w => w.Id).SequenceEqual(calendar.Where(w => weekIds.Contains(w.Id)).OrderBy(w => w.Id)))
+                throw new EvidenceCopyUnavailableException();
+            var currentWindows = Windows(calendar);
+            if (weeks.Any(w => witness.Windows[w.Id] != currentWindows[w.Id])) throw new EvidenceCopyUnavailableException();
+        }
+        // Include complete eligible inputs and empty targets, not just previously known source IDs.
+        var current = await ReadInputsAsync(owner, witness.Selection, weekIds, witness.Cars, weeks, witness.Windows, ct);
+        if (!SameInputs(witness.Inputs, current)) throw new EvidenceCopyUnavailableException();
+        await copies.CheckSourcesAsync(witness.Sources, purpose, ct);
+        return purpose;
+    }
+
+    private async Task<bool> CurrentSnapshotAsync(HistoryWitness witness, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
             if (!db.Database.IsNpgsql()) return false; // Protected current-state evidence uses PostgreSQL.
-            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({370L})", ct);
-            await db.Database.ExecuteSqlRawAsync("LOCK TABLE iracing.\"Series\", iracing.\"Seasons\", iracing.\"Weeks\", iracing.\"Tracks\", iracing.\"Cars\" IN SHARE MODE NOWAIT", ct);
-            var copies = new EvidenceCopyLifecycle(db, clock, journal);
-            var purpose = await copies.CurrentPurposeAsync(preparation.PurposeId, EvidenceCopyKind.PersonalDerivative, true, ct);
-            if (purpose.Generation != preparation.Generation || purpose.EvidenceVersion != preparation.Version
-                || purpose.Kind != (owner is null ? EvidencePurposeKind.SyntheticPreview : EvidencePurposeKind.Personal)
-                || owner is not null && (purpose.GrantId != owner.GrantId || purpose.GrantRevision != owner.Revision)
-                || await db.Users.CountAsync(u => users.Contains(u.Id), ct) != users.Length) return false;
-            if (!SameCatalog(catalog, await ReadCatalogAsync(seriesId, ct))) return false;
-            if (!expectedDiscoveryCars.ToHashSet().SetEquals(await DiscoverCarsAsync(users, owner, selection, seriesId, weeks, windows, ct))) return false;
-            var names = await db.Cars.AsNoTracking().Where(c => cars.Contains(c.Id)).Select(c => new CarInput(c.Id, c.Name)).ToListAsync(ct);
-            if (!carNames.OrderBy(c => c.Id).SequenceEqual(names.OrderBy(c => c.Id))) return false;
-            var current = await ReadInputsAsync(owner, selection, weeks.Select(w => w.Id).ToArray(), cars, weeks, windows, ct);
-            if (!SameInputs(before, current)) return false;
-            await copies.CheckSourcesAsync(cells.SelectMany(c => c.Sources).Distinct().ToArray(), purpose, ct);
+            await LockHistoryCatalogAsync(ct);
+            await RequireCurrentWitnessAsync(witness, new EvidenceCopyLifecycle(db, clock, journal), ct);
             await transaction.CommitAsync(ct);
             return true;
         }

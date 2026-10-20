@@ -230,6 +230,113 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
         Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
     }
 
+    [Theory]
+    [InlineData(false, "car-label")]
+    [InlineData(true, "car-label")]
+    [InlineData(false, "source-addition")]
+    [InlineData(true, "source-addition")]
+    public async Task OriginalHistoryEvidenceIsCheckedAtCommitAndAgainForHeldSnapshot(bool heldSnapshot, string mutation)
+    {
+        await using var f = await CreateAsync(1, 1);
+        async Task MutateAsync()
+        {
+            await using var writer = f.Open();
+            var version = await writer.EvidencePurposes.Where(p => p.Id == EvidenceCopyLifecycle.PreviewPurposeId)
+                .Select(p => p.EvidenceVersion).SingleAsync(Ct);
+            if (mutation == "car-label")
+                await writer.Cars.Where(c => c.Id == 1).ExecuteUpdateAsync(u => u.SetProperty(c => c.Name, "Corrected Car"), Ct);
+            else
+            {
+                // A new independent source changes the input set without replacing an existing
+                // dependency or changing the history's own purpose version.
+                var copies = new EvidenceCopyLifecycle(writer, TimeProvider.System);
+                var receipt = await copies.CaptureAsync(f.FieldPurpose, EvidenceCopyKind.OfficialField, "arriving-field", ct: Ct);
+                await copies.CommitAsync(receipt, new OfficialFieldBatch(new() { Id = 1000, SeasonId = 1,
+                    RaceWeekIndex = 0, WeekId = f.Weeks[0], TrackId = 1, OfficialSession = true },
+                    [new() { SubsessionId = 1000, CustId = 9999, CarId = 1, CarClassId = 1, BestLapSeconds = 80 }]), Ct);
+            }
+            Assert.Equal(version, await writer.EvidencePurposes.Where(p => p.Id == EvidenceCopyLifecycle.PreviewPurposeId)
+                .Select(p => p.EvidenceVersion).SingleAsync(Ct));
+        }
+
+        if (heldSnapshot)
+        {
+            var snapshot = await f.Refresh.ReadDemoHistoryAsync(f.User, RaceOnly, ct: Ct);
+            Assert.True(await f.Refresh.SnapshotCurrentAsync(snapshot, Ct));
+            await MutateAsync();
+            Assert.False(await f.Refresh.SnapshotCurrentAsync(snapshot, Ct));
+            Assert.False(await f.Refresh.SnapshotCurrentAsync(snapshot, Ct));
+            Assert.Equal("Synthetic Car 1", snapshot.CarNames[1]);
+        }
+        else
+        {
+            var gate = new AfterSourceRead(MutateAsync, requireInputRead: true);
+            await using var reader = f.Open(gate);
+            await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() =>
+                new PercentileRefresh(reader, TimeProvider.System, new UnavailableDriverEnforcementJournal())
+                    .ReadDemoHistoryAsync(f.User, RaceOnly, ct: Ct));
+            Assert.True(gate.Reached);
+            Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnrelatedCalendarGrowthPreservesExplicitMatrixButRejectsCompleteDiscovery(bool discover)
+    {
+        await using var f = await CreateAsync(2, 1);
+        var gate = new AfterSourceRead(async () =>
+        {
+            await using var writer = f.Open();
+            writer.Weeks.Add(new() { Id = Guid.NewGuid(), SeasonId = 1, RaceWeekIndex = 2, TrackId = 1,
+                StartDate = new DateOnly(2026, 10, 15) });
+            await writer.SaveChangesAsync(Ct);
+        });
+        await using var reader = f.Open(gate);
+        var refresh = new PercentileRefresh(reader, TimeProvider.System, new UnavailableDriverEnforcementJournal());
+        if (discover)
+        {
+            await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() =>
+                refresh.ReadDemoHistoryAsync(f.User, RaceOnly, 1, Ct));
+            Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        }
+        else
+        {
+            // Week 0 still ends at Week 1's start; growth after Week 1 does not change
+            // the requested Week's descriptor, source set or fallback window.
+            var result = await refresh.RefreshDemoAsync(f.User, RaceOnly, 1, [f.Weeks[0]], [1], Ct);
+            Assert.Equal(f.Weeks[0], Assert.Single(result.Readings).WeekId);
+            Assert.True(result.Readings[0].IsPresentable);
+        }
+        Assert.True(gate.Reached);
+    }
+
+    [Fact]
+    public async Task ExplicitMatrixStillRejectsChangesToAnUnrequestedWeekThatBoundsItsWindow()
+    {
+        await using var f = await CreateAsync(2, 1);
+        var gate = new AfterSourceRead(async () =>
+        {
+            await using var writer = f.Open();
+            var version = await writer.EvidencePurposes.Where(p => p.Id == EvidenceCopyLifecycle.PreviewPurposeId)
+                .Select(p => p.EvidenceVersion).SingleAsync(Ct);
+            await writer.Weeks.Where(w => w.Id == f.Weeks[1])
+                .ExecuteUpdateAsync(u => u.SetProperty(w => w.StartDate, new DateOnly(2026, 10, 7)), Ct);
+            Assert.Equal(version, await writer.EvidencePurposes.Where(p => p.Id == EvidenceCopyLifecycle.PreviewPurposeId)
+                .Select(p => p.EvidenceVersion).SingleAsync(Ct));
+        }, requireInputRead: true);
+        await using var reader = f.Open(gate);
+        var refresh = new PercentileRefresh(reader, TimeProvider.System, new UnavailableDriverEnforcementJournal());
+
+        await Assert.ThrowsAsync<EvidenceCopyUnavailableException>(() =>
+            refresh.RefreshDemoAsync(f.User, RaceOnly, 1, [f.Weeks[0]], [1], Ct));
+
+        Assert.True(gate.Reached);
+        Assert.Equal(new DateOnly(2026, 10, 1), await f.Db.Weeks.Where(w => w.Id == f.Weeks[0]).Select(w => w.StartDate).SingleAsync(Ct));
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+    }
+
     [Fact]
     public async Task DiscoveredHistoryWitnessesAllSeriesWeeksLabelsAndOwnCommitVersion()
     {
@@ -689,12 +796,14 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
         protected override void Dispose(bool disposing) { if (disposing) inner.Dispose(); base.Dispose(disposing); }
         public override ValueTask DisposeAsync() => inner.DisposeAsync();
     }
-    private sealed class AfterSourceRead(Func<Task> action) : DbCommandInterceptor
+    private sealed class AfterSourceRead(Func<Task> action, bool requireInputRead = false) : DbCommandInterceptor
     {
         public bool Reached { get; private set; }
         public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData data, DbDataReader result, CancellationToken ct = default)
         {
-            if (!Reached && command.CommandText.Contains("FROM iracing.\"RaceEvidenceResults\"", StringComparison.Ordinal))
+            // Discovery also queries Race Evidence; this option waits for the actual input/marker join.
+            if (!Reached && command.CommandText.Contains("FROM iracing.\"RaceEvidenceResults\"", StringComparison.Ordinal)
+                && (!requireInputRead || command.CommandText.Contains("JOIN iracing.\"EvidenceCopyMarkers\"", StringComparison.Ordinal)))
             { Reached = true; await action(); }
             return result;
         }
