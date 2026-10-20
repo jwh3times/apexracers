@@ -73,7 +73,7 @@ describe('SeriesPage', () => {
     ]);
     renderPage();
     await waitFor(() => {
-      const link = screen.getByRole('link', { name: 'GT3 Cup' });
+      const link = screen.getByRole('link', { name: /GT3 Cup/ });
       expect(link).toHaveAttribute('href', '/series/1/weeks/5');
     });
   });
@@ -85,7 +85,7 @@ describe('SeriesPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText(/WK 1$/)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'GT3 Cup' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /GT3 Cup/ })).toHaveAttribute(
         'href',
         '/series/1/weeks/0'
       );
@@ -103,7 +103,7 @@ describe('SeriesPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('GT3 Cup')).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: 'GT3 Cup' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /GT3 Cup/ })).not.toBeInTheDocument();
     });
   });
 
@@ -123,6 +123,9 @@ describe('SeriesPage', () => {
     expect(screen.getByText('· Endurance')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument(); // car count
     expect(screen.getByText('3,456')).toBeInTheDocument(); // driver count, localized
+    expect(screen.getByRole('link', { name: /GT3 Cup/ })).toHaveAccessibleName(
+      /Sports Car\s*S10 · WK 6 GT3 Cup Spa\s*· Endurance Cars 12 Drivers 3,456 View week →/
+    );
   });
 
   it('filters by the search box and shows an empty state when nothing matches', async () => {

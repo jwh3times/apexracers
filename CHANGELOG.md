@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.8] - 2026-10-20
+
+### Changed
+
+- Update React and frontend testing dependencies, including the accessibility scanner.
+
+### Fixed
+
+- Let Series card links expose their full visible content as their accessible name.
+
 ## [15.1.7] - 2026-10-19
 
 ### Changed
@@ -1845,7 +1855,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.7...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.8...HEAD
+[15.1.8]: https://github.com/jwh3times/apexracers/compare/v15.1.7...v15.1.8
 [15.1.7]: https://github.com/jwh3times/apexracers/compare/v15.1.6...v15.1.7
 [15.1.6]: https://github.com/jwh3times/apexracers/compare/v15.1.5...v15.1.6
 [15.1.5]: https://github.com/jwh3times/apexracers/compare/v15.1.4...v15.1.5
