@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [15.1.6] - 2026-10-19
+
 ### Changed
 
 - Share physical-removal finalization between copy replacement and cleanup while preserving cleanup eligibility and original deadlines.
@@ -1835,7 +1839,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.5...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.6...HEAD
+[15.1.6]: https://github.com/jwh3times/apexracers/compare/v15.1.5...v15.1.6
 [15.1.5]: https://github.com/jwh3times/apexracers/compare/v15.1.4...v15.1.5
 [15.1.4]: https://github.com/jwh3times/apexracers/compare/v15.1.3...v15.1.4
 [15.1.3]: https://github.com/jwh3times/apexracers/compare/v15.1.2...v15.1.3
