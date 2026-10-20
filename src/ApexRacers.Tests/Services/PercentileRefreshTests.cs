@@ -99,6 +99,40 @@ public sealed class PercentileRefreshTests(PostgreSqlFixture postgres)
     }
 
     [Fact]
+    public async Task CleanupDetachesRetiredReadingsAndPreservesOriginalLossAndDeadlineAcrossLaterSave()
+    {
+        await using var f = await CreateAsync(2, 2);
+        await f.Refresh.RefreshDemoAsync(f.User, RaceOnly, 1, f.Weeks, [1, 2], Ct);
+        var readings = await f.Db.ClassifiedCarPercentileResults.ToListAsync(Ct);
+        var ids = readings.Select(r => r.EvidenceCopyId!.Value).ToArray();
+        var copies = new EvidenceCopyLifecycle(f.Db, TimeProvider.System);
+        await copies.EndPurposeAsync(EvidenceCopyLifecycle.PreviewPurposeId, DateTimeOffset.UtcNow, Ct);
+        var before = await f.Db.EvidenceCopyMarkers.AsNoTracking().Where(m => ids.Contains(m.Id)).ToListAsync(Ct);
+
+        var outcome = await copies.ReconcileAsync(Ct);
+
+        Assert.Equal(4, outcome.VerifiedRemoved);
+        Assert.Empty(await f.Db.ClassifiedCarPercentileResults.IgnoreQueryFilters().ToListAsync(Ct));
+        Assert.All(readings, reading => Assert.Equal(EntityState.Detached, f.Db.Entry(reading).State));
+        // Mutating a held reference after removal must not schedule an UPDATE of a deleted row.
+        foreach (var reading in readings) reading.PercentileRank = 60;
+        var user = await f.Db.Users.SingleAsync(u => u.Id == f.User, Ct);
+        user.DisplayName = "Updated after cleanup";
+        await f.Db.SaveChangesAsync(Ct);
+        Assert.Equal(0, (await copies.ReconcileAsync(Ct)).VerifiedRemoved);
+        foreach (var original in before)
+        {
+            var retired = await f.Db.EvidenceCopyMarkers.AsNoTracking().SingleAsync(m => m.Id == original.Id, Ct);
+            Assert.Equal(original.OriginalAcquiredAt, retired.OriginalAcquiredAt);
+            Assert.Equal(original.UnavailableAt, retired.UnavailableAt);
+            Assert.Equal(original.RemovalDueAt, retired.RemovalDueAt);
+            Assert.NotNull(retired.VerifiedRemovedAt);
+        }
+        Assert.Equal(4, await f.Db.Subsessions.CountAsync(Ct));
+        Assert.Equal(20, await f.Db.SubsessionResults.CountAsync(Ct));
+    }
+
+    [Fact]
     public async Task MultiCarMultiWeekBatchHasConstantSourceAndSelectQueriesAndOneOriginalPreparationStamp()
     {
         await using var f = await CreateAsync(2, 3);

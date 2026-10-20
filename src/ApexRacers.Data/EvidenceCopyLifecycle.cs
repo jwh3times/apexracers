@@ -232,13 +232,8 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
                 .Where(c => c.VerifiedRemovedAt is null && c.UnavailableAt is not null
                     && !(c.Kind == EvidenceCopyKind.PrivateUpload && c.RemovalDueAt >= c.UnavailableAt.Value.AddDays(90)
                         && Now < c.UnavailableAt.Value.AddDays(90))).ToArray();
-            if (pending.Length != 0)
-            {
-                // Remove promptly, rather than treating a maximum deadline as a mandatory grace period.
-                await db.SaveChangesAsync(ct);
-                await RemovePhysicalAsync(pending.Select(c => c.Id).ToArray(), ct);
-                foreach (var copy in pending) copy.VerifiedRemovedAt = Now;
-            }
+            // Remove promptly, rather than treating a maximum deadline as a mandatory grace period.
+            await FinalizePhysicalRemovalAsync(pending, ct);
             // User deletion also removes ordinary account/profile/credential stores and legacy
             // uploads. Minimal proof/grant/journal metadata has no cascading User relationship.
             var deletedUsers = await db.DriverAuthorizationGrants.Where(g => db.DriverLifecycleOperations
@@ -673,13 +668,23 @@ public sealed class EvidenceCopyLifecycle(AppDbContext db, TimeProvider clock, I
         var ids = copies.Keys.ToArray();
         // Also merges any earlier persisted clocks left by raw SQL or another context.
         await InvalidateDependentsAsync(ids, lossAt, ct);
+        await FinalizePhysicalRemovalAsync(copies.Values, ct);
+    }
+
+    /// <summary>Finalize caller-selected, attached copies after their loss and removal eligibility
+    /// have been established. Preserve those clocks; save them before physical-delete fences run.
+    /// Removal receipts join the caller's final save and coordinated transaction.</summary>
+    private async Task FinalizePhysicalRemovalAsync(IReadOnlyCollection<EvidenceCopyMarker> copies, CancellationToken ct)
+    {
+        if (copies.Count == 0) return;
+        var ids = copies.Select(c => c.Id).ToArray();
         await db.SaveChangesAsync(ct);
         await RemovePhysicalAsync(ids, ct);
         // Bulk deletion bypasses EF tracking; retired classified rows must not be saved again.
         foreach (var entry in db.ChangeTracker.Entries<ClassifiedCarPercentileResult>()
                      .Where(e => ids.Contains(e.Entity.EvidenceCopyId ?? Guid.Empty)).ToArray())
             entry.State = EntityState.Detached;
-        foreach (var copy in copies.Values) copy.VerifiedRemovedAt = Now;
+        foreach (var copy in copies) copy.VerifiedRemovedAt = Now;
     }
 
     internal async Task RemovePhysicalAsync(Guid[] ids, CancellationToken ct)
