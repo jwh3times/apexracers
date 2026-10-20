@@ -171,10 +171,12 @@ public sealed class EvidenceCopyClockTests(PostgreSqlFixture postgres)
         Assert.Equal(secondsAfterExpiry >= 0, after.VerifiedRemovedAt is not null);
     }
 
-    [Fact]
-    public async Task FailedPhysicalErasureRollsBackClocksAndRetryPreservesOriginalDeadline()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedPhysicalErasureRollsBackClocksAndRetryPreservesOriginalDeadline(bool afterMappedDeletion)
     {
-        var failure = new FailedErasure();
+        var failure = new FailedErasure(afterMappedDeletion);
         await using var db = await CreateAsync(failure);
         var clock = new CopyClock(TimeProvider.System.GetUtcNow().AddDays(-20));
         var lifecycle = new EvidenceCopyLifecycle(db, clock);
@@ -258,13 +260,13 @@ public sealed class EvidenceCopyClockTests(PostgreSqlFixture postgres)
         }
     }
 
-    private sealed class FailedErasure : DbCommandInterceptor
+    private sealed class FailedErasure(bool afterMappedDeletion) : DbCommandInterceptor
     {
         public bool Armed { get; set; }
         public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command,
             CommandEventData eventData, InterceptionResult<int> result, CancellationToken ct = default)
         {
-            if (Armed && command.CommandText.Contains("DELETE") && command.CommandText.Contains("MappedDataCaches"))
+            if (Armed && command.CommandText.Contains("DELETE") && command.CommandText.Contains(afterMappedDeletion ? "RaceEvidenceResults" : "MappedDataCaches"))
             {
                 Armed = false;
                 throw new InvalidOperationException("Controlled physical-erasure failure.");

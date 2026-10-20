@@ -107,9 +107,15 @@ obsolete markers and retain their existing transactions and coordination. The sh
 reconciles tracked/untracked markers without overwriting pending metadata, preserves earliest loss
 and deadlines, invalidates descendants, persists loss before physical-delete fences, removes physical
 copies, detaches retired classified rows and stages verified-removal receipts for the enclosing final
-save. Purpose reload and version advancement remain with the enclosing replacement. Cleanup,
-schedule BoP accounting, synthetic payload rebinding and upload restoration retain their separate
-protocols. This refactor adds no schema, adapter or Live authorization.
+save. Purpose reload and version advancement remain with the enclosing replacement.
+
+Replacement and cleanup share the private `FinalizePhysicalRemovalAsync` implementation: save
+established loss metadata before physical-delete fences, remove the selected copies, detach retired
+classified rows and stage verified-removal receipts for the caller's final save. Cleanup still owns
+expiry, original deadlines, private-upload recovery eligibility and User erasure; it does not use the
+replacement operation's deadline tightening. Both callers retain their transactions and rollback
+handling. Schedule BoP accounting, synthetic payload rebinding and upload restoration retain their
+separate protocols. This adds no schema, adapter or Live authorization.
 
 `SyntheticEvidenceWriter` binds a preview session before work, records contributing Field versions
 before derivative calculations, checks the complete prepared source set at commit, and becomes

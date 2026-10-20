@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Share physical-removal finalization between copy replacement and cleanup while preserving cleanup eligibility and original deadlines.
+
+### Fixed
+
+- Detach classified readings after cleanup so later saves cannot update deleted rows.
 
 ## [15.1.5] - 2026-10-19
 
