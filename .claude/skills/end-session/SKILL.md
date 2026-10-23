@@ -167,9 +167,25 @@ Enumerate before deleting:
 ```bash
 git status --porcelain --ignored=matching | grep -v 'node_modules\|/bin/\|/obj/'
 git worktree list
-git branch --merged main | grep -v '^\*\|main'
+git fetch --prune origin
+for b in $(git for-each-ref --format='%(refname:short)' refs/heads | grep -vx main); do
+  pr=$(gh pr list --state all --head "$b" --json number,state,headRefOid \
+    --jq 'sort_by(.number) | last | select(.) | "#\(.number) \(.state) \(.headRefOid)"')
+  set -- $pr
+  [ "$3" = "$(git rev-parse "$b")" ] && tip=same || tip=DIFF
+  echo "$b ${1:-no-pr} ${2:-} tip=$tip"
+done
 docker compose ps
 ```
+
+PRs here are squash-merged, so a finished branch's commits never become ancestors of `main` and
+`git branch --merged main` misses nearly every one. Match each local branch to its PR instead: a
+branch is finished only when its PR is `MERGED` **and** `tip=same` (its tip is the head that was
+merged, so nothing was committed after). Delete those with `git branch -D` — `-d` refuses them for
+the same squash reason. A branch with no PR, an open PR, or `tip=DIFF` holds unmerged work. GitHub
+deletes merged head branches automatically, and `git fetch --prune origin` drops their stale
+remote-tracking refs; a remote branch still listed after the prune gets the same PR check before
+`git push origin --delete`.
 
 **Safe to remove** — regenerable build/test output:
 
@@ -179,7 +195,7 @@ docker compose ps
 - Stray temp scripts and probe files written during the session — including anything dropped at the
   repo root that should have gone to the session scratchpad
 - Finished git worktrees under `.claude/worktrees/` (`git worktree remove <path>`, then
-  `git worktree prune`) and local branches already merged into `main`
+  `git worktree prune`) and local branches whose PR merged at their current tip (above)
 
 **Never remove without an explicit request** — none of these are regenerable here:
 
