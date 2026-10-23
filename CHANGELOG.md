@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.13] - 2026-10-22
+
+### Changed
+
+- Contributor workflow: `/end-session` now finds finished branches by matching each local branch to its merged PR's head commit instead of `git branch --merged main`, which misses squash-merged branches, and prunes remote-tracking refs for head branches GitHub now deletes on merge.
+
 ## [15.1.10] - 2026-10-20
 
 ### Fixed
@@ -1867,7 +1873,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.10...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.13...HEAD
+[15.1.13]: https://github.com/jwh3times/apexracers/compare/v15.1.12...v15.1.13
 [15.1.10]: https://github.com/jwh3times/apexracers/compare/v15.1.9...v15.1.10
 [15.1.9]: https://github.com/jwh3times/apexracers/compare/v15.1.8...v15.1.9
 [15.1.8]: https://github.com/jwh3times/apexracers/compare/v15.1.7...v15.1.8
