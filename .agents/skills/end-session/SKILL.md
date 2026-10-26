@@ -170,9 +170,9 @@ git fetch --prune origin
 for b in $(git for-each-ref --format='%(refname:short)' refs/heads | grep -vx main); do
   pr=$(gh pr list --state all --head "$b" --json number,state,headRefOid \
     --jq 'sort_by(.number) | last | select(.) | "#\(.number) \(.state) \(.headRefOid)"')
-  set -- $pr
-  [ "$3" = "$(git rev-parse "$b")" ] && tip=same || tip=DIFF
-  echo "$b ${1:-no-pr} ${2:-} tip=$tip"
+  read -r num state head <<< "$pr"
+  [ "$head" = "$(git rev-parse "$b")" ] && tip=same || tip=DIFF
+  echo "$b ${num:-no-pr} $state tip=$tip"
 done
 docker compose ps
 ```
