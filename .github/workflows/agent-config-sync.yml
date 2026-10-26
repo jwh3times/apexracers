@@ -30,7 +30,8 @@ name: Agent Config Sync
 #
 # The same job also runs the generator's node:test suite and the tool-neutrality lint
 # (`scripts/lint-agent-neutrality.mjs`), which rejects blind claude->Codex substitution
-# artifacts and relative links that break once a source is mirrored.
+# artifacts, relative links that break once a source is mirrored, and bare `$0`-`$9` in
+# a SKILL.md (the skill runner substitutes invocation arguments for them).
 #
 # Fix locally with:  node scripts/sync-agents.mjs   (or: npm run sync:agents)
 #                    then commit the result
