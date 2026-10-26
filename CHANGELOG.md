@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.16] - 2026-10-26
+
+### Fixed
+
+- Contributor workflow: `/handoff` and `/lets-go` on the Proton Drive CLI mirror re-download `handoff_map.json` immediately before writing it and read back the cloud copy after pushing, so a session running concurrently for another project can no longer silently undo a registered or cleared handoff; an edited handoff document is re-pushed without the map.
+- Contributor workflow: `/ship`'s fast checks now include the generated-agent-config check and tool-neutrality lint that CI requires, and `/end-session` uses the memory directory its harness names instead of deriving one from the repository path.
+
+## [15.1.15] - 2026-10-26
+
+### Fixed
+
+- Contributor workflow: `/end-session`'s branch check reports a finished branch again when the skill is invoked with arguments (as `/handoff` always does). Its shell snippet compared each branch tip with a bare positional parameter, which the skill runner replaces with an argument word, so no branch was ever offered for deletion. The agent tool-neutrality lint now rejects bare `$0`–`$9` in skill bodies so the trap cannot return.
+
 ## [15.1.13] - 2026-10-22
 
 ### Changed
@@ -1873,7 +1886,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.13...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.16...HEAD
+[15.1.16]: https://github.com/jwh3times/apexracers/compare/v15.1.15...v15.1.16
+[15.1.15]: https://github.com/jwh3times/apexracers/compare/v15.1.14...v15.1.15
 [15.1.13]: https://github.com/jwh3times/apexracers/compare/v15.1.12...v15.1.13
 [15.1.10]: https://github.com/jwh3times/apexracers/compare/v15.1.9...v15.1.10
 [15.1.9]: https://github.com/jwh3times/apexracers/compare/v15.1.8...v15.1.9
