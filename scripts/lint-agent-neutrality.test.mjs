@@ -48,6 +48,21 @@ test("substitution artifacts are reported", () => {
   );
 });
 
+test("bare positional parameters in a skill body are reported", () => {
+  withFixture(
+    {
+      ".agents/skills/x/SKILL.md": "---\nname: x\n---\n\n```bash\nset -- $pr\n[ \"$3\" = a ] && echo ${1:-none}\n```\n",
+      ".agents/skills/x/scripts/run.sh": "echo \"$1\"\n",
+      ".claude/agents/docs.md": "Run `awk '{print $2}'`.\n",
+    },
+    (root) => {
+      const problems = lintNeutrality(root);
+      assert.equal(problems.length, 1);
+      assert.match(problems[0], /\.agents\/skills\/x\/SKILL\.md:7: bare `\$3`/);
+    },
+  );
+});
+
 test("a link that breaks once mirrored is reported", () => {
   withFixture(
     {

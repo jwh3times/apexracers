@@ -113,7 +113,12 @@ details.
 
 ## 3. Register it in the map
 
+Every project's sessions share this one map, so another session may have written it since step 2.
+**Pull** again (CLI mirror only) immediately before `set` — pushing an older local copy afterwards
+would overwrite that session's entry:
+
 ```bash
+proton-drive filesystem download -f remove /my-files/Documents/Handoffs/handoff_map.json "$HANDOFFS_DIR"
 node scripts/handoff-map.mjs set <file-name>
 ```
 
@@ -134,6 +139,18 @@ complete when the transfer summary lists both files as uploaded (an unchanged fi
 skipped, which is also complete). A summary with neither means the user's login lapsed — see the
 transport section above.
 
+**Verify** (CLI mirror only) — a concurrent session can still replace the map between the pull and
+the push, so read back the cloud copy, not the local one:
+
+```bash
+check="$(mktemp -d)"
+proton-drive filesystem download -f remove /my-files/Documents/Handoffs/handoff_map.json "$check"
+node scripts/handoff-map.mjs get --dir "$check"
+```
+
+Complete when `file` equals `<file-name>`. Otherwise repeat the pull, `set`, push and verify back to
+back.
+
 ## 4. Close the session with end-session
 
 Invoke the **end-session** skill and run it to completion. Tell it the handoff document's path so its
@@ -144,8 +161,12 @@ If end-session changes a fact the handoff states — it commits or pushes work, 
 removes a worktree or branch, or the user resolves an open decision — edit the handoff document so it
 matches the final state. The document is complete when every "Where you are" and "Unmerged work"
 line is true after end-session.
-On the CLI mirror, an edited document is pushed again with the same **Push** command; the cloud copy
-is what `/lets-go` reads.
+On the CLI mirror, push an edited document again **without the map**, since the map was verified in
+step 3 and a re-push could overwrite a later session's entry; the cloud copy is what `/lets-go` reads:
+
+```bash
+proton-drive filesystem upload -f create-new-revision -t "$HANDOFFS_DIR/<file-name>" /my-files/Documents/Handoffs
+```
 
 ## 5. Report
 

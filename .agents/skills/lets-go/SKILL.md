@@ -88,7 +88,12 @@ The step is complete when the checkout matches the document or every mismatch ha
 
 ## 4. Clear the active handoff
 
+Every project's sessions share this one map, so another session may have written it since step 1.
+**Pull** again (CLI mirror only) immediately before `clear` — pushing an older local copy afterwards
+would overwrite that session's entry:
+
 ```bash
+proton-drive filesystem download -f remove /my-files/Documents/Handoffs/handoff_map.json "$HANDOFFS_DIR"
 node scripts/handoff-map.mjs clear
 ```
 
@@ -102,7 +107,19 @@ resume the same handoff a second time:
 proton-drive filesystem upload -f create-new-revision -t "$HANDOFFS_DIR/handoff_map.json" /my-files/Documents/Handoffs
 ```
 
-Complete when the transfer summary lists the map as uploaded.
+Complete when the transfer summary lists the map as uploaded. A `Skipped` map means the cloud copy
+already matched the local one — possibly because another session replaced the local file; the
+verify step decides.
+
+**Verify** (CLI mirror only) — read back the cloud copy, not the local one:
+
+```bash
+check="$(mktemp -d)"
+proton-drive filesystem download -f remove /my-files/Documents/Handoffs/handoff_map.json "$check"
+node scripts/handoff-map.mjs get --dir "$check"
+```
+
+Complete when `file` is null. Otherwise repeat the pull, `clear`, push and verify back to back.
 
 ## 5. Proceed
 

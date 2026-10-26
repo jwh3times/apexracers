@@ -3,7 +3,7 @@
 //
 // `scripts/sync-agents.mjs` copies prose verbatim into the other tool's tree
 // (.claude/agents/*.md -> .codex/agents/*.toml, .agents/skills/** -> .claude/skills/**), so the
-// sources must read correctly from both locations. Two checks catch the ways that has gone wrong:
+// sources must read correctly from both locations. Three checks catch the ways that has gone wrong:
 //
 //  1. Blind-substitution artifacts — a global `claude`->`Codex` replace (how the original Codex
 //     files were made) produces wrong-case paths such as `.Codex/` and dead `code.Codex.com` links.
@@ -11,6 +11,9 @@
 //     directory but to nothing from the mirrored directory (e.g. `../skills/...` from
 //     `.claude/agents/` points into `.codex/skills/`, which does not exist). Links that land in the
 //     same place from both locations pass, so a working link never false-positives.
+//  3. Bare positional parameters in a skill body — Claude Code replaces `$0`-`$9` in a loaded
+//     SKILL.md with the invocation's argument words, so a shell snippet's `"$3"` silently becomes
+//     an argument (issue #451). Braced `${1:-x}` survives, as do files a skill only references.
 //
 //   node scripts/lint-agent-neutrality.mjs   # exit 1 and list every problem found
 
@@ -28,6 +31,7 @@ const trees = [
 ];
 const textExtensions = new Set([".md", ".yaml", ".yml", ".sh", ".txt", ".json", ".toml"]);
 const substitutionArtifacts = [/\.Codex\//, /code\.Codex\.com/];
+const bareParameter = /\$\d/g;
 
 function listFiles(root, dir) {
   const absolute = path.join(root, dir);
@@ -67,6 +71,16 @@ export function lintNeutrality(root = defaultRoot) {
             `${file}: contains "${match[0]}" — a blind claude->Codex substitution artifact; keep the source tool-neutral`,
           );
         }
+      }
+
+      if (wholeTree && path.posix.basename(file) === "SKILL.md") {
+        content.split("\n").forEach((line, index) => {
+          for (const [parameter] of line.matchAll(bareParameter)) {
+            problems.push(
+              `${file}:${index + 1}: bare \`${parameter}\` is replaced by the skill's invocation arguments when loaded — use a named variable`,
+            );
+          }
+        });
       }
 
       const sourceDir = path.posix.dirname(file);

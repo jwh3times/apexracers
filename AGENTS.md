@@ -92,7 +92,10 @@ The generator copies prose **verbatim** — it never rewrites wording — so kee
 repo-root-relative paths as plain text rather than relative Markdown links (a relative link resolves
 differently from the mirrored location). `node scripts/lint-agent-neutrality.mjs` (`npm run
 lint:agents`) enforces this: it rejects blind `claude`→`Codex` substitution artifacts (`.Codex/`,
-`code.Codex.com`) and relative links that resolve from the source but break from the mirrored copy.
+`code.Codex.com`) and relative links that resolve from the source but break from the mirrored copy. It also rejects a
+bare `$0`–`$9` in any `.agents/skills/*/SKILL.md`: Claude Code replaces those in a loaded skill body
+with the invocation's argument words (issue #451), so use named variables (`read -r num state head
+<<< "$pr"`) or braced `${1:-x}`, which is not substituted.
 
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
 becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model

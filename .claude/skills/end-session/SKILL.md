@@ -59,9 +59,10 @@ outcome, an invented one is not.
 
 ### 2. Update memory
 
-Memory lives outside the repo, one fact per file, in this project's memory directory
-(`~/.claude/projects/<project-slug>/memory/`, where the slug is the repo path with separators
-replaced by `-`). `MEMORY.md` in that directory is the index loaded into every session — one line
+Memory lives outside the repo, one fact per file, in the memory directory your harness names in its
+instructions. Use that path as given — never derive it from the repository path, which differs per
+machine and per tool. If the harness names no memory directory, skip this step and say so in the
+report. `MEMORY.md` in that directory is the index loaded into every session — one line
 per memory, never memory content itself.
 
 Ask of each candidate: **would a fresh session in this repo get this wrong without the note?**
@@ -171,9 +172,9 @@ git fetch --prune origin
 for b in $(git for-each-ref --format='%(refname:short)' refs/heads | grep -vx main); do
   pr=$(gh pr list --state all --head "$b" --json number,state,headRefOid \
     --jq 'sort_by(.number) | last | select(.) | "#\(.number) \(.state) \(.headRefOid)"')
-  set -- $pr
-  [ "$3" = "$(git rev-parse "$b")" ] && tip=same || tip=DIFF
-  echo "$b ${1:-no-pr} ${2:-} tip=$tip"
+  read -r num state head <<< "$pr"
+  [ "$head" = "$(git rev-parse "$b")" ] && tip=same || tip=DIFF
+  echo "$b ${num:-no-pr} $state tip=$tip"
 done
 docker compose ps
 ```
