@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.16] - 2026-10-26
+
+### Fixed
+
+- Contributor workflow: `/handoff` and `/lets-go` on the Proton Drive CLI mirror re-download `handoff_map.json` immediately before writing it and read back the cloud copy after pushing, so a session running concurrently for another project can no longer silently undo a registered or cleared handoff; an edited handoff document is re-pushed without the map.
+- Contributor workflow: `/ship`'s fast checks now include the generated-agent-config check and tool-neutrality lint that CI requires, and `/end-session` uses the memory directory its harness names instead of deriving one from the repository path.
+
 ## [15.1.15] - 2026-10-26
 
 ### Fixed
@@ -1879,7 +1886,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.15...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.16...HEAD
+[15.1.16]: https://github.com/jwh3times/apexracers/compare/v15.1.15...v15.1.16
 [15.1.15]: https://github.com/jwh3times/apexracers/compare/v15.1.14...v15.1.15
 [15.1.13]: https://github.com/jwh3times/apexracers/compare/v15.1.12...v15.1.13
 [15.1.10]: https://github.com/jwh3times/apexracers/compare/v15.1.9...v15.1.10

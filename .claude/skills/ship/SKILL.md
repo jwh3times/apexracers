@@ -195,13 +195,18 @@ cd ..
 # repo root
 dotnet build
 
+# repo root — the required "Verify generated agent config" check, plus its lint
+npm run sync:agents:check
+npm run lint:agents
+
 # repo root — same check the "Changelog Version" CI job runs, so drift is caught
 # here instead of on the PR (requires the dated section from step 5 to be written)
 bash scripts/verify-changelog-version.sh
 ```
 
 If any check is red, stop and report — do not push. Fix Prettier with
-`npx prettier --write .` from `web/`. If `verify-changelog-version.sh` reports a
+`npx prettier --write .` from `web/`. Fix generated-config drift with
+`npm run sync:agents` and commit both sides. If `verify-changelog-version.sh` reports a
 mismatch, redo step 5 with the version it names (the prediction drifted).
 
 ### 7. Commit the release metadata, docs, and changelog
