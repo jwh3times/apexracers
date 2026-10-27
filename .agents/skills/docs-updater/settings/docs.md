@@ -18,7 +18,9 @@ they are checked against the code. Each setting below is a `##` heading in that 
     - `amend-only` — dated records corrected by an amendment note, never rewritten;
     - `owner-only` — the user edits it; report drift instead (`LICENSE`, open product questions);
     - `ship-owned` — written by `ship` (`CHANGELOG.md` sections, the version file); outside `ship`,
-      add only `Unreleased` entries.
+      add only `Unreleased` entries;
+    - `pinned: <the pin>` — another check fingerprints it (a hash in a test fixture), so an edit must
+      update that pin in the same change.
 
   May add a bulleted **Never in public docs** list of the kinds of content that stay in the companion
   (live resource names, prices, exploit analysis).
@@ -26,7 +28,8 @@ they are checked against the code. Each setting below is a `##` heading in that 
   update" matrix, turned around so each document carries its triggers), a `docs-updater` skill,
   the docs index (`docs/README.md`, `private/README.md`), the docs map in `AGENTS.md`, and existing
   `end-session` routing tables. A script that parses the docs-updater file for this list (a docs
-  check) must be pointed at this file instead: name it when proposing.
+  check) must be pointed at this file instead: name it when proposing. Search scripts and test
+  fixtures for document paths beside a hash (`sha256`, `Sha256`) to find `pinned` documents.
 
 ## Drift probes
 
