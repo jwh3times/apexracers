@@ -1,5 +1,5 @@
 interface:
   display_name: "Let's go"
-  short_description: "Resume from this repo's active handoff"
+  short_description: "Resume this repository's active handoff"
 policy:
   allow_implicit_invocation: false

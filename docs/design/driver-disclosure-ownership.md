@@ -381,7 +381,7 @@ knowledge. Neither the five-Driver floor nor the fixed query catalog proves anon
 Provider proof/revocation contracts require obtainable SDK/captured/client evidence before their
 implementation. Actual journal/storage/backup/log settings and restore coverage remain unverified.
 Conditional operator verification remains tracked through the
-[human-follow-up procedure](../agents/human-actions.md), with operational instructions kept in
+[human-follow-up procedure](../agents/human-follow-up.md), with operational instructions kept in
 private destinations. It becomes applicable only after #362, implementation, synthetic rehearsal,
 and proposed rollout/publication. Processing-permission review and OAuth/operator prerequisites remain
 separate; these decisions do not grant processing permission or enable live flags.

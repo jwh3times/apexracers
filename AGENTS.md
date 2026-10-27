@@ -17,11 +17,11 @@ not `CLAUDE.md` — when project guidance changes.
 | Cloud deployment patterns and runtime configuration                | `azure-infrastructure` |
 | Reviewing a diff for correctness/security before merging           | `code-reviewer`        |
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
-| Documentation sync after changes (CHANGELOG, AGENTS.md, README, …) | `docs-updater`         |
 
 Docs and release metadata are prepared at **ship time** by the
 [`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
-impact, invokes `docs-updater` scoped to the branch diff, then rolls `[Unreleased]` into a CHANGELOG
+impact, runs the [`docs-updater` skill](.agents/skills/docs-updater/SKILL.md) scoped to the branch
+diff, then rolls `[Unreleased]` into a CHANGELOG
 section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a branch is
 ready for review.
 
@@ -31,13 +31,12 @@ it touched up to date, and cleans the regenerable build/test leftovers out of th
 section, or pushes source branches. It does publish required human-follow-up wiki instructions.
 Run `/ship` first if a branch is finished, then `/end-session`.
 
-Switching machines uses `/handoff` (writes the handoff document to the synced Proton Drive Handoffs
-folder, registers it in `handoff_map.json` via `scripts/handoff-map.mjs`, then runs `/end-session`)
-and `/lets-go` on the other machine (resumes from that active handoff and clears its entry). The
-script finds the folder under `~/Proton Drive/<account>/My files/Documents/Handoffs`; set
-`HANDOFFS_DIR` where it is mounted elsewhere. On a machine with no Proton Drive desktop client
-(Fedora), `HANDOFFS_DIR` is a local mirror and both skills pull and push it through the
-`proton-drive` CLI against the cloud folder `/my-files/Documents/Handoffs`.
+Switching machines uses `/handoff` (writes the handoff document to the Handoffs folder, registers it
+in `handoff_map.json` through `.agents/skills/handoff/handoff-map.mjs`, then runs `/end-session`) and
+`/lets-go` on the other machine (resumes from that active handoff and clears its entry). How the
+folder reaches each machine — a synced Proton Drive folder, or a local mirror moved by the
+`proton-drive` CLI — is that machine's `~/.config/handoffs/config`, which the skills propose on first
+run (`.agents/skills/handoff/machine-config.md`).
 
 ## Agent config parity (Claude Code ↔ Codex)
 
@@ -194,7 +193,7 @@ outer-repository Git history cannot see its changes.
 [board]: https://github.com/users/jwh3times/projects/2
 
 **Human follow-ups:** when completed agent work leaves required human action, follow
-`docs/agents/human-actions.md`: create or update a private companion issue labelled
+`docs/agents/human-follow-up.md`: create or update a private companion issue labelled
 `ready-for-human`, add it to the private ApexRacers board, and publish step-by-step private wiki
 instructions with reciprocal links. This is part of the completion handoff, including before merge
 when applicable; report any access blocker instead of silently omitting it.
@@ -215,7 +214,7 @@ the version that merge will mint) — not during ordinary feature/fix work. Afte
 line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.sh`, and a
 `Changelog Version` CI check
 (`.github/workflows/changelog-version.yml`) fails a PR whose dated section has drifted from it. (The
-`docs-updater` agent owns the full doc-update matrix.)
+`Doc map` in `docs/agents/docs.md` is the full doc-update matrix; the `docs-updater` skill applies it.)
 
 > **iRacing-data gating.** Live iRacing-backed features are gated so environments without service
 > credentials can still present a functional app. Two feature flags gate that surface:
@@ -965,6 +964,23 @@ Canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `re
 ### Domain docs
 
 Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Shared skills
+
+`end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` install from `jwh3times/skills`; never
+edit them here, since reinstalling overwrites local edits. What they need to know about this
+repository is in the settings files under `docs/agents/` (`workspace.md`, `issue-tracker.md`,
+`human-follow-up.md`, `docs.md`, `releases.md`, `ship.md`, `handoffs.md`), which each skill proposes
+on first run. Install and update with the same command, then regenerate the mirror; never run
+`npx skills update`:
+
+```bash
+npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s docs-updater -a codex --copy -y
+npm run sync:agents
+```
+
+`scripts/sync-agents.mjs` and `scripts/lint-agent-neutrality.mjs` (and their tests) are canonical in
+`jwh3times/skills`: fix them there, then copy them here.
 
 ### Development flow
 
