@@ -29,7 +29,7 @@
       "source": "jwh3times/skills",
       "sourceType": "github",
       "skillPath": "skills/docs-updater/SKILL.md",
-      "computedHash": "33444639797d252d91ef488820e583d86b304aa5155708b84cdc6f04da59d0aa"
+      "computedHash": "cb6e868df370b239b8305f438272121b664ead382c39882ddb77014bb479ba96"
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
@@ -41,7 +41,7 @@
       "source": "jwh3times/skills",
       "sourceType": "github",
       "skillPath": "skills/end-session/SKILL.md",
-      "computedHash": "9c70cd4f95f7d2822846b9d4a86d061041920dd04aca60b193cc2c4e82d9982a"
+      "computedHash": "235e677246dc0f9b51dcaceed5b2c3a07c4b6cae0c6eeb85300207b7ced67224"
     },
     "grill-me": {
       "source": "mattpocock/skills",
