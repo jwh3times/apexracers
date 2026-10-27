@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.19] - 2026-10-26
+
+### Changed
+
+- Contributor workflow: the issue-driven skill flow is now the binding development process for coding agents. Every code change starts from a ready issue (a `ready-for-agent` spec, ticket or triage brief, or a bug worked through `/diagnosing-bugs`), and when none exists the agent stops before its first edit and names the skill that fits. Dependency bumps, docs-and-agent-config-only changes, release prep and explicit maintainer waivers are exempt. Routing, the code versus docs path split and issue-linking rules are in `docs/agents/dev-flow.md`.
+- Contributor workflow: branches are named `<type>/<issue#>-<slug>`, and the pull request template now opens with the issue link line (`Closes #N`, or `Part of #N` for one slice of a spec that stays open) instead of a separate Related issue section. `CONTRIBUTING.md` and `/ship` follow the same convention.
+
 ## [15.1.16] - 2026-10-26
 
 ### Fixed
@@ -1886,7 +1893,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.16...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.19...HEAD
+[15.1.19]: https://github.com/jwh3times/apexracers/compare/v15.1.18...v15.1.19
 [15.1.16]: https://github.com/jwh3times/apexracers/compare/v15.1.15...v15.1.16
 [15.1.15]: https://github.com/jwh3times/apexracers/compare/v15.1.14...v15.1.15
 [15.1.13]: https://github.com/jwh3times/apexracers/compare/v15.1.12...v15.1.13
