@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.21] - 2026-10-27
+
+### Changed
+
+- Contributor workflow: the shared `docs-updater` skill now searches every tracked Markdown file, the private companion and the follow-up wiki for names a change removed or renamed (not only the documents in its Doc map), looks for lists that a newly added member is missing from, and reports drift it finds outside a diff-scoped run instead of fixing it. The Doc map marks `docs/design/driver-acceptance-and-rollout.md` as `pinned`, so an edit to the Driver Privacy Contract's matrix source re-pins its hash in the same change.
+
 ## [15.1.20] - 2026-10-27
 
 ### Changed
@@ -1908,7 +1914,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.20...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.21...HEAD
+[15.1.21]: https://github.com/jwh3times/apexracers/compare/v15.1.20...v15.1.21
 [15.1.20]: https://github.com/jwh3times/apexracers/compare/v15.1.19...v15.1.20
 [15.1.19]: https://github.com/jwh3times/apexracers/compare/v15.1.18...v15.1.19
 [15.1.16]: https://github.com/jwh3times/apexracers/compare/v15.1.15...v15.1.16
