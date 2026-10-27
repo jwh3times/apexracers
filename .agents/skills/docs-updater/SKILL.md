@@ -54,16 +54,20 @@ one. For a list of changes, match the same way. For a full audit, every item is 
 Then search for the names the diff removed or renamed (settings, commands, files, flags, counts
 such as "all four"): stale references to them are drift that no **when** predicts. For a member the
 diff adds to an enumerated set (a marker, a setting, a skill), search for its siblings instead: a
-list that names them but not the new one is now incomplete. Search wider
-than the `Doc map`, skipping generated copies and `frozen` documents:
+list that names them but not the new one is now incomplete. Search for a name as it is written in
+the docs, usually in backticks (`` `frozen` ``), so a common word does not bury the hits. Search
+wider than the `Doc map`, skipping generated copies and `frozen` documents:
 
 - every tracked Markdown file (`git ls-files '*.md'`);
 - the companion, from its own root, when its checkout exists;
-- the `Follow-up wiki`, when one is set, in a read-only clone in a scratch location.
+- the `Follow-up wiki`, when one is set and the change is on the default branch, in a read-only
+  clone in a scratch location.
 
 A hit in a document the `Doc map` lacks is fixed like any other and named in the report, so the map
-can be extended. A wiki page is fixed only once the change is on the default branch, so it never
-points at a file that is not there yet; before that, report the pages to the caller.
+can be extended. The wiki waits for the merge, so its pages never point at a file that is not there
+yet: a run on an unmerged branch (every run from `ship`) skips it and reports that the wiki search
+is owed after the merge. The next `end-session`, or any run on the default branch, performs it and
+fixes what it finds.
 
 ## 3. Check each document against the code
 
@@ -92,7 +96,8 @@ Edit each drifted document, honoring its marker:
 - `pinned` — another check fingerprints it, and any edit, even to a link, fails that check until
   the pin it names is updated. Edit it only when the change requires it; first confirm the edit
   alters nothing the pin protects (requirements, matrix rows), then update the pin in the same
-  change, and name both in the report so the caller's PR says why.
+  change, and name both in the report so the caller's PR says why. A `pinned` document in scope
+  that needs no edit keeps its pin; still check that the pin matches it, and report it current.
 
 Write so the next reader trusts the docs:
 

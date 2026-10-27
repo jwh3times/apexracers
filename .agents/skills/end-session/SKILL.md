@@ -126,8 +126,10 @@ Run the `docs-updater` skill on the session's work, in a subagent where the harn
 to follow `.agents/skills/docs-updater/SKILL.md`; otherwise follow it yourself. A subagent cannot
 ask the user, so complete its settings first, here, by following its step 0. Use `fix` mode for
 work not yet merged, and `check` mode for work `ship` already refreshed and merged, opening an
-issue for any drift it reports. Tell it this is `end-session`, and give it the session's
-discoveries as a list of changes beside the diff: decisions and findings land in the `Doc map`
+issue for any drift it reports. Merged work whose `ship` report owed a `Follow-up wiki` search gets
+one more run in `fix` mode, limited to the wiki: those stale references are fixed, not filed.
+Tell it this is `end-session`, and give it the session's discoveries as a list of changes beside
+the diff: decisions and findings land in the `Doc map`
 documents whose **when** they match, honoring each one's marker. Run step 4's procedure for any
 human actions it returns. Its edits come back uncommitted, and join step 6's question about
 uncommitted work.

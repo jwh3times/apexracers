@@ -13,7 +13,7 @@ No unreleased changes.
 
 ### Changed
 
-- Contributor workflow: the shared `docs-updater` skill now searches every tracked Markdown file, the private companion and the follow-up wiki for names a change removed or renamed (not only the documents in its Doc map), looks for lists that a newly added member is missing from, and reports drift it finds outside a diff-scoped run instead of fixing it. The Doc map marks `docs/design/driver-acceptance-and-rollout.md` as `pinned`, so an edit to the Driver Privacy Contract's matrix source re-pins its hash in the same change.
+- Contributor workflow: the shared `docs-updater` skill now searches every tracked Markdown file, the private companion and the follow-up wiki for names a change removed or renamed (not only the documents in its Doc map), looks for lists that a newly added member is missing from, and reports drift it finds outside a diff-scoped run instead of fixing it. Its follow-up wiki search waits for the merge: `/ship` reports it as owed, and the next `/end-session` runs it and fixes the stale references it finds. The Doc map marks `docs/design/driver-acceptance-and-rollout.md` as `pinned`, so an edit to the Driver Privacy Contract's matrix source re-pins its hash in the same change.
 
 ## [15.1.20] - 2026-10-27
 

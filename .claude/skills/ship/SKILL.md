@@ -167,8 +167,8 @@ range="$(git merge-base origin/main HEAD)..HEAD"
 
 Tell it what changed and why, that it was invoked by `ship` on an unmerged branch, and that this
 skill writes the changelog and the `Version file`. It leaves its edits uncommitted and returns the
-human actions it found for step 6. Companion edits are committed there as its own repository, never
-in this one: with `Companion commit policy` `commit` or `ship`, commit and push them; with `ask`,
+human actions it found for step 6, and any `Follow-up wiki` search it owes after the merge.
+Companion edits are committed there as its own repository, never in this one: with `Companion commit policy` `commit` or `ship`, commit and push them; with `ask`,
 show the diff and ask first. Run its **Before committing** checks either way.
 
 ## 6. Human follow-ups
@@ -281,7 +281,9 @@ companion detail.
 - The `Release level:` line and its evidence; the version this merge will mint (`per-merge`), the
   new line (a `cut-on-line` cut), or that the merge workflow assigns the build. Name a competing PR
   claiming the same version, and say the section is renumbered on a re-ship.
-- What the docs refresh changed, the changelog entries written, and any sections backfilled.
+- What the docs refresh changed, the changelog entries written, and any sections backfilled. When
+  docs-updater owes a `Follow-up wiki` search after the merge, say so: the next `end-session`
+  performs it.
 - Human follow-ups: verified issue and wiki links, what is unpublished and why, or that none remain.
 - Fast-check results, checks left to CI, `Hook: before PR` findings, and issue-link warnings.
 - The companion: absent, or clean and in step, and any companion commit made. Never describe the
