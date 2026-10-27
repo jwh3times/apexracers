@@ -101,7 +101,10 @@ domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
 `docs/agents/` file itself when the underlying convention (tracker, label
 strings, doc layout) changes, not `AGENTS.md`. [Development flow](agents/dev-flow.md)
 holds the routing, code/docs path split, exemptions and issue linking behind the
-development-flow gate that `AGENTS.md` states.
+development-flow gate that `AGENTS.md` states. `docs/agents/` also holds the settings files
+the shared skills (`end-session`, `handoff`, `lets-go`, `ship`, `docs-updater`)
+read; those skills install from `jwh3times/skills` and are never edited here —
+see **Shared skills** in `AGENTS.md`.
 
 Agents are authored for Claude Code, with `.codex/agents/*.toml` **generated** from
 them. Skills run the opposite direction: `.agents/skills/<name>/**` is authored
@@ -119,5 +122,5 @@ replace a generated directory with a symlink back to its source — see the **Ag
 config parity** section in `AGENTS.md` for why, and for the full mapping.
 
 Required human actions arising from completed agent work follow
-[Human follow-ups](agents/human-actions.md): private issues and board tracking paired with
+[Human follow-ups](agents/human-follow-up.md): private issues and board tracking paired with
 step-by-step private wiki instructions. Docs-updater, ship, end-session, and wizard use that procedure.

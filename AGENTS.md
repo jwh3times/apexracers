@@ -17,27 +17,27 @@ not `CLAUDE.md` — when project guidance changes.
 | Cloud deployment patterns and runtime configuration                | `azure-infrastructure` |
 | Reviewing a diff for correctness/security before merging           | `code-reviewer`        |
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
-| Documentation sync after changes (CHANGELOG, AGENTS.md, README, …) | `docs-updater`         |
 
 Docs and release metadata are prepared at **ship time** by the
 [`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
-impact, invokes `docs-updater` scoped to the branch diff, then rolls `[Unreleased]` into a CHANGELOG
+impact, runs the [`docs-updater` skill](.agents/skills/docs-updater/SKILL.md) scoped to the branch
+diff, then rolls `[Unreleased]` into a CHANGELOG
 section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a branch is
 ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
-it touched up to date, and cleans the regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
+it touched up to date, runs the `docs-updater` skill on the session's work, and cleans the
+regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
 section, or pushes source branches. It does publish required human-follow-up wiki instructions.
 Run `/ship` first if a branch is finished, then `/end-session`.
 
-Switching machines uses `/handoff` (writes the handoff document to the synced Proton Drive Handoffs
-folder, registers it in `handoff_map.json` via `scripts/handoff-map.mjs`, then runs `/end-session`)
-and `/lets-go` on the other machine (resumes from that active handoff and clears its entry). The
-script finds the folder under `~/Proton Drive/<account>/My files/Documents/Handoffs`; set
-`HANDOFFS_DIR` where it is mounted elsewhere. On a machine with no Proton Drive desktop client
-(Fedora), `HANDOFFS_DIR` is a local mirror and both skills pull and push it through the
-`proton-drive` CLI against the cloud folder `/my-files/Documents/Handoffs`.
+Switching machines uses `/handoff` (writes the handoff document to the Handoffs folder, registers it
+in `handoff_map.json` through `.agents/skills/handoff/handoff-map.mjs`, then runs `/end-session`) and
+`/lets-go` on the other machine (resumes from that active handoff and clears its entry). How the
+folder reaches each machine — a synced Proton Drive folder, or a local mirror moved by the
+`proton-drive` CLI — is that machine's `~/.config/handoffs/config`, which the skills propose on first
+run (`.agents/skills/handoff/machine-config.md`).
 
 ## Agent config parity (Claude Code ↔ Codex)
 
@@ -77,12 +77,16 @@ hit for real while building this generator:
    tree while the generator still runs against it, every "generated" write actually lands back on the
    authored source file, silently corrupting it.
 
+The generator removes any symlink it finds in a generated tree before it writes anything, so one
+`npm run sync:agents` replaces a `.claude/skills/<name>` that `npx skills update` linked back to its
+source.
+
 Regenerate with `node scripts/sync-agents.mjs` (or `npm run sync:agents`; `--check` /
 `npm run sync:agents:check` verifies without writing) and commit every side that changed; the **Agent Config Sync** CI
 check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **fails it** when the
-generated tree has drifted or leaves an orphaned generated file behind. As of 2026-09-11 it is one of
-the ruleset's required status checks, alongside `Format`, `Test`, and `Verify changelog version`, so
-a drifted PR cannot merge. (The workflow is deliberately **not** path-filtered, and that is what makes
+generated tree has drifted or leaves an orphaned generated file behind. Its job, `Verify generated agent config`, is
+one of the ruleset's required status checks (since 2026-09-11), alongside `Format`, `Lint`, `Test`,
+`Verify changelog version` and `Driver Privacy Contract`, so a drifted PR cannot merge. (The workflow is deliberately **not** path-filtered, and that is what makes
 requiring it possible: a path-filtered check never reports at all on a PR touching none of its paths,
 and GitHub then holds the merge waiting for a result that never arrives. Do not add a `paths:` filter
 back — it would stall every unrelated PR.)
@@ -100,8 +104,8 @@ with the invocation's argument words (issue #451), so use named variables (`read
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
 becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model
 names, so Codex uses its session default). Each generated TOML opens with a one-line `# GENERATED`
-banner and holds the instructions in a `'''` literal string. The generator is shared verbatim across
-repositories — change it in one and copy it to all — and is covered by its own node:test suite
+banner and holds the instructions in a `'''` literal string. The generator is canonical in
+`jwh3times/skills` (see [Shared skills](#shared-skills)) and is covered by its own node:test suite
 (`scripts/sync-agents.test.mjs`); the **Agent Config Sync** job runs that suite and the neutrality
 lint before `--check`.
 
@@ -184,7 +188,7 @@ outer-repository Git history cannot see its changes.
 | `docs/README.md`                          | Public documentation map and ownership rules.                                                          |
 | `docs/features.md`                        | Public product capabilities and workflows.                                                             |
 | `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
-| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
+| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `/ship` writes the dated section each merge mints.  |
 | [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues and private companion human-follow-up issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
 | `private/archive.md`                      | Maintainer-only completed-work log — **frozen** at 2026-09-03; do not append.                          |
 | `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
@@ -194,7 +198,7 @@ outer-repository Git history cannot see its changes.
 [board]: https://github.com/users/jwh3times/projects/2
 
 **Human follow-ups:** when completed agent work leaves required human action, follow
-`docs/agents/human-actions.md`: create or update a private companion issue labelled
+`docs/agents/human-follow-up.md`: create or update a private companion issue labelled
 `ready-for-human`, add it to the private ApexRacers board, and publish step-by-step private wiki
 instructions with reciprocal links. This is part of the completion handoff, including before merge
 when applicable; report any access blocker instead of silently omitting it.
@@ -210,12 +214,12 @@ three-part tags. At ship time, `/ship` evaluates the cumulative release impact: 
 decision advances both `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a
 build decision leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not
 advanced to `1`. Rolling `[Unreleased]` into a versioned changelog section is a separate, deliberate
-step the [`/ship` skill](.claude/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
+step the [`/ship` skill](.agents/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
 the version that merge will mint) — not during ordinary feature/fix work. After selecting the release
 line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.sh`, and a
 `Changelog Version` CI check
 (`.github/workflows/changelog-version.yml`) fails a PR whose dated section has drifted from it. (The
-`docs-updater` agent owns the full doc-update matrix.)
+`Doc map` in `docs/agents/docs.md` is the full doc-update matrix; the `docs-updater` skill applies it.)
 
 > **iRacing-data gating.** Live iRacing-backed features are gated so environments without service
 > credentials can still present a functional app. Two feature flags gate that surface:
@@ -965,6 +969,23 @@ Canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `re
 ### Domain docs
 
 Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Shared skills
+
+`end-session`, `handoff`, `lets-go`, `ship` and `docs-updater` install from `jwh3times/skills`; never
+edit them here, since reinstalling overwrites local edits. What they need to know about this
+repository is in the settings files under `docs/agents/` (`workspace.md`, `issue-tracker.md`,
+`human-follow-up.md`, `docs.md`, `releases.md`, `ship.md`, `handoffs.md`), which each skill proposes
+on first run. Install and update with the same command, then regenerate the mirror; never run
+`npx skills update`:
+
+```bash
+npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s docs-updater -a codex --copy -y
+npm run sync:agents
+```
+
+`scripts/sync-agents.mjs` and `scripts/lint-agent-neutrality.mjs` (and their tests) are canonical in
+`jwh3times/skills`: fix them there, then copy them here.
 
 ### Development flow
 

@@ -78,3 +78,21 @@ test("a link that breaks once mirrored is reported", () => {
     },
   );
 });
+
+test("published skills get the same checks, and links must stay inside their skill folder", () => {
+  withFixture(
+    {
+      "docs/agents/ship.md": "Settings.\n",
+      "skills/ship/SKILL.md":
+        "See [settings](./settings/ship.md) and [repo](../../docs/agents/ship.md).\n\n```bash\necho \"$1\"\n```\n",
+      "skills/ship/settings/ship.md": "Back to [skill](../SKILL.md); see .Codex/x.\n",
+    },
+    (root) => {
+      const problems = lintNeutrality(root);
+      assert.equal(problems.length, 3);
+      assert.match(problems[0], /skills\/ship\/SKILL\.md:4: bare `\$1`/);
+      assert.match(problems[1], /skills\/ship\/SKILL\.md: relative link `\.\.\/\.\.\/docs\/agents\/ship\.md` leaves skills\/ship\//);
+      assert.match(problems[2], /skills\/ship\/settings\/ship\.md: contains "\.Codex\/"/);
+    },
+  );
+});
