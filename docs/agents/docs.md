@@ -56,6 +56,10 @@
 - `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
   current-state claims. **When:** a file, procedure or contract they cite is renamed or changes;
   update the current-state claims and leave dated findings as written.
+  `docs/design/driver-acceptance-and-rollout.md` is the Driver Privacy Contract's accepted matrix
+  source, pinned by `matrixSourceSha256` in `docs/testing/driver-privacy-matrix.json`: any edit,
+  even a link, fails that required check until the change is reviewed against the matrix and the
+  hash is re-pinned in the same PR, saying so in its body.
 - `private/AGENTS.md`, `private/README.md` — the companion's agent guide and index. **When:** a
   public procedure or settings file they cite is renamed, or a companion document moves.
 - `private/PRD.md` — the full product spec. **When:** a feature-level change only: a capability
