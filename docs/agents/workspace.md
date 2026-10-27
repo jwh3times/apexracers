@@ -41,7 +41,7 @@ deliberate: ask first.
 
 ## Generated-config check
 
-`npm run sync:agents:check` (the required **Agent Config Sync** check), regenerated with
+`npm run sync:agents:check` (the required **Verify generated agent config** check), regenerated with
 `npm run sync:agents` — always.
 
 ## Final portability check

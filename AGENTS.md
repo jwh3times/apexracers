@@ -27,7 +27,8 @@ ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
-it touched up to date, and cleans the regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
+it touched up to date, runs the `docs-updater` skill on the session's work, and cleans the
+regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
 section, or pushes source branches. It does publish required human-follow-up wiki instructions.
 Run `/ship` first if a branch is finished, then `/end-session`.
 
@@ -76,12 +77,16 @@ hit for real while building this generator:
    tree while the generator still runs against it, every "generated" write actually lands back on the
    authored source file, silently corrupting it.
 
+The generator removes any symlink it finds in a generated tree before it writes anything, so one
+`npm run sync:agents` replaces a `.claude/skills/<name>` that `npx skills update` linked back to its
+source.
+
 Regenerate with `node scripts/sync-agents.mjs` (or `npm run sync:agents`; `--check` /
 `npm run sync:agents:check` verifies without writing) and commit every side that changed; the **Agent Config Sync** CI
 check (`.github/workflows/agent-config-sync.yml`) runs on every PR and **fails it** when the
-generated tree has drifted or leaves an orphaned generated file behind. As of 2026-09-11 it is one of
-the ruleset's required status checks, alongside `Format`, `Test`, and `Verify changelog version`, so
-a drifted PR cannot merge. (The workflow is deliberately **not** path-filtered, and that is what makes
+generated tree has drifted or leaves an orphaned generated file behind. Its job, `Verify generated agent config`, is
+one of the ruleset's required status checks (since 2026-09-11), alongside `Format`, `Lint`, `Test`,
+`Verify changelog version` and `Driver Privacy Contract`, so a drifted PR cannot merge. (The workflow is deliberately **not** path-filtered, and that is what makes
 requiring it possible: a path-filtered check never reports at all on a PR touching none of its paths,
 and GitHub then holds the merge waiting for a result that never arrives. Do not add a `paths:` filter
 back — it would stall every unrelated PR.)
@@ -99,8 +104,8 @@ with the invocation's argument words (issue #451), so use named variables (`read
 Frontmatter maps as follows: `name`/`description` carry over; a `tools:` list with no `Write`/`Edit`
 becomes `sandbox_mode = "read-only"`; `model:` is **dropped** (Claude model names are not Codex model
 names, so Codex uses its session default). Each generated TOML opens with a one-line `# GENERATED`
-banner and holds the instructions in a `'''` literal string. The generator is shared verbatim across
-repositories — change it in one and copy it to all — and is covered by its own node:test suite
+banner and holds the instructions in a `'''` literal string. The generator is canonical in
+`jwh3times/skills` (see [Shared skills](#shared-skills)) and is covered by its own node:test suite
 (`scripts/sync-agents.test.mjs`); the **Agent Config Sync** job runs that suite and the neutrality
 lint before `--check`.
 
@@ -183,7 +188,7 @@ outer-repository Git history cannot see its changes.
 | `docs/README.md`                          | Public documentation map and ownership rules.                                                          |
 | `docs/features.md`                        | Public product capabilities and workflows.                                                             |
 | `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
-| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `docs-updater` maintains the `[Unreleased]` section. |
+| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `/ship` writes the dated section each merge mints.  |
 | [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues and private companion human-follow-up issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
 | `private/archive.md`                      | Maintainer-only completed-work log — **frozen** at 2026-09-03; do not append.                          |
 | `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
@@ -209,7 +214,7 @@ three-part tags. At ship time, `/ship` evaluates the cumulative release impact: 
 decision advances both `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a
 build decision leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not
 advanced to `1`. Rolling `[Unreleased]` into a versioned changelog section is a separate, deliberate
-step the [`/ship` skill](.claude/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
+step the [`/ship` skill](.agents/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
 the version that merge will mint) — not during ordinary feature/fix work. After selecting the release
 line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.sh`, and a
 `Changelog Version` CI check

@@ -51,6 +51,13 @@
   `docs-updater` install from `jwh3times/skills`: `frozen` here, fixed upstream.
 - `docs/agents/*.md` — conventions and settings the installed skills read. **When:** a convention
   or setting changes.
+- `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
+  development flow, branch naming or PR template changes.
+- `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
+  current-state claims. **When:** a file, procedure or contract they cite is renamed or changes;
+  update the current-state claims and leave dated findings as written.
+- `private/AGENTS.md`, `private/README.md` — the companion's agent guide and index. **When:** a
+  public procedure or settings file they cite is renamed, or a companion document moves.
 - `private/PRD.md` — the full product spec. **When:** a feature-level change only: a capability
   added, a planned feature cancelled, a user story revised. Never implementation detail.
 - `private/ops/azure-deployment-runbook.md`, `private/ops/iracing-rollout.md` — exact resource
