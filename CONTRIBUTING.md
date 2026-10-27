@@ -232,11 +232,16 @@ ci: gate backend branch coverage at 80% and add AuthService tests
 
 ## Branches and pull requests
 
-- Branch off `main`. Use a descriptive branch name such as
-  `feat/<short-desc>`, `fix/<short-desc>`, or `ci/<short-desc>`.
+- Branch off `main`. Name the branch `<type>/<issue#>-<slug>`, such as
+  `feat/428-percentile-history-readers` or `fix/451-end-session-positional-args`
+  (types: `feat`, `fix`, `refactor`, `test`, `docs`, `ci`, `chore`). Work with no
+  issue — dependency bumps, docs-only changes, release prep — drops the number:
+  `docs/<slug>`.
 - Keep PRs focused — one logical change per PR is much easier to review.
-- Fill out the pull request template, link the issue it closes
-  (`Closes #123`), and confirm the quality gates pass.
+- Fill out the pull request template. Its first line links the issue:
+  `Closes #123` when the PR finishes it, or `Part of #123` when the PR is one
+  slice of a spec that stays open. A number in the PR title alone does not link
+  the issue. Confirm the quality gates pass.
 - All status checks must be green before merge. Dependency updates are handled
   automatically by Dependabot.
 

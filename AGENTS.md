@@ -119,6 +119,30 @@ configuration supplied by their user or environment, and the sync script does no
 
 ---
 
+## Development flow
+
+The flow skills are this repo's binding development process. `docs/agents/dev-flow.md` holds the
+routing table, the code versus docs-and-agent-config path split, exemption details and issue
+linking; read it before the first edit of a session and whenever no ready issue exists. `/ask-matt`
+maps the flow itself.
+
+- **The gate.** Every code edit starts from a **ready issue**: an open `ready-for-agent` issue whose
+  body is a `/to-spec` spec, a `/to-tickets` ticket or a `/triage` agent brief, or a `bug` issue
+  worked through `/diagnosing-bugs` (an issue number is required there, a spec is not). With no
+  ready issue, stop before the first edit and route the user. Reading code, running tests and
+  answering questions need no issue.
+- **The human starts every phase.** `/wayfinder`, `/grill-with-docs`, `/to-spec`, `/to-tickets`,
+  `/implement` and `/triage` stay user-invoked (`disable-model-invocation: true` in their
+  `SKILL.md`). At a phase boundary, name the next command, give the reason in one line, and wait.
+  Inside a phase, use `/tdd`, `/code-review`, `/diagnosing-bugs`, `/domain-modeling`,
+  `/codebase-design`, `/prototype` and `/research` whenever they fit.
+- **Exempt from the gate:** dependency bumps, changes touching only docs and agent config, release
+  prep, and an explicit user waiver recorded in the PR body as `Flow waived by the user: <reason>`.
+- **Linking.** Branches are `<type>/<issue#>-<slug>`; the PR body opens with `Closes #N` or
+  `Part of #N`.
+
+---
+
 ## Ground Rules
 
 - **Don't build on unverified assumptions — ask.** When a task depends on a fact you can't confirm
@@ -941,6 +965,11 @@ Canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `re
 ### Domain docs
 
 Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Development flow
+
+Gate routing, the code/docs path split, exemptions and issue linking — see `docs/agents/dev-flow.md`
+and [Development flow](#development-flow) above.
 
 ---
 

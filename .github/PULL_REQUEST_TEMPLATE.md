@@ -1,20 +1,19 @@
-# Pull Request Template
+Closes #
 
 <!--
 Thanks for contributing to ApexRacers! Please fill out the sections below.
 Keep PRs focused — one logical change per PR is easier to review.
 See CONTRIBUTING.md and AGENTS.md for conventions and quality gates.
+
+The first line links the issue: "Closes #123" when this PR finishes issue 123, or
+"Part of #123" when it is one slice of a spec that stays open. A number in the PR
+title alone does not link the issue. Put "Refs #123" for other related issues in
+the Summary. Dependency bumps, docs-only changes and release prep may delete it.
 -->
 
 ## Summary
 
 <!-- What does this PR change, and why? Give reviewers the context they need. -->
-
-## Related issue
-
-<!-- Link the issue this closes, e.g. "Closes #123". Use "Refs #123" if it only relates. -->
-
-Closes #
 
 ## Type of change
 
