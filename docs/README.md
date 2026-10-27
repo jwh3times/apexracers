@@ -99,7 +99,9 @@ the triage label vocabulary, and how those skills should consume this repo's
 domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
 `AGENTS.md`'s "Agent skills" section links each one; edit the
 `docs/agents/` file itself when the underlying convention (tracker, label
-strings, doc layout) changes, not `AGENTS.md`.
+strings, doc layout) changes, not `AGENTS.md`. [Development flow](agents/dev-flow.md)
+holds the routing, code/docs path split, exemptions and issue linking behind the
+development-flow gate that `AGENTS.md` states.
 
 Agents are authored for Claude Code, with `.codex/agents/*.toml` **generated** from
 them. Skills run the opposite direction: `.agents/skills/<name>/**` is authored

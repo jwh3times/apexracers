@@ -236,6 +236,19 @@ gh pr list --head "$(git branch --show-current)" --state open --json number -q '
   (Summary, Type of change, How was this tested) from the branch's changes.
 - **PR exists** → `gh pr edit <number>` to refresh the body. Do not open a second PR.
 
+Either way, the body's first line is the issue link (see `docs/agents/dev-flow.md`).
+Take `N` from the branch name (`<type>/<issue#>-<slug>`) and run
+`gh issue view <N> --json title,labels,body` to choose the line:
+
+- `Closes #N` — this PR finishes issue `N`.
+- `Part of #N` — this PR is one slice of spec `N`, which stays open.
+
+If the branch carries no number, the work is exempt from the development-flow gate:
+open with `Flow waived by the user: <reason>` when the user waived it, and delete the
+link line for a dependency bump, docs-and-agent-config-only change or release prep.
+When the branch number and the issue disagree, or `Closes` versus `Part of` is
+unclear, ask the user before creating the PR. A refreshed body keeps its link line.
+
 ### 9. Report
 
 Include private follow-up issue and wiki links for required human actions, or state that none remain.
