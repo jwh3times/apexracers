@@ -60,9 +60,9 @@ read. The main code paths are `src/`, `web/`, `scripts/` (which includes the age
 - **Dependency bumps** — Dependabot PRs (`dependabot/…` branches) and `chore(deps):` /
   `chore(deps-dev):` changes.
 - **Docs and agent config only** — every changed path is on the docs-and-agent-config list above.
-- **Release prep** — `chore(release): prepare vX.Y.Z` commits, and the release metadata `/ship`
-  writes: the dated `CHANGELOG.md` section and a release-line change to `web/package.json` and
-  `web/package-lock.json`.
+- **Release prep** — `docs: update docs and changelog for vX.Y.Z` commits, and the release
+  metadata `/ship` writes: the dated `CHANGELOG.md` section and a release-line change to
+  `web/package.json` and `web/package-lock.json`.
 - **User waiver** — the user waives the flow for this change in their own words. Record it in the PR
   body as `Flow waived by the user: <reason>`, quoting their reason.
 
