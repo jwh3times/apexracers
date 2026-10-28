@@ -45,15 +45,20 @@ git diff --name-status "$range"
 ```
 
 Read the diff itself, not only the file list. Skip generated copies (the mirrors the
-`Generated-config check` regenerates) and read their sources instead. Match each change against
-every `Doc map` item's **when**: the paths it names, and the kind of change (a new endpoint, a
-changed command, a new setting, a removed feature). A **when** is a signal, not a limit: a change
-that plainly affects a document it does not match is in scope too, and is named in the report so
-the `Doc map` can be extended. A pure refactor often owes no doc edit; say so rather than inventing
-one. For a list of changes, match the same way. For a full audit, every item is in scope.
+`Generated-config check` regenerates) and read their sources instead. Skip the bodies of the skills
+the `Doc map` marks `frozen` too (installed, and never edited here): read only what their change
+means for claims in other documents, such as a renamed setting or a new command. A repository that
+installs its own skills skips the installed copy, never the authored source it was installed from.
+Match each change against every `Doc map` item's **when**: the paths it names, and the kind of
+change (a new endpoint, a changed command, a new setting, a removed feature). A **when** is a
+signal, not a limit: a change that plainly affects a document it does not match is in scope too, and
+is named in the report so the `Doc map` can be extended. A pure refactor often owes no doc edit; say
+so rather than inventing one. For a list of changes, match the same way. For a full audit, every
+item is in scope.
 
 Then search for the names the diff removed or renamed (settings, commands, files, flags, counts
-such as "all four"): stale references to them are drift that no **when** predicts. For a member the
+such as "all four"), and for names whose meaning it widened or narrowed: stale references to them
+are drift that no **when** predicts. For a member the
 diff adds to an enumerated set (a marker, a setting, a skill), search for its siblings instead: a
 list that names them but not the new one is now incomplete. Search for a name as it is written in
 the docs, usually in backticks (`` `frozen` ``), so a common word does not bury the hits. Search
@@ -61,11 +66,11 @@ wider than the `Doc map`, skipping generated copies and `frozen` documents:
 
 - every tracked Markdown file (`git ls-files '*.md'`);
 - the companion, from its own root, when its checkout exists;
-- the `Follow-up wiki`, when one is set and the change is on the default branch, in a read-only
-  clone in a scratch location.
+- each wiki: the `Follow-up wiki`, and any `Doc map` item that lives in a wiki, when the change is
+  on the default branch, in a read-only clone in a scratch location.
 
 A hit in a document the `Doc map` lacks is fixed like any other and named in the report, so the map
-can be extended. The wiki waits for the merge, so its pages never point at a file that is not there
+can be extended. A wiki waits for the merge, so its pages never point at a file that is not there
 yet: a run on an unmerged branch (every run from `ship`) skips it and reports that the wiki search
 is owed after the merge. The next `end-session`, or any run on the default branch, performs it and
 fixes what it finds.

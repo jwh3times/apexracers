@@ -11,8 +11,9 @@ setting below is a `##` heading in that file.
   - `per-merge` — every merge to `main` is tagged with the next version, and the changelog gives
     each merge a dated section for the version it will mint. `Unreleased` stays as an empty
     placeholder between merges.
-  - `cut-on-line` — every merge is tagged, but `Unreleased` accumulates the entries; a dated section
-    is cut only when a branch starts a new major or minor line.
+  - `cut-on-line` — `Unreleased` accumulates each change's entries, whether a workflow tags every
+    merge or a maintainer tags releases by hand; a dated section is cut only at a deliberate
+    release, which `ship` makes when a branch starts a new major or minor line.
   - `none` — no versions and no changelog sections: `ship` skips its release steps.
 - **Discover:** the tag workflow (`.github/workflows/version.yml` and the like), the policy at the
   top of `CHANGELOG.md`, how its recent sections line up with the `v*` tags, and the existing `ship`

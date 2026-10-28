@@ -72,3 +72,7 @@ A draft repository security advisory on the public repository
 (`gh api --method POST repos/jwh3times/apexracers/security-advisories`), which stays private while in
 draft, plus a **draft** item on the board that discloses nothing. Never a Markdown file, and never a
 public issue before the fix ships.
+
+## New work
+
+issue

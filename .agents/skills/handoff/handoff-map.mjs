@@ -121,7 +121,7 @@ export function configPath(env = process.env, home = homedir()) {
 
 export function parseConfig(text) {
   const values = {};
-  for (const line of text.replace(/^﻿/u, "").split(/\r?\n/u)) {
+  for (const line of text.replace(/^\uFEFF/u, "").split(/\r?\n/u)) {
     const match = line.match(/^\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.*?)\s*$/u);
     if (!match || line.trim().startsWith("#")) continue;
     values[match[1]] = match[2].replace(/^(["'])(.*)\1$/u, "$2");
@@ -288,7 +288,7 @@ export function readMap(dir) {
       `no ${MAP_FILE} in ${dir}; the map is shared by every repository, so this script never creates one`,
     );
   }
-  const raw = readFileSync(file, "utf8").replace(/^﻿/u, "");
+  const raw = readFileSync(file, "utf8").replace(/^\uFEFF/u, "");
   let map;
   try {
     map = JSON.parse(raw);
