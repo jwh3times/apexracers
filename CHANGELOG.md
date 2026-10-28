@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.25] - 2026-10-28
+
+### Changed
+
+- Contributor workflow: the shared agent skills are refreshed from `jwh3times/skills`: code spans that broke across a line in the skills and their settings now stay on one line. No behavior changes.
+
 ## [15.1.24] - 2026-10-28
 
 ### Changed
@@ -1927,7 +1933,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.24...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.25...HEAD
+[15.1.25]: https://github.com/jwh3times/apexracers/compare/v15.1.24...v15.1.25
 [15.1.24]: https://github.com/jwh3times/apexracers/compare/v15.1.23...v15.1.24
 [15.1.23]: https://github.com/jwh3times/apexracers/compare/v15.1.22...v15.1.23
 [15.1.21]: https://github.com/jwh3times/apexracers/compare/v15.1.20...v15.1.21
