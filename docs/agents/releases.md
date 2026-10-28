@@ -25,14 +25,6 @@ when ambiguous
 
 `bash scripts/next-version.sh`
 
-## Unreleased placeholder
-
-`No unreleased changes.`
-
 ## Changelog check
 
 `bash scripts/verify-changelog-version.sh` (the required **Verify changelog version** check)
-
-## Release commit message
-
-`chore(release): prepare v<version>`
