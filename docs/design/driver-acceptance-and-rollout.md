@@ -235,7 +235,7 @@ missing cause-specific evidence.
   until implementing evidence/rehearsal and proposed rollout/publication. A journal runtime contract
   may need its own earlier conditional selection step to avoid a circular dependency on deployment.
 
-Human actions use the [private follow-up procedure](../agents/human-actions.md) with step-by-step
+Human actions use the [private follow-up procedure](../agents/human-follow-up.md) with step-by-step
 wiki instructions and reciprocal tracking. Operational identifiers/settings stay private. This plan
 does not obtain credentials, inspect/change production, contact a provider, enable flags or execute
 implementation. Public product/privacy claims must describe verified behavior and settings;

@@ -25,11 +25,23 @@
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "computedHash": "b69bc2ee03ee31200639deed65168ab9e48db43af3ed47889a66c4bd190601eb"
     },
+    "docs-updater": {
+      "source": "jwh3times/skills",
+      "sourceType": "github",
+      "skillPath": "skills/docs-updater/SKILL.md",
+      "computedHash": "fbda44c9819c0bd2e0568ced95404f9b4cc7ab6d32dac9951572c234d90bb672"
+    },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "b747e8b4dcd0f367ef940c290b14f858bf9576ad9961fd6684bacff5688f4a2b"
+    },
+    "end-session": {
+      "source": "jwh3times/skills",
+      "sourceType": "github",
+      "skillPath": "skills/end-session/SKILL.md",
+      "computedHash": "0e3fb99ddb523f9fc6389ba65ab1d13d478e2ec9a2b89e8c8f50aa1eb8e37ffa"
     },
     "grill-me": {
       "source": "mattpocock/skills",
@@ -49,6 +61,12 @@
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "4eb5bf61b1e602f9cedbd3a5e4469dfba1db0247d5d40956d03299c455b91197"
     },
+    "handoff": {
+      "source": "jwh3times/skills",
+      "sourceType": "github",
+      "skillPath": "skills/handoff/SKILL.md",
+      "computedHash": "b557d5e06bded7ed4d1361a26d59286081fdd4fd3d22e96e500c6d9f3bcda3c0"
+    },
     "implement": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -60,6 +78,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "3929c6892605b67b60503ced451876e9b313d1a909ab7066fbcd9967c56ed226"
+    },
+    "lets-go": {
+      "source": "jwh3times/skills",
+      "sourceType": "github",
+      "skillPath": "skills/lets-go/SKILL.md",
+      "computedHash": "094f9dcb16796a4bb159a3bb569f98c5c6154ed76a857b4e5c56ddcf25364a76"
     },
     "prototype": {
       "source": "mattpocock/skills",
@@ -84,6 +108,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
       "computedHash": "91a64ff6b84297fc902d5c435436f9b5783e79c3f4e7073dd9d4af9c04a4ef50"
+    },
+    "ship": {
+      "source": "jwh3times/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ship/SKILL.md",
+      "computedHash": "fa94169077885f9c76469144f8faae185f1201ef2eb6787eb8f7772622b74afe"
     },
     "tdd": {
       "source": "mattpocock/skills",

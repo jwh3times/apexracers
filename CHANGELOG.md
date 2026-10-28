@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.21] - 2026-10-27
+
+### Changed
+
+- Contributor workflow: the shared `docs-updater` skill now searches every tracked Markdown file, the private companion and the follow-up wiki for names a change removed or renamed (not only the documents in its Doc map), looks for lists that a newly added member is missing from, and reports drift it finds outside a diff-scoped run instead of fixing it. Its follow-up wiki search waits for the merge: `/ship` reports it as owed, and the next `/end-session` runs it and fixes the stale references it finds. The Doc map marks `docs/design/driver-acceptance-and-rollout.md` as `pinned`, so an edit to the Driver Privacy Contract's matrix source re-pins its hash in the same change.
+
+## [15.1.20] - 2026-10-27
+
+### Changed
+
+- Contributor workflow: `/end-session`, `/handoff`, `/lets-go` and `/ship` now install from the shared `jwh3times/skills` repository instead of being maintained here, and `docs-updater` becomes a skill that `/ship` and `/end-session` run on the work in hand. What the skills need to know about this repository lives in settings files under `docs/agents/` — `workspace.md`, `issue-tracker.md`, `human-follow-up.md`, `docs.md`, `releases.md`, `ship.md` and `handoffs.md` — which each skill proposes on its first run. The human follow-up settings move from `docs/agents/human-actions.md` to `docs/agents/human-follow-up.md`, and the doc-update matrix becomes the Doc map in `docs/agents/docs.md`.
+- Contributor workflow: `/handoff` and `/lets-go` read how the Handoffs folder reaches each machine — a synced Proton Drive folder or the `proton-drive` CLI mirror — from that machine's `~/.config/handoffs/config`, which they propose on first use, and the map helper ships inside the handoff skill.
+
+### Removed
+
+- Contributor workflow: `scripts/handoff-map.mjs` and the `docs-updater` agent definition, replaced by the shared skills.
+
+### Fixed
+
+- Contributor workflow: the agent-config generator removes a `.claude/skills/<name>` symlink before writing, so a mirror left as a link by `npx skills update` no longer writes the generated banner into the authored skill.
+
 ## [15.1.19] - 2026-10-26
 
 ### Changed
@@ -1893,7 +1914,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.19...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.21...HEAD
+[15.1.21]: https://github.com/jwh3times/apexracers/compare/v15.1.20...v15.1.21
+[15.1.20]: https://github.com/jwh3times/apexracers/compare/v15.1.19...v15.1.20
 [15.1.19]: https://github.com/jwh3times/apexracers/compare/v15.1.18...v15.1.19
 [15.1.16]: https://github.com/jwh3times/apexracers/compare/v15.1.15...v15.1.16
 [15.1.15]: https://github.com/jwh3times/apexracers/compare/v15.1.14...v15.1.15

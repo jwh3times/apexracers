@@ -15,6 +15,9 @@
 //     SKILL.md with the invocation's argument words, so a shell snippet's `"$3"` silently becomes
 //     an argument (issue #451). Braced `${1:-x}` survives, as do files a skill only references.
 //
+// The same checks cover `skills/`, where jwh3times/skills publishes skills that install as
+// .agents/skills/<name>/ elsewhere. A relative link there must stay inside its own skill folder.
+//
 //   node scripts/lint-agent-neutrality.mjs   # exit 1 and list every problem found
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -32,6 +35,7 @@ const trees = [
 const textExtensions = new Set([".md", ".yaml", ".yml", ".sh", ".txt", ".json", ".toml"]);
 const substitutionArtifacts = [/\.Codex\//, /code\.Codex\.com/];
 const bareParameter = /\$\d/g;
+const publishedDir = "skills";
 
 function listFiles(root, dir) {
   const absolute = path.join(root, dir);
@@ -56,6 +60,27 @@ function existsAfterSync(root, rel) {
   return existsSync(path.join(root, rel));
 }
 
+function lintContent(file, content, isSkillTree, problems) {
+  for (const artifact of substitutionArtifacts) {
+    const match = content.match(artifact);
+    if (match) {
+      problems.push(
+        `${file}: contains "${match[0]}" — a blind claude->Codex substitution artifact; keep the source tool-neutral`,
+      );
+    }
+  }
+
+  if (isSkillTree && path.posix.basename(file) === "SKILL.md") {
+    content.split("\n").forEach((line, index) => {
+      for (const [parameter] of line.matchAll(bareParameter)) {
+        problems.push(
+          `${file}:${index + 1}: bare \`${parameter}\` is replaced by the skill's invocation arguments when loaded — use a named variable`,
+        );
+      }
+    });
+  }
+}
+
 export function lintNeutrality(root = defaultRoot) {
   const problems = [];
   for (const [source, target, wholeTree] of trees) {
@@ -63,25 +88,7 @@ export function lintNeutrality(root = defaultRoot) {
       const ext = path.extname(file).toLowerCase();
       if (wholeTree ? !textExtensions.has(ext) : ext !== ".md") continue;
       const content = readFileSync(path.join(root, file), "utf8");
-
-      for (const artifact of substitutionArtifacts) {
-        const match = content.match(artifact);
-        if (match) {
-          problems.push(
-            `${file}: contains "${match[0]}" — a blind claude->Codex substitution artifact; keep the source tool-neutral`,
-          );
-        }
-      }
-
-      if (wholeTree && path.posix.basename(file) === "SKILL.md") {
-        content.split("\n").forEach((line, index) => {
-          for (const [parameter] of line.matchAll(bareParameter)) {
-            problems.push(
-              `${file}:${index + 1}: bare \`${parameter}\` is replaced by the skill's invocation arguments when loaded — use a named variable`,
-            );
-          }
-        });
-      }
+      lintContent(file, content, wholeTree, problems);
 
       const sourceDir = path.posix.dirname(file);
       const mirrorDir = target + sourceDir.slice(source.length);
@@ -94,6 +101,22 @@ export function lintNeutrality(root = defaultRoot) {
             `${file}: relative link \`${link}\` resolves here but breaks in the mirrored copy under ${target} — write it as a plain repo-root-relative path`,
           );
         }
+      }
+    }
+  }
+
+  for (const file of listFiles(root, publishedDir)) {
+    if (!textExtensions.has(path.extname(file).toLowerCase())) continue;
+    const content = readFileSync(path.join(root, file), "utf8");
+    lintContent(file, content, true, problems);
+
+    const skillDir = file.split("/").slice(0, 2).join("/");
+    for (const [, link] of content.matchAll(/\]\((\.\.?\/[^)\s]+)\)/g)) {
+      const resolved = path.posix.join(path.posix.dirname(file), link.replace(/#.*$/, ""));
+      if (!resolved.startsWith(`${skillDir}/`)) {
+        problems.push(
+          `${file}: relative link \`${link}\` leaves ${skillDir}/, which installs elsewhere — write it as a plain repo-root-relative path`,
+        );
       }
     }
   }
