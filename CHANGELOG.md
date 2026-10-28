@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.22] - 2026-10-27
+
+### Changed
+
+- Contributor workflow: the shared agent skills are refreshed from `jwh3times/skills`. `/end-session` records work it discovers as an issue on the board, per the new `New work` setting in `docs/agents/issue-tracker.md`, and falls back to GitHub's MCP tools where `gh` is missing. `docs-updater` skips only the skills the Doc map marks `frozen`, and triage labels may live in `triage-labels.md` or in `issue-tracker.md`. `npm run lint:agents`' script also lints another checkout when given its root, and names the root it linted.
+
 ## [15.1.21] - 2026-10-27
 
 ### Changed
@@ -1914,7 +1920,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.21...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.22...HEAD
+[15.1.22]: https://github.com/jwh3times/apexracers/compare/v15.1.21...v15.1.22
 [15.1.21]: https://github.com/jwh3times/apexracers/compare/v15.1.20...v15.1.21
 [15.1.20]: https://github.com/jwh3times/apexracers/compare/v15.1.19...v15.1.20
 [15.1.19]: https://github.com/jwh3times/apexracers/compare/v15.1.18...v15.1.19
