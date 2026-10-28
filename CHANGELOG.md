@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.24] - 2026-10-28
+
+### Changed
+
+- Contributor workflow: the shared agent skills are refreshed from `jwh3times/skills`, whose settings now carry defaults a repository writes down only to override. `/ship` commits its docs and changelog edits as `docs: update docs and changelog for v<version>` (the shared default, replacing `chore(release): prepare v<version>`), and `Unreleased` keeps its `No unreleased changes.` placeholder by default, so both headings leave `docs/agents/releases.md`. `/ship`'s fast checks now run the web Vitest suite with coverage (`npx vitest run --coverage`, about 15 seconds) when `web/` changed; the .NET tests stay in CI. New human follow-up wiki pages are named `<Topic>-<YYYY-MM-DD>`. `npm run lint:agents`' script sorts with an explicit comparator, with no change to its output.
+
 ## [15.1.23] - 2026-10-27
 
 ### Changed
@@ -1921,7 +1927,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.23...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.24...HEAD
+[15.1.24]: https://github.com/jwh3times/apexracers/compare/v15.1.23...v15.1.24
 [15.1.23]: https://github.com/jwh3times/apexracers/compare/v15.1.22...v15.1.23
 [15.1.21]: https://github.com/jwh3times/apexracers/compare/v15.1.20...v15.1.21
 [15.1.20]: https://github.com/jwh3times/apexracers/compare/v15.1.19...v15.1.20
