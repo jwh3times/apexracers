@@ -3,7 +3,8 @@
 
 `docs/agents/issue-tracker.md` — where work is tracked. The file usually exists already (from the
 `mattpocock/skills` setup flow) with its own sections; these settings are added beside them. Label
-names stay in `docs/agents/triage-labels.md`.
+names stay in `docs/agents/triage-labels.md`, or in this file's own triage-labels section where a
+repository keeps them there.
 
 ## Public repository
 
@@ -36,6 +37,15 @@ names stay in `docs/agents/triage-labels.md`.
   with `Blocked`). Field and option IDs are looked up at run time, never written here.
 - **Discover:** `gh project field-list <number> --owner <owner> --format json`, and existing
   skills and docs for how each field is used.
+
+## New work
+
+- **Read by:** end-session
+- **Value:** how work found during a session, and not yet committed to, is recorded: `issue` (an
+  issue, labelled and added to the `Board`) or `draft item` (a draft item on the `Board`, which
+  becomes an issue only when the work is committed to, by the rule the repository records).
+- **Discover:** `AGENTS.md`, the ADRs and this file's own sections, for a rule that keeps
+  uncommitted work as board drafts; `issue` when nothing says so.
 
 ## Security findings
 

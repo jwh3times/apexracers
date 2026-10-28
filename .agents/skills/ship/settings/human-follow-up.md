@@ -18,7 +18,8 @@ finds today's values.
 - **Read by:** docs-updater, end-session, ship
 - **Value:** the label a follow-up issue carries (`ready-for-human`, `human-action-required`, …),
   or `none` for a tracking-issue checkbox.
-- **Discover:** as above, and `docs/agents/triage-labels.md`.
+- **Discover:** as above, and the triage label vocabulary (`docs/agents/triage-labels.md`, or its
+  section of `docs/agents/issue-tracker.md`).
 
 ## Follow-up board
 
@@ -49,8 +50,10 @@ line in a final message is not a follow-up.
    same action. Update a matching open follow-up instead of duplicating it; reopen only when the
    same obligation recurs, otherwise link the old issue as context.
 3. **Record.** Create or update one follow-up per independently completable action: the originating
-   PR or commit, what the agent already did, the remaining action, why a human is needed, who,
-   which environment, prerequisites, a completion checklist, and the wiki link. Write multi-line
+   PR or commit, what the agent already did, the remaining action, why a human is needed, the
+   responsible role (never a guessed assignee), which environment, prerequisites, the acceptance
+   criteria and where the completion evidence is kept, and the wiki link. A decision records its
+   options and the consequences of each. Write multi-line
    bodies to a temporary file and pass `--body-file`. Select the destination repository explicitly
    with `-R`, even from the public checkout. Apply the follow-up label, creating it if the
    repository lacks it.
@@ -60,14 +63,17 @@ line in a final message is not a follow-up.
 5. **Instructions.** Publish numbered steps on the wiki: access needed, exact commands or verified
    UI navigation, expected results, how to verify completion, and recovery where relevant. Mark
    uncertainty about a UI instead of inventing clicks. Link the issue and source work, and index the
-   page from the wiki's index page. Preserve other pages and concurrent edits when pushing.
+   page from the wiki's index page. Preserve other pages and concurrent edits when pushing; a local
+   wiki commit without a successful push is not publication.
 6. **Verify.** Read back the issue, label, board fields, and wiki page, and check the links run both
    ways. Close a follow-up only on evidence the action was done (or a decision it no longer
-   applies), recording the outcome without deleting reusable instructions.
+   applies), never because the implementation merged, recording the outcome without deleting
+   reusable instructions.
 
 Keep secrets, tokens, account identifiers, and credential values out of issues and wiki pages; refer
 to the secret store instead. A security remediation follows the `Security findings` route in
-`issue-tracker.md`; its follow-up links to it without restating it. When a destination is a
+`issue-tracker.md`; its follow-up links to it without restating it, and drafting an advisory never
+authorizes publishing it or requesting a CVE. When a destination is a
 `discover:` value, report publication status without its identifiers.
 
 If the destination, board, or wiki is unreachable, complete every reachable part, keep a sanitized
