@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.28] - 2026-10-30
+
+### Changed
+
+- Contributor workflow: the shared agent skills are refreshed from `jwh3times/skills`, which now give most settings a default, so the ones that matched leave `docs/agents/`. `/ship` bumps `web/package.json` with `--allow-same-version`, so a re-run lands on the same version; `/handoff` names `npm run bootstrap:private` for a machine without `private/`, and `/lets-go` offers it.
+
 ## [15.1.27] - 2026-10-30
 
 ### Changed
@@ -1940,7 +1946,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.27...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.28...HEAD
+[15.1.28]: https://github.com/jwh3times/apexracers/compare/v15.1.27...v15.1.28
 [15.1.27]: https://github.com/jwh3times/apexracers/compare/v15.1.26...v15.1.27
 [15.1.25]: https://github.com/jwh3times/apexracers/compare/v15.1.24...v15.1.25
 [15.1.24]: https://github.com/jwh3times/apexracers/compare/v15.1.23...v15.1.24
