@@ -35,11 +35,6 @@ deliberate: ask first.
 
 - **Never run:** `docker compose down -v` — it deletes the seeded Postgres volume.
 
-## Generated-config check
-
-`npm run sync:agents:check` (the required **Verify generated agent config** check), regenerated with
-`npm run sync:agents` — always.
-
 ## Final portability check
 
 `node scripts/repository-status.mjs --check`
