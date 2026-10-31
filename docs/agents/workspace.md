@@ -10,10 +10,6 @@ its absence is a valid public-contributor state.
 `node scripts/repository-status.mjs` (also `npm run repo:status`) — branch, dirty state, upstream
 and divergence for this repository and, when installed, the companion.
 
-## Sync with main
-
-`npm run sync:main`
-
 ## Safe-to-remove paths
 
 - `coverage*/`, `coverage-report/`, `TestResults/` (repo root)

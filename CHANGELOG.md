@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.32] - 2026-10-31
+
+### Changed
+
+- Contributor workflow: the version, changelog, docs and sync scripts are now the canonical ones from `jwh3times/skills`, and the shared skills are refreshed to match. **Verify changelog version** now requires every human PR to name the version its merge will mint, so a PR with no section fails; Dependabot stays exempt. `node scripts/check-docs.mjs`, which **Verify generated agent config** now runs, requires local links and anchors to resolve and the doc map to list every document.
+- Bumped `Scalar.AspNetCore` from 2.18.5 to 2.18.6 (Dependabot, released as v15.1.30).
+- Bumped `oxlint` from 1.89.0 to 1.90.0 and `postcss` from 8.5.31 to 8.5.32 in `web/` (Dependabot, released as v15.1.31).
+
 ## [15.1.29] - 2026-10-30
 
 ### Changed
@@ -1952,7 +1960,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.29...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.32...HEAD
+[15.1.32]: https://github.com/jwh3times/apexracers/compare/v15.1.29...v15.1.32
 [15.1.29]: https://github.com/jwh3times/apexracers/compare/v15.1.28...v15.1.29
 [15.1.28]: https://github.com/jwh3times/apexracers/compare/v15.1.27...v15.1.28
 [15.1.27]: https://github.com/jwh3times/apexracers/compare/v15.1.26...v15.1.27

@@ -216,7 +216,7 @@ build decision leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` i
 advanced to `1`. Rolling `[Unreleased]` into a versioned changelog section is a separate, deliberate
 step the [`/ship` skill](.agents/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
 the version that merge will mint) — not during ordinary feature/fix work. After selecting the release
-line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.sh`, and a
+line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.mjs`, and a
 `Changelog Version` CI check
 (`.github/workflows/changelog-version.yml`) fails a PR whose dated section has drifted from it. (The
 `Doc map` in `docs/agents/docs.md` is the full doc-update matrix; the `docs-updater` skill applies it.)
@@ -984,8 +984,9 @@ npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s 
 npm run sync:agents
 ```
 
-`scripts/sync-agents.mjs` and `scripts/lint-agent-neutrality.mjs` (and their tests) are canonical in
-`jwh3times/skills`: fix them there, then copy them here.
+`scripts/sync-agents.mjs`, `lint-agent-neutrality.mjs`, `sync-main.mjs`, `next-version.mjs`,
+`check-changelog.mjs` and `check-docs.mjs` (and their tests) are canonical in `jwh3times/skills`: fix
+them there, then copy them here.
 
 ### Development flow
 
