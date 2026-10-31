@@ -10,10 +10,6 @@ its absence is a valid public-contributor state.
 `node scripts/repository-status.mjs` (also `npm run repo:status`) — branch, dirty state, upstream
 and divergence for this repository and, when installed, the companion.
 
-## Companion commit policy
-
-ask
-
 ## Sync with main
 
 `npm run sync:main`
@@ -22,7 +18,6 @@ ask
 
 - `coverage*/`, `coverage-report/`, `TestResults/` (repo root)
 - `web/coverage/`, `web/dist/`, `web/test-results/`, `web/playwright-report/`, `web/blob-report/`
-- finished worktrees under `.claude/worktrees/`
 
 ## Never-remove paths
 
@@ -38,11 +33,6 @@ ask
 deliberate: ask first.
 
 - **Never run:** `docker compose down -v` — it deletes the seeded Postgres volume.
-
-## Generated-config check
-
-`npm run sync:agents:check` (the required **Verify generated agent config** check), regenerated with
-`npm run sync:agents` — always.
 
 ## Final portability check
 
