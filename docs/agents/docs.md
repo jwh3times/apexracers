@@ -115,7 +115,3 @@
 - Design tokens: `@layer components` in `web/src/index.css`
 - Glossary and ADRs: `CONTEXT.md`, `docs/adr/*.md`
 - Required status checks: `gh api repos/jwh3times/apexracers/rules/branches/main`
-
-## Docs validation
-
-none — Prettier covers only `web/`, and no check runs over the root docs.

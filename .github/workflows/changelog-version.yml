@@ -1,13 +1,12 @@
 name: Changelog Version
 
-# Verifies that the CHANGELOG's top dated section names the version this PR's
-# merge will mint. It calls scripts/verify-changelog-version.sh, which in turn
-# calls scripts/next-version.sh — the same script version.yml uses to stamp the
-# release, so the prediction and the eventual tag share one source of truth.
+# Verifies that the CHANGELOG's newest section names the version this PR's merge
+# will mint. It calls scripts/check-changelog.mjs, which computes that version with
+# scripts/next-version.mjs — the same script version.yml uses to stamp the release,
+# so the prediction and the eventual tag share one source of truth.
 #
-# A PR that only touches [Unreleased] (e.g. dependabot, docs-only) is exempt:
-# the script passes when the top dated section already exists on main, i.e. this
-# branch introduces no new dated section.
+# A Dependabot PR is exempt, in the step below: the next human PR rolls its changes
+# up into that PR's section. Every other PR writes a section, docs-only ones included.
 #
 # Blocking drift needs BOTH of these on main, and the "Main/Release branch rules"
 # ruleset sets both today:
@@ -40,4 +39,12 @@ jobs:
           fetch-depth: 0 # full history + tags, needed to compute the next build number
 
       - name: Verify CHANGELOG matches the next mint version
-        run: bash scripts/verify-changelog-version.sh
+        env:
+          # The PR author, not github.actor, which is whoever triggered this run.
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: exempt. The next human PR rolls up its changes."
+            exit 0
+          fi
+          node scripts/check-changelog.mjs
