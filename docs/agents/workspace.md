@@ -18,7 +18,6 @@ and divergence for this repository and, when installed, the companion.
 
 - `coverage*/`, `coverage-report/`, `TestResults/` (repo root)
 - `web/coverage/`, `web/dist/`, `web/test-results/`, `web/playwright-report/`, `web/blob-report/`
-- finished worktrees under `.claude/worktrees/`
 
 ## Never-remove paths
 

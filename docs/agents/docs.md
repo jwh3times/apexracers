@@ -22,6 +22,22 @@
   contexts and design system. **When:** a context, shared component or service is added under
   `web/src/` (the project structure and contexts tables); the frontend auth flow or 401 interceptor
   changes; design tokens or a UI pattern change (the design system section).
+- `docs/content-security-policy.md` — the browser resource policy, the built-SPA asset audit and the
+  Development-only API-reference exceptions. **When:** `ContentSecurityPolicy` or
+  `SecurityHeadersMiddleware` (`src/ApexRacers.Api/Middleware/`) changes, or the SPA gains a
+  resource dependency (a font, script or outbound connection).
+- `docs/ingestion-deployment.md` — the ingestion image deploy and its pause preservation. **When:**
+  `scripts/deploy-ingestion.mjs` or the ingestion job in `.github/workflows/deploy.yml` changes.
+- `web/public/README.md`, `web/public/licenses/README.md` — the icon pack's files and sizes; the
+  bundled fonts and their licenses. **When:** an icon file is added or removed; a Fontsource package
+  is added, removed or re-versioned.
+- `SECURITY.md` — supported versions, the reporting route, scope and safe harbor. **When:** the
+  reporting route or the in-scope surface (the API's auth, the frontend, ingestion) changes.
+- `SUPPORT.md` — where to ask for help. **When:** the issue templates or the support route change.
+- `CODE_OF_CONDUCT.md`, `LICENSE` — `owner-only`.
+- `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md` — the PR body's sections; the
+  bug and feature forms. **When:** the development flow's linking rule changes; the triage labels
+  the forms apply change.
 - `CHANGELOG.md` — public release notes, Keep a Changelog and SemVer. `ship-owned`.
 - `CONTEXT.md`, `docs/adr/*.md` — the domain glossary and decisions, written by the
   `domain-modeling` skill. `frozen` for this skill. **When:** a term or ADR lands, keep
@@ -56,6 +72,9 @@
 - `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
   current-state claims. **When:** a file, procedure or contract they cite is renamed or changes;
   update the current-state claims and leave dated findings as written.
+- `scripts/async-coverage-minimal/README.md`, `scripts/async-coverage-probe/UPSTREAM.md` — the
+  research-only harnesses behind `docs/research/backend-async-coverage-attribution.md` (#411,
+  #416). **When:** a harness's commands or files change; their findings are the research's.
 - `docs/design/driver-acceptance-and-rollout.md` — the Driver Privacy Contract's accepted matrix
   source. `pinned: matrixSourceSha256 in docs/testing/driver-privacy-matrix.json` — any edit, even
   a link, fails that required check until it is reviewed against the matrix and the hash re-pinned
