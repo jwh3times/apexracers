@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.29] - 2026-10-30
+
+### Changed
+
+- Contributor workflow: the doc map in `docs/agents/docs.md` now covers every tracked document (the community files and templates, the CSP and ingestion-deployment guides, the icon and font notes, the async-coverage harness notes), so `/docs-updater` audits them too. `/end-session` handles worktrees through its own finished-branch check rather than a cleanup-list entry.
+
 ## [15.1.28] - 2026-10-30
 
 ### Changed
@@ -1946,7 +1952,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.28...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.29...HEAD
+[15.1.29]: https://github.com/jwh3times/apexracers/compare/v15.1.28...v15.1.29
 [15.1.28]: https://github.com/jwh3times/apexracers/compare/v15.1.27...v15.1.28
 [15.1.27]: https://github.com/jwh3times/apexracers/compare/v15.1.26...v15.1.27
 [15.1.25]: https://github.com/jwh3times/apexracers/compare/v15.1.24...v15.1.25
