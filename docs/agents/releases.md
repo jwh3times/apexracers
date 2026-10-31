@@ -13,10 +13,6 @@ section is invented per skipped build tag.
 
 `web/package.json` (with `web/package-lock.json` beside it)
 
-## Bump command
-
-`npm version <version> --no-git-tag-version`, run from `web/`
-
 ## Ask before bumping
 
 when ambiguous

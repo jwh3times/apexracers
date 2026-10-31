@@ -52,10 +52,6 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 
 jwh3times/apexracers
 
-## Private issue repository
-
-jwh3times/apexracers-private
-
 ## Board
 
 jwh3times 2
@@ -65,14 +61,3 @@ jwh3times 2
 - `Status`: `Todo` / `In Progress` / `Blocked` / `Parked` / `Done`.
 - `Blocked by`: the blocker, set with `Blocked`. The standing iRacing-credentials blocker has its
   own value; a new blocker worth tracking gets its own issue.
-
-## Security findings
-
-A draft repository security advisory on the public repository
-(`gh api --method POST repos/jwh3times/apexracers/security-advisories`), which stays private while in
-draft, plus a **draft** item on the board that discloses nothing. Never a Markdown file, and never a
-public issue before the fix ships.
-
-## New work
-
-issue
