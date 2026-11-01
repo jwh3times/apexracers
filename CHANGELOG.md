@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.35] - 2026-11-01
+
+### Added
+
+- Contributor workflow: `THIRD_PARTY_NOTICES.md` carries the MIT license notice of the installed `mattpocock/skills` skills, which install without it.
+
 ## [15.1.34] - 2026-11-01
 
 ### Changed
@@ -1972,7 +1978,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.34...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.35...HEAD
+[15.1.35]: https://github.com/jwh3times/apexracers/compare/v15.1.34...v15.1.35
 [15.1.34]: https://github.com/jwh3times/apexracers/compare/v15.1.33...v15.1.34
 [15.1.33]: https://github.com/jwh3times/apexracers/compare/v15.1.32...v15.1.33
 [15.1.32]: https://github.com/jwh3times/apexracers/compare/v15.1.29...v15.1.32

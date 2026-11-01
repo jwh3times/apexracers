@@ -35,6 +35,8 @@
   reporting route or the in-scope surface (the API's auth, the frontend, ingestion) changes.
 - `SUPPORT.md` — where to ask for help. **When:** the issue templates or the support route change.
 - `CODE_OF_CONDUCT.md`, `LICENSE` — `owner-only`.
+- `THIRD_PARTY_NOTICES.md` — the license notices of third-party files kept here. `owner-only`: report
+  the change when a skill's source changes.
 - `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md` — the PR body's sections; the
   bug and feature forms. **When:** the development flow's linking rule changes; the triage labels
   the forms apply change.
