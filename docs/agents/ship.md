@@ -12,8 +12,9 @@
   from the Agent Config Sync workflow), fixed by `npm run sync:agents`, committing both sides
 - repo root: `npm run lint:agents` (same check)
 - repo root: `node scripts/check-docs.mjs` (same check)
+- repo root: `node scripts/check-skills.mjs` (same check)
 - repo root, only when `scripts/` changed:
-  `node --test scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs` (same check)
+  `node --test scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs scripts/check-skills.test.mjs` (same check)
 
 `npm run lint` covers the required **Lint** check. The .NET half of the required **Test** check (the
 .NET suites with coverage; more than nine minutes locally) and **Driver Privacy Contract** (a full

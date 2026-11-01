@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.34] - 2026-11-01
+
+### Changed
+
+- Contributor workflow: every `mattpocock/skills` skill now installs from one snapshot pinned by commit, the same in every repository that shares `jwh3times/skills`, and `resolving-merge-conflicts` is gone. `scripts/check-skills.mjs` fails CI when an installed skill differs from `skills-lock.json`, and the rules local edits carried moved to `AGENTS.md` or `docs/agents/`.
+
 ## [15.1.33] - 2026-10-31
 
 ### Changed
@@ -1966,7 +1972,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.33...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.34...HEAD
+[15.1.34]: https://github.com/jwh3times/apexracers/compare/v15.1.33...v15.1.34
 [15.1.33]: https://github.com/jwh3times/apexracers/compare/v15.1.32...v15.1.33
 [15.1.32]: https://github.com/jwh3times/apexracers/compare/v15.1.29...v15.1.32
 [15.1.29]: https://github.com/jwh3times/apexracers/compare/v15.1.28...v15.1.29
