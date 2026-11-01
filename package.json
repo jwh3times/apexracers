@@ -10,6 +10,6 @@
     "sync:agents": "node scripts/sync-agents.mjs",
     "sync:agents:check": "node scripts/sync-agents.mjs --check",
     "lint:agents": "node scripts/lint-agent-neutrality.mjs",
-    "test:repo": "node --test scripts/repository-status.test.mjs scripts/sync-main.test.mjs scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs"
+    "test:repo": "node --test scripts/repository-status.test.mjs scripts/sync-main.test.mjs scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs scripts/check-skills.test.mjs"
   }
 }

@@ -64,13 +64,16 @@ jobs:
           node-version: '26'
 
       - name: Test the generator
-        run: node --test scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs
+        run: node --test scripts/sync-agents.test.mjs scripts/lint-agent-neutrality.test.mjs scripts/next-version.test.mjs scripts/check-changelog.test.mjs scripts/check-docs.test.mjs scripts/check-skills.test.mjs
 
       - name: Lint agent and skill sources for tool neutrality
         run: node scripts/lint-agent-neutrality.mjs
 
       - name: Check generated agent config matches its sources
         run: node scripts/sync-agents.mjs --check
+
+      - name: Check installed skills match the lock
+        run: node scripts/check-skills.mjs
 
       # Local links and anchors resolve, and the doc map lists every document.
       - name: Check the docs
