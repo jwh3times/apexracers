@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.33] - 2026-10-31
+
+### Changed
+
+- Contributor workflow: the development flow and shared-skills text in `AGENTS.md` now come from `jwh3times/skills`: `scripts/sync-agents.mjs` writes them between marked lines, and its check fails when they drift. `docs/agents/dev-flow.md` and `docs/agents/triage-labels.md` hold only what this repository adds to the shared defaults, and the shared skills are refreshed to match.
+
 ## [15.1.32] - 2026-10-31
 
 ### Changed
@@ -1960,7 +1966,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.32...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.33...HEAD
+[15.1.33]: https://github.com/jwh3times/apexracers/compare/v15.1.32...v15.1.33
 [15.1.32]: https://github.com/jwh3times/apexracers/compare/v15.1.29...v15.1.32
 [15.1.29]: https://github.com/jwh3times/apexracers/compare/v15.1.28...v15.1.29
 [15.1.28]: https://github.com/jwh3times/apexracers/compare/v15.1.27...v15.1.28
