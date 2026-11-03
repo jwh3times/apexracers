@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.41] - 2026-11-03
+
+### Changed
+
+- Contributor docs: the research notes that pointed at #391 as open now record it closed in v15.1.40. The remaining unpooled test topologies are tracked in #480. The docs map now routes shared test-fixture and topology rule changes to `AGENTS.md` and the `dotnet-api` agent.
+
 ## [15.1.40] - 2026-11-03
 
 ### Changed
@@ -1996,7 +2002,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.40...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.41...HEAD
+[15.1.41]: https://github.com/jwh3times/apexracers/compare/v15.1.40...v15.1.41
 [15.1.40]: https://github.com/jwh3times/apexracers/compare/v15.1.38...v15.1.40
 [15.1.38]: https://github.com/jwh3times/apexracers/compare/v15.1.35...v15.1.38
 [15.1.35]: https://github.com/jwh3times/apexracers/compare/v15.1.34...v15.1.35
