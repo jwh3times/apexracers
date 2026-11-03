@@ -130,7 +130,7 @@ non-admission status; its commit field identifies the base, not a committed impl
 The harness failure is tracked separately in
 [#391](https://github.com/jwh3times/apexracers/issues/391). Windows logged TCP/IP event 4227 at the
 failure; read-only observation found 5,089 `TIME_WAIT` sockets to the test PostgreSQL endpoint.
-The unmodified fixture disables pooling. These observations support a connection-churn/address-reuse
+The unmodified fixture then disabled pooling (#391 has since pooled it per test database). These observations support a connection-churn/address-reuse
 problem, not a confirmed diagnosis of complete port exhaustion. Failed and recheck TRX reports are
 retained separately. No production or global network settings were changed, and no test exception
 was suppressed. This bounded result is not a clean final complete-suite verdict or integrated
