@@ -1,15 +1,8 @@
-# Triage Labels
+# Triage labels
 
-The skills speak in terms of five canonical triage roles. All five exist as real labels in this
-repository, so the mapping is one-to-one and a skill can apply a role name directly.
+The labels and what they mean are in `.agents/skills/ship/settings/triage-labels.md`. A skill's role name is the GitHub label to apply.
 
-| Role              | Label in our tracker | Applies when                                                    |
-| ----------------- | -------------------- | --------------------------------------------------------------- |
-| `needs-triage`    | `needs-triage`       | Filed but not yet evaluated by a maintainer                     |
-| `needs-info`      | `needs-info`         | Blocked awaiting information or evidence not yet available      |
-| `ready-for-agent` | `ready-for-agent`    | Fully specified; an agent can implement it unattended           |
-| `ready-for-human` | `ready-for-human`    | Requires human implementation, access, or judgement             |
-| `wontfix`         | `wontfix`            | Will not be actioned                                            |
+## How this repository uses them
 
 `needs-info` covers **any** missing evidence, not only an unanswered question to a reporter. Issues
 #193 and #230 carry it because each needs a real captured payload before it can be designed — a
@@ -31,14 +24,3 @@ and small: an issue can be `Blocked` on the board with no label at all when the 
 internal.
 
 [board]: https://github.com/users/jwh3times/projects/2
-
-## Changing this vocabulary
-
-The label strings and this table must stay in step, because a skill that applies a documented label
-that does not exist fails at the tracker boundary rather than degrading — that is what issue #266
-recorded. If you rename or retire a label, run `gh label list` and update this table in the same
-change, then confirm the result applies:
-
-```bash
-gh issue edit <n> --add-label <label>
-```

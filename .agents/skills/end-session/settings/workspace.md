@@ -39,10 +39,11 @@ that file.
 
 - **Read by:** end-session, handoff, lets-go
 - **Value:** the command that brings local `main` up to date, run from `main`.
-- **Default:** `git pull --ff-only origin main`; with the `Private companion` checked out and clean,
-  then `git -C <companion> pull --ff-only`.
-- **Discover:** a `sync:main` (or similar) script in `package.json`. Write the heading only for
-  such a script.
+- **Default:** `node scripts/sync-main.mjs` when `Private companion` is not `none`, the canonical
+  script from `jwh3times/skills`, which moves both repositories or neither; otherwise
+  `git pull --ff-only origin main`.
+- **Discover:** what the project's own version control needs. Write the heading only when neither
+  default fits (a repository that lands through another tool).
 
 ## Companion restore command
 
@@ -84,10 +85,18 @@ that file.
 - **Read by:** docs-updater, end-session
 - **Value:** the command that verifies generated agent config and the command that regenerates it,
   run every time: the check is quick, and it also catches an orphaned mirror.
-- **Default:** `node scripts/sync-agents.mjs --check`, regenerated with
-  `node scripts/sync-agents.mjs`.
+- **Default:** `node scripts/sync-agents.mjs --check && node scripts/check-skills.mjs`, regenerated
+  with `node scripts/sync-agents.mjs`.
 - **Discover:** `scripts/sync-agents.mjs` and the CI workflow that runs it. Write the heading only
   when regenerating needs more, such as a formatter run first.
+
+## AGENTS.md blocks
+
+- **Read by:** `scripts/sync-agents.mjs`
+- **Value:** `none`, or the backticked names of the blocks in `agents-md.md` this repository takes.
+- **Default:** every block, so `AGENTS.md` carries the markers of each.
+- **Discover:** write the heading only when the shared text does not fit this repository yet, or at
+  all, as in a repository without the flow skills.
 
 ## Final portability check
 

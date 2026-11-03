@@ -16,11 +16,3 @@ section is invented per skipped build tag.
 ## Ask before bumping
 
 when ambiguous
-
-## Next-version command
-
-`bash scripts/next-version.sh`
-
-## Changelog check
-
-`bash scripts/verify-changelog-version.sh` (the required **Verify changelog version** check)

@@ -11,6 +11,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Backend tests: the shared PostgreSQL test fixture and the scoped-reference test topology now reuse pooled connections instead of opening a new physical connection for every database operation, which left thousands of client sockets waiting to close during a full Windows run (#391). Each test's idle pools are cleared before the next test starts, and the reference topology clears its pools when it is disposed, so idle connections cannot pile up across tests.
 
+## [15.1.38] - 2026-11-02
+
+### Changed
+
+- Contributor workflow: `end-session` now closes every session with the same report: what it did, the docs it searched and updated, open PRs and security alert counts, and the human steps owed before the next session.
+- Bumped `react-router` from 8.5.0 to 8.5.1 and `@types/node` from 26.6.5 to 26.6.6 in `web/` (Dependabot, released as v15.1.36).
+- Bumped `Scalar.AspNetCore` from 2.18.6 to 2.18.7 (Dependabot, released as v15.1.37).
+
+## [15.1.35] - 2026-11-01
+
+### Added
+
+- Contributor workflow: `THIRD_PARTY_NOTICES.md` carries the MIT license notice of the installed `mattpocock/skills` skills, which install without it.
+
+## [15.1.34] - 2026-11-01
+
+### Changed
+
+- Contributor workflow: every `mattpocock/skills` skill now installs from one snapshot pinned by commit, the same in every repository that shares `jwh3times/skills`, and `resolving-merge-conflicts` is gone. `scripts/check-skills.mjs` fails CI when an installed skill differs from `skills-lock.json`, and the rules local edits carried moved to `AGENTS.md` or `docs/agents/`.
+
+## [15.1.33] - 2026-10-31
+
+### Changed
+
+- Contributor workflow: the development flow and shared-skills text in `AGENTS.md` now come from `jwh3times/skills`: `scripts/sync-agents.mjs` writes them between marked lines, and its check fails when they drift. `docs/agents/dev-flow.md` and `docs/agents/triage-labels.md` hold only what this repository adds to the shared defaults, and the shared skills are refreshed to match.
+
+## [15.1.32] - 2026-10-31
+
+### Changed
+
+- Contributor workflow: the version, changelog, docs and sync scripts are now the canonical ones from `jwh3times/skills`, and the shared skills are refreshed to match. **Verify changelog version** now requires every human PR to name the version its merge will mint, so a PR with no section fails; Dependabot stays exempt. `node scripts/check-docs.mjs`, which **Verify generated agent config** now runs, requires local links and anchors to resolve and the doc map to list every document.
+- Bumped `Scalar.AspNetCore` from 2.18.5 to 2.18.6 (Dependabot, released as v15.1.30).
+- Bumped `oxlint` from 1.89.0 to 1.90.0 and `postcss` from 8.5.31 to 8.5.32 in `web/` (Dependabot, released as v15.1.31).
+
 ## [15.1.29] - 2026-10-30
 
 ### Changed
@@ -1954,7 +1988,12 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.29...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.38...HEAD
+[15.1.38]: https://github.com/jwh3times/apexracers/compare/v15.1.35...v15.1.38
+[15.1.35]: https://github.com/jwh3times/apexracers/compare/v15.1.34...v15.1.35
+[15.1.34]: https://github.com/jwh3times/apexracers/compare/v15.1.33...v15.1.34
+[15.1.33]: https://github.com/jwh3times/apexracers/compare/v15.1.32...v15.1.33
+[15.1.32]: https://github.com/jwh3times/apexracers/compare/v15.1.29...v15.1.32
 [15.1.29]: https://github.com/jwh3times/apexracers/compare/v15.1.28...v15.1.29
 [15.1.28]: https://github.com/jwh3times/apexracers/compare/v15.1.27...v15.1.28
 [15.1.27]: https://github.com/jwh3times/apexracers/compare/v15.1.26...v15.1.27

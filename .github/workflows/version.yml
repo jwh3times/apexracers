@@ -70,10 +70,10 @@ jobs:
           else
             # Compute the next build with the SAME script /ship uses, so the
             # version /ship predicts and the version stamped here can never drift.
-            # (scripts/next-version.sh derives the x.y line from web/package.json
-            # and returns x.y.<max build + 1>, or x.y.<declared build> if the line
-            # has no tags yet.)
-            version="$(bash scripts/next-version.sh)"
+            # (scripts/next-version.mjs reads the x.y line from the Version file in
+            # docs/agents/releases.md and returns x.y.<max build + 1>, or
+            # x.y.<declared build> if the line has no tags yet.)
+            version="$(node scripts/next-version.mjs)"
             build="${version##*.}"
             tag="v${version}"
 

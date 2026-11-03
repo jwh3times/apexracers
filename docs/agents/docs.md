@@ -35,6 +35,8 @@
   reporting route or the in-scope surface (the API's auth, the frontend, ingestion) changes.
 - `SUPPORT.md` — where to ask for help. **When:** the issue templates or the support route change.
 - `CODE_OF_CONDUCT.md`, `LICENSE` — `owner-only`.
+- `THIRD_PARTY_NOTICES.md` — the license notices of third-party files kept here. `owner-only`: report
+  the change when a skill's source changes.
 - `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md` — the PR body's sections; the
   bug and feature forms. **When:** the development flow's linking rule changes; the triage labels
   the forms apply change.
@@ -62,9 +64,10 @@
   change alone.
 - `.claude/agents/docker-containers.md` — Dockerfile, Compose and image-build patterns. **When:**
   `Dockerfile`, `ingestion.Dockerfile` or `docker-compose.yml` change.
-- `.agents/skills/*/**` — workflow and installed skills, mirrored to `.claude/skills/`. **When:** a
-  skill this repository authors changes. `end-session`, `handoff`, `lets-go`, `ship` and
-  `docs-updater` install from `jwh3times/skills`: `frozen` here, fixed upstream.
+- `.agents/skills/*/**` — installed skills, mirrored to `.claude/skills/`: `end-session`, `handoff`,
+  `lets-go`, `ship` and `docs-updater` from `jwh3times/skills`, and the `mattpocock/skills`
+  snapshot. `frozen` here: fixed upstream, and what they need to know goes in `AGENTS.md` or
+  `docs/agents/`. **When:** a skill is added, removed or replaced.
 - `docs/agents/*.md` — conventions and settings the installed skills read. **When:** a convention
   or setting changes.
 - `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
@@ -115,7 +118,3 @@
 - Design tokens: `@layer components` in `web/src/index.css`
 - Glossary and ADRs: `CONTEXT.md`, `docs/adr/*.md`
 - Required status checks: `gh api repos/jwh3times/apexracers/rules/branches/main`
-
-## Docs validation
-
-none — Prettier covers only `web/`, and no check runs over the root docs.
