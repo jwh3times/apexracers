@@ -162,12 +162,21 @@ internal sealed class PublicationLedgerTopology(string primary, string independe
         await c.OpenAsync(ct);
         await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", c);
         await command.ExecuteNonQueryAsync(ct);
-        return new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString()) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+        // Pooled (issue #480): each host's pools end with its process, and DisposeAsync clears this process's.
+        return new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString()) { Database = name, Host = "127.0.0.1" }.ConnectionString;
     }
     public async ValueTask DisposeAsync()
     {
         using var disposalProbe = FixtureCostProbe.Begin("publication.dispose");
-        foreach (var host in hosts) await host.DisposeAsync();
+        try { foreach (var host in hosts) await host.DisposeAsync(); }
+        finally
+        {
+            foreach (var connection in new[] { primary, independent })
+            {
+                await using var pooled = new NpgsqlConnection(connection);
+                NpgsqlConnection.ClearPool(pooled);
+            }
+        }
     }
     public static async Task Denied(HttpResponseMessage response, CancellationToken ct)
     {

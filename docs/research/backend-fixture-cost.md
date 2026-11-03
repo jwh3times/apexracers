@@ -148,8 +148,10 @@ boundaries and are rejected. No safe 10% fixture reduction is demonstrated or cl
 
 _Note (2026-11-03, [#391](https://github.com/jwh3times/apexracers/issues/391)):_ the measurements
 above predate #391. Ordinary fixture databases and the scoped-reference topology now use pooled
-connections, scoped per test database and cleared before the next test (or at topology disposal);
-the lifecycle and publication-ledger topologies still disable pooling.
+connections, scoped per test database and cleared before the next test (or at topology disposal).
+Since [#480](https://github.com/jwh3times/apexracers/issues/480) the lifecycle and
+publication-ledger topologies pool the same way. The exception is the lifecycle publisher's
+connection through the partitionable relay, which stays unpooled.
 
 Use the measured phase/resource map for #405's separately isolated whole-class shard experiment.
 That experiment still needs complete case inventory, identical product builds, supported coverage
