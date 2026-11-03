@@ -284,8 +284,12 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     public async Task RecordFailure_ConcurrentFailures_AreAllCounted()
     {
         var ct = TestContext.Current.CancellationToken;
-        var (seedDb, userId, options) = await NewDbAsync(ct);
+        var (seedDb, userId, pooled) = await NewDbAsync(ct);
         await seedDb.DisposeAsync();
+
+        // Unpooled on purpose (issue #391): with pooled connections the workers' first inserts no
+        // longer collide, and SignInThrottleStore's lost-race fallback stopped running in every run.
+        var options = postgres.WithoutPooling(pooled);
 
         const int concurrent = 12;
         var ready = new SemaphoreSlim(0, concurrent);

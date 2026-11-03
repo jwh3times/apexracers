@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Backend tests: the shared PostgreSQL test fixture and the scoped-reference test topology now reuse pooled connections instead of opening a new physical connection for every database operation, which left thousands of client sockets waiting to close during a full Windows run (#391). Each test's idle pools are cleared before the next test starts, and the reference topology clears its pools when it is disposed, so idle connections cannot pile up across tests.
 
 ## [15.1.29] - 2026-10-30
 

@@ -108,7 +108,8 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
             var name = prefix + Guid.NewGuid().ToString("N");
             await using var c = new NpgsqlConnection(connection); await c.OpenAsync(ct);
             await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", c); await command.ExecuteNonQueryAsync(ct);
-            return new NpgsqlConnectionStringBuilder(connection) { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+            // Pooled (issue #391): each host's pools end with its process, and DisposeAsync clears this process's.
+            return new NpgsqlConnectionStringBuilder(connection) { Database = name, Host = "127.0.0.1" }.ConnectionString;
         }
         var primary = await Create("apexracers_reference_primary_"); var independent = await Create("apexracers_reference_history_");
         var epoch = Guid.NewGuid();
@@ -140,5 +141,14 @@ internal sealed class ReferenceTopology(string primary, string independent, Guid
         try { second = await LifecycleProcess.StartReferenceAsync(primary, independent, epoch, ct, browser); } catch { await first.DisposeAsync(); throw; }
         return new ReferenceTopology(primary, independent, epoch, first, second, ct);
     }
-    public async ValueTask DisposeAsync() { using var disposalProbe = FixtureCostProbe.Begin("reference.dispose"); await First.DisposeAsync(); await Second.DisposeAsync(); }
+    public async ValueTask DisposeAsync()
+    {
+        using var disposalProbe = FixtureCostProbe.Begin("reference.dispose");
+        await First.DisposeAsync(); await Second.DisposeAsync();
+        foreach (var connection in new[] { primary, independent })
+        {
+            await using var pooled = new NpgsqlConnection(connection);
+            NpgsqlConnection.ClearPool(pooled);
+        }
+    }
 }
