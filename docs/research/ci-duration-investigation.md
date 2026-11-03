@@ -12,8 +12,10 @@ artifact constraints. Measurements are retained in
 [local probe](../testing/ci-duration-local-probe.json). Follow-ups are
 [#404](https://github.com/jwh3times/apexracers/issues/404) for phase/full-suite measurements and
 [#405](https://github.com/jwh3times/apexracers/issues/405) for a bounded shard prototype, blocked by
-#404. Existing [#391](https://github.com/jwh3times/apexracers/issues/391) owns Windows connection
-lifetime failures; Linux timing successes do not resolve it.
+#404. [#391](https://github.com/jwh3times/apexracers/issues/391) owned Windows connection
+lifetime failures, which Linux timing successes did not resolve; it closed in v15.1.40 by pooling the
+ordinary fixtures and the scoped-reference topology, and [#480](https://github.com/jwh3times/apexracers/issues/480) tracks the
+lifecycle and publication-ledger topologies.
 
 The subsequent [#404 fixture cost investigation](backend-fixture-cost.md) records six original
 matched full-suite Linux runs, phase/resource measurements and separately bound focused legacy
@@ -63,7 +65,8 @@ topologies instead create independently migrated primary/history databases and r
 Both patterns explicitly disabled per-database pooling when measured; since #391 ordinary fixtures
 and the scoped-reference topology pool per test database, while the lifecycle and publication-ledger
 topologies still disable it. Increasing the thread limit alone cannot
-split this collection. Safe resource changes must also address #391's Windows churn/disposal scope.
+split this collection. Safe resource changes must also keep the bounded pool lifetime #391 introduced, and #480's
+remaining Windows churn scope.
 
 Class sums below are useful cost attribution within the serialized collection. They are not additive
 wall-time estimates across independently parallel collections.

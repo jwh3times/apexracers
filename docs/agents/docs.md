@@ -7,7 +7,8 @@
   what is planned. **When:** a controller or endpoint is added (`src/ApexRacers.Api/Controllers/`:
   the controllers and routes tables); a Core model is added (`src/ApexRacers.Core/Models/`: the Core
   models table); the auth mechanism changes (the AuthController, AuthContext and AuthService
-  descriptions); a command, workflow or durable rule changes.
+  descriptions); a command, workflow or durable rule changes; a test-provider or fixture rule changes
+  (the Testing & coverage "Test DB providers" bullet).
 - `CLAUDE.md` — a thin entry point: the `@AGENTS.md` import plus Claude Code-only notes. **When:**
   only a Claude Code-specific note changes; content goes in `AGENTS.md`.
 - `README.md` — public prerequisites, local setup, seed and ingestion instructions. **When:** a
@@ -46,7 +47,9 @@
   `docs/README.md` listing them, and reword another document only where it uses a synonym the
   term's _Avoid_ list rules out.
 - `.claude/agents/dotnet-api.md` — .NET patterns, JWT and auth configuration, EF Core and test
-  rules. **When:** a new auth pattern; an auth mechanism change (the Auth and RBAC section).
+  rules. **When:** a new auth pattern; an auth mechanism change (the Auth and RBAC section); a shared
+  test fixture or topology contract changes (`src/ApexRacers.Tests/Helpers/` and the `*Topology.cs`
+  harnesses: the testing section).
 - `.claude/agents/react-frontend.md` — API client patterns, auth flow, design tokens, test rules.
   **When:** a frontend auth change (the Authentication and 401 interceptor sections); new design
   tokens or a UI pattern (the Styling section); a new context, component or service (file structure).

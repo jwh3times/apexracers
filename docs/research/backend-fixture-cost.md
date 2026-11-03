@@ -9,8 +9,9 @@ instrumented costs. No fixture speedup, concurrency change or production pooling
 source/build manifest, paired figures, phase/method aggregates, resource observations and a separately
 bound focused validation. This advances [#404](https://github.com/jwh3times/apexracers/issues/404)
 after the [#403 investigation](ci-duration-investigation.md). The isolated shard prototype remains
-in [#405](https://github.com/jwh3times/apexracers/issues/405); Windows connection churn remains in
-[#391](https://github.com/jwh3times/apexracers/issues/391).
+in [#405](https://github.com/jwh3times/apexracers/issues/405); Windows connection churn was
+[#391](https://github.com/jwh3times/apexracers/issues/391), closed in v15.1.40 with the remaining topologies in
+[#480](https://github.com/jwh3times/apexracers/issues/480).
 
 ## Original matched full-suite measurements
 
@@ -129,7 +130,8 @@ Windows address-reuse behavior or close #391.
 
 ## Preserved boundaries and saving decision
 
-Ordinary fixtures retain GUID databases, EnsureCreated and Pooling=false. HTTP topologies retain
+Ordinary fixtures retained GUID databases, EnsureCreated and Pooling=false when measured (pooled
+per test database since #391; see the note below). HTTP topologies retain
 separate primary/history databases, fresh epochs, real migrations and two independent processes.
 Snapshot paths still execute actual pg_dump and plain-SQL `psql -v ON_ERROR_STOP=1`; independent
 history is excluded from the primary backup. Legacy checks still archive/build the pinned old binary

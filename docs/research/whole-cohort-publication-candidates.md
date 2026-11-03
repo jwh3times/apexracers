@@ -144,7 +144,7 @@ regressions for positive values just below a boundary and negative values close 
 regression verifies unrepresentable endpoints close the candidate. All 51 focused cases passed.
 The local
 full-run coverage above belongs to the earlier source hashes; corrected-source full-suite and
-coverage verification belongs to PR CI. The historical Windows failure remains tracked in #391.
+coverage verification belongs to PR CI. The historical Windows failure was tracked in #391, closed in v15.1.40.
 
 The candidate tests contribute bounded evidence to PUB-01–06 and PUB-09. A useful controlled fixture
 supports the engineering portion of PUB-10; it does not satisfy that row's actual catalog-admission
