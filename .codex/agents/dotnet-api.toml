@@ -497,7 +497,10 @@ Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class
 translation (including `DateTimeOffset` comparisons/order), PostgreSQL transactions, or production
 constraints such as a unique index, user foreign key, or cascade. The fixture shares one pinned
 container but creates a unique database per test; `EnsureCreated` validates the current model rather
-than migration application. Auth/JWT tests that issue refresh tokens use this path because the token
+than migration application. Each test database's connections are pooled, and the fixture clears an
+earlier test's pools when the next test first asks for options (#391); a test whose evidence depends
+on unpooled connection timing (such as concurrent inserts that must collide) rebuilds its options with
+`WithoutPooling` and states why at the call site. Auth/JWT tests that issue refresh tokens use this path because the token
 must persist against its real user relationship. Keep fixtures provider-honest instead of replacing a
 production-valid query with a non-relational stand-in.
 

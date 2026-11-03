@@ -27,6 +27,10 @@ public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 public sealed class PostgreSqlFixture(IMessageSink messageSink)
     : ContainerFixture<PostgreSqlBuilder, PostgreSqlContainer>(messageSink)
 {
+    private readonly Lock poolGate = new();
+    private readonly HashSet<string> ownedPools = [];
+    private string? poolOwner;
+
     protected override async ValueTask InitializeAsync()
     {
         FixtureCostProbe.TestcontainersSessionResource();
@@ -37,6 +41,7 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
 
     protected override async ValueTask DisposeAsyncCore()
     {
+        AdoptPoolOwner(null);
         var probeEnabled = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR"));
         var containerId = probeEnabled ? Container.Id : "";
         if (probeEnabled) FixtureCostProbe.ContainerResource(containerId, 0, "disposing");
@@ -103,27 +108,87 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
         DbContextOptions<AppDbContext> options,
         params IInterceptor[] interceptors)
     {
-        // Scanned rather than looked up: FindExtension matches the exact type, and what is
-        // registered is the provider's own NpgsqlOptionsExtension, not the abstract relational base.
-        var connectionString = options.Extensions
+        return new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(ConnectionString(options))
+            .AddInterceptors(interceptors)
+            .Options;
+    }
+
+    /// <summary>
+    /// Rebuilds options over the <em>same</em> database with one physical connection per open, as
+    /// every fixture database had before issue #391. Only for a test whose evidence depends on
+    /// that connection timing; the caller states why at the call site.
+    /// </summary>
+    public DbContextOptions<AppDbContext> WithoutPooling(DbContextOptions<AppDbContext> options)
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString(options)) { Pooling = false }.ConnectionString;
+        return new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+    }
+
+    // Scanned rather than looked up: FindExtension matches the exact type, and what is
+    // registered is the provider's own NpgsqlOptionsExtension, not the abstract relational base.
+    private static string ConnectionString(DbContextOptions<AppDbContext> options) =>
+        options.Extensions
             .OfType<RelationalOptionsExtension>()
             .Select(extension => extension.ConnectionString)
             .First(value => value is not null)!;
-        return new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString)
-            .AddInterceptors(interceptors)
-            .Options;
+
+    /// <summary>
+    /// Clears every pool an earlier test created and makes <paramref name="owner"/> the test that
+    /// owns pools from here on. The collection runs its tests one at a time, so the first options
+    /// request from a different test means the earlier test has finished with its databases.
+    /// </summary>
+    internal void AdoptPoolOwner(string? owner)
+    {
+        string[] released;
+        lock (poolGate)
+        {
+            if (poolOwner == owner && owner is not null) return;
+            released = [.. ownedPools];
+            ownedPools.Clear();
+            poolOwner = owner;
+        }
+        foreach (var connectionString in released)
+        {
+            using var connection = new NpgsqlConnection(connectionString);
+            NpgsqlConnection.ClearPool(connection);
+        }
+    }
+
+    /// <summary>
+    /// Counts the physical sessions a database has received once every one of them has ended.
+    /// A backend reports its session statistics as it exits, before it leaves
+    /// <c>pg_stat_activity</c>, so the count read after the last backend is gone is complete.
+    /// </summary>
+    internal async Task<long> SessionsAfterBackendsExitAsync(string database, CancellationToken ct)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        await using var connection = new NpgsqlConnection(Container.GetConnectionString());
+        await connection.OpenAsync(deadline.Token);
+        await using var active = new NpgsqlCommand("SELECT count(*) FROM pg_stat_activity WHERE datname = @database", connection);
+        active.Parameters.AddWithValue("database", database);
+        while ((long)(await active.ExecuteScalarAsync(deadline.Token))! > 0)
+            await Task.Delay(TimeSpan.FromMilliseconds(100), deadline.Token);
+        await using var sessions = new NpgsqlCommand("SELECT sessions FROM pg_stat_database WHERE datname = @database", connection);
+        sessions.Parameters.AddWithValue("database", database);
+        return (long)(await sessions.ExecuteScalarAsync(deadline.Token))!;
     }
 
     private DbContextOptions<AppDbContext> BuildOptions(
         string databaseName,
         IReadOnlyCollection<IInterceptor> interceptors)
     {
+        // Pooled per test database (issue #391): one physical connection per open left thousands
+        // of client sockets in TIME_WAIT. AdoptPoolOwner bounds the idle pools to the current test.
         var connectionString = new NpgsqlConnectionStringBuilder(Container.GetConnectionString())
         {
             Database = databaseName,
-            Pooling = false,
         }.ConnectionString;
+        AdoptPoolOwner(TestContext.Current.Test?.UniqueID);
+        lock (poolGate) ownedPools.Add(connectionString);
         var builder = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(connectionString);
         if (interceptors.Count > 0)

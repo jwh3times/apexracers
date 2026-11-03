@@ -65,7 +65,8 @@ Even preserved counters would need branch-identity fidelity, not just matching p
 ## Isolation and failure handling review
 
 - Separate GitHub runners isolate process-local static state, Docker engines, ports and files.
-  Existing GUID databases, `Pooling=false`, dynamic Kestrel ports, primary/history separation,
+  Existing GUID databases, `Pooling=false` (as of the prototype commit; #391 later pooled ordinary
+  fixtures per test database), dynamic Kestrel ports, primary/history separation,
   `pg_dump`/`psql` restore and pinned legacy Git binary remain intact.
 - Canonical build and producers must use the same absolute checkout path. Two SQL locators
   embed `[CallerFilePath]`; copying binaries into nested checkouts would violate this boundary.

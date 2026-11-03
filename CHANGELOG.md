@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.40] - 2026-11-03
+
+### Changed
+
+- Bumped the local pgAdmin image `dpage/pgadmin4` from 9.17 to 9.19 in `docker-compose.yml` (Dependabot, released as v15.1.39).
+
+### Fixed
+
+- Backend tests: the shared PostgreSQL test fixture and the scoped-reference test topology now reuse pooled connections. Before, every database operation opened a new physical connection, and a full Windows run left thousands of client sockets waiting to close (#391). Each test's idle pools are cleared before the next test starts, and the reference topology clears its pools when it is disposed, so idle connections cannot pile up across tests. Peak sockets waiting to close fell from about 5,000 to about 2,440 and the Windows run from about 31.5 to 26.5 minutes. One concurrency test whose race depends on unpooled connections opts out explicitly.
+
 ## [15.1.38] - 2026-11-02
 
 ### Changed
@@ -1986,7 +1996,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.38...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.40...HEAD
+[15.1.40]: https://github.com/jwh3times/apexracers/compare/v15.1.38...v15.1.40
 [15.1.38]: https://github.com/jwh3times/apexracers/compare/v15.1.35...v15.1.38
 [15.1.35]: https://github.com/jwh3times/apexracers/compare/v15.1.34...v15.1.35
 [15.1.34]: https://github.com/jwh3times/apexracers/compare/v15.1.33...v15.1.34
