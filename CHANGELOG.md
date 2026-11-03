@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.38] - 2026-11-02
+
+### Changed
+
+- Contributor workflow: `end-session` now closes every session with the same report: what it did, the docs it searched and updated, open PRs and security alert counts, and the human steps owed before the next session.
+- Bumped `react-router` from 8.5.0 to 8.5.1 and `@types/node` from 26.6.5 to 26.6.6 in `web/` (Dependabot, released as v15.1.36).
+- Bumped `Scalar.AspNetCore` from 2.18.6 to 2.18.7 (Dependabot, released as v15.1.37).
+
 ## [15.1.35] - 2026-11-01
 
 ### Added
@@ -1978,7 +1986,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.35...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.38...HEAD
+[15.1.38]: https://github.com/jwh3times/apexracers/compare/v15.1.35...v15.1.38
 [15.1.35]: https://github.com/jwh3times/apexracers/compare/v15.1.34...v15.1.35
 [15.1.34]: https://github.com/jwh3times/apexracers/compare/v15.1.33...v15.1.34
 [15.1.33]: https://github.com/jwh3times/apexracers/compare/v15.1.32...v15.1.33
