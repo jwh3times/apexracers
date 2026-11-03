@@ -25,6 +25,7 @@ internal sealed class LifecycleTopology(
     public LifecycleProcess Coordinator { get; private set; } = coordinator;
     public CancellationToken CancellationToken => ct;
     public string PrimaryConnection => primary;
+    public string JournalConnection => journal;
     public PersistedSyntheticJournal Journal { get; } = new(journal, new LifecycleGates());
 
     public AppDbContext OpenPrimary() => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(primary).Options,
@@ -162,7 +163,10 @@ internal sealed class LifecycleTopology(
             await db.SaveChangesAsync(ct);
         }
         await FixtureCostProbe.MeasureAsync("history.initialize", () => new PersistedSyntheticJournal(journal, new LifecycleGates()).InitializeAsync(ct));
-        var link = RehearsalDatabaseLink.Create(primary);
+        // Unpooled through the relay (issue #480): PartitionPrimary severs every relayed session,
+        // and a pool would hand those dead sessions back after RestorePrimary, failing the
+        // checkpoint retry the partition scenario asserts recovers.
+        var link = RehearsalDatabaseLink.Create(new NpgsqlConnectionStringBuilder(primary) { Pooling = false }.ConnectionString);
         LifecycleProcess publisher;
         try { publisher = await LifecycleProcess.StartAsync(link.ConnectionString, journal, ct); }
         catch { await link.DisposeAsync(); throw; }
@@ -258,16 +262,28 @@ internal sealed class LifecycleTopology(
         await connection.OpenAsync(ct);
         await using var command = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", connection);
         await command.ExecuteNonQueryAsync(ct);
+        // Pooled (issue #480): each host's pools end with its process, and DisposeAsync clears this process's.
         return new NpgsqlConnectionStringBuilder(fixture.Container.GetConnectionString())
-        { Database = name, Host = "127.0.0.1", Pooling = false }.ConnectionString;
+        { Database = name, Host = "127.0.0.1" }.ConnectionString;
     }
 
     public async ValueTask DisposeAsync()
     {
         using var disposalProbe = FixtureCostProbe.Begin("lifecycle.dispose");
-        foreach (var host in hosts)
-            await host.DisposeAsync();
-        await link.DisposeAsync();
+        try
+        {
+            foreach (var host in hosts)
+                await host.DisposeAsync();
+            await link.DisposeAsync();
+        }
+        finally
+        {
+            foreach (var connection in new[] { primary, journal })
+            {
+                await using var pooled = new NpgsqlConnection(connection);
+                NpgsqlConnection.ClearPool(pooled);
+            }
+        }
     }
 }
 

@@ -503,7 +503,12 @@ container but creates a unique database per test; `EnsureCreated` validates the 
 than migration application. Each test database's connections are pooled, and the fixture clears an
 earlier test's pools when the next test first asks for options (#391); a test whose evidence depends
 on unpooled connection timing (such as concurrent inserts that must collide) rebuilds its options with
-`WithoutPooling` and states why at the call site. Auth/JWT tests that issue refresh tokens use this path because the token
+`WithoutPooling` and states why at the call site. The multi-process reference, lifecycle and
+publication-ledger topologies pool their databases the same way (#391, #480). Each one clears this
+process's pools in `DisposeAsync` after its hosts exit, and a `*TopologyConnectionTests` class pins
+its physical session count. A connection whose evidence depends on unpooled behavior, such as the
+lifecycle publisher's connection through the partitionable relay, sets `Pooling = false` with a
+comment saying why. Auth/JWT tests that issue refresh tokens use this path because the token
 must persist against its real user relationship. Keep fixtures provider-honest instead of replacing a
 production-valid query with a non-relational stand-in.
 

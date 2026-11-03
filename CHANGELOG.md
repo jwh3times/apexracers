@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Backend tests: the publication-ledger and Driver lifecycle test topologies now reuse pooled PostgreSQL connections, following #391. Together they opened about 74% of a full Windows run's remaining physical connections (#480). Each topology clears its pools when it is disposed, so idle connections cannot pile up across tests. New regression tests pin each topology's connection count: a 20-round workload now opens 6 and 4 physical connections, down from 159 and 385. The lifecycle publisher's connection through the fault-injecting relay stays unpooled, because the relay's partition scenario must not get back connections the partition severed.
 
 ## [15.1.41] - 2026-11-03
 

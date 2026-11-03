@@ -62,11 +62,11 @@ The [fixture](../../src/ApexRacers.Tests/Helpers/PostgreSqlFixture.cs) defines a
 sharing one pinned PostgreSQL container. xUnit's default collection scheduling serializes its test
 classes. Each ordinary fixture request creates a fresh database and current EF schema; HTTP
 topologies instead create independently migrated primary/history databases and real child hosts.
-Both patterns explicitly disabled per-database pooling when measured; since #391 ordinary fixtures
-and the scoped-reference topology pool per test database, while the lifecycle and publication-ledger
-topologies still disable it. Increasing the thread limit alone cannot
-split this collection. Safe resource changes must also keep the bounded pool lifetime #391 introduced, and #480's
-remaining Windows churn scope.
+Both patterns explicitly disabled per-database pooling when measured. Since #391, ordinary fixtures
+and the scoped-reference topology pool per test database. Since #480, the lifecycle and
+publication-ledger topologies do too, except the lifecycle publisher's relay connection. Increasing
+the thread limit alone cannot split this collection. Safe resource changes must also keep the
+bounded pool lifetime #391 introduced.
 
 Class sums below are useful cost attribution within the serialized collection. They are not additive
 wall-time estimates across independently parallel collections.
