@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.46] - 2026-11-04
+
+### Changed
+
+- Docs guidance: the Doc map now covers the private companion's dated operation records (cutovers, release closeouts and verification handoffs) and their sanitized evidence, and marks them `amend-only`. A docs refresh adds a dated amendment note to such a record and never rewrites its recorded outcome. Before, the Doc map had no entry for them, so nothing stopped a refresh from editing a record of what happened.
+
 ## [15.1.45] - 2026-11-04
 
 ### Removed
@@ -2026,7 +2032,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.45...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.46...HEAD
+[15.1.46]: https://github.com/jwh3times/apexracers/compare/v15.1.45...v15.1.46
 [15.1.45]: https://github.com/jwh3times/apexracers/compare/v15.1.44...v15.1.45
 [15.1.44]: https://github.com/jwh3times/apexracers/compare/v15.1.43...v15.1.44
 [15.1.43]: https://github.com/jwh3times/apexracers/compare/v15.1.42...v15.1.43
