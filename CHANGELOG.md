@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Removed
+
+- Contributor docs: the temporary CI-duration probe patch is gone (#484). It no longer applied to the current reference test topology, and nothing recorded which revision it was built for, so following the CI duration investigation's recipe failed. The built-in `FixtureCostProbe` (enabled by `APEXRACERS_COST_PROBE_DIR`) has timed the same phases since #407. The recipe now reads as a record of the original experiment. It names commit `ba85812` as the revision the patch applies to, shows how to retrieve the patch from Git history, and points new measurements at the backend fixture cost runner.
 
 ## [15.1.43] - 2026-11-03
 
