@@ -177,17 +177,34 @@ commit, attempt, job and step timestamps. Downloads expire; the retained summari
 SHA-256, inventory hash, counts and outcomes. Full downloaded artifacts, probe logs and original
 instrumented-source backup are retained locally in `TestResults/ci-duration-403/`.
 
-For the local cost probe, apply [the temporary patch](../testing/ci-duration-probe.patch) only to a
-clean copy of `ReferenceTopology.cs`, build Release once, then run the method filter above six times
-in the order plain, coverage, plain, coverage, plain, coverage. Use `--configuration Release
---no-build --report-xunit-trx --report-xunit-trx-filename probe.trx --results-directory <fresh-dir>`.
-Set `CI_DURATION_PROBE_OUTPUT` to an absolute fresh JSONL path for each invocation and
-`DRIVER_PRIVACY_EVIDENCE_DIR` to a separate artifact directory. Coverage runs additionally use the
-unchanged repo coverage arguments from AGENTS.md. Measure command elapsed time with a monotonic
-clock, preserve the original exit/log/TRX, and stop on a failure. Read phase seconds from JSONL;
-these timings disclose no connection strings or tokens.
+The local cost probe used a temporary patch to `ReferenceTopology.cs` that appended each phase's
+elapsed seconds to the JSONL file named by `CI_DURATION_PROBE_OUTPUT`. The patch was removed from
+the tree in #484: it applies only to `ReferenceTopology.cs` as of commit `ba85812` (#402), and #407
+later instrumented the same phases permanently (see below). To repeat this exact experiment, apply
+the patch, retrieved from the commit that added it, to a separate checkout of that revision:
 
-Reverse the temporary patch and rebuild before acceptance testing. The investigation did both and
-verified that no probe changes remained in test source. Its instrumented runs were never presented
-as unchanged-build privacy evidence. Script analysis was checked against all four retained reports
-and their identical case counts, outcomes and inventory hashes; no full acceptance rerun is claimed.
+```bash
+git worktree add --detach ../apexracers-ci-duration-403 ba85812
+cd ../apexracers-ci-duration-403
+git show 9a9e0d6:docs/testing/ci-duration-probe.patch | git apply
+```
+
+The investigation built Release once, then ran the method filter above six times in the order plain,
+coverage, plain, coverage, plain, coverage, with `--configuration Release --no-build
+--report-xunit-trx --report-xunit-trx-filename probe.trx --results-directory <fresh-dir>`. Each
+invocation set `CI_DURATION_PROBE_OUTPUT` to an absolute fresh JSONL path and
+`DRIVER_PRIVACY_EVIDENCE_DIR` to a separate artifact directory; coverage runs additionally used the
+unchanged repo coverage arguments from AGENTS.md. Command elapsed time was measured with a monotonic
+clock, the original exit/log/TRX were preserved, and a failure would have stopped the series. Phase
+seconds were read from the JSONL; these timings disclose no connection strings or tokens.
+
+The investigation then reversed the temporary patch, rebuilt before acceptance testing, and verified
+that no probe changes remained in test source. Its instrumented runs were never presented as
+unchanged-build privacy evidence. Script analysis was checked against all four retained reports and
+their identical case counts, outcomes and inventory hashes; no full acceptance rerun is claimed.
+
+New phase measurements need no patch. Setting `APEXRACERS_COST_PROBE_DIR` enables the permanent
+`FixtureCostProbe` spans, which cover the same phases as `database.create`, `history.genesis`,
+`schema.migrations`, `seed.authority-copy-operating` and `host.ready`; leaving it unset writes
+nothing. Use the runner and analyser in the
+[backend fixture cost investigation](backend-fixture-cost.md#reproduction-and-retained-originals).
