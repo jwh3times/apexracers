@@ -501,9 +501,11 @@ translation (including `DateTimeOffset` comparisons/order), PostgreSQL transacti
 constraints such as a unique index, user foreign key, or cascade. The fixture shares one pinned
 container but creates a unique database per test; `EnsureCreated` validates the current model rather
 than migration application. Each test database's connections are pooled, and the fixture clears an
-earlier test's pools when the next test first asks for options (#391); a test whose evidence depends
-on unpooled connection timing (such as concurrent inserts that must collide) rebuilds its options with
-`WithoutPooling` and states why at the call site. The multi-process reference, lifecycle and
+earlier test's pools when the next test first asks for options (#391). Don't rely on connection timing
+to make concurrent writes collide. Force the interleaving with a command interceptor added through
+`WithInterceptors`, and assert that it fired: `LostInsertRace` makes a first-row insert lose its
+unique-index race every run, and `RefreshTokenReadBarrier` / `RefreshTokenReadHold` do the same for
+reads (#482). The multi-process reference, lifecycle and
 publication-ledger topologies pool their databases the same way (#391, #480). Each one clears this
 process's pools in `DisposeAsync` after its hosts exit, and a `*TopologyConnectionTests` class pins
 its physical session count. A connection whose evidence depends on unpooled behavior, such as the
