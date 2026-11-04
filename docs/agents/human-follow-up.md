@@ -7,6 +7,6 @@ the follow-up; docs-updater, ship and end-session verify it.
 
 ## Follow-up board
 
-same as Board — `Status` `Todo` when actionable, `Blocked` with `Blocked by` naming the prerequisite,
-or `Parked` for a conditional action whose trigger has not occurred. An unmerged prerequisite stays
+same as Board — `Status` `Todo` when actionable, `Blocked` with the prerequisite (a native
+`blocked_by` edge when it is an issue, otherwise named in `Blocked by`), or `Parked` for a conditional action whose trigger has not occurred. An unmerged prerequisite stays
 pending: a follow-up never marks the parent work deployed.
