@@ -93,6 +93,10 @@
 - `private/ops/azure-deployment-runbook.md`, `private/ops/iracing-rollout.md` — exact resource
   names, secret names and provisioning commands; rollout gates. **When:** a cloud resource or secret
   is added, deployment commands change, or a rollout gate advances.
+- `private/ops/*-<YYYY-MM-DD>.md` and `private/ops/evidence/` — dated operation records (cutovers,
+  release closeouts, verification handoffs) and their sanitized evidence. `amend-only`: correct a
+  record with a dated amendment note, never rewrite its recorded outcome. **When:** a later
+  operation supersedes or corrects a recorded fact; a new record is added to `private/README.md`.
 - `private/reviews/architecture-findings.md` — the record of the 2026-08-08 architecture review, not
   a live backlog. **When:** one of its dispositions is actioned or overturned.
 - `private/iracing-api-response-objects/` — captured iRacing payload shapes. `append-only`.
