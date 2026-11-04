@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.44] - 2026-11-04
+
+### Changed
+
+- Board guidance: an item blocked by another issue records it only as a native `blocked_by` edge. The board's `Blocked by` field holds only blockers outside the project, such as the iRacing credentials.
+
 ## [15.1.43] - 2026-11-03
 
 ### Changed
@@ -2014,7 +2020,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.43...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.44...HEAD
+[15.1.44]: https://github.com/jwh3times/apexracers/compare/v15.1.43...v15.1.44
 [15.1.43]: https://github.com/jwh3times/apexracers/compare/v15.1.42...v15.1.43
 [15.1.42]: https://github.com/jwh3times/apexracers/compare/v15.1.41...v15.1.42
 [15.1.41]: https://github.com/jwh3times/apexracers/compare/v15.1.40...v15.1.41
