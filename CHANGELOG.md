@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
-## [15.1.44] - 2026-11-04
+## [15.1.45] - 2026-11-04
 
 ### Removed
 
 - Contributor docs: the temporary CI-duration probe patch is gone (#484). It no longer applied to the current reference test topology, and nothing recorded which revision it was built for, so following the CI duration investigation's recipe failed. The built-in `FixtureCostProbe` (enabled by `APEXRACERS_COST_PROBE_DIR`) has timed the same phases since #407. The recipe now reads as a record of the original experiment. It names commit `ba85812` as the revision the patch applies to, shows how to retrieve the patch from Git history, and points new measurements at the backend fixture cost runner.
+
+## [15.1.44] - 2026-11-04
+
+### Changed
+
+- Board guidance: an item blocked by another issue records it only as a native `blocked_by` edge. The board's `Blocked by` field holds only blockers outside the project, such as the iRacing credentials.
 
 ## [15.1.43] - 2026-11-03
 
@@ -2020,7 +2026,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.44...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.45...HEAD
+[15.1.45]: https://github.com/jwh3times/apexracers/compare/v15.1.44...v15.1.45
 [15.1.44]: https://github.com/jwh3times/apexracers/compare/v15.1.43...v15.1.44
 [15.1.43]: https://github.com/jwh3times/apexracers/compare/v15.1.42...v15.1.43
 [15.1.42]: https://github.com/jwh3times/apexracers/compare/v15.1.41...v15.1.42

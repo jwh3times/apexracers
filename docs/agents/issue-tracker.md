@@ -66,5 +66,6 @@ jwh3times 2
 ## Board fields
 
 - `Status`: `Todo` / `In Progress` / `Blocked` / `Parked` / `Done`.
-- `Blocked by`: the blocker, set with `Blocked`. The standing iRacing-credentials blocker has its
-  own value; a new blocker worth tracking gets its own issue.
+- `Blocked by`: the blocker outside the project, set with `Blocked`. The standing
+  iRacing-credentials blocker has its own value; a new blocker worth tracking gets its own issue. A
+  blocker that is an issue is a native `blocked_by` edge (see **Blocking**), never a value here.
