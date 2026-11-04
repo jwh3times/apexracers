@@ -30,13 +30,12 @@ public sealed class LostInsertRace(string table, string constraint) : DbCommandI
 {
     private readonly Regex insertInto = new(
         $"""INSERT INTO\s+(?:"?\w+"?\.)?"{Regex.Escape(table)}"\s""",
-        RegexOptions.CultureInvariant);
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     private readonly TaskCompletionSource competitorInserted =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Lock gate = new();
     private DbCommand? heldCommand;
-    private int collisions;
     private bool heldInsertLost;
 
     /// <summary>
@@ -51,9 +50,6 @@ public sealed class LostInsertRace(string table, string constraint) : DbCommandI
                 return heldInsertLost;
         }
     }
-
-    /// <summary>Every unique violation on the expected constraint, the forced one included.</summary>
-    public int Collisions => Volatile.Read(ref collisions);
 
     public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
         DbCommand command,
@@ -107,7 +103,6 @@ public sealed class LostInsertRace(string table, string constraint) : DbCommandI
             } pg
             && pg.ConstraintName == constraint)
         {
-            Interlocked.Increment(ref collisions);
             lock (gate)
             {
                 if (ReferenceEquals(command, heldCommand))

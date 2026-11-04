@@ -501,8 +501,8 @@ than migration application. Each test database's connections are pooled, and the
 earlier test's pools when the next test first asks for options (#391). Don't rely on connection timing
 to make concurrent writes collide. Force the interleaving with a command interceptor added through
 `WithInterceptors`, and assert that it fired: `LostInsertRace` makes a first-row insert lose its
-unique-index race every run, and `RefreshTokenReadBarrier` / `RefreshTokenReadHold` do the same for
-reads (#482). The multi-process reference, lifecycle and
+unique-index race every run, and `RefreshTokenReadBarrier` / `RefreshTokenReadHold` force the
+refresh-token rotation races at the token lookup (#482). The multi-process reference, lifecycle and
 publication-ledger topologies pool their databases the same way (#391, #480). Each one clears this
 process's pools in `DisposeAsync` after its hosts exit, and a `*TopologyConnectionTests` class pins
 its physical session count. A connection whose evidence depends on unpooled behavior, such as the
