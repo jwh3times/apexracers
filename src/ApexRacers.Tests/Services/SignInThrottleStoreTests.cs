@@ -280,16 +280,23 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
     /// Concurrent failures against one account are the attack, not an edge case: every one of them
     /// has to be counted, or a guesser gets attempts for free.
     /// </summary>
+    /// <remarks>
+    /// The account row's first insert is contested on purpose (issue #482). Racers alone do not
+    /// guarantee a collision: once the row exists, later racers take the ordinary update path and the
+    /// counts still come out right, so the lost-race fallback could stop running with this test
+    /// still green. That happened under pooled connections (#391). <see cref="LostInsertRace"/>
+    /// holds the first insert back until another has gone through, so one worker loses the race and
+    /// takes the fallback every run.
+    /// </remarks>
     [Fact]
     public async Task RecordFailure_ConcurrentFailures_AreAllCounted()
     {
         var ct = TestContext.Current.CancellationToken;
-        var (seedDb, userId, pooled) = await NewDbAsync(ct);
+        var (seedDb, userId, seeded) = await NewDbAsync(ct);
         await seedDb.DisposeAsync();
 
-        // Unpooled on purpose (issue #391): with pooled connections the workers' first inserts no
-        // longer collide, and SignInThrottleStore's lost-race fallback stopped running in every run.
-        var options = postgres.WithoutPooling(pooled);
+        var race = new LostInsertRace("SignInAccountFailures", "PK_SignInAccountFailures");
+        var options = postgres.WithInterceptors(seeded, race);
 
         const int concurrent = 12;
         var ready = new SemaphoreSlim(0, concurrent);
@@ -318,7 +325,11 @@ public class SignInThrottleStoreTests(PostgreSqlFixture postgres)
         // them one after another, proving nothing about concurrency.
         Assert.Equal(concurrent, arrived);
 
-        await using var verify = new AppDbContext(options);
+        // The held insert met the unique violation, so its worker reached the lost-race fallback.
+        // Without this the counts below would pass just as well with no collision at all.
+        Assert.True(race.HeldInsertLost, "The held account-row insert did not lose the race.");
+
+        await using var verify = new AppDbContext(seeded);
         var address = await verify.SignInAddressFailures.AsNoTracking()
             .SingleAsync(f => f.UserId == userId && f.IpAddress == Guesser, ct);
         var account = await verify.SignInAccountFailures.AsNoTracking()

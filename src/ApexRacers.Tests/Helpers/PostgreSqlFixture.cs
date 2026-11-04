@@ -114,19 +114,6 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
             .Options;
     }
 
-    /// <summary>
-    /// Rebuilds options over the <em>same</em> database with one physical connection per open, as
-    /// every fixture database had before issue #391. Only for a test whose evidence depends on
-    /// that connection timing; the caller states why at the call site.
-    /// </summary>
-    public DbContextOptions<AppDbContext> WithoutPooling(DbContextOptions<AppDbContext> options)
-    {
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString(options)) { Pooling = false }.ConnectionString;
-        return new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString)
-            .Options;
-    }
-
     // Scanned rather than looked up: FindExtension matches the exact type, and what is
     // registered is the provider's own NpgsqlOptionsExtension, not the abstract relational base.
     private static string ConnectionString(DbContextOptions<AppDbContext> options) =>
