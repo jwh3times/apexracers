@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.49] - 2026-11-06
+
+### Added
+
+- Triage guidance: a `blocked` label now marks an issue that waits on another issue or an external event and cannot be progressed, so the public issue says it is not available to pick up. It sits beside the existing readiness label, matches the board's `Blocked` status, and comes off when the blocker clears. Parked work does not carry it.
+
+### Changed
+
+- Triage guidance: when the human part of an issue is tracked in its own follow-up, that follow-up carries `ready-for-human` and the implementation issue uses `needs-info` and `blocked`. The board guidance also documents the `Priority` field (P0–P3, set on every open item, blocked or not), and open items are kept in priority order.
+- Bumped `actions/setup-dotnet` from 6.0.0 to 6.1.0 across the CI workflows (Dependabot, released as v15.1.47).
+- Bumped `@vitejs/plugin-react` from 6.1.2 to 6.2.1 in `web/` (Dependabot, released as v15.1.48).
+
 ## [15.1.46] - 2026-11-04
 
 ### Changed

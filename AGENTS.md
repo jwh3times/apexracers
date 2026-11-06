@@ -979,7 +979,8 @@ Issues live in GitHub Issues (jwh3times/apexracers), via the `gh` CLI. See `docs
 
 ### Triage labels
 
-Canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) — all five exist as real labels in the tracker. See `docs/agents/triage-labels.md`.
+Canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) — all five exist as real labels in the tracker — plus the repository's extra `blocked` label for
+work that cannot progress yet. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
