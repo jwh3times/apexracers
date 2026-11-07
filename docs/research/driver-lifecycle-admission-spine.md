@@ -8,8 +8,9 @@ Implementation for [#370](https://github.com/jwh3times/apexracers/issues/370), f
 This slice implements the coupled module boundary with controlled synthetic proof and journal
 adapters, real PostgreSQL and actual response writers. It does not select a production journal,
 invent registered-client ownership proof, admit a publication catalog, enable Live, or certify the
-complete matrix. Production proof and journal adapters are unavailable; caller headers and
-configuration cannot substitute a test adapter or make a claim into ownership.
+complete matrix. The production proof adapter is unavailable, and the production journal is selected
+only from complete configuration ([independent journal adapter](independent-journal-adapter.md));
+caller headers and configuration cannot substitute a test adapter or make a claim into ownership.
 
 ## Authority and transition ordering
 

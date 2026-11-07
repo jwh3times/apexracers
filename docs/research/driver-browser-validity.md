@@ -2,7 +2,8 @@
 
 Public #376 implements BROWSER-01–03 at browser resource, actual protected HTTP and built-SPA
 seams. This is synthetic implementation evidence, not Real authorization or a complete rollout
-gate. Ordinary startup retains unavailable proof/journal/catalog adapters.
+gate. Ordinary startup retains unavailable proof/catalog adapters, and the journal stays unavailable
+unless [configured](independent-journal-adapter.md).
 
 `useDriverResource` owns every sensitive page read: selection changes discard the old resource
 before rendering; current protected reads repeat every 15 seconds; both wall and monotonic clocks

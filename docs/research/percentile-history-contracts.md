@@ -39,7 +39,8 @@ proof of current authority, write admission or permission to disclose a returned
 integration must repeat the existing current-authority, preparation/source-generation, final commit
 and protected-dispatch checks. A pure data key is equally insufficient. Another Driver's lookup
 cannot become a request to persist the caller's own history merely by supplying that Customer ID.
-Ordinary unavailable Real proof/journal adapters and legacy route gates remain in place.
+The ordinary unavailable Real proof adapter, configuration-gated journal selection and legacy route
+gates remain in place.
 
 ## Contribution and result contracts
 

@@ -10,7 +10,9 @@ schedule routes retain independent access. Catalog detail omits private upload o
 Existing databases must use the forward-only lifecycle migration: it preserves unverified claim
 values under a renamed physical column and creates empty authorization tables. Stop old writers
 before applying it; an old binary/schema is not a supported recovery path. Ordinary startup has no
-usable provider-ownership or independent-journal adapter, and stored claims do not grant access.
+usable provider-ownership adapter, selects the independent journal only from complete
+`INDEPENDENT_JOURNAL_*` configuration ([adapter](docs/research/independent-journal-adapter.md)),
+and stored claims do not grant access.
 
 The current migration also moves legacy Uploaded Laps to `QuarantinedUploadedLaps`, preserving
 their original rows and dates while blocking older binary readers on the upgraded schema.
