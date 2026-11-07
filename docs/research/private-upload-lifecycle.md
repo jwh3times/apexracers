@@ -2,7 +2,8 @@
 
 Implemented synthetic scope for #372. This record describes the application modules and their
 PostgreSQL/HTTP evidence. Production Telemetry routes remain unavailable before body binding:
-provider ownership proof and the independently selected production journal are still unavailable.
+provider ownership proof is still unavailable, and the production journal is selected only from
+complete configuration ([independent journal adapter](independent-journal-adapter.md)).
 Nothing here activates Live, grants real ownership, admits sharing, or verifies deployed backups.
 
 ## Attribution and retained sources

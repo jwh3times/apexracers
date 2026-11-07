@@ -239,10 +239,13 @@ builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddHttpContextAccessor();
 // Production operating/quota authority is unverified. HTTP/configuration cannot select fixtures.
 builder.Services.AddSingleton<IDriverOperatingControls, UnavailableDriverOperatingControls>();
-// No verified registered-client proof or production journal adapter exists yet. Neither
-// configuration nor a caller header can select the controlled synthetic test adapters.
+// No verified registered-client proof exists yet. The independent journal is the write-once blob
+// adapter only when every INDEPENDENT_JOURNAL_* setting is present and valid; otherwise the
+// unavailable adapters close affected Driver scopes. Neither configuration nor a caller header can
+// select the controlled synthetic test adapters.
 builder.Services.AddSingleton<IDriverOwnershipProof, UnavailableDriverOwnershipProof>();
-builder.Services.AddSingleton<IDriverEnforcementJournal, UnavailableDriverEnforcementJournal>();
+var independentJournal = IndependentJournalRegistration.Bind(builder.Configuration);
+IndependentJournalRegistration.Register(builder.Services, independentJournal, new DefaultAzureCredential());
 builder.Services.AddScoped<DriverAuthorityStore>();
 builder.Services.AddScoped<DriverAuthorization>();
 builder.Services.AddScoped<DriverPrivacy>();
@@ -369,6 +372,15 @@ if (!ForwardedHeadersPolicy.IsEnabledByHost(
         + "limiting partitions on the immediate peer. Expected with no reverse proxy in front of "
         + "this instance; behind one, per-IP limits and HSTS will not see real clients.",
         ForwardedHeadersPolicy.EnabledVariable);
+}
+
+// A partly configured independent journal is almost always a dropped or mistyped app setting.
+// Name the settings (never their values) so the closed Driver scopes are explainable at startup.
+if (independentJournal.State == IndependentJournalState.Incomplete)
+{
+    app.Logger.LogWarning(
+        "The independent journal is not selected; Driver scopes stay closed. Missing or invalid settings: {Settings}.",
+        string.Join(", ", independentJournal.Problems));
 }
 
 // The known-device cookie's name and Secure flag follow the environment, so state which mode this

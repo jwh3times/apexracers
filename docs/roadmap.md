@@ -22,8 +22,9 @@ using the `<major>.<minor>.<build>` format.
 
 - **Driver authorization and publication:** integrate versioned personal/sharing consent,
   journal-first lifecycle transitions, protected HTTP dispatch and tracked-copy cleanup. Controlled
-  synthetic modules precede provider proof, the production journal adapter, feature integration and
-  the complete acceptance matrix; legacy Real Driver workflows remain unavailable meanwhile.
+  synthetic modules precede provider proof, feature integration and the complete acceptance matrix;
+  legacy Real Driver workflows remain unavailable meanwhile. The production independent journal
+  adapter is implemented and awaits its provisioned, observed and locked storage account.
   Evidence writers now bind durable purpose/generation and source dependencies; remaining feature
   integrations, restore verification and deployed retention observations still gate live use.
   Controlled private upload attribution, dormant recovery and User-wide deletion now have synthetic

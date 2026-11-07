@@ -427,7 +427,7 @@ describe the pattern, not exact maintainer resource names or private deployment 
 ### Projects
 
 ```text
-Core  ← no deps          Data  ← EF Core, Npgsql (references Core)
+Core  ← no deps          Data  ← EF Core, Npgsql, Azure.Storage.Blobs (references Core)
 Api / Ingestion / Seeder ← reference Core + Data (Api and Ingestion never reference each other)
 Tests ← xUnit on Microsoft Testing Platform v2 (references Api + Ingestion + Seeder + Core + Data)
 ```
@@ -456,11 +456,16 @@ HTTP request → Controller (binds inputs only) → Service (all logic + EF Core
 
 **Driver lifecycle boundary:** `DriverAuthorization`, `DriverPublication`, and `CopyLifecycle`
 coordinate proof/consent generations, journal-first closure, actual protected-writer admission/drain,
-and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers unavailable
-ownership-proof and enforcement-journal adapters; positive protected publication is limited to
+and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers an unavailable
+ownership-proof adapter. The enforcement journal and publication history are one `BlobDriverJournal`
+(write-once blob storage, independent of primary restore), selected by
+`IndependentJournalRegistration` only when every required `INDEPENDENT_JOURNAL_*` setting is
+present and every supplied one is valid; otherwise the unavailable adapters remain. Positive protected publication is limited to
 controlled synthetic hosts. A stored claim or an `iracing_id` JWT claim grants no Driver access.
 For lifecycle transitions, protected results, recovery or copy changes, read
-`docs/research/driver-lifecycle-admission-spine.md` before extending these modules.
+`docs/research/driver-lifecycle-admission-spine.md` before extending these modules, and
+`docs/research/independent-journal-adapter.md` before changing the journal adapter, its record
+layout or its settings.
 
 `LegacyDriverAccessGuard` runs before model binding. Auth, Admin, FeatureFlags, Cars, Tracks, Series
 and Schedule retain independent access; other legacy controllers require Demo provenance, and
@@ -724,6 +729,12 @@ allowance or the high-water mark could be 0, since either would silently deny th
   composition admission, whole-representation invalidation, writer drain or release-history
   reconciliation, read `docs/research/atomic-publication-reservations.md`. Ordinary startup does not
   enable this seam; controlled review fixtures confer no production catalog approval.
+- `IndependentJournalRegistration` — binds the `INDEPENDENT_JOURNAL_*` settings and registers one
+  `Data.IndependentJournal.BlobDriverJournal` as both `IDriverEnforcementJournal` and
+  `IPublicationHistoryAuthority` only when every required one is present and every supplied one is
+  valid. Otherwise it keeps the
+  unavailable adapters, and its binding names the problem settings (never their values) for the
+  startup warning.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
   a stored Real claim yields no authorized Subject Driver. Optional callers use
   `GetSubjectDriverCustIdAsync`; required callers use
@@ -965,7 +976,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   `DateTimeOffset` queries — including Uploaded Lap Race Week scoping (`RecordedAt >= start && RecordedAt
   < end`), which SQLite fails to translate at runtime rather than at compile time — and refresh-token/auth
   persistence invariants, so a running Docker engine is
-  required for the full `dotnet test` / coverage commands. **Order/project by entity columns before
+  required for the full `dotnet test` / coverage commands. The independent-journal tests also need
+  it: `IClassFixture<AzuriteFixture>` starts one pinned `azurite:3.37.0` blob emulator per test class
+  and a fresh container pair per test (`docs/research/independent-journal-adapter.md`). **Order/project by entity columns before
   constructing a DTO** — ordering by a positional-record DTO property doesn't translate on Npgsql or
   SQLite.
 
