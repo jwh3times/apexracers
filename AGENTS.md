@@ -427,7 +427,7 @@ describe the pattern, not exact maintainer resource names or private deployment 
 ### Projects
 
 ```text
-Core  ← no deps          Data  ← EF Core, Npgsql (references Core)
+Core  ← no deps          Data  ← EF Core, Npgsql, Azure.Storage.Blobs (references Core)
 Api / Ingestion / Seeder ← reference Core + Data (Api and Ingestion never reference each other)
 Tests ← xUnit on Microsoft Testing Platform v2 (references Api + Ingestion + Seeder + Core + Data)
 ```
@@ -729,6 +729,11 @@ allowance or the high-water mark could be 0, since either would silently deny th
   composition admission, whole-representation invalidation, writer drain or release-history
   reconciliation, read `docs/research/atomic-publication-reservations.md`. Ordinary startup does not
   enable this seam; controlled review fixtures confer no production catalog approval.
+- `IndependentJournalRegistration` — binds the `INDEPENDENT_JOURNAL_*` settings and registers one
+  `Data.IndependentJournal.BlobDriverJournal` as both `IDriverEnforcementJournal` and
+  `IPublicationHistoryAuthority` only when all are present and valid. Otherwise it keeps the
+  unavailable adapters, and its binding names the problem settings (never their values) for the
+  startup warning.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
   a stored Real claim yields no authorized Subject Driver. Optional callers use
   `GetSubjectDriverCustIdAsync`; required callers use
@@ -970,7 +975,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   `DateTimeOffset` queries — including Uploaded Lap Race Week scoping (`RecordedAt >= start && RecordedAt
   < end`), which SQLite fails to translate at runtime rather than at compile time — and refresh-token/auth
   persistence invariants, so a running Docker engine is
-  required for the full `dotnet test` / coverage commands. **Order/project by entity columns before
+  required for the full `dotnet test` / coverage commands. The independent-journal tests also need
+  it: `IClassFixture<AzuriteFixture>` starts one pinned `azurite:3.37.0` blob emulator per test class
+  and a fresh container pair per test (`docs/research/independent-journal-adapter.md`). **Order/project by entity columns before
   constructing a DTO** — ordering by a positional-record DTO property doesn't translate on Npgsql or
   SQLite.
 

@@ -492,6 +492,15 @@ adapters and integrated acceptance remain separate.
 
 xUnit in `src/ApexRacers.Tests/`. **Test ordinary services directly**; controller-binding tests stay outside that suite. Each service test creates its own `AppDbContext` and shares no state. Driver publication/drain transport contracts are the deliberate exception: use the dedicated test-only Kestrel processes and real PostgreSQL rehearsal described in docs/research/driver-publication-drain-rehearsal.md. Its actual writers/fault gates establish synthetic protocol evidence, not production endpoint authorization or deployed terminality. The project guide covers the native Microsoft Testing Platform v2 test/filter/coverage commands and supported IDEs, the SQLite/PostgreSQL provider contract and Docker prerequisite, the order/project-by-entity-columns-before-DTO rule, and the **85% line + branch** coverage gate. Add tests alongside new service logic before calling it done.
 
+The independent journal adapter is tested against a real blob emulator, not a mock. Give the class
+`IClassFixture<AzuriteFixture>` and call `CreateContainersAsync(ct, policies)` for a fresh
+enforcement/history pair per test. Use pipeline policies to make storage behavior observable:
+`RecordingPolicy` for request discipline, `LoseResponsePolicy` for writes whose outcome is
+uncertain, `GatePolicy` to force one interleaving, and `BarrierPolicy` to force collisions. Assert
+that each policy fired, through its counters. `Raw(container)` gives an unpoliced client for
+tampering. A scenario both authorities must agree on belongs in `IndependentAuthorityContract`,
+which runs it against the controlled PostgreSQL fixture and the blob adapter.
+
 Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class into
 `PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only
 translation (including `DateTimeOffset` comparisons/order), PostgreSQL transactions, or production

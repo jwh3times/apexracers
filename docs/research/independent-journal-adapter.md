@@ -16,7 +16,7 @@ journal configured.
 
 ## One type, two authorities
 
-`BlobDriverJournal` implements both interfaces. The Driver authority and publication stores apply
+`IndependentJournal.BlobDriverJournal` (in `ApexRacers.Data`) implements both interfaces. The Driver authority and publication stores apply
 the history checks only when the journal they hold `is IPublicationHistoryAuthority`; a journal-only
 adapter would skip them without error. The registration resolves the same singleton for both
 interfaces.
@@ -29,6 +29,7 @@ permission and is compatible with version-level immutability.
 
 | Container   | Name                                         | Record                                              |
 | ----------- | -------------------------------------------- | --------------------------------------------------- |
+| enforcement | `operations/{operation}`                    | The operation's claim: the intent it belongs to     |
 | enforcement | `intents/{user}/{scope}/{operation}`         | One `DriverLifecycleIntent` per operation           |
 | enforcement | `reconciled/{user}/{scope}/{operation}/{revision}` | A reconciliation of that operation at that revision |
 | history     | `genesis`                                    | Epoch and key fingerprints (plaintext JSON)         |
@@ -48,8 +49,10 @@ because `IPublicationHistoryAuthority.ReadAsync()` returns raw `RecipientUserId`
 The adapter reproduces the controlled PostgreSQL fixtures' behavior; a shared contract suite runs the
 same scenarios against both.
 
-- **Journal-first intent.** A re-append of an operation returns the stored record with its original
-  loss time. The same operation ID with a different grant, scope or kind is refused.
+- **Journal-first intent.** An append first claims `operations/{operation}`, then writes the intent
+  under its scope. A re-append returns the stored record with its original loss time. The same
+  operation ID with a different grant, scope or kind is refused, including in another scope, where
+  it would otherwise land at a fresh name.
 - **Reconciliation** requires the stored intent. The minimum revision is the highest reconciled
   revision, and reconciled intents stop being pending.
 - **Deletion** is User-wide and permanent: `ReadUserAsync` lists every scope of the User and returns
@@ -69,7 +72,7 @@ The vendor documentation doesn't say whether a request that timed out committed.
 the same deterministic name, and an occupied name resolves to the stored record, which the adapter
 compares with what it meant to write. The documentation lists **412** for an unmet `If-None-Match`.
 The emulator answered **409 `BlobAlreadyExists`**, so the adapter treats both as "already exists".
-If the outcome is still unknown when the client's retry budget runs out, the operation throws:
+The tests verified the SDK's side of this. With a transport failure injected after the request reached storage, the client retried the same conditional create, received the occupied-name response, and the adapter returned the stored record. If the outcome is still unknown when the client's retry budget runs out, the operation throws:
 journal writes throw `InvalidOperationException`, history writes throw
 `EvidenceCopyUnavailableException`. A journal-first caller then doesn't proceed, while a veto that
 did land still applies.
@@ -87,7 +90,7 @@ and read as permissive. Reads report unavailable, never empty, when:
 
 Cancellation propagates rather than reading as unavailable.
 
-Deleting an unreconciled intent outright is not detectable from the journal alone. Protection
+Some losses are not detectable from the records alone: an unreconciled intent deleted outright, or the newest reservation deleted before any dispatch or terminal record names it. The controlled PostgreSQL fixture detects the latter with a mutable count and hash commitment, which write-once storage can't hold. Protection
 against that rests on the account's locked version-level immutability, which the operator
 procedure verifies before locking.
 
@@ -138,7 +141,7 @@ Local Debug runs, 2026-11-06, against `mcr.microsoft.com/azure-storage/azurite:3
   - write-once request discipline, and no raw identifiers in names, metadata or payloads
 - `IndependentJournalRegistrationTests` (19) cover: complete configuration resolves one instance as
   both authorities, and each missing or invalid setting keeps the unavailable adapters.
-- `IndependentAuthorityContract` runs seven scenarios each against the controlled PostgreSQL
+- `IndependentAuthorityContract` runs eight scenarios each against the controlled PostgreSQL
   fixture and the blob adapter.
 
 For the conservative fold and the orphan check, mutating the implementation made the corresponding

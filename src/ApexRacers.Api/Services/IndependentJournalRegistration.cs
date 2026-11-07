@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using ApexRacers.Core;
 using ApexRacers.Data;
+using ApexRacers.Data.IndependentJournal;
 using Azure.Core;
 using Azure.Storage.Blobs;
 
@@ -49,12 +50,13 @@ public static partial class IndependentJournalRegistration
             problems.Add(EndpointSetting);
         foreach (var name in new[] { EnforcementContainerSetting, HistoryContainerSetting })
             if (Value(name) is { } container && !ContainerName().IsMatch(container)) problems.Add(name);
-        if (Value(EnforcementContainerSetting) is { } e && e == Value(HistoryContainerSetting)) problems.Add(HistoryContainerSetting);
-        var naming = Material(Value(NameHmacSetting));
-        var sealing = Material(Value(PayloadAesSetting));
-        if (Value(NameHmacSetting) is not null && naming is null) problems.Add(NameHmacSetting);
-        if (Value(PayloadAesSetting) is not null && (sealing is null || naming is not null && naming.AsSpan().SequenceEqual(sealing)))
-            problems.Add(PayloadAesSetting);
+        if (Value(EnforcementContainerSetting) is { } enforcementContainer && enforcementContainer == Value(HistoryContainerSetting))
+            problems.Add(HistoryContainerSetting);
+        var nameHmac = DecodeThirtyTwoBytes(Value(NameHmacSetting));
+        var payloadAes = DecodeThirtyTwoBytes(Value(PayloadAesSetting));
+        if (Value(NameHmacSetting) is not null && nameHmac is null) problems.Add(NameHmacSetting);
+        var reusesNameHmac = nameHmac is not null && payloadAes is not null && nameHmac.AsSpan().SequenceEqual(payloadAes);
+        if (Value(PayloadAesSetting) is not null && (payloadAes is null || reusesNameHmac)) problems.Add(PayloadAesSetting);
         var epoch = Guid.Empty;
         if (Value(TrustedEpochSetting) is { } rawEpoch && (!Guid.TryParse(rawEpoch, out epoch) || epoch == Guid.Empty))
             problems.Add(TrustedEpochSetting);
@@ -64,7 +66,7 @@ public static partial class IndependentJournalRegistration
 
         if (problems.Count > 0) return new(IndependentJournalState.Incomplete, null, problems.Distinct().ToList());
         return new(IndependentJournalState.Configured, new(endpoint!, Value(EnforcementContainerSetting)!, Value(HistoryContainerSetting)!,
-            new IndependentJournalSettings(naming!, sealing!, epoch, writeGenesis)), []);
+            new IndependentJournalSettings(nameHmac!, payloadAes!, epoch, writeGenesis)), []);
     }
 
     public static void Register(IServiceCollection services, IndependentJournalBinding binding, TokenCredential credential)
@@ -87,7 +89,8 @@ public static partial class IndependentJournalRegistration
         services.AddSingleton<IPublicationHistoryAuthority>(sp => sp.GetRequiredService<BlobDriverJournal>());
     }
 
-    private static byte[]? Material(string? value)
+    /// <summary>The base64 of exactly 32 bytes, or null.</summary>
+    private static byte[]? DecodeThirtyTwoBytes(string? value)
     {
         if (value is null) return null;
         var buffer = new byte[32];

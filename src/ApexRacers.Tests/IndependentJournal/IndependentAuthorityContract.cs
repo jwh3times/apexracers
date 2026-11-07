@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using ApexRacers.Core;
 using ApexRacers.Data;
+using ApexRacers.Data.IndependentJournal;
 using ApexRacers.Tests.Helpers;
 using ApexRacers.Tests.Lifecycle;
 using ApexRacers.Tests.Publication;
@@ -42,6 +43,20 @@ public abstract class IndependentAuthorityContract
         Assert.False(state.Allows(10, DriverConsentScope.Personal));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             authority.AppendAsync(intent with { Kind = DriverLifecycleKind.Unlink }, Ct));
+    }
+
+    [Fact]
+    public async Task An_operation_id_belongs_to_one_scope()
+    {
+        var authority = await CreateAsync();
+        var scope = Scope();
+        var intent = Intent(scope, DriverLifecycleKind.Unlink);
+        await authority.AppendAsync(intent, Ct);
+        var elsewhere = scope with { CustomerId = scope.CustomerId + 1 };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => authority.AppendAsync(intent with { Scope = elsewhere }, Ct));
+
+        Assert.Empty((await authority.ReadCurrentAsync(elsewhere, Ct)).PendingIntents);
     }
 
     [Fact]

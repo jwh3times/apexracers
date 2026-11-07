@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using ApexRacers.Core;
 using ApexRacers.Data;
+using ApexRacers.Data.IndependentJournal;
 using ApexRacers.Tests.Helpers;
 using Azure.Core;
 using Azure.Core.Pipeline;

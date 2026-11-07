@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using ApexRacers.Api.Services;
 using ApexRacers.Core;
 using ApexRacers.Data;
+using ApexRacers.Data.IndependentJournal;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

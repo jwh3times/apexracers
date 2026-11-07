@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using ApexRacers.Core;
 using ApexRacers.Data;
+using ApexRacers.Data.IndependentJournal;
 using ApexRacers.Tests.Helpers;
 using Azure.Storage.Blobs;
 using Xunit;
