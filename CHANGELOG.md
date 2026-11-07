@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- A production independent enforcement journal and publication history (#378). Both are one adapter over write-once cloud blob storage that a primary-database restore cannot reach. Every record is created once and never overwritten or deleted, blob names carry keyed hashes instead of identifiers, and payloads are encrypted. Retried and timed-out writes resolve to the stored record, and racing writers can't both succeed. Reads report unavailable, never empty, on a missing or foreign genesis, a wrong key, a gap or orphan in the history, or an unreadable record. The API selects it only when every `INDEPENDENT_JOURNAL_*` setting is present and valid, and otherwise keeps the unavailable adapters, logging which settings are missing. Real Driver scopes stay closed: ownership proof and operating controls are still unavailable, and the storage account isn't provisioned yet.
 
 ## [15.1.49] - 2026-11-06
 

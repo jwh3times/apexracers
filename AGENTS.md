@@ -456,11 +456,16 @@ HTTP request → Controller (binds inputs only) → Service (all logic + EF Core
 
 **Driver lifecycle boundary:** `DriverAuthorization`, `DriverPublication`, and `CopyLifecycle`
 coordinate proof/consent generations, journal-first closure, actual protected-writer admission/drain,
-and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers unavailable
-ownership-proof and enforcement-journal adapters; positive protected publication is limited to
+and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers an unavailable
+ownership-proof adapter. The enforcement journal and publication history are one `BlobDriverJournal`
+(write-once blob storage, independent of primary restore), selected by
+`IndependentJournalRegistration` only when every `INDEPENDENT_JOURNAL_*` setting is present and
+valid; otherwise the unavailable adapters remain. Positive protected publication is limited to
 controlled synthetic hosts. A stored claim or an `iracing_id` JWT claim grants no Driver access.
 For lifecycle transitions, protected results, recovery or copy changes, read
-`docs/research/driver-lifecycle-admission-spine.md` before extending these modules.
+`docs/research/driver-lifecycle-admission-spine.md` before extending these modules, and
+`docs/research/independent-journal-adapter.md` before changing the journal adapter, its record
+layout or its settings.
 
 `LegacyDriverAccessGuard` runs before model binding. Auth, Admin, FeatureFlags, Cars, Tracks, Series
 and Schedule retain independent access; other legacy controllers require Demo provenance, and
