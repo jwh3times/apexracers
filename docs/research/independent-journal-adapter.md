@@ -109,9 +109,9 @@ secret store through the usual hyphen-to-underscore mapping.
 | `INDEPENDENT_JOURNAL_TRUSTED_EPOCH`         | Non-empty GUID, matching genesis                             |
 | `INDEPENDENT_JOURNAL_WRITE_GENESIS`         | Optional `true`/`false`; default `false`                     |
 
-With no settings, the unavailable adapters remain, silently. If any setting is missing or invalid,
-the unavailable adapters remain and startup logs a warning naming the settings, never their values.
-Only a complete, valid set selects the blob adapter, which authenticates with managed identity
+With no settings, the unavailable adapters remain, silently. If any required setting is missing or
+any supplied setting is invalid, the unavailable adapters remain and startup logs a warning naming
+the settings, never their values. Only a complete, valid set selects the blob adapter, which authenticates with managed identity
 (`DefaultAzureCredential`); there is no connection-string or shared-key path. Only the API host
 registers the journal; ingestion never resolves it.
 

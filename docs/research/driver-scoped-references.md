@@ -6,7 +6,8 @@ Implementation for [#375](https://github.com/jwh3times/apexracers/issues/375), f
 [atomic release accounting](atomic-publication-reservations.md).
 
 This is controlled synthetic implementation evidence. Ordinary startup provides no reference
-catalog/review/history adapter, and its proof/journal adapters remain unavailable. The new routes
+catalog/review adapter, its proof adapter remains unavailable, and its journal/history adapter stays
+unavailable unless [configured](independent-journal-adapter.md). The new routes
 therefore return generic unavailable responses in ordinary environments. Existing credential-free
 Demo routes retain their explicitly synthetic behavior. No provider shape, live ownership,
 production journal, catalog admission, browser invalidation or deployment certification is inferred.

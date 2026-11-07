@@ -459,8 +459,8 @@ coordinate proof/consent generations, journal-first closure, actual protected-wr
 and tracked-copy work through `Data.DriverAuthorityStore`. Ordinary startup registers an unavailable
 ownership-proof adapter. The enforcement journal and publication history are one `BlobDriverJournal`
 (write-once blob storage, independent of primary restore), selected by
-`IndependentJournalRegistration` only when every `INDEPENDENT_JOURNAL_*` setting is present and
-valid; otherwise the unavailable adapters remain. Positive protected publication is limited to
+`IndependentJournalRegistration` only when every required `INDEPENDENT_JOURNAL_*` setting is
+present and every supplied one is valid; otherwise the unavailable adapters remain. Positive protected publication is limited to
 controlled synthetic hosts. A stored claim or an `iracing_id` JWT claim grants no Driver access.
 For lifecycle transitions, protected results, recovery or copy changes, read
 `docs/research/driver-lifecycle-admission-spine.md` before extending these modules, and
@@ -731,7 +731,8 @@ allowance or the high-water mark could be 0, since either would silently deny th
   enable this seam; controlled review fixtures confer no production catalog approval.
 - `IndependentJournalRegistration` — binds the `INDEPENDENT_JOURNAL_*` settings and registers one
   `Data.IndependentJournal.BlobDriverJournal` as both `IDriverEnforcementJournal` and
-  `IPublicationHistoryAuthority` only when all are present and valid. Otherwise it keeps the
+  `IPublicationHistoryAuthority` only when every required one is present and every supplied one is
+  valid. Otherwise it keeps the
   unavailable adapters, and its binding names the problem settings (never their values) for the
   startup warning.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;

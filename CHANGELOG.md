@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [15.1.52] - 2026-11-06
+
 ### Added
 
-- A production independent enforcement journal and publication history (#378). Both are one adapter over write-once cloud blob storage that a primary-database restore cannot reach. Every record is created once and never overwritten or deleted, blob names carry keyed hashes instead of identifiers, and payloads are encrypted. Retried and timed-out writes resolve to the stored record, and racing writers can't both succeed. Reads report unavailable, never empty, on a missing or foreign genesis, a wrong key, a gap or orphan in the history, or an unreadable record. The API selects it only when every `INDEPENDENT_JOURNAL_*` setting is present and valid, and otherwise keeps the unavailable adapters, logging which settings are missing. Real Driver scopes stay closed: ownership proof and operating controls are still unavailable, and the storage account isn't provisioned yet.
+- A production independent enforcement journal and publication history (#378). Both are one adapter over write-once cloud blob storage that a primary-database restore cannot reach. Every record is created once and never overwritten or deleted, blob names carry keyed hashes instead of identifiers, and payloads are encrypted. Retried and timed-out writes resolve to the stored record, and racing writers can't both succeed. Reads report unavailable, never empty, on a missing or foreign genesis, a wrong key, a gap or orphan in the history, or an unreadable record. The API selects it only when every required `INDEPENDENT_JOURNAL_*` setting is present and every supplied one is valid, and otherwise keeps the unavailable adapters, logging which settings are missing. Real Driver scopes stay closed: ownership proof and operating controls are still unavailable, and the storage account isn't provisioned yet.
+
+### Changed
+
+- Bumped `Scalar.AspNetCore` from 2.18.7 to 2.19.0 (Dependabot, released as v15.1.50).
+- Bumped `@tailwindcss/postcss` and `tailwindcss` from 4.3.3 to 4.3.4, and `vitest` and `@vitest/coverage-v8` from 5.0.5 to 5.1.0, in `web/` (Dependabot, released as v15.1.51).
 
 ## [15.1.49] - 2026-11-06
 
@@ -2046,7 +2055,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.46...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.52...HEAD
+[15.1.52]: https://github.com/jwh3times/apexracers/compare/v15.1.49...v15.1.52
+[15.1.49]: https://github.com/jwh3times/apexracers/compare/v15.1.46...v15.1.49
 [15.1.46]: https://github.com/jwh3times/apexracers/compare/v15.1.45...v15.1.46
 [15.1.45]: https://github.com/jwh3times/apexracers/compare/v15.1.44...v15.1.45
 [15.1.44]: https://github.com/jwh3times/apexracers/compare/v15.1.43...v15.1.44
