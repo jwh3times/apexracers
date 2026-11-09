@@ -23,22 +23,20 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     if (!linkValid) return;
-    let cancelled = false;
+    const stale = new AbortController();
     void (async () => {
       try {
         if (mode === 'change') await api.confirmEmailChange(userId, email, token);
         else await api.confirmEmail(userId, token);
-        if (!cancelled) setStatus('done');
+        if (!stale.signal.aborted) setStatus('done');
       } catch (err) {
-        if (!cancelled) {
+        if (!stale.signal.aborted) {
           setError(err instanceof Error ? err.message : 'This link is invalid or has expired.');
           setStatus('error');
         }
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => stale.abort();
   }, [linkValid, mode, userId, email, token]);
 
   return (
