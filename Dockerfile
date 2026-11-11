@@ -8,7 +8,7 @@ RUN npm run build
 # Output: /app/dist
 
 # ── Stage 2: Publish .NET API ─────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api-build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS api-build
 WORKDIR /src
 COPY Directory.Packages.props ./
 COPY src/ApexRacers.Core/      ./src/ApexRacers.Core/
