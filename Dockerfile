@@ -19,7 +19,7 @@ RUN dotnet publish src/ApexRacers.Api/ApexRacers.Api.csproj \
 # Output: /publish
 
 # ── Stage 3: Runtime image ────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 WORKDIR /app
 COPY --from=api-build /publish     ./
 COPY --from=frontend  /app/dist    ./wwwroot
