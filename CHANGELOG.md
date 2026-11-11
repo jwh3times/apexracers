@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.56] - 2026-11-10
+
+### Changed
+
+- Contributor tooling: the installed-skills check (`scripts/check-skills.mjs`) now reads the version 2 `skills-lock.json` that `skills` CLI 1.8.0 writes, whose hashes no longer depend on line endings, so the shared skills install with the current CLI instead of a pinned 1.7.4. The lock is now version 2; no skill's content changed.
+- Bumped `xunit.v3.mtp-v2` from 4.0.2 to 4.0.3 (Dependabot, released as v15.1.53).
+- Bumped `@playwright/test` from 1.64.1 to 1.65.0, `oxlint` from 1.90.0 to 1.91.0, `oxlint-tsgolint` from 7.0.2005 to 7.0.2006 and `vite` from 8.3.5 to 8.3.6 in `web/` (Dependabot, released as v15.1.54). The email verification page's stale-request guard now uses an `AbortController`, with the same behavior, to satisfy the newer oxlint.
+- Bumped `jsdom` from 30.1.3 to 31.0.0 in `web/` (Dependabot, released as v15.1.55).
+
 ## [15.1.52] - 2026-11-06
 
 ### Added
@@ -2055,7 +2064,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.52...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.56...HEAD
+[15.1.56]: https://github.com/jwh3times/apexracers/compare/v15.1.52...v15.1.56
 [15.1.52]: https://github.com/jwh3times/apexracers/compare/v15.1.49...v15.1.52
 [15.1.49]: https://github.com/jwh3times/apexracers/compare/v15.1.46...v15.1.49
 [15.1.46]: https://github.com/jwh3times/apexracers/compare/v15.1.45...v15.1.46
