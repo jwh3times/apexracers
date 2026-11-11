@@ -9,7 +9,7 @@ RUN dotnet publish src/ApexRacers.Ingestion/ApexRacers.Ingestion.csproj \
     -c Release -o /publish --no-self-contained
 
 # ── Stage 2: Runtime image ────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/runtime:10.0
+FROM mcr.microsoft.com/dotnet/runtime:11.0
 WORKDIR /app
 COPY --from=build /publish ./
 ENV DOTNET_ENVIRONMENT=Production
