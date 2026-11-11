@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.58] - 2026-11-11
+
+### Changed
+
+- Docs: the independent journal adapter's research record (`docs/research/independent-journal-adapter.md`) now says when genesis is actually written. It happens on the first journal read or write made with `INDEPENDENT_JOURNAL_WRITE_GENESIS=true`, and only while both containers are empty. Startup doesn't write it, and ordinary API startup makes no journal call, so setting the flag and restarting the API writes nothing; provisioning has to make that first call itself. The roadmap now records the journal's write-once storage as provisioned, observed and locked under a 10-year retention policy.
+- Bumped `@tailwindcss/postcss` and `tailwindcss` from 4.3.4 to 4.3.5, `concurrently` from 10.0.6 to 10.0.7 and `oxlint` from 1.91.0 to 1.92.0 in `web/` (Dependabot, released as v15.1.57).
+
 ## [15.1.56] - 2026-11-10
 
 ### Changed
@@ -2064,7 +2071,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.56...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.58...HEAD
+[15.1.58]: https://github.com/jwh3times/apexracers/compare/v15.1.56...v15.1.58
 [15.1.56]: https://github.com/jwh3times/apexracers/compare/v15.1.52...v15.1.56
 [15.1.52]: https://github.com/jwh3times/apexracers/compare/v15.1.49...v15.1.52
 [15.1.49]: https://github.com/jwh3times/apexracers/compare/v15.1.46...v15.1.49
