@@ -88,8 +88,10 @@ is a supported state. `npm run test:repo` runs the dependency-free tests for the
 ## Agent docs
 
 `AGENTS.md` is the canonical coding-agent guide, and `.claude/agents/` contains
-specialist guidance. `CLAUDE.md` is only a thin `@AGENTS.md` import shim for Claude
-Code; edit shared guidance in `AGENTS.md`, not the shim. Keep tracked agent docs
+specialist guidance. The backend and frontend architecture sit beside the code they
+describe, in `src/AGENTS.md` and `web/AGENTS.md`. Each `CLAUDE.md` (root, `src/`,
+`web/`) is only a thin `@AGENTS.md` import shim for Claude Code; edit shared
+guidance in the `AGENTS.md` beside it, not the shim. Keep tracked agent docs
 focused on repo behavior and implementation conventions. Do not add secrets, live
 credentials, personal account data, or private deployment runbooks to them.
 

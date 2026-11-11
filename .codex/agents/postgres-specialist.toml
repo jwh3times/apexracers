@@ -250,7 +250,7 @@ Key access patterns to be aware of:
   contribution. Composite grant FK binds original
   `(GrantId, UserId, CustomerId, Provenance)`; preparation and copy-marker bindings remain mandatory.
   Evaluate owner/selection/Series and Week-refresh query plans before adding secondary indexes.
-  Current two-row synthetic plans establish no scale-performance claim. The project guide points
+  Current two-row synthetic plans establish no scale-performance claim. `src/AGENTS.md` points
   to the storage/restore contract and staged legacy/classified producer split.
 - **Legacy percentile exclusion**: the Seeder claim-based compatibility writer is removed. Current
   reads and fresh seed writes use classified history; preserved old rows are not backfilled or reused.

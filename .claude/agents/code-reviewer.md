@@ -24,8 +24,8 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - All DTOs must be `record` types. Flag mutable class DTOs.
 - Response shapes live in `ResponseDtos.cs`; request shapes in `RequestDtos.cs`. Flag DTOs defined elsewhere.
 - When a response DTO is added or changed, the matching TypeScript interface in `web/src/services/api.ts` must also change. Flag backend DTO changes that have no corresponding frontend update.
-- Flag an ApexRacers-owned Driver response that violates the project guide's identity-field naming
-  rule, including one that exposes an upstream abbreviation or uses the User's account label for a
+- Flag an ApexRacers-owned Driver response that violates the identity-field naming
+  rule in `src/AGENTS.md`, including one that exposes an upstream abbreviation or uses the User's account label for a
   Driver name. Upstream names remain correct only at parser and mapping adapters.
 
 **Identity language**
@@ -228,7 +228,7 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   docs/research/driver-scoped-references.md. The controller's authenticated recipient extraction
   and module-owned protected result are intentional binding/serialization exceptions; flag ordinary
   DTO dispatch, retained association permission or synthetic catalog admission presented as Live permission.
-- Apply the project guide's browser boundary to sensitive reads: flag old-data fallbacks, delayed
+- Apply the browser boundary linked from `src/AGENTS.md` to sensitive reads: flag old-data fallbacks, delayed
   response deadlines measured from receipt, owner-changing refresh replay or withdrawal that waits
   for the server before clearing. Privacy/personal controllers deliberately return service-owned
   `IActionResult`; withdrawal reports original intent and drain separately from verified erasure.

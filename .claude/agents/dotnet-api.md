@@ -7,7 +7,7 @@ model: sonnet
 
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
 
-The project guide `AGENTS.md` (already loaded into this session) already covers: the project/dependency graph, central package management (`Directory.Packages.props`), the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the controller/service/Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy. **Don't restate those here** — this file adds the .NET-specific depth on top.
+The project guide `AGENTS.md` (already loaded into this session) covers the project/dependency graph and central package management (`Directory.Packages.props`). The backend guide `src/AGENTS.md` covers the controller→service→`AppDbContext` request flow, the `ExceptionHandlingMiddleware` error model, the service and Core-model catalog, the ingestion worker, and the persist-vs-cache data-source strategy; read it before changing anything under `src/` if it is not already loaded. **Don't restate those here** — this file adds the .NET-specific depth on top.
 
 ## C# style
 
@@ -18,7 +18,7 @@ The project guide `AGENTS.md` (already loaded into this session) already covers:
 
 ## Controllers — the .NET specifics
 
-AGENTS.md covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. When that User's Subject Driver is needed, resolve it through `SubjectDriverContext` and name the resulting local `subjectDriverCustId`; a Customer ID supplied for an arbitrary Driver lookup is already the Subject Driver and does not go through that context. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in AGENTS.md). Return an explicit result only for non-exception outcomes that need a specific code (e.g. a `404`/`501`). Note sign-in is not one of these: it has exactly two outcomes, `200` and a generic `401` — see "Account existence never leaks out of the auth surface".
+`src/AGENTS.md` covers the no-logic rule. The details it doesn't: extract user identity from `User.FindFirstValue(JwtRegisteredClaimNames.Sub)` and parse the `Guid` before passing it to the service. When that User's Subject Driver is needed, resolve it through `SubjectDriverContext` and name the resulting local `subjectDriverCustId`; a Customer ID supplied for an arbitrary Driver lookup is already the Subject Driver and does not go through that context. For error cases **don't catch to `BadRequest(ex.Message)`** — let the service `throw` and `ExceptionHandlingMiddleware` map it (status map in `src/AGENTS.md`). Return an explicit result only for non-exception outcomes that need a specific code (e.g. a `404`/`501`). Note sign-in is not one of these: it has exactly two outcomes, `200` and a generic `401` — see "Account existence never leaks out of the auth surface".
 
 ## Services — the .NET specifics
 
@@ -29,7 +29,7 @@ terminal checkpoint; a lease or a returned DTO proves no writer has stopped. Pro
 unavailable adapters remain distinct from controlled synthetic proof/journal fixtures. Route-level
 legacy denial and independent catalog reads must not be bypassed by resolving a stored claim.
 
-AGENTS.md covers the service-layer rules (all logic here; inject `AppDbContext` directly; no MediatR / `IRepository<T>`; one responsibility per class). Conventions it doesn't:
+`src/AGENTS.md` covers the service-layer rules (all logic here; inject `AppDbContext` directly; no MediatR / `IRepository<T>`; one responsibility per class). Conventions it doesn't:
 
 - `async Task<T>` with `CancellationToken ct = default` as the last parameter on every public async method.
 - Drive error flow by throwing — `ArgumentException` / `InvalidOperationException` → 400, `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `ClaimedIdentityConflictException` → 409, `IRacingNotConfiguredException` → 503 (see `ExceptionStatusMapper`). A claimed-identity conflict is ordinary ProblemDetails with non-disclosing detail; `IRacingNotLinkedException` is the separate 409 exact-JSON contract. Don't catch these back to `BadRequest`/`NotFound` in the controller.
@@ -138,15 +138,15 @@ composes a key, the same way a service-level check guards the free-text case.
 
 Driver search additionally sits behind its own rate-limit policy (`"iracing-search"` in `Program.cs`,
 config `SEARCH_RATE_LIMIT_PERMIT_PER_MINUTE`, default 30/min, partitioned by the `sub` claim) —
-alongside the project guide's `auth` policy — because the length bound caps one key's size but not how
+alongside the `auth` policy in `src/AGENTS.md` — because the length bound caps one key's size but not how
 many distinct valid terms one caller can mint per minute, each its own cache row and its own upstream
 fetch.
 
 ## DTOs
 
-`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (AGENTS.md notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
+`record` types — response shapes in `Dtos/ResponseDtos.cs`, request shapes in `Dtos/RequestDtos.cs`. (`web/AGENTS.md` notes the `ResponseDtos.cs` ↔ `web/src/services/api.ts` sync requirement — honor it when you change a response DTO.)
 
-The project guide owns the Driver identity names on ApexRacers response DTOs. The .NET-specific
+The backend guide `src/AGENTS.md` owns the Driver identity names on ApexRacers response DTOs. The .NET-specific
 boundary rule is to translate upstream JSON/SDK spellings in parser and mapping adapters. If a renamed
 response DTO is one of the mapped types stored in `ExternalDataCache`, migrate its existing cache-key
 families explicitly; never rewrite unrelated cached SDK payloads by matching property names globally.
@@ -187,7 +187,7 @@ The `dotnet ef` commands and the `dotnet-ef`/EF version-match note are in AGENTS
   exists; profile updates cannot substitute for journal-first unlink/reassignment. `AuthService`
   receives `DriverAuthorityStore`, which holds the same PostgreSQL coordination boundary as grant
   creation across the current binding check and Identity profile save.
-- Admin promotion uses `AdminSeedService` at startup; the project guide owns its eligibility rules.
+- Admin promotion uses `AdminSeedService` at startup; `src/AGENTS.md` owns its eligibility rules.
   `AdminService.SetUserRoleAsync` rejects an Admin target role using case-insensitive comparison
   (matching Identity role lookup), and rejects changes to an existing Admin.
 
@@ -486,7 +486,7 @@ existing authority coordination. Returning an ordinary DTO from these paths woul
 final admission/dispatch checks. Keep positive adapters in the dedicated synthetic test topology;
 ordinary startup must retain unavailable proof/catalog behavior and select the journal only through
 `IndependentJournalRegistration`. For personal reads and
-withdrawal, preserve the project guide's browser contract: JWT `sub` selects the caller, stored
+withdrawal, preserve the browser contract linked from `src/AGENTS.md`: JWT `sub` selects the caller, stored
 association selects the Driver, and original operation replay retains its scope and association.
 Controllers return the module-owned result so protected dispatch and withdrawal status stay at the
 service boundary. Browser and physical restore implementation evidence now exists; production
@@ -536,7 +536,7 @@ wire fields as non-nullable even though iRacing's payload can omit them — `Sea
 to `default` (`0001-01-01`), a *successful* parse carrying a value that isn't a date, rather than
 throwing or leaving something checkable as absent. Persisting that verbatim would make the row lie
 forever, not just on the one bad fetch — this is the same silent-zeros trap the persisted-JSON rules in
-AGENTS.md warn about, just triggered by the SDK's nullability choice instead of a raw JSON gap. The
+`src/AGENTS.md` warn about, just triggered by the SDK's nullability choice instead of a raw JSON gap. The
 fix is a small pure guard at the mapping seam — `SeasonIngest.EndTimeOrNull` rejects anything not after
 the row's own start date — rather than trusting the SDK's type to mean "always present." Test the guard
 with all three cases: a genuine value, the `default` zero-value, and a value that parses but fails the

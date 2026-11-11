@@ -168,7 +168,7 @@ CORS is configured for Development only (`ViteDev` policy allowing `http://local
 ## ADMIN_SEED_EMAILS
 
 Comma-separated list in Key Vault (`ADMIN-SEED-EMAILS`). For startup promotion eligibility,
-see `AdminSeedService` in the project guide. This is the only way to create the first
+see `AdminSeedService` in `src/AGENTS.md`. This is the only way to create the first
 admin; there is no admin bootstrap API. Changes take effect on next API restart or
 deployment.
 
