@@ -115,9 +115,12 @@ the settings, never their values. Only a complete, valid set selects the blob ad
 (`DefaultAzureCredential`); there is no connection-string or shared-key path. Only the API host
 registers the journal; ingestion never resolves it.
 
-`INDEPENDENT_JOURNAL_WRITE_GENESIS=true` is a one-time provisioning switch. The adapter writes
-genesis (conditional create) only when both containers are completely empty. Records without a
-genesis are never re-anchored. The operator removes the setting once genesis exists.
+`INDEPENDENT_JOURNAL_WRITE_GENESIS=true` is a one-time provisioning switch. Startup writes nothing:
+the adapter writes genesis (conditional create) during the first journal read or write made with
+the setting `true`, and only when both containers are completely empty. Ordinary API startup makes
+no journal call, so setting it and restarting the API writes no genesis; provisioning has to make
+that first call itself. Records without a genesis are never re-anchored. The operator removes the
+setting once genesis exists.
 
 No production code constructs `PublicationReleaseStore` yet. When a controlled or Live publication
 path does, it must pass the same trusted epoch.
