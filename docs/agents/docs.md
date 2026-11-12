@@ -2,13 +2,22 @@
 
 ## Doc map
 
-- `AGENTS.md` — the canonical guide every coding agent reads: architecture, patterns, commands,
-  the Core models, controllers, services and routes tables. It describes what is implemented, never
-  what is planned. **When:** a controller or endpoint is added (`src/ApexRacers.Api/Controllers/`:
-  the controllers and routes tables); a Core model is added (`src/ApexRacers.Core/Models/`: the Core
-  models table); the auth mechanism changes (the AuthController, AuthContext and AuthService
-  descriptions); a command, workflow or durable rule changes; a test-provider or fixture rule changes
-  (the Testing & coverage "Test DB providers" bullet).
+- `AGENTS.md` — the canonical guide every coding agent reads: ground rules, development flow,
+  commands, project structure and testing, plus pointers to the two architecture files below. It
+  describes what is implemented, never what is planned. **When:** a command, workflow or durable rule
+  changes; a test-provider or fixture rule changes (the Testing & coverage "Test DB providers"
+  bullet).
+- `src/AGENTS.md` — backend architecture (request flow, Driver lifecycle boundaries, middleware,
+  controllers, services, the Core models table, ingestion, data-source strategy), imported by
+  `src/CLAUDE.md`. Controllers and routes are not tabulated: the code lists them. **When:** a
+  controller's capability or access rule changes; a service is added; a Core model is added
+  (`src/ApexRacers.Core/Models/`: the Core models table); the auth mechanism changes (the
+  AuthService description).
+- `web/AGENTS.md` — frontend architecture (API client, design system, route guards, shared
+  components, contexts and utilities), imported by `web/CLAUDE.md`. **When:** a route guard, shared
+  component, context or utility changes; the auth mechanism changes (the AuthContext description).
+- `src/CLAUDE.md`, `web/CLAUDE.md` — thin `@AGENTS.md` imports, like the root `CLAUDE.md`. Never
+  carry content.
 - `CLAUDE.md` — a thin entry point: the `@AGENTS.md` import plus Claude Code-only notes. **When:**
   only a Claude Code-specific note changes; content goes in `AGENTS.md`.
 - `README.md` — public prerequisites, local setup, seed and ingestion instructions. **When:** a

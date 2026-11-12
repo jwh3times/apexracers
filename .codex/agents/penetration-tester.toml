@@ -222,7 +222,7 @@ Policies in `Program.cs`:
 - `GET /api/drivers/scoped/personal` requires the authenticated owner and module-owned protected
   dispatch. Probe another User's input, claim-only identities, source/journal uncertainty and stale
   response delivery; no name or private result may survive invalidation. Apply the browser/restore
-  boundaries linked from the project guide.
+  boundaries linked from `src/AGENTS.md`.
 - `POST /api/drivers/privacy/withdrawal` takes only an operation UUID and `personal`/`sharing`
   scope. Replay another User's UUID or change its scope; the request must not transition another
   association. Test lost responses, reload and owner rotation during refresh: the original operation
@@ -301,7 +301,7 @@ When this is implemented, the following must be present:
 
 ## File upload (`POST /api/telemetry/upload`)
 
-First verify the current lifecycle denial from the project guide: valid and invalid recordings,
+First verify the current lifecycle denial in `src/AGENTS.md`: valid and invalid recordings,
 forged Demo headers and unknown catalog IDs must not reach parsing or persistence. The browser
 cases in web/e2e/telemetry.spec.ts check unavailable upload and My Laps responses.
 

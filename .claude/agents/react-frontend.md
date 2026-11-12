@@ -7,7 +7,7 @@ model: sonnet
 
 You are working inside the ApexRacers React frontend (`web/`). Know these patterns and enforce them without deviation.
 
-React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/build/lint/test/format commands are in AGENTS.md (Commands → Frontend); AGENTS.md also carries the routing map, the design-system summary, and the `request<T>` API-client contract. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
+React 19 + Vite + TypeScript strict mode; all source in `web/src/`. The dev/build/lint/test/format commands are in AGENTS.md (Commands → Frontend); `web/AGENTS.md` carries the route guards, the design-system summary, and the `request<T>` API-client contract; the routes themselves are in `web/src/App.tsx`. **This file owns the depth** on the API client, auth flow, the design-token catalog, and test patterns.
 
 ## API calls — always go through api.ts
 
@@ -216,7 +216,7 @@ the hook call instead of reinterpreting every non-`ok` state in the component.
 
 Keep local state machines for mutation-owned collections and domain workflows. A local selection
 or mutation can own its transitions while its sensitive read stays inside `useDriverResource`.
-Apply the browser contract linked from the project guide: pass every selection/owner dependency
+Apply the browser contract linked from `src/AGENTS.md`: pass every selection/owner dependency
 and `AbortSignal`, keep loading/error states empty of prior Driver values, and test actual rendered
 clearing before an async withdrawal settles. `DriverDisclosure` owns the protected cards and
 withdrawal feedback; reported intent/drain must remain distinct from verified erasure.
