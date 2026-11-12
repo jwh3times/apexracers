@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.63] - 2026-11-12
+
+### Changed
+
+- Bumped the ASP.NET Core, EF Core (including the SQLite provider) and `Microsoft.Extensions.*` packages from 10.0.14 to 10.0.15, and `Scalar.AspNetCore` from 2.19.0 to 2.20.0 (Dependabot, released as v15.1.62).
+
+### Fixed
+
+- Driver Privacy Contract: two built-SPA privacy cases no longer fail intermittently with `clock.pauseAt: Cannot fast-forward to the past`. The spec installed Playwright's fake clock from the driver process's time and then paused it at a time read in the test process; a real-time clock sync in between could move the page past that target. The cases now install and pause from one time read, with the pause one second ahead. What the cases assert is unchanged (#514).
+
 ## [15.1.61] - 2026-11-11
 
 ### Added
@@ -2089,7 +2099,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.61...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.63...HEAD
+[15.1.63]: https://github.com/jwh3times/apexracers/compare/v15.1.62...v15.1.63
 [15.1.61]: https://github.com/jwh3times/apexracers/compare/v15.1.60...v15.1.61
 [15.1.60]: https://github.com/jwh3times/apexracers/compare/v15.1.59...v15.1.60
 [15.1.59]: https://github.com/jwh3times/apexracers/compare/v15.1.58...v15.1.59
