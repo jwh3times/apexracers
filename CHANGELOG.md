@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.61] - 2026-11-11
+
+### Added
+
+- Contributor tooling: the repository now checks in a shared set of MCP servers (`.mcp.json`) for coding agents: Context7 for current library docs, Microsoft Learn for official .NET, EF Core and Azure docs, and Playwright MCP (pinned to 0.0.85, run `--isolated`) for driving the running app in a browser. Claude Code asks each contributor to approve them once. A new MCP servers section in `AGENTS.md` gives the matching Codex commands, how to add an optional personal Context7 key, and which servers are deliberately left out (GitHub, GitKraken, Postgres and Azure MCPs).
+
 ## [15.1.60] - 2026-11-11
 
 ### Changed
@@ -2083,7 +2089,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.60...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.61...HEAD
+[15.1.61]: https://github.com/jwh3times/apexracers/compare/v15.1.60...v15.1.61
 [15.1.60]: https://github.com/jwh3times/apexracers/compare/v15.1.59...v15.1.60
 [15.1.59]: https://github.com/jwh3times/apexracers/compare/v15.1.58...v15.1.59
 [15.1.58]: https://github.com/jwh3times/apexracers/compare/v15.1.56...v15.1.58
