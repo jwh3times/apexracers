@@ -14,7 +14,7 @@
     </ModulePaths>
     <!--
       Exclude generated/infrastructure code that has no business logic:
-        - Controllers      : parameter binding + Ok() only, per AGENTS.md
+        - Controllers      : parameter binding + Ok() only, per src/AGENTS.md
         - EF Migrations    : auto-generated schema code
         - Program          : startup wiring (includes HyphenToUnderscoreSecretManager)
         - DesignTimeFactory: dotnet-ef dev tooling only
