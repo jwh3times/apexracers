@@ -22,6 +22,18 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    # .NET 11 hold: these families are versioned in lockstep with .NET, so their
+    # next major IS the .NET 11 migration (#512, blocked by #511). The migration
+    # branch removes this block. Minor/patch updates within 10.x still arrive.
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL"
+        update-types: ["version-update:semver-major"]
     groups:
       nuget-minor-patch:
         patterns:
@@ -136,6 +148,12 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore"
+    # .NET 11 hold (#512): the dotnet/aspnet and dotnet/runtime 11.0 images only
+    # run a net11.0 app, so bumping them alone deploys an API or worker that
+    # fails to start. The migration branch moves the images and removes this.
+    ignore:
+      - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
     groups:
       docker-minor-and-patch:
         patterns:
