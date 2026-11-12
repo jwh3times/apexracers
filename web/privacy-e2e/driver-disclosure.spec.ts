@@ -8,6 +8,17 @@ import { topShareLabel } from '../src/utils/percentile';
 const recipient = 'aaaaaaaa-3750-4000-8000-000000000001';
 const target = 'aaaaaaaa-3750-4000-8000-000000000002';
 
+// Install the fake clock and pause it, from one time read. `pauseAt(new Date())` after a bare
+// `install()` races: the page clock starts from the Playwright driver's time and keeps syncing to
+// real time whenever a page timer fires, so by the time `pauseAt` runs in the page it can be past
+// the test's `new Date()` and throws "Cannot fast-forward to the past" (#514). The cases measure
+// time with relative `runFor` budgets, so the one-second lead changes nothing they assert.
+async function pauseClock(page: Page) {
+  const now = Date.now();
+  await page.clock.install({ time: now });
+  await page.clock.pauseAt(now + 1_000);
+}
+
 async function signIn(page: Page, actor = recipient, origin = '') {
   const response = await page.request.get(`/control/session/${actor}`);
   expect(response.ok()).toBeTruthy();
@@ -115,8 +126,7 @@ test('delayed real responses expire from check start and obsolete success cannot
   request,
 }) => {
   await signIn(page);
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await pauseClock(page);
   let sequence = 0;
   await page.route('**/api/drivers/scoped/personal', route =>
     route.continue({
@@ -412,8 +422,7 @@ test('sharing withdrawal clears the recipient while preserving the withdrawing D
   browser,
 }) => {
   await signIn(page);
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await pauseClock(page);
   await page.goto('/compare');
   await expect(page.getByText('Synthetic Reference Driver', { exact: true })).toBeVisible();
   const ownerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:8185' });
