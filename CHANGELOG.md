@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.65] - 2026-11-12
+
+### Changed
+
+- Bumped `@vitejs/plugin-react` from 6.2.1 to 6.3.0, `oxlint` from 1.92.0 to 1.93.0 and `vite` from 8.3.6 to 8.3.7 in `web/` (Dependabot, released as v15.1.64).
+- `coverage.runsettings`: the comment on the controllers exclusion now points at `src/AGENTS.md`, where the rule that controllers only bind inputs and return results has lived since v15.1.59.
+
 ## [15.1.63] - 2026-11-12
 
 ### Changed
@@ -2099,7 +2106,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.63...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.65...HEAD
+[15.1.65]: https://github.com/jwh3times/apexracers/compare/v15.1.64...v15.1.65
 [15.1.63]: https://github.com/jwh3times/apexracers/compare/v15.1.62...v15.1.63
 [15.1.61]: https://github.com/jwh3times/apexracers/compare/v15.1.60...v15.1.61
 [15.1.60]: https://github.com/jwh3times/apexracers/compare/v15.1.59...v15.1.60
