@@ -124,6 +124,10 @@ cannot merge). Edit the authored side (`.claude/agents/` or
 replace a generated directory with a symlink back to its source — see the **Agent
 config parity** section in `AGENTS.md` for why, and for the full mapping.
 
+`.mcp.json` checks in the MCP servers every contributor shares for Claude Code; it is
+public, so it never carries a key, token or private URL. The **MCP servers** section in
+`AGENTS.md` owns the server list, the Codex equivalents and the pinning rule.
+
 Required human actions arising from completed agent work follow
 [Human follow-ups](agents/human-follow-up.md): private issues and board tracking paired with
 step-by-step private wiki instructions. Docs-updater, ship, end-session, and wizard use that procedure.

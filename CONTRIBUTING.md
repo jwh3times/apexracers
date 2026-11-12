@@ -102,6 +102,10 @@ are documented in [AGENTS.md](AGENTS.md), with the backend architecture in
 [web/AGENTS.md](web/AGENTS.md). Please read them before making
 structural changes — PRs are expected to follow these patterns.
 
+If you use a coding agent, the repository checks in a shared set of MCP servers in
+`.mcp.json`; see [MCP servers](AGENTS.md#mcp-servers) in `AGENTS.md` for what each is for and
+the matching Codex setup.
+
 ## Development workflow
 
 1. Open or comment on an issue describing what you want to change.
