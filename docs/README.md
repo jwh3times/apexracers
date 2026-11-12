@@ -105,8 +105,8 @@ domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
 strings, doc layout) changes, not `AGENTS.md`. [Development flow](agents/dev-flow.md)
 holds what this repository adds to the shared flow in `.agents/skills/ship/settings/dev-flow.md`, which
 `AGENTS.md` summarizes. `docs/agents/` also holds the settings files
-the shared skills (`end-session`, `handoff`, `lets-go`, `ship`, `docs-updater`)
-read; those skills install from `jwh3times/skills` and are never edited here —
+the shared skills (`end-session`, `handoff`, `lets-go`, `ship`, `docs-updater`,
+`what-next`) read; those skills install from `jwh3times/skills` and are never edited here —
 see **Shared skills** in `AGENTS.md`.
 
 Agents are authored for Claude Code, with `.codex/agents/*.toml` **generated** from

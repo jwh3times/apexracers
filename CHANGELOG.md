@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.66] - 2026-11-12
+
+### Added
+
+- Contributor workflow: `/what-next`, a shared skill from `jwh3times/skills`, reports what to work on next. It reads the open issues, open PRs and the board, and ranks the work by the board's `Priority` and then its manual order, per the new `Priority order` setting in `docs/agents/issue-tracker.md`. It names one item and the command that takes it, and changes nothing on GitHub. The development flow's routing points at it when nothing is chosen yet.
+
 ## [15.1.65] - 2026-11-12
 
 ### Changed
@@ -2106,7 +2112,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.65...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.66...HEAD
+[15.1.66]: https://github.com/jwh3times/apexracers/compare/v15.1.65...v15.1.66
 [15.1.65]: https://github.com/jwh3times/apexracers/compare/v15.1.64...v15.1.65
 [15.1.63]: https://github.com/jwh3times/apexracers/compare/v15.1.62...v15.1.63
 [15.1.61]: https://github.com/jwh3times/apexracers/compare/v15.1.60...v15.1.61
