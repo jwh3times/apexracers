@@ -74,3 +74,8 @@ jwh3times 2
 - `Blocked by`: the blocker outside the project, set with `Blocked`. The standing
   iRacing-credentials blocker has its own value; a new blocker worth tracking gets its own issue. A
   blocker that is an issue is a native `blocked_by` edge (see **Blocking**), never a value here.
+
+## Priority order
+
+- `Priority`: `P0 - Highest` / `P1 - High` / `P2 - Normal` / `P3 - Low`.
+- `board order`: the board's manual order, top first, which follows `Priority`.

@@ -78,9 +78,9 @@
 - `.claude/agents/docker-containers.md` — Dockerfile, Compose and image-build patterns. **When:**
   `Dockerfile`, `ingestion.Dockerfile` or `docker-compose.yml` change.
 - `.agents/skills/*/**` — installed skills, mirrored to `.claude/skills/`: `end-session`, `handoff`,
-  `lets-go`, `ship` and `docs-updater` from `jwh3times/skills`, and the `mattpocock/skills`
-  snapshot. `frozen` here: fixed upstream, and what they need to know goes in `AGENTS.md` or
-  `docs/agents/`. **When:** a skill is added, removed or replaced.
+  `lets-go`, `ship`, `docs-updater` and `what-next` from `jwh3times/skills`, and the
+  `mattpocock/skills` snapshot. `frozen` here: fixed upstream, and what they need to know goes in
+  `AGENTS.md` or `docs/agents/`. **When:** a skill is added, removed or replaced.
 - `docs/agents/*.md` — conventions and settings the installed skills read. **When:** a convention
   or setting changes.
 - `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
