@@ -123,6 +123,41 @@ configuration supplied by their user or environment, and the sync script does no
 
 ---
 
+## MCP servers
+
+Everyone working here uses the same three MCP servers. `.mcp.json` checks them in for Claude Code,
+which asks each contributor to approve them once, in the first session after they appear. Codex has
+no project-scoped config here (see above), so Codex users add them to their own configuration:
+
+```bash
+codex mcp add context7 --url https://mcp.context7.com/mcp
+codex mcp add microsoft-learn --url https://learn.microsoft.com/api/mcp
+codex mcp add playwright -- npx -y @playwright/mcp@0.0.85 --isolated
+```
+
+| Server            | Use it for                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context7`        | Current library docs (EF Core, ASP.NET Core, React, Vite, Tailwind, Playwright, …): check an API before writing against it. Remote, no account needed.      |
+| `microsoft-learn` | Microsoft's official .NET, EF Core and Azure docs and code samples. Where it and Context7 disagree, it wins. Remote, no account needed.                     |
+| `playwright`      | Driving the running app (`npm run dev` or `docker compose up`) in a real browser to see a UI change. It does not replace the `web/e2e/` suites. Local `npx`. |
+
+- **Docs servers don't replace the Ground Rules' sources.** iRacing payload shapes still come from
+  the captured samples and the `Aydsko.iRacingData` SDK's own types, not from a docs index.
+- **Context7 keys are optional and personal.** A free key raises the rate limit. In Claude Code add
+  a local-scope `context7` with an `Authorization: Bearer` header, which overrides the project entry;
+  in Codex add `--bearer-token-env-var CONTEXT7_API_KEY`. A claude.ai Context7 connector may show
+  the same tools twice; keep one.
+- **Playwright MCP is pinned** like the workflow actions, and `--isolated` keeps its browser profile
+  in memory. Dependabot does not read `.mcp.json`, so bump the version deliberately, in both
+  `.mcp.json` and the Codex command above.
+- **Not shared, on purpose:** a GitHub MCP (`gh` covers it, and the skills are written around it),
+  GitKraken, a Postgres MCP (use `docker compose exec … psql`, as under Commands), and an Azure MCP
+  (cloud work is maintainer-only). Personal servers such as mail, calendar or a password manager
+  stay in your user configuration.
+- **`.mcp.json` is public:** never put a key, token or private URL in it.
+
+---
+
 ## Development flow
 
 <!-- shared:development-flow -->

@@ -6,7 +6,8 @@
   commands, project structure and testing, plus pointers to the two architecture files below. It
   describes what is implemented, never what is planned. **When:** a command, workflow or durable rule
   changes; a test-provider or fixture rule changes (the Testing & coverage "Test DB providers"
-  bullet).
+  bullet); `.mcp.json` changes (the MCP servers section: its table, the Codex commands and the
+  pinned Playwright MCP version).
 - `src/AGENTS.md` — backend architecture (request flow, Driver lifecycle boundaries, middleware,
   controllers, services, the Core models table, ingestion, data-source strategy), imported by
   `src/CLAUDE.md`. Controllers and routes are not tabulated: the code lists them. **When:** a
