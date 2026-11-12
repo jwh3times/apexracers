@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.59] - 2026-11-11
+
+### Changed
+
+- Contributor docs: the root agent guide (`AGENTS.md`) no longer carries the architecture. The backend architecture (request flow, Driver lifecycle boundaries, middleware, controllers, services, Core models, ingestion and the persist-vs-cache data-source strategy) moved unchanged to `src/AGENTS.md`, and the frontend architecture to `web/AGENTS.md`. Each has a `CLAUDE.md` beside it that imports it, so Claude Code loads it only when work touches that tree, and the root guide points to both. The root guide is about 60% smaller, which cuts what every agent session and subagent loads. The controllers and routes tables were dropped, since the code lists both, and the doc map in `docs/agents/docs.md` now names the new files. `README.md`, `CONTRIBUTING.md`, `docs/README.md` and the specialist agent definitions now point to the file that holds each rule.
+
 ## [15.1.58] - 2026-11-11
 
 ### Changed
@@ -2071,7 +2077,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.58...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.59...HEAD
+[15.1.59]: https://github.com/jwh3times/apexracers/compare/v15.1.58...v15.1.59
 [15.1.58]: https://github.com/jwh3times/apexracers/compare/v15.1.56...v15.1.58
 [15.1.56]: https://github.com/jwh3times/apexracers/compare/v15.1.52...v15.1.56
 [15.1.52]: https://github.com/jwh3times/apexracers/compare/v15.1.49...v15.1.52

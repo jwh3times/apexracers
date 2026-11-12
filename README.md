@@ -245,7 +245,7 @@ fail silently there and the drop simply stays empty. See the comment on that mou
 ## Contributing & support
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and quality
-gates, [docs/](docs/README.md) for public project docs, and [AGENTS.md](AGENTS.md) for the architectural conventions PRs are expected to follow. By
+gates, [docs/](docs/README.md) for public project docs, and [AGENTS.md](AGENTS.md) (with [src/AGENTS.md](src/AGENTS.md) and [web/AGENTS.md](web/AGENTS.md)) for the architectural conventions PRs are expected to follow. By
 participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). For help, bug reports, and
 feature requests, see [SUPPORT.md](SUPPORT.md); report vulnerabilities privately per
 [SECURITY.md](SECURITY.md).
