@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Privacy Policy: section 6 now discloses the pseudonymous records ApexRacers keeps so that an account deletion, a withdrawal, an unlink or a proof revocation stays in force, and so a later withdrawal covers data already released. It says what they hold (account and customer IDs, the kind of action and its time; never a name, email, lap or statistic), that the IDs are encrypted, who can read them, and that they are kept in write-once storage for at least 10 years. The deletion paragraph no longer reads as though the linked customer ID leaves every store (#495).
+- Privacy Policy: section 6 now discloses the pseudonymous records ApexRacers keeps so that an account deletion, a withdrawal, an unlink or a proof revocation stays in force, and so a later withdrawal covers data already released. It says what they hold (account and customer IDs, the kind of action and its time, internal references, and for a release a checksum of what was sent; never a name, email, lap or statistic), that each record is encrypted, who can read them, and that they are kept in write-once storage for at least 10 years. The deletion paragraph no longer reads as though the linked customer ID leaves every store (#495).
 
 ## [15.1.67] - 2026-11-12
 

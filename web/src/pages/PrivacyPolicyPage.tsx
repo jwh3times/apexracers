@@ -107,10 +107,10 @@ export default function PrivacyPolicyPage() {
         <p className={body}>
           We keep your account data for as long as your account exists. To delete your account,
           email us at the address in section 9. There is no self-service option yet. Deleting your
-          account removes it and everything attached to it, except the pseudonymous record described
-          below: your profile, your linked customer ID, your uploaded laps, the rivals you follow,
-          your percentile and recommendation results, your sign-in sessions, the browsers recognised
-          for your account, and your sign-in security records.
+          account removes it and everything attached to it, except the pseudonymous records
+          described below: your profile, your linked customer ID, your uploaded laps, the rivals you
+          follow, your percentile and recommendation results, your sign-in sessions, the browsers
+          recognised for your account, and your sign-in security records.
         </p>
         <p className={`${body} mt-3`}>
           Some information is not attached to your account, so deleting it does not remove it:
@@ -145,16 +145,18 @@ export default function PrivacyPolicyPage() {
           release, so that a later withdrawal or deletion also covers what was already released.
         </p>
         <p className={`${body} mt-3`}>
-          These records hold only the account ID and customer ID involved, the kind of action, and
-          when it happened. A release record holds the ID of the account that received it, if any,
-          and the IDs of the drivers whose data it included, with the times. They never contain a
-          name, an email address, a lap, or any statistics. Each is a pseudonymous record: the IDs
-          in it are encrypted, and it is stored under a name that cannot be turned back into an ID.
-          Only the ApexRacers service can read them, and an administrator who is given temporary
-          access for a specific purpose; the keys are kept in our secret store. They are never used
-          to rebuild a deleted account or its data. They are kept in write-once storage for at least
-          10 years and cannot be deleted before then by anyone, including us — even when you ask us
-          to delete your account.
+          A record of an action holds the account ID and customer ID involved, the kind of action,
+          when it happened, and our own internal references for it. A release record holds the
+          account ID of whoever received it, if anyone, the account and customer IDs of the drivers
+          whose data it included, the times, and a checksum of what was released, so we can later
+          tell exactly what was sent; the checksum cannot be turned back into the data. They never
+          contain a name, an email address, a lap, or any statistics. Each is a pseudonymous record:
+          the whole record is encrypted, and it is stored under a name that cannot be turned back
+          into an ID. Only the ApexRacers service can read them, and an administrator who is given
+          temporary access for a specific purpose; the keys are kept in our secret store. They are
+          never used to rebuild a deleted account or its data. They are kept in write-once storage
+          for at least 10 years and cannot be deleted before then by anyone, including us — even
+          when you ask us to delete your account.
         </p>
       </section>
 

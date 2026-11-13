@@ -41,6 +41,6 @@ describe('PrivacyPolicyPage', () => {
   it('does not claim account deletion removes every trace of the linked customer ID', () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? '';
-    expect(text).toMatch(/everything attached to it, except the pseudonymous record/i);
+    expect(text).toMatch(/everything attached to it, except the pseudonymous records/i);
   });
 });
