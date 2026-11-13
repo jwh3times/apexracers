@@ -107,10 +107,10 @@ export default function PrivacyPolicyPage() {
         <p className={body}>
           We keep your account data for as long as your account exists. To delete your account,
           email us at the address in section 9. There is no self-service option yet. Deleting your
-          account removes it and everything attached to it: your profile, your linked customer ID,
-          your uploaded laps, the rivals you follow, your percentile and recommendation results,
-          your sign-in sessions, the browsers recognised for your account, and your sign-in security
-          records.
+          account removes it and everything attached to it, except the pseudonymous record described
+          below: your profile, your linked customer ID, your uploaded laps, the rivals you follow,
+          your percentile and recommendation results, your sign-in sessions, the browsers recognised
+          for your account, and your sign-in security records.
         </p>
         <p className={`${body} mt-3`}>
           Some information is not attached to your account, so deleting it does not remove it:
@@ -133,7 +133,29 @@ export default function PrivacyPolicyPage() {
             Database backups are kept for 7 days, so deleted information can remain in a backup
             until it ages out.
           </li>
+          <li>The pseudonymous records described below, which are kept for at least 10 years.</li>
         </ul>
+        <p className={`${body} mt-3`}>
+          <strong>Records that keep a deletion or withdrawal in force.</strong> When an account is
+          deleted, or when permission to use a driver&apos;s data is withdrawn, a customer ID is
+          unlinked, or proof that a customer ID belongs to someone is revoked, we keep a minimal
+          record of that action. It lets us enforce the action, and it stops the action being undone
+          if we ever restore a backup or an old copy of our data. When we release data about a
+          driver — to an account, or in a summary we publish — we also keep a record of that
+          release, so that a later withdrawal or deletion also covers what was already released.
+        </p>
+        <p className={`${body} mt-3`}>
+          These records hold only the account ID and customer ID involved, the kind of action, and
+          when it happened. A release record holds the ID of the account that received it, if any,
+          and the IDs of the drivers whose data it included, with the times. They never contain a
+          name, an email address, a lap, or any statistics. Each is a pseudonymous record: the IDs
+          in it are encrypted, and it is stored under a name that cannot be turned back into an ID.
+          Only the ApexRacers service can read them, and an administrator who is given temporary
+          access for a specific purpose; the keys are kept in our secret store. They are never used
+          to rebuild a deleted account or its data. They are kept in write-once storage for at least
+          10 years and cannot be deleted before then by anyone, including us — even when you ask us
+          to delete your account.
+        </p>
       </section>
 
       <section className="mb-8">
@@ -181,7 +203,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <p className="font-body-sm text-body-sm text-on-surface-variant mt-12">
-        Last updated: September 2026
+        Last updated: November 2026
       </p>
     </main>
   );
