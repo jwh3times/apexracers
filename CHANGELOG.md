@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.1.67] - 2026-11-12
+
+### Changed
+
+- Contributor workflow: `/what-next` puts an active handoff first: when `handoff_map.json` names one for this repository, the report leads with it and recommends `/lets-go`, and one whose document has not reached this machine is shown as pending. It still changes nothing, and a machine without the handoffs config skips the check.
+
 ## [15.1.66] - 2026-11-12
 
 ### Added
@@ -2112,7 +2118,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.66...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.67...HEAD
+[15.1.67]: https://github.com/jwh3times/apexracers/compare/v15.1.66...v15.1.67
 [15.1.66]: https://github.com/jwh3times/apexracers/compare/v15.1.65...v15.1.66
 [15.1.65]: https://github.com/jwh3times/apexracers/compare/v15.1.64...v15.1.65
 [15.1.63]: https://github.com/jwh3times/apexracers/compare/v15.1.62...v15.1.63
