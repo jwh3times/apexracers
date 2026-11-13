@@ -34,5 +34,13 @@ describe('PrivacyPolicyPage', () => {
     const text = container.textContent ?? '';
     expect(text).toMatch(/kept for 90 days/);
     expect(text).toMatch(/backups are kept for 7 days/i);
+    expect(text).toMatch(/pseudonymous record/i);
+    expect(text).toMatch(/at least 10 years/);
+  });
+
+  it('does not claim account deletion removes every trace of the linked customer ID', () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/everything attached to it, except the pseudonymous records/i);
   });
 });
