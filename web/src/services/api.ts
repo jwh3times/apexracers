@@ -117,13 +117,22 @@ export interface WeekCar {
   medianLapSeconds: number | null;
 }
 
+/**
+ * A Week Detail row: the Field statistics of `WeekCar` plus the world-record lap for the car at the
+ * week's track and the Field's gap to it (fastest − record). Both are null when no record is available.
+ */
+export interface WeekDetailCar extends WeekCar {
+  worldRecordLapSeconds: number | null;
+  worldRecordGapSeconds: number | null;
+}
+
 export interface WeekDetail {
   seriesName: string;
   category: string | null;
   trackName: string | null;
   trackConfigName: string | null;
   trackLengthMiles: number | null;
-  cars: WeekCar[];
+  cars: WeekDetailCar[];
 }
 
 export interface WeekCarPercentile {

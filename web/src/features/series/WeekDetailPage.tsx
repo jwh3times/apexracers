@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api, type WeekDetail, type WeekCar, type WeekCarPercentile } from '../../services/api';
+import {
+  api,
+  type WeekDetail,
+  type WeekDetailCar,
+  type WeekCarPercentile,
+} from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +23,11 @@ function formatDelta(best: number | null, median: number | null): string {
   return (median - best).toFixed(3);
 }
 
+function formatWorldRecordGap(gap: number | null): string {
+  if (gap == null) return '—';
+  return `${gap > 0 ? '+' : ''}${gap.toFixed(3)}`;
+}
+
 function dotColor(carId: number): string {
   const palette = [
     '#00e0ff',
@@ -32,7 +42,7 @@ function dotColor(carId: number): string {
   return palette[carId % palette.length];
 }
 
-function sortCars(cars: WeekCar[], mode: SortMode): WeekCar[] {
+function sortCars(cars: WeekDetailCar[], mode: SortMode): WeekDetailCar[] {
   const copy = [...cars];
   if (mode === 'best') {
     copy.sort((a, b) => {
@@ -307,6 +317,12 @@ export default function WeekDetailPage() {
                     Δ B/M
                   </th>
                   <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
+                    WR
+                  </th>
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
+                    Δ WR
+                  </th>
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
                     Laps
                   </th>
                   {showMyPct && (
@@ -372,6 +388,16 @@ export default function WeekDetailPage() {
                       {/* Δ B/M */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
                         {formatDelta(car.fastestLapSeconds, car.medianLapSeconds)}
+                      </td>
+                      {/* World-record lap at this week's track */}
+                      <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
+                        {car.worldRecordLapSeconds != null
+                          ? formatLapTime(car.worldRecordLapSeconds)
+                          : '—'}
+                      </td>
+                      {/* Field fastest − world record */}
+                      <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
+                        {formatWorldRecordGap(car.worldRecordGapSeconds)}
                       </td>
                       {/* Laps (entry count) */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
