@@ -5,6 +5,7 @@ using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Communication.Email;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using ApexRacers.Api.Middleware;
 using ApexRacers.Core;
 using ApexRacers.Api.Services;
@@ -17,17 +18,16 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 EvidenceOperationalLogging.Configure(builder.Logging);
 builder.Services.AddSingleton<IEvidencePurposeIssuer, UnavailableEvidencePurposeIssuer>();
 
-// Logging providers are left at the framework defaults on purpose: in Azure the App
-// Service Application Insights codeless agent injects its own ILogger provider, and
-// calling ClearProviders() here would remove it and suppress trace telemetry. App
-// Insights is the structured-telemetry pipeline (requests/dependencies/exceptions/traces);
-// RequestLoggingMiddleware adds a per-request log that flows to it and to the console.
 var keyVaultUrl = builder.Configuration["AZURE_KEY_VAULT_URL"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
@@ -35,6 +35,42 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
         new Uri(keyVaultUrl),
         new DefaultAzureCredential(),
         new HyphenToUnderscoreSecretManager());
+}
+
+// Application Insights, in process (issue #527). Off unless a connection string is configured, so
+// local Compose and CI export nothing. App logs always export, through the same filters as every
+// other sink: RequestLoggingMiddleware's per-request line (route template, status, duration, client
+// IP) is the request log the Privacy Policy describes. Automatic spans are a wider copy (raw paths,
+// upstream URLs, SQL text), so each source exports only while its log category is raised to Debug —
+// see TelemetrySpans. Query-string values stay redacted by the instrumentation's default.
+var appInsightsConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    var spans = TelemetrySpans.FromLogLevels(builder.Configuration);
+    var telemetry = builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService("ApexRacers.Api"))
+        .WithLogging(
+            logging => logging.AddAzureMonitorLogExporter(o => o.ConnectionString = appInsightsConnectionString),
+            options => options.IncludeFormattedMessage = true);
+
+    if (spans.Any)
+    {
+        telemetry.WithTracing(tracing =>
+        {
+            if (spans.Requests)
+                tracing.AddAspNetCoreInstrumentation(o =>
+                {
+                    o.Filter = context => !context.Request.Path.StartsWithSegments("/healthz")
+                        && !context.Request.Path.StartsWithSegments("/ready");
+                    o.RecordException = true;
+                });
+            if (spans.OutgoingHttp)
+                tracing.AddHttpClientInstrumentation();
+            if (spans.Database)
+                tracing.AddNpgsql();
+            tracing.AddAzureMonitorTraceExporter(o => o.ConnectionString = appInsightsConnectionString);
+        });
+    }
 }
 
 builder.Services.AddScoped<LegacyDriverAccessGuard>();
@@ -109,6 +145,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 // Token providers back password-reset tokens (UserManager.GeneratePasswordResetTokenAsync).
 .AddDefaultTokenProviders();
+
+// Those tokens are protected by the Data Protection key ring, which is kept in the database so a
+// link sent before a restart or scale-to-zero still works after it — see DataProtectionRegistration.
+builder.Services.AddApexRacersDataProtection();
 
 // Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
 // layer of brute-force protection in front of the per-account lockout above.
@@ -334,8 +374,10 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Apply any pending EF Core migrations before accepting traffic. Running this
-// here (rather than in a separate pipeline step) keeps deployments self-contained
-// and is safe for a single-instance App Service.
+// here (rather than in a separate pipeline step) keeps deployments self-contained.
+// It assumes one writer: the Container App is capped at one replica. A single-revision
+// deploy can briefly overlap the outgoing and incoming revisions, so a release whose
+// migration needs stopped writers still goes through the documented manual cutover.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -436,8 +478,9 @@ app.MapControllers();
 
 // Anonymous probe endpoints, exempt from the global rate limiter so aggressive
 // platform probes can't consume a client's budget (or get 429'd themselves).
-// App Service's Health check feature points at /healthz (maintainer-only runbook:
-// private/ops/azure-deployment-runbook.md, "Verified Runtime State").
+// The Container App's startup and liveness probes point at /healthz and its readiness probe at
+// /ready, which keeps traffic away until the database answers without restarting the replica
+// (maintainer-only runbook: private/ops/azure-deployment-runbook.md, "Verified Runtime State").
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .DisableRateLimiting();
 app.MapHealthChecks("/ready")

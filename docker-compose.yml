@@ -40,7 +40,7 @@ services:
       dockerfile: Dockerfile
     ports:
       # Host port defaults to 8080; override with API_PORT in .env. The container
-      # always listens on 8080 (matches the Azure App Service image), so this is
+      # always listens on 8080 (matches the deployed Container App), so this is
       # a host-only remap and never affects the deployed image.
       # Bound to 127.0.0.1: this stack runs in Development with developer conveniences
       # enabled (OpenAPI/Scalar, verbose errors, the mail drop below) and no TLS.

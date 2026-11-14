@@ -8,7 +8,10 @@ on:
   workflow_dispatch: # allow manual trigger from GitHub UI
 
 env:
-  REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+  # GitHub Container Registry under the repository owner (issue #527). The packages are public:
+  # they hold only compiled public source and the built SPA, and secrets arrive from Key Vault at
+  # runtime, so Container Apps pulls them anonymously with no registry credential to rotate.
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # this can be removed June 16, 2026
 
 # ── Required GitHub configuration ─────────────────────────────────────────────
@@ -17,14 +20,14 @@ env:
 #   AZURE_TENANT_ID         — directory (tenant) ID
 #   AZURE_SUBSCRIPTION_ID   — target subscription ID
 # Secrets:
-#   REGISTRY_LOGIN_SERVER   — e.g. apexracersacr.azurecr.io
-#   API_APP_NAME            — Azure App Service name for the API
+#   API_CONTAINER_APP_NAME  — Azure Container App name for the API (+ React SPA)
 #   INGESTION_APP_NAME      — Azure Container App name for the ingestion worker
 #   RESOURCE_GROUP          — Azure resource group containing both resources
 #
 # Azure auth is OIDC: the federated credential on the app registration trusts the
 # subject repo:jwh3times/apexracers:environment:production. No AZURE_CREDENTIALS, and
-# no registry password — the deploy identity pushes via `az acr login`.
+# no registry password — images push to GHCR with the job's own GITHUB_TOKEN
+# (`packages: write`), and the public packages are pulled anonymously.
 #
 # Both deploy jobs declare `environment: production`, which is what puts `environment`
 # (rather than `ref`) in the OIDC subject and lets GitHub environment protection rules
@@ -215,7 +218,7 @@ jobs:
         run: npx vitest run --coverage
         working-directory: web
 
-  # ── API (React SPA + .NET API served from one App Service) ───────────────────
+  # ── API (React SPA + .NET API served from one Container App) ─────────────────
   deploy-api:
     name: Deploy API
     needs: [format, test]
@@ -224,6 +227,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
     runs-on: ubuntu-latest
     # Serialize deploys: two closely-spaced merges to main queue instead of racing
     # (a stale image could otherwise win the App Service update).
@@ -240,22 +244,33 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Container Registry
-        run: az acr login --name "${REGISTRY%%.*}"
+      - name: Log in to GitHub Container Registry
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
         env:
-          REGISTRY: ${{ env.REGISTRY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
 
       - name: Build and push API image
         run: |
           IMAGE=${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
-          docker build -t "$IMAGE" .
+          docker build --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" -t "$IMAGE" .
           docker push "$IMAGE"
 
-      - name: Deploy to App Service
-        uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383 # v3.0.8
-        with:
-          app-name: ${{ secrets.API_APP_NAME }}
-          images: ${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
+      # Single-revision mode: the new revision takes traffic once it is ready and the old one is
+      # deactivated. The immutable SHA tag and unique suffix map the running revision to a commit.
+      - name: Update API Container App image
+        run: |
+          az containerapp update \
+            --name "$API_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE" \
+            --revision-suffix "$REVISION_SUFFIX" \
+            --output none
+        env:
+          API_APP_NAME: ${{ secrets.API_CONTAINER_APP_NAME }}
+          RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+          IMAGE: ${{ env.REGISTRY }}/apexracers-api:${{ github.sha }}
+          REVISION_SUFFIX: deploy-${{ github.run_id }}-${{ github.run_attempt }}
 
   # ── Ingestion worker (Azure Container Apps) ──────────────────────────────────
   deploy-ingestion:
@@ -266,6 +281,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
     runs-on: ubuntu-latest
     # Serialize deploys (same rationale as deploy-api).
     concurrency:
@@ -281,15 +297,16 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Container Registry
-        run: az acr login --name "${REGISTRY%%.*}"
+      - name: Log in to GitHub Container Registry
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
         env:
-          REGISTRY: ${{ env.REGISTRY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
 
       - name: Build and push ingestion image
         run: |
           IMAGE=${{ env.REGISTRY }}/apexracers-ingestion:${{ github.sha }}
-          docker build -f ingestion.Dockerfile -t "$IMAGE" .
+          docker build -f ingestion.Dockerfile --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Update Container App image
