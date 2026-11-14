@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The API now persists its ASP.NET Core Data Protection key ring in the database (`identity.DataProtectionKeys`), so email-confirmation and password-reset links survive restarts, redeploys and scale-to-zero. Previously every restart invalidated outstanding links (#527).
-- Production telemetry is exported in process to Application Insights. App logs always export; request, outgoing-HTTP and database spans export only while the `Microsoft.AspNetCore`, `System.Net.Http` or `Npgsql` log category is raised to `Debug`, and health probes are never exported (#527).
+- The API now persists its ASP.NET Core Data Protection key ring in the database (`identity.DataProtectionKeys`), so email-confirmation and password-reset links survive restarts, redeploys and scale-to-zero. Previously every restart invalidated outstanding links. A host that reads Key Vault must also set `DATA_PROTECTION_KEY_ID`, a Key Vault key that wraps the stored keys; without it the API refuses to start (#527).
+- Production telemetry is exported in process to Application Insights. App logs always export; request, outgoing-HTTP and database spans export only while the `Microsoft.AspNetCore`, `System.Net.Http` or `Npgsql` log category is raised to `Debug` (raising `Default` turns on none of them), and health probes are never exported (#527).
 - Deploys publish images to the GitHub Container Registry and update the API as an Azure Container App that scales to zero, replacing App Service and the Azure container registry to cut hosting cost (#527).
 
 ## [15.2.0] - 2026-11-14

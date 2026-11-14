@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -22,7 +23,15 @@ namespace ApexRacers.Tests.Services;
 public class DataProtectionPersistenceTests(PostgreSqlFixture postgres)
 {
     private static ServiceProvider BuildApiProcess(DbContextOptions<AppDbContext> dbOptions) =>
-        BuildProcess(dbOptions, services => services.AddApexRacersDataProtection());
+        BuildProcess(dbOptions, services => services.AddApexRacersDataProtection(LocalConfiguration));
+
+    // Local Compose and CI: no Key Vault, so the key ring is stored without a key-encryption key.
+    private static readonly IConfiguration LocalConfiguration = new ConfigurationBuilder().Build();
+
+    private static IConfiguration Settings(params (string Key, string Value)[] settings) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(settings.Select(s => new KeyValuePair<string, string?>(s.Key, s.Value)))
+            .Build();
 
     // The host as it was before persistence: Data Protection with no key store of its own.
     private static ServiceProvider BuildEphemeralProcess(DbContextOptions<AppDbContext> dbOptions) =>
@@ -122,6 +131,45 @@ public class DataProtectionPersistenceTests(PostgreSqlFixture postgres)
         var result = await InNewScopeAsync(after, userId, (u, user) => u.ResetPasswordAsync(user, token, "Another-Horse-7"));
 
         Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(e => e.Description)));
+    }
+
+    // A deployed host reads Key Vault (AZURE_KEY_VAULT_URL). There a key ring stored in the clear
+    // would let a read-only copy of the database forge reset links, so the key-encryption key is
+    // required rather than optional, and its absence stops startup instead of degrading silently.
+    [Fact]
+    public void A_deployed_host_without_a_key_encryption_key_refuses_to_start()
+    {
+        var deployed = Settings(("AZURE_KEY_VAULT_URL", "https://example-vault.vault.azure.net"));
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddApexRacersDataProtection(deployed));
+
+        Assert.Contains(DataProtectionRegistration.KeyIdVariable, error.Message);
+    }
+
+    [Theory]
+    [InlineData("not-a-uri")]
+    [InlineData("http://example-vault.vault.azure.net/keys/data-protection")]
+    public void A_malformed_key_encryption_key_identifier_refuses_to_start(string keyId)
+    {
+        var configured = Settings((DataProtectionRegistration.KeyIdVariable, keyId));
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddApexRacersDataProtection(configured));
+
+        Assert.Contains(DataProtectionRegistration.KeyIdVariable, error.Message);
+    }
+
+    [Fact]
+    public void A_key_encryption_key_identifier_is_accepted_without_contacting_key_vault()
+    {
+        var configured = Settings(
+            ("AZURE_KEY_VAULT_URL", "https://example-vault.vault.azure.net"),
+            (DataProtectionRegistration.KeyIdVariable, "https://example-vault.vault.azure.net/keys/data-protection"));
+
+        var builder = new ServiceCollection().AddApexRacersDataProtection(configured);
+
+        Assert.NotNull(builder);
     }
 
     private sealed class ProcessLocalKeyRepository : IXmlRepository

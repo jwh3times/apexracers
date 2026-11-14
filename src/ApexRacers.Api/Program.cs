@@ -42,11 +42,11 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
 // other sink: RequestLoggingMiddleware's per-request line (route template, status, duration, client
 // IP) is the request log the Privacy Policy describes. Automatic spans are a wider copy (raw paths,
 // upstream URLs, SQL text), so each source exports only while its log category is raised to Debug —
-// see TelemetrySpans. Query-string values stay redacted by the instrumentation's default.
+// see SpanExportSources. Query-string values stay redacted by the instrumentation's default.
 var appInsightsConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
 if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
-    var spans = TelemetrySpans.FromLogLevels(builder.Configuration);
+    var spans = SpanExportSources.FromLogLevels(builder.Configuration);
     var telemetry = builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("ApexRacers.Api"))
         .WithLogging(
@@ -60,8 +60,7 @@ if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
             if (spans.Requests)
                 tracing.AddAspNetCoreInstrumentation(o =>
                 {
-                    o.Filter = context => !context.Request.Path.StartsWithSegments("/healthz")
-                        && !context.Request.Path.StartsWithSegments("/ready");
+                    o.Filter = context => !HealthProbePaths.Matches(context.Request.Path);
                     o.RecordException = true;
                 });
             if (spans.OutgoingHttp)
@@ -148,7 +147,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 // Those tokens are protected by the Data Protection key ring, which is kept in the database so a
 // link sent before a restart or scale-to-zero still works after it — see DataProtectionRegistration.
-builder.Services.AddApexRacersDataProtection();
+builder.Services.AddApexRacersDataProtection(builder.Configuration);
 
 // Per-IP fixed-window rate limit on the auth endpoints — a second, transport-level
 // layer of brute-force protection in front of the per-account lockout above.

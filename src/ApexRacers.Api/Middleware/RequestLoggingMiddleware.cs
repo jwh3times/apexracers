@@ -16,8 +16,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/healthz")
-            || context.Request.Path.StartsWithSegments("/ready"))
+        if (HealthProbePaths.Matches(context.Request.Path))
         {
             await next(context);
             return;

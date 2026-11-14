@@ -230,7 +230,7 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     # Serialize deploys: two closely-spaced merges to main queue instead of racing
-    # (a stale image could otherwise win the App Service update).
+    # (a stale image could otherwise win the Container App update).
     concurrency:
       group: deploy-api
       cancel-in-progress: false
