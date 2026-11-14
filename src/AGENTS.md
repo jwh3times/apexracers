@@ -382,7 +382,7 @@ with synthetic mapped DTOs under each service's **exact** runtime cache keys —
 calling the same `IRacingCacheKeys` factories rather than by hand-matching interpolated strings — with
 a far-future `ExpiresAt` for freshness. `DataProvenance.Demo` identifies synthetic copies;
 `purge_demo_data.sql` mirrors that owned enum and purges only Demo copies. The seeder also seeds synthetic
-`SeasonCarBop`, `Week.DemoWeatherSummaryJson`, the percentile world-record overlay, lap traces, and curated `/compare`
+`SeasonCarBop`, `Week.DemoWeatherSummaryJson`, a world record for every synthetic car+track (the percentile overlay and Week Detail), lap traces, and curated `/compare`
 driver-search terms. The Seeder references `ApexRacers.Api` to reuse the real cached DTO types, so seeded
 JSON matches what live services write. **Demo caveats** (not page-breakers): `/analytics` populates lazily
 after a Recommendations/percentile visit; the race-guide board shows static "in-progress" sessions;
