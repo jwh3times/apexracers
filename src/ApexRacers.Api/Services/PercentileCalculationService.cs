@@ -63,7 +63,7 @@ public class PercentileCalculationService(
         var sorted = others.Append(best.LapSeconds).Order().ToList();
         var distribution = BuildDistribution(sorted, best.LapSeconds);
         var worldRecord = worldRecords is null ? null : await worldRecords.GetWorldRecordLapSecondsAsync(carId, trackId, ct);
-        double? gap = worldRecord is null ? null : Math.Round(best.LapSeconds - worldRecord.Value, 4);
+        var gap = WorldRecordService.GapSeconds(best.LapSeconds, worldRecord);
         return new PercentileResultDto(seriesId, raceWeekIndex, carId, customerId, rank, position, topShare, size,
             FieldPercentile.IsPresentable(size), computedAt, seriesName, trackName, ConfigurationName.NullIfAbsent(configName),
             best.LapSeconds, best.Evidence, sorted[0], FieldPercentile.MedianOfSorted(sorted), distribution,

@@ -27,13 +27,29 @@ public record WeekCarDto(
     double? FastestLapSeconds,
     double? MedianLapSeconds);
 
+/// <summary>
+/// One Car's row on Week Detail: the Field statistics of <see cref="WeekCarDto"/> plus the world-record
+/// lap for that Car at the Race Week's Track and the Field's gap to it (<c>fastest − record</c>). Both
+/// are null when no record is available. Kept apart from <see cref="WeekCarDto"/> so the plain per-week
+/// car list makes no world-record lookups.
+/// </summary>
+public record WeekDetailCarDto(
+    int CarId,
+    string CarName,
+    string? ClassName,
+    int EntryCount,
+    double? FastestLapSeconds,
+    double? MedianLapSeconds,
+    double? WorldRecordLapSeconds,
+    double? WorldRecordGapSeconds);
+
 public record WeekDetailDto(
     string SeriesName,
     string? Category,
     string? TrackName,
     string? TrackConfigName,
     double? TrackLengthMiles,
-    IReadOnlyList<WeekCarDto> Cars);
+    IReadOnlyList<WeekDetailCarDto> Cars);
 
 public record DistributionBin(double MinSeconds, double MaxSeconds, int Count, bool ContainsUser);
 

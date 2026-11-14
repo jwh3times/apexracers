@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [15.2.0] - 2026-11-14
+
+### Added
+
+- Week Detail: each car now shows the world-record lap at that week's track (`WR`) and the gap from the Field's fastest lap to it (`Δ WR`), for every visitor. Both show `—` when no record is available. A failed record lookup blanks that car and the cars after it instead of failing the page. Week Detail still serves only the Demo surface (#274).
+
+### Changed
+
+- Bumped `Scalar.AspNetCore` from 2.20.0 to 2.21.0 (Dependabot, released as v15.1.69) and `@testing-library/user-event` from 14.6.8 to 14.6.9 in `web/` (Dependabot, released as v15.1.70).
+
 ## [15.1.68] - 2026-11-13
 
 ### Changed
@@ -2124,7 +2134,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.1.68...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.2.0...HEAD
+[15.2.0]: https://github.com/jwh3times/apexracers/compare/v15.1.70...v15.2.0
 [15.1.68]: https://github.com/jwh3times/apexracers/compare/v15.1.67...v15.1.68
 [15.1.67]: https://github.com/jwh3times/apexracers/compare/v15.1.66...v15.1.67
 [15.1.66]: https://github.com/jwh3times/apexracers/compare/v15.1.65...v15.1.66

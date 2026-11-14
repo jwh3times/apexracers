@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api, type WeekDetail, type WeekCar, type WeekCarPercentile } from '../../services/api';
+import {
+  api,
+  type WeekDetail,
+  type WeekDetailCar,
+  type WeekCarPercentile,
+} from '../../services/api';
 import { formatLapTime } from '../../utils/lapTime';
 import { raceWeekNumber } from '../../utils/raceWeek';
 import { useAuth } from '../../context/AuthContext';
@@ -13,9 +18,25 @@ import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidenc
 
 type SortMode = 'best' | 'consistency' | 'volume';
 
+const DASH = '—';
+
+function formatLapOrDash(seconds: number | null | undefined): string {
+  return seconds != null ? formatLapTime(seconds) : DASH;
+}
+
+/**
+ * Seconds to 3 places, or a dash when absent. `signed` prefixes `+` to a positive value. A value
+ * that rounds to zero reads `0.000`, never `+0.000` or `-0.000`.
+ */
+function formatSeconds(seconds: number | null, { signed = false } = {}): string {
+  if (seconds == null) return DASH;
+  const rounded = Number(seconds.toFixed(3));
+  if (rounded === 0) return '0.000';
+  return `${signed && rounded > 0 ? '+' : ''}${rounded.toFixed(3)}`;
+}
+
 function formatDelta(best: number | null, median: number | null): string {
-  if (best == null || median == null) return '—';
-  return (median - best).toFixed(3);
+  return formatSeconds(best == null || median == null ? null : median - best);
 }
 
 function dotColor(carId: number): string {
@@ -32,7 +53,7 @@ function dotColor(carId: number): string {
   return palette[carId % palette.length];
 }
 
-function sortCars(cars: WeekCar[], mode: SortMode): WeekCar[] {
+function sortCars(cars: WeekDetailCar[], mode: SortMode): WeekDetailCar[] {
   const copy = [...cars];
   if (mode === 'best') {
     copy.sort((a, b) => {
@@ -200,16 +221,13 @@ export default function WeekDetailPage() {
           [
             {
               label: 'Fastest car',
-              value: fieldBest ? fieldBest.carName.split(' ').slice(0, 3).join(' ') : '—',
+              value: fieldBest ? fieldBest.carName.split(' ').slice(0, 3).join(' ') : DASH,
               mono: false,
               icon: 'emoji_events',
             },
             {
               label: 'Field best',
-              value:
-                fieldBest?.fastestLapSeconds != null
-                  ? formatLapTime(fieldBest.fastestLapSeconds)
-                  : '—',
+              value: formatLapOrDash(fieldBest?.fastestLapSeconds),
               mono: true,
               icon: 'timer',
             },
@@ -307,6 +325,12 @@ export default function WeekDetailPage() {
                     Δ B/M
                   </th>
                   <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
+                    WR
+                  </th>
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
+                    Δ WR
+                  </th>
+                  <th className="text-th text-on-surface-variant th-p border-b border-line-2 text-right">
                     Laps
                   </th>
                   {showMyPct && (
@@ -363,15 +387,23 @@ export default function WeekDetailPage() {
                       <td
                         className={`td-p border-b border-line-2 text-right font-mono text-body-fluid ${isFirst ? 'text-primary-container font-bold' : 'text-on-surface'}`}
                       >
-                        {car.fastestLapSeconds != null ? formatLapTime(car.fastestLapSeconds) : '—'}
+                        {formatLapOrDash(car.fastestLapSeconds)}
                       </td>
                       {/* Median lap */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
-                        {car.medianLapSeconds != null ? formatLapTime(car.medianLapSeconds) : '—'}
+                        {formatLapOrDash(car.medianLapSeconds)}
                       </td>
                       {/* Δ B/M */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
                         {formatDelta(car.fastestLapSeconds, car.medianLapSeconds)}
+                      </td>
+                      {/* World-record lap at this week's track */}
+                      <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
+                        {formatLapOrDash(car.worldRecordLapSeconds)}
+                      </td>
+                      {/* Field fastest − world record */}
+                      <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
+                        {formatSeconds(car.worldRecordGapSeconds, { signed: true })}
                       </td>
                       {/* Laps (entry count) */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">

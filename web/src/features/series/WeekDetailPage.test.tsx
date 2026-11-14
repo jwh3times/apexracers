@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import WeekDetailPage from './WeekDetailPage';
@@ -46,6 +46,8 @@ function makeCar(overrides: Partial<WeekDetail['cars'][number]> = {}): WeekDetai
     entryCount: 150,
     fastestLapSeconds: 131.456,
     medianLapSeconds: 135.0,
+    worldRecordLapSeconds: null,
+    worldRecordGapSeconds: null,
     ...overrides,
   };
 }
@@ -119,6 +121,56 @@ describe('WeekDetailPage', () => {
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar()] });
     renderPage();
     await waitFor(() => expect(screen.getByText('3.544')).toBeInTheDocument()); // 135.0 - 131.456
+  });
+
+  it('renders the world-record lap and the Field gap to it for anonymous visitors', async () => {
+    mockGetWeekDetail.mockResolvedValue({
+      ...emptyDetail,
+      cars: [makeCar({ worldRecordLapSeconds: 129.5, worldRecordGapSeconds: 1.956 })],
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('columnheader', { name: 'WR' })).toBeInTheDocument()
+    );
+    expect(screen.getByRole('columnheader', { name: 'Δ WR' })).toBeInTheDocument();
+    const row = screen.getAllByRole('row')[1];
+    expect(within(row).getByText('2:09.500')).toBeInTheDocument();
+    expect(within(row).getByText('+1.956')).toBeInTheDocument();
+  });
+
+  it('shows a Field faster than the world record with a negative gap', async () => {
+    mockGetWeekDetail.mockResolvedValue({
+      ...emptyDetail,
+      cars: [makeCar({ worldRecordLapSeconds: 131.58, worldRecordGapSeconds: -0.1236 })],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('-0.124')).toBeInTheDocument());
+  });
+
+  it.each([0.0004, -0.0004])(
+    'shows a gap that rounds to zero (%s) as an unsigned 0.000',
+    async gap => {
+      mockGetWeekDetail.mockResolvedValue({
+        ...emptyDetail,
+        cars: [makeCar({ worldRecordLapSeconds: 131.456, worldRecordGapSeconds: gap })],
+      });
+      renderPage();
+      await waitFor(() =>
+        expect(screen.getByRole('columnheader', { name: 'WR' })).toBeInTheDocument()
+      );
+      const row = screen.getAllByRole('row')[1];
+      expect(within(row).getByText('0.000')).toBeInTheDocument();
+      expect(within(row).queryByText(/^[+-]0.000$/)).not.toBeInTheDocument();
+    }
+  );
+
+  it('shows dashes in the WR columns when a car has no world record', async () => {
+    mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar()] });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('columnheader', { name: 'WR' })).toBeInTheDocument()
+    );
+    expect(within(screen.getAllByRole('row')[1]).getAllByText('—')).toHaveLength(2);
   });
 
   it('renders recommendations link', async () => {

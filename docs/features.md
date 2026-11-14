@@ -47,7 +47,9 @@ remaining provider/client/quota and deployed prerequisites.
 ## Core Workflows
 
 - **Series and week browsing:** view active series, current race weeks, eligible cars,
-  track context, and aggregate lap-time statistics.
+  track context, and aggregate lap-time statistics. Week Detail also shows each car's world-record
+  lap at that week's track and the gap from the field's fastest lap to it, or a dash when no
+  record is available.
 - **Percentile calculation:** compare a driver's lap time against the field for a
   series, week, and car. Eligible demo users save classified results for the Demo Driver;
   looking up another Driver does not change that history. Canonical evidence selections retain

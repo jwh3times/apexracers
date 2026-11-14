@@ -31,6 +31,16 @@ public class WorldRecordService(CachedIRacingClient cached)
     }
 
     /// <summary>
+    /// A lap's gap to the world record in seconds (<c>lap − record</c>, so positive means slower than
+    /// the record), rounded to 4 places; null when either is missing. The one rule every world-record
+    /// overlay uses.
+    /// </summary>
+    public static double? GapSeconds(double? lapSeconds, double? recordSeconds) =>
+        lapSeconds is null || recordSeconds is null
+            ? null
+            : Math.Round(lapSeconds.Value - recordSeconds.Value, 4);
+
+    /// <summary>
     /// The fastest valid lap (seconds) across all record holders and session types,
     /// or null when there are none. Pure + testable.
     /// </summary>
