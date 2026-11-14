@@ -18,14 +18,25 @@ import { lapEvidenceDescription, lapEvidenceLabel } from '../../utils/lapEvidenc
 
 type SortMode = 'best' | 'consistency' | 'volume';
 
-function formatDelta(best: number | null, median: number | null): string {
-  if (best == null || median == null) return '—';
-  return (median - best).toFixed(3);
+const DASH = '—';
+
+function formatLapOrDash(seconds: number | null | undefined): string {
+  return seconds != null ? formatLapTime(seconds) : DASH;
 }
 
-function formatWorldRecordGap(gap: number | null): string {
-  if (gap == null) return '—';
-  return `${gap > 0 ? '+' : ''}${gap.toFixed(3)}`;
+/**
+ * Seconds to 3 places, or a dash when absent. `signed` prefixes `+` to a positive value. A value
+ * that rounds to zero reads `0.000`, never `+0.000` or `-0.000`.
+ */
+function formatSeconds(seconds: number | null, { signed = false } = {}): string {
+  if (seconds == null) return DASH;
+  const rounded = Number(seconds.toFixed(3));
+  if (rounded === 0) return '0.000';
+  return `${signed && rounded > 0 ? '+' : ''}${rounded.toFixed(3)}`;
+}
+
+function formatDelta(best: number | null, median: number | null): string {
+  return formatSeconds(best == null || median == null ? null : median - best);
 }
 
 function dotColor(carId: number): string {
@@ -210,16 +221,13 @@ export default function WeekDetailPage() {
           [
             {
               label: 'Fastest car',
-              value: fieldBest ? fieldBest.carName.split(' ').slice(0, 3).join(' ') : '—',
+              value: fieldBest ? fieldBest.carName.split(' ').slice(0, 3).join(' ') : DASH,
               mono: false,
               icon: 'emoji_events',
             },
             {
               label: 'Field best',
-              value:
-                fieldBest?.fastestLapSeconds != null
-                  ? formatLapTime(fieldBest.fastestLapSeconds)
-                  : '—',
+              value: formatLapOrDash(fieldBest?.fastestLapSeconds),
               mono: true,
               icon: 'timer',
             },
@@ -379,11 +387,11 @@ export default function WeekDetailPage() {
                       <td
                         className={`td-p border-b border-line-2 text-right font-mono text-body-fluid ${isFirst ? 'text-primary-container font-bold' : 'text-on-surface'}`}
                       >
-                        {car.fastestLapSeconds != null ? formatLapTime(car.fastestLapSeconds) : '—'}
+                        {formatLapOrDash(car.fastestLapSeconds)}
                       </td>
                       {/* Median lap */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
-                        {car.medianLapSeconds != null ? formatLapTime(car.medianLapSeconds) : '—'}
+                        {formatLapOrDash(car.medianLapSeconds)}
                       </td>
                       {/* Δ B/M */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
@@ -391,13 +399,11 @@ export default function WeekDetailPage() {
                       </td>
                       {/* World-record lap at this week's track */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
-                        {car.worldRecordLapSeconds != null
-                          ? formatLapTime(car.worldRecordLapSeconds)
-                          : '—'}
+                        {formatLapOrDash(car.worldRecordLapSeconds)}
                       </td>
                       {/* Field fastest − world record */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">
-                        {formatWorldRecordGap(car.worldRecordGapSeconds)}
+                        {formatSeconds(car.worldRecordGapSeconds, { signed: true })}
                       </td>
                       {/* Laps (entry count) */}
                       <td className="td-p border-b border-line-2 text-right font-mono text-body-fluid text-on-surface-variant">

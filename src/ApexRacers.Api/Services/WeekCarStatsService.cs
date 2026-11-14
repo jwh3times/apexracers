@@ -48,16 +48,19 @@ public class WeekCarStatsService(
         var stats = await BuildCarStatsAsync(weekInfo.WeekId, ct);
         var cars = new List<WeekDetailCarDto>(stats.Count);
         // Sequential on purpose: the record lookup reads and writes the cache through this scoped
-        // AppDbContext, which is not safe for concurrent use.
+        // AppDbContext, which is not safe for concurrent use. After a failed lookup no further lookups
+        // run: a failure inside the cache write can leave entities tracked on this shared context, and
+        // a later Car's write would then fail with them. The cars after it show no record.
+        var lookupsAvailable = worldRecords is not null;
         foreach (var car in stats)
         {
-            var record = await WorldRecordOrNullAsync(car.CarId, weekInfo.TrackId, ct);
-            double? gap = record is null || car.FastestLapSeconds is null
-                ? null
-                : Math.Round(car.FastestLapSeconds.Value - record.Value, 4);
+            double? record = null;
+            if (lookupsAvailable)
+                (record, lookupsAvailable) = await WorldRecordLookupAsync(car.CarId, weekInfo.TrackId, ct);
             cars.Add(new WeekDetailCarDto(
                 car.CarId, car.CarName, car.ClassName, car.EntryCount,
-                car.FastestLapSeconds, car.MedianLapSeconds, record, gap));
+                car.FastestLapSeconds, car.MedianLapSeconds,
+                record, WorldRecordService.GapSeconds(car.FastestLapSeconds, record)));
         }
 
         return new WeekDetailDto(
@@ -70,22 +73,23 @@ public class WeekCarStatsService(
     }
 
     /// <summary>
-    /// The world record for one Car at the Week's Track, or null. A failed lookup degrades that
-    /// Car's overlay to null rather than failing Week Detail; cancellation still propagates.
+    /// The world record for one Car at the Week's Track (null when there is none), and whether
+    /// further lookups may run. A failed lookup degrades to no record rather than failing Week
+    /// Detail, and stops the remaining lookups; cancellation still propagates.
     /// </summary>
-    private async Task<double?> WorldRecordOrNullAsync(int carId, int trackId, CancellationToken ct)
+    private async Task<(double? Record, bool ContinueLookups)> WorldRecordLookupAsync(
+        int carId, int trackId, CancellationToken ct)
     {
-        if (worldRecords is null) return null;
         try
         {
-            return await worldRecords.GetWorldRecordLapSecondsAsync(carId, trackId, ct);
+            return (await worldRecords!.GetWorldRecordLapSecondsAsync(carId, trackId, ct), true);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger?.LogWarning(
-                "World-record lookup failed for car {CarId} at track {TrackId}; Week Detail shows no record for it. Failure type: {FailureType}",
+                "World-record lookup failed for car {CarId} at track {TrackId}; Week Detail shows no record for it or the cars after it. Failure type: {FailureType}",
                 carId, trackId, ex.GetType().Name);
-            return null;
+            return (null, false);
         }
     }
 

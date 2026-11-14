@@ -2,6 +2,7 @@ using System.Text.Json;
 using ApexRacers.Api.Services;
 using ApexRacers.Core.Models;
 using ApexRacers.Data;
+using ApexRacers.Seeder.Demo;
 using ApexRacers.Tests.Helpers;
 using Aydsko.iRacingData;
 using DataResponse = Aydsko.iRacingData.Common.DataResponse<(Aydsko.iRacingData.Stats.WorldRecordsHeader, Aydsko.iRacingData.Stats.WorldRecordEntry[])>;
@@ -219,14 +220,18 @@ public class WeekCarStatsServiceTests
     }
 
     [Fact]
-    public async Task GetWeekDetailAsync_RecordLookupThrowsForOneCar_OnlyThatCarLosesItsRecord()
+    public async Task GetWeekDetailAsync_RecordLookupThrows_ThatCarAndLaterCarsGetNoRecordAndNoLookup()
     {
+        // A failed cache write can leave entities tracked on the request's shared context, so the
+        // service stops looking up after the first failure rather than touching that context again.
         await using var db = DbContextFactory.Create();
         var (_, _, _, car, carClass, subsession) = SeedBasic(db);
         var failing = new Car { Id = 2, Name = "Ferrari 296 GT3", NameAbbreviated = "F296" };
-        db.Cars.Add(failing);
+        var later = new Car { Id = 3, Name = "BMW M4 GT3", NameAbbreviated = "M4" };
+        db.Cars.AddRange(failing, later);
         AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 70);
         AddResult(db, subsession, failing, carClass, custId: 2, lapSeconds: 71);
+        AddResult(db, subsession, later, carClass, custId: 3, lapSeconds: 72);
         await db.SaveChangesAsync(Ct);
 
         var client = Substitute.For<IDataClient>();
@@ -238,6 +243,11 @@ public class WeekCarStatsServiceTests
         client.GetWorldRecordsAsync(2, 99, Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns<DataResponse>(
                 _ => throw new HttpRequestException("iRacing unavailable"));
+        client.GetWorldRecordsAsync(3, 99, Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new DataResponse
+            {
+                Data = (new WorldRecordsHeader(), [new WorldRecordEntry { QualifyLapTime = TimeSpan.FromSeconds(69) }]),
+            });
 
         var result = await WithWorldRecords(db, client).GetWeekDetailAsync(seriesId: 1, raceWeekIndex: 1, Ct);
 
@@ -249,6 +259,12 @@ public class WeekCarStatsServiceTests
         Assert.Equal(71, failed.FastestLapSeconds);
         Assert.Null(failed.WorldRecordLapSeconds);
         Assert.Null(failed.WorldRecordGapSeconds);
+        var skipped = Assert.Single(result.Cars, c => c.CarId == 3);
+        Assert.Equal(72, skipped.FastestLapSeconds);
+        Assert.Null(skipped.WorldRecordLapSeconds);
+        Assert.Null(skipped.WorldRecordGapSeconds);
+        await client.DidNotReceive().GetWorldRecordsAsync(
+            3, Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -277,6 +293,31 @@ public class WeekCarStatsServiceTests
         var result = await WithWorldRecords(db, client).GetCarsForWeekAsync(seriesId: 1, raceWeekIndex: 1, Ct);
 
         Assert.Single(result);
-        await client.DidNotReceiveWithAnyArgs().GetWorldRecordsAsync(default, default, default, default, default);
+        await client.DidNotReceiveWithAnyArgs().GetWorldRecordsAsync(default, default, default, default, Ct);
+    }
+
+    [Fact]
+    public async Task GetWeekDetailAsync_DemoSurfaceSeeded_EveryCarShowsARecordAndPositiveGap()
+    {
+        // End to end over the Demo surface: the seeder's world-record rows read back through the
+        // runtime CachedIRacingClient, with no iRacing client configured.
+        await using var db = DbContextFactory.Create(ApexRacers.Core.DataProvenance.Demo);
+        var (_, _, _, car, carClass, subsession) = SeedBasic(db);
+        var second = new Car { Id = 2, Name = "Ferrari 296 GT3", NameAbbreviated = "F296" };
+        db.Cars.Add(second);
+        AddResult(db, subsession, car, carClass, custId: 1, lapSeconds: 100.0);
+        AddResult(db, subsession, car, carClass, custId: 2, lapSeconds: 101.0);
+        AddResult(db, subsession, second, carClass, custId: 3, lapSeconds: 102.0);
+        await db.SaveChangesAsync(Ct);
+        await new DemoCacheSeeder(db).SeedWorldRecordsAsync(Ct);
+
+        var service = new WeekCarStatsService(db, new WorldRecordService(new CachedIRacingClient(db, client: null)));
+        var result = await service.GetWeekDetailAsync(seriesId: 1, raceWeekIndex: 1, Ct);
+
+        Assert.Equal(2, result!.Cars.Count);
+        var first = Assert.Single(result.Cars, c => c.CarId == 1);
+        Assert.Equal(98.0, first.WorldRecordLapSeconds!.Value, precision: 4); // 100.0 × 0.98
+        Assert.Equal(2.0, first.WorldRecordGapSeconds!.Value, precision: 4);
+        Assert.All(result.Cars, c => Assert.True(c.WorldRecordGapSeconds > 0));
     }
 }

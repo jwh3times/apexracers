@@ -147,6 +147,23 @@ describe('WeekDetailPage', () => {
     await waitFor(() => expect(screen.getByText('-0.124')).toBeInTheDocument());
   });
 
+  it.each([0.0004, -0.0004])(
+    'shows a gap that rounds to zero (%s) as an unsigned 0.000',
+    async gap => {
+      mockGetWeekDetail.mockResolvedValue({
+        ...emptyDetail,
+        cars: [makeCar({ worldRecordLapSeconds: 131.456, worldRecordGapSeconds: gap })],
+      });
+      renderPage();
+      await waitFor(() =>
+        expect(screen.getByRole('columnheader', { name: 'WR' })).toBeInTheDocument()
+      );
+      const row = screen.getAllByRole('row')[1];
+      expect(within(row).getByText('0.000')).toBeInTheDocument();
+      expect(within(row).queryByText(/^[+-]0.000$/)).not.toBeInTheDocument();
+    }
+  );
+
   it('shows dashes in the WR columns when a car has no world record', async () => {
     mockGetWeekDetail.mockResolvedValue({ ...emptyDetail, cars: [makeCar()] });
     renderPage();

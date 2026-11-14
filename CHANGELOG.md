@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Week Detail: each car now shows the world-record lap at that week's track (`WR`) and the gap from the Field's fastest lap to it (`Δ WR`), for every visitor. Both show `—` when no record is available, and a failed record lookup blanks only that car's columns instead of failing the page (#274).
+- Week Detail: each car now shows the world-record lap at that week's track (`WR`) and the gap from the Field's fastest lap to it (`Δ WR`), for every visitor. Both show `—` when no record is available. A failed record lookup blanks that car and the cars after it instead of failing the page (#274).
 
 ## [15.1.68] - 2026-11-13
 
