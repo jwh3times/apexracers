@@ -19,7 +19,7 @@ maintainer-specific Azure resource identifiers.
 | Key Vault                            | Stores runtime secrets and the key that wraps the Data Protection ring.  |
 | PostgreSQL Flexible Server           | Application database (also holds the Data Protection key ring).          |
 | Container Apps Environment           | Hosts both container apps.                                               |
-| Container App (API)                  | Runs the API container and React SPA; scales 0–1 replicas.               |
+| Container App (API)                  | Runs the API container and React SPA; exactly one replica (min = max = 1). |
 | Container App (ingestion)            | Runs the ingestion worker.                                               |
 | Log Analytics / Application Insights | Container console logs; the API's in-process log (and opt-in span) export. |
 | Custom domain / certificate          | Public HTTPS endpoint.                                                   |
@@ -54,8 +54,8 @@ worker must have managed identities with permission to read secrets from the vau
 ## Data Protection key ring (API)
 
 Identity's email-confirmation and password-reset links are protected by the ASP.NET Core Data
-Protection key ring. A container app that scales to zero loses its filesystem between requests, so
-the API persists the ring in PostgreSQL (`identity.DataProtectionKeys`) under the fixed application
+Protection key ring. A container app loses its filesystem whenever its replica is replaced (a
+restart, a deploy, platform maintenance), so the API persists the ring in PostgreSQL (`identity.DataProtectionKeys`) under the fixed application
 name `ApexRacers` (`DataProtectionRegistration`). Nothing about it depends on the container's `/home`
 or any mounted storage.
 
@@ -116,7 +116,18 @@ its readiness probe `/ready` (database reachable), so a database outage holds tr
 restarting the replica. The image listens on port 8080, which is the ingress target port.
 
 Migrations run automatically at API startup via `db.Database.MigrateAsync()` — no separate migration
-step needed. That assumes one writer, so **max replicas must stay 1**. A single-revision deploy can
+step needed. That assumes one writer, so **max replicas must stay 1**.
+
+**Min replicas is 1, not 0, on purpose.** A public hostname draws internet-scanner requests every
+few minutes, which is less than the HTTP scaler's 300-second cooldown, so a min-0 app never actually
+scales to zero. Worse, a replica running above its minimum is billed at the *active* rate the whole
+time, while a replica held by the minimum bills at the much lower *idle* rate whenever it is idle
+(under 0.01 vCPU and 1,000 bytes/s, with no request in flight). Measured on 2026-11-16: about 30
+scanner IPs, a longest quiet gap of 185 seconds, and an API working set of 250–340 MiB, which is why
+the replica is sized at 0.25 vCPU / 0.5 GiB. Lower the minimum to 0 only behind something that
+keeps scanner traffic off the ingress.
+
+A single-revision deploy can
 briefly overlap the outgoing and incoming revisions, so a release whose migration needs stopped
 writers still goes through a manual cutover.
 
