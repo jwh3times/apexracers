@@ -96,9 +96,9 @@ root: the API listens on 8080, which is unprivileged, and the worker listens on 
 
 Two consequences to respect when editing:
 
-- **Anything the app writes at runtime must be writable by UID 1654.** Today that is
-  `/home/app/.aspnet/DataProtection-Keys` (the image gives `app` a home, so this works) and the
-  Compose mail drop. A new write path under `/app` will fail — the publish output is copied as
+- **Anything the app writes at runtime must be writable by UID 1654.** Today that is only the
+  Compose mail drop: the Data Protection key ring lives in the database, not under
+  `/home/app/.aspnet` (see `DataProtectionRegistration`). The image still gives `app` a home. A new write path under `/app` will fail — the publish output is copied as
   root — so write under the user's home or a mount, not next to the DLLs.
 - **A bind mount keeps the HOST directory's ownership.** `docker-compose.yml` mounts
   `./TestResults/mail` at `/app/mail`; Docker Desktop presents that as writable to any UID, but a

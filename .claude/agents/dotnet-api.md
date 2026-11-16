@@ -451,14 +451,32 @@ address they typed has an account.
 
 `AZURE_KEY_VAULT_URL` triggers Key Vault config via `DefaultAzureCredential` (the hyphen→underscore secret mapping is noted in AGENTS.md; the full secret map is the `azure-infrastructure` agent's). Backend-relevant invariant: `DATABASE_CONNECTION_STRING` and `JWT_SIGNING_KEY` are required — missing either throws on startup (`JWT_SIGNING_KEY`'s check lives in `JwtSettings.FromConfiguration`, called once in `Program.cs`).
 
+**Data Protection key ring.** Identity's email-confirmation and password-reset tokens are protected by
+the Data Protection key ring, which `DataProtectionRegistration.AddApexRacersDataProtection` persists
+in the database (`identity.DataProtectionKeys`) under the fixed application name `ApexRacers`, so a
+link survives a restart or scale-to-zero. Setting `AZURE_KEY_VAULT_URL` makes `DATA_PROTECTION_KEY_ID`
+required: an absolute https, versionless Key Vault key identifier that wraps the ring
+(`ProtectKeysWithAzureKeyVault`, `DefaultAzureCredential`). Startup throws when it is missing or not
+https — never relax that into storing keys in the clear, since a read-only database copy holding the
+ring and every `SecurityStamp` could forge reset links. Changing the application name, or the key ring
+store, invalidates every outstanding link. Tests cover it in `DataProtectionPersistenceTests`.
+
+**Telemetry export.** `APPLICATIONINSIGHTS_CONNECTION_STRING` turns on in-process OpenTelemetry export
+to Application Insights; unset, nothing is exported. App logs always export, through the same
+`EvidenceOperationalLogging` filters as every sink. Request, outgoing-HTTP and Npgsql spans carry raw
+paths, upstream URLs and SQL text, so `SpanExportSources.FromLogLevels` enables each only when its
+category (`Microsoft.AspNetCore`, `System.Net.Http`, `Npgsql`) or its longest configured prefix is at
+`Debug` or lower — `Default` deliberately never counts. Request spans skip `HealthProbePaths`, the same
+predicate `RequestLoggingMiddleware` uses. Do not add an always-on instrumentation source.
+
 ## Forwarded headers — never call `app.UseForwardedHeaders()`
 
 `ForwardedHeadersPolicy.Configure` (`src/ApexRacers.Api/Services/ForwardedHeadersPolicy.cs`) is the
 single place the forwarded-header trust decision is expressed — which headers, `ForwardLimit`, and
 that `KnownNetworks`/`KnownProxies` are cleared (GHSA-fq5w-frqr-6px2). `Program.cs` only binds it via
 `Configure<ForwardedHeadersOptions>`; it never calls `app.UseForwardedHeaders()`. Do not add that
-call. The host (App Service) registers the middleware itself, gated on the
-`ASPNETCORE_FORWARDEDHEADERS_ENABLED` app setting — adding the call here as well would register the
+call. The ASP.NET Core host registers the middleware itself, gated on the
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED` environment setting — adding the call here as well would register the
 middleware **twice**, consuming two `X-Forwarded-For` entries instead of one and resolving a caller's
 own forged left-hand entry as if it were the real client, which is the exact spoofing hole the
 advisory is about. Registering it unconditionally (bypassing the app setting) is equally wrong in the

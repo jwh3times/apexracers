@@ -104,7 +104,7 @@ as server faults (an E2E run logged 15).
 
 **Cross-cutting middleware & ops endpoints** (`Program.cs`, in pipeline order): `RequestLoggingMiddleware`
 (outermost — one structured log line per request: bounded method, trusted route template, status code, elapsed ms, client IP;
-level scales with status; skips `/healthz` and `/ready`) → `ExceptionHandlingMiddleware`
+level scales with status; skips the health probe paths `HealthProbePaths` names) → `ExceptionHandlingMiddleware`
 → `SecurityHeadersMiddleware` (baseline headers on every API + SPA response: nosniff, frame-deny,
 referrer/permissions policy, full same-origin SPA CSP, HSTS over HTTPS). For asset or API-reference
 changes, read `docs/content-security-policy.md` for the built-bundle audit and Development-only Scalar
@@ -132,8 +132,13 @@ expressed (`Configure(ForwardedHeadersOptions)`; the host registers the middlewa
 an app setting — see `dotnet-api` for the call rule and `azure-infrastructure` for the deployed
 value). `EvidenceOperationalLogging` suppresses payload-capable framework/provider log categories;
 application failure logs use bounded types instead of attached exceptions. Raw paths and queries
-are excluded. External automatic telemetry, access logs and sink retention require deployed
-observation; read the copy-writer inventory before changing these logging boundaries.
+are excluded. When `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, the API exports those same
+filtered app logs to Application Insights in process (OpenTelemetry with the Azure Monitor exporter);
+with it unset (local Compose, CI) nothing is exported. Automatic request, outgoing-HTTP and database
+spans are a wider copy and export only while an operator raises their log category to `Debug`
+(`SpanExportSources`); health probes are never exported. External telemetry retention, access logs
+and sink retention require deployed observation; read the copy-writer inventory before changing
+these logging boundaries.
 
 ## Controllers — use-case-oriented, NOT entity-CRUD
 
@@ -268,6 +273,16 @@ allowance or the high-water mark could be 0, since either would silently deny th
   valid. Otherwise it keeps the
   unavailable adapters, and its binding names the problem settings (never their values) for the
   startup warning.
+- `DataProtectionRegistration` — the Data Protection key ring that protects Identity's
+  email-confirmation and password-reset tokens: persisted to `identity.DataProtectionKeys` through
+  `AppDbContext` under the fixed application name `ApexRacers`, so a link outlives the process that
+  sent it. Wherever `AZURE_KEY_VAULT_URL` is set, `DATA_PROTECTION_KEY_ID` (an absolute https Key
+  Vault key identifier, versionless so rotation needs no config change) is required and wraps the
+  ring; startup fails without it. Local Compose and CI keep the ring unencrypted.
+- `SpanExportSources` — decides from `Logging:LogLevel` which automatic span sources the in-process
+  Application Insights export includes: request (`Microsoft.AspNetCore`), outgoing HTTP
+  (`System.Net.Http`) and database (`Npgsql`) spans each turn on only when that category, or its
+  longest configured prefix, is `Debug` or lower. `Default` never turns them on.
 - `SubjectDriverContext` — resolves an existing caller to the eligible synthetic Demo Driver;
   a stored Real claim yields no authorized Subject Driver. Optional callers use
   `GetSubjectDriverCustIdAsync`; required callers use

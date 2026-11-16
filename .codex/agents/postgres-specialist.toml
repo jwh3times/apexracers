@@ -109,11 +109,19 @@ coordination; SQL fences preserve original bindings and clocks and close depende
 Legacy `ScopedRivals` do not become verified Follows. A stored hash or Follow row alone establishes
 no current authority, and scheduled cleanup evidence does not certify restored backups.
 
-**`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters, and
-known devices:
+**`identity` schema** — all ASP.NET Identity tables plus refresh tokens, sign-in throttle counters,
+known devices, and the Data Protection key ring:
 
 `Users`, `Roles`, `UserRoles`, `UserClaims`, `UserLogins`, `UserTokens`, `RoleClaims`, `RefreshTokens`,
-`SignInAddressFailures`, `SignInAccountFailures`, `KnownDevices`
+`SignInAddressFailures`, `SignInAccountFailures`, `KnownDevices`, `DataProtectionKeys`
+
+`DataProtectionKeys` (issue #527): the framework's `DataProtectionKey` entity (`Id` int identity PK,
+`FriendlyName`, `Xml`), mapped through `AppDbContext : IDataProtectionKeyContext`. It holds the key
+ring that protects email-confirmation and password-reset tokens, so it sits beside the `Users` rows
+whose `SecurityStamp` those tokens bind to: a database copy holding both in the clear could forge reset
+links, which is why a deployed host wraps each key's XML with a Key Vault key (see
+`DataProtectionRegistration` in `src/AGENTS.md`). Only the Data Protection system writes it; never
+seed, truncate or hand-edit it — deleting rows invalidates every outstanding link.
 
 `ApplicationUser` extends `IdentityUser<Guid>` with `DisplayName string`, `IRacingCustomerId long?` (the user's Claimed Identity — see `docs/adr/0001-drivers-referenced-by-customer-id.md`), and `ThemePreference string`. Its Identity-owned `AccessFailedCount`/`LockoutEnd` columns still exist but are dead: sign-in brute-force protection (issue #300) reads and writes only the two tables below, not these.
 

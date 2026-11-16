@@ -20,7 +20,7 @@ npm install
 npm run dev          # Proxy → http://localhost:5000  (local dotnet API)
 npm run dev:all      # Starts dotnet API + Vite together via concurrently
 npm run dev:docker   # Proxy → http://localhost:8080  (API in Docker)
-npm run dev:cloud    # Proxy → https://apexracers-api.azurewebsites.net
+npm run dev:cloud    # Proxy → https://apexracers.gg  (deployed API)
 ```
 
 The dev server runs on `http://localhost:5173`. The proxy target is set by `API_TARGET` in the relevant `.env.*` file; the default (`dev` / `dev:all`) needs no env file.
