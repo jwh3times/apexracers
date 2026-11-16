@@ -1,6 +1,6 @@
 ---
 name: azure-infrastructure
-description: Use for Azure deployments, Container Registry pushes, Key Vault secret management, App Service configuration, Container Apps updates for the ingestion worker, and cloud infrastructure changes.
+description: Use for Azure deployments, GHCR image publishing, Key Vault secret and key management, Container Apps configuration for the API and the ingestion worker, and cloud infrastructure changes.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---
@@ -15,16 +15,17 @@ Use environment variables or `private/ops/azure-deployment-runbook.md` for exact
 names. Public/tracked docs should describe the topology and command shape, not
 maintainer-specific Azure resource identifiers.
 
-| Resource type                              | Purpose                                                |
-| ------------------------------------------ | ------------------------------------------------------ |
-| Resource group                             | Owns the deployment resources.                         |
-| Container Registry                         | Stores API and ingestion images.                       |
-| Key Vault                                  | Stores runtime secrets.                                |
-| PostgreSQL Flexible Server                 | Application database.                                  |
-| App Service Plan + App Service             | Runs the API container and React SPA.                  |
-| Container Apps Environment + Container App | Runs the ingestion worker.                             |
-| Log Analytics / Application Insights       | Collects logs, requests, dependencies, and exceptions. |
-| Custom domain / certificate                | Public HTTPS endpoint.                                 |
+| Resource type                        | Purpose                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| Resource group                       | Owns the deployment resources.                                           |
+| GitHub Container Registry (GHCR)     | Public `apexracers-api` and `apexracers-ingestion` packages; not Azure.  |
+| Key Vault                            | Stores runtime secrets and the key that wraps the Data Protection ring.  |
+| PostgreSQL Flexible Server           | Application database (also holds the Data Protection key ring).          |
+| Container Apps Environment           | Hosts both container apps.                                               |
+| Container App (API)                  | Runs the API container and React SPA; exactly one replica (min = max = 1). |
+| Container App (ingestion)            | Runs the ingestion worker.                                               |
+| Log Analytics / Application Insights | Container console logs; the API's in-process log (and opt-in span) export. |
+| Custom domain / certificate          | Public HTTPS endpoint.                                                   |
 
 ## Key Vault secrets
 
@@ -53,48 +54,92 @@ API app and ingestion worker; it is not a Key Vault secret itself.
 Authentication to Key Vault uses `DefaultAzureCredential`. The API app and ingestion
 worker must have managed identities with permission to read secrets from the vault.
 
-## The container runs as UID 1654, and `/home` must stay ephemeral
+## Data Protection key ring (API)
+
+Identity's email-confirmation and password-reset links are protected by the ASP.NET Core Data
+Protection key ring. A container app loses its filesystem whenever its replica is replaced (a
+restart, a deploy, platform maintenance), so the API persists the ring in PostgreSQL (`identity.DataProtectionKeys`) under the fixed application
+name `ApexRacers` (`DataProtectionRegistration`). Nothing about it depends on the container's `/home`
+or any mounted storage.
+
+Because a database copy (backup, restore, leaked dump) would otherwise hold both the ring and every
+User's `SecurityStamp` — enough to forge reset links — a host that reads Key Vault must wrap the
+ring with a Key Vault key:
+
+- `DATA_PROTECTION_KEY_ID` is **required** wherever `AZURE_KEY_VAULT_URL` is set; the API refuses
+  to start without it, or with a value that is not an absolute https key identifier. Like
+  `AZURE_KEY_VAULT_URL` it is not secret: an app setting on the API container app (or a vault
+  secret `DATA-PROTECTION-KEY-ID`), never a value checked into the repository.
+- Use the **versionless** key identifier (`https://<vault>.vault.azure.net/keys/<name>`), so rotating
+  the key needs no configuration change. Each ring entry records the key version that wrapped it,
+  so keep earlier versions enabled: disabling or purging one makes the entries it wrapped unreadable.
+- The API's managed identity needs key permissions `get`, `wrapKey` and `unwrapKey` on that key (under
+  Azure RBAC, the Key Vault Crypto Service Encryption User role) in addition to reading secrets.
+
+Local Compose and CI read no Key Vault and keep the ring unencrypted. Changing the application name
+or deleting `DataProtectionKeys` rows invalidates every outstanding link.
+
+## The container runs as UID 1654
 
 Both runtime images run as the non-root `app` user (UID 1654) since GHSA-4whp-7hv6-jvv6, which moves
-`$HOME` from `/root` to `/home/app`. ASP.NET Core Data Protection persists its key ring under
-`$HOME/.aspnet/DataProtection-Keys` — the API sets no explicit `PersistKeysTo`.
+`$HOME` from `/root` to `/home/app`. The API writes nothing under it at runtime (the Data Protection
+ring is in the database), so the container needs no persistent volume.
 
-That is harmless **only because `WEBSITES_ENABLE_APP_SERVICE_STORAGE` is `false`** on the API app
-(explicitly set, not merely defaulted). With it false, `/home` lives in the container's writable
-layer and the key ring is per-instance and per-restart, exactly as it was under `/root`. Setting it
-to `true` mounts `/home` from a platform-managed Azure Files share instead, which changes two things
-at once: the key ring starts surviving restarts, and its writability by UID 1654 becomes a live
-question the share's ACLs were never set up to answer. A local Compose stack cannot reproduce
-either, because Compose mounts nothing at `/home`.
+## Container registry (GHCR)
 
-If that setting ever needs to be `true`, give Data Protection an explicit key store first
-(`PersistKeysTo` plus a protector) rather than letting it inherit a path whose semantics just
-changed underneath it.
+Images live in public GitHub Container Registry packages under the repository owner
+(`ghcr.io/<owner>/apexracers-api`, `ghcr.io/<owner>/apexracers-ingestion`). `deploy.yml` logs in to
+`ghcr.io` with the job's own `GITHUB_TOKEN` (`permissions: packages: write`) and labels each image
+with `org.opencontainers.image.source` so the package links back to this repository. The packages are
+public — they hold only compiled public source and the built SPA, and every secret arrives from Key
+Vault at runtime — so the container apps pull them anonymously, with no registry credential to rotate.
+Keep both properties: never bake a secret into an image, and do not make a package private without
+first giving the container apps a registry credential.
 
-## App Service deployment (API + React SPA)
+## Container App deployment (API + React SPA)
 
-The API Docker image bundles the React frontend in `wwwroot`. Build and push:
+The API Docker image bundles the React frontend in `wwwroot`. `deploy.yml`'s `deploy-api` job builds
+and pushes it, then updates the API container app (named by the `API_CONTAINER_APP_NAME` secret):
 
 ```bash
-# Build and push to the container registry
-docker build -t "$REGISTRY/apexracers-api:$IMAGE_TAG" .
-az acr login --name "$ACR_NAME"
+docker build --label "org.opencontainers.image.source=https://github.com/<owner>/<repo>" \
+  -t "$REGISTRY/apexracers-api:$IMAGE_TAG" .
 docker push "$REGISTRY/apexracers-api:$IMAGE_TAG"
 
-# Update App Service to use the new image
-az webapp config container set \
-  --name "$API_APP_NAME" \
+az containerapp update \
+  --name "$API_CONTAINER_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --docker-custom-image-name "$REGISTRY/apexracers-api:$IMAGE_TAG"
+  --image "$REGISTRY/apexracers-api:$IMAGE_TAG" \
+  --revision-suffix "deploy-$DEPLOY_RUN_ID-$DEPLOY_ATTEMPT"
 ```
 
-Migrations run automatically at API startup via `db.Database.MigrateAsync()` — no separate migration step needed. Safe because App Service runs as a single instance.
+The API container app runs in single-revision mode: the new revision takes traffic once ready and the
+old one is deactivated. Its startup and liveness probes target `/healthz` (no dependency checks) and
+its readiness probe `/ready` (database reachable), so a database outage holds traffic back without
+restarting the replica. The image listens on port 8080, which is the ingress target port.
+
+Migrations run automatically at API startup via `db.Database.MigrateAsync()` — no separate migration
+step needed. That assumes one writer, so **max replicas must stay 1**.
+
+**Min replicas is 1, not 0, on purpose.** A public hostname draws internet-scanner requests every
+few minutes, which is less than the HTTP scaler's 300-second cooldown, so a min-0 app never actually
+scales to zero. Worse, a replica running above its minimum is billed at the *active* rate the whole
+time, while a replica held by the minimum bills at the much lower *idle* rate whenever it is idle
+(under 0.01 vCPU and 1,000 bytes/s, with no request in flight). Measured on 2026-11-16: about 30
+scanner IPs, a longest quiet gap of 185 seconds, and an API working set of 250–340 MiB, which is why
+the replica is sized at 0.25 vCPU / 0.5 GiB. Lower the minimum to 0 only behind something that
+keeps scanner traffic off the ingress.
+
+A single-revision deploy can
+briefly overlap the outgoing and incoming revisions, so a release whose migration needs stopped
+writers still goes through a manual cutover.
 
 ## Container App deployment (ingestion worker)
 
 ```bash
-# Build and push ingestion image
-docker build -t "$REGISTRY/apexracers-ingestion:$IMAGE_TAG" -f ingestion.Dockerfile .
+# Build and push ingestion image (deploy.yml logs in to ghcr.io first)
+docker build --label "org.opencontainers.image.source=https://github.com/<owner>/<repo>" \
+  -t "$REGISTRY/apexracers-ingestion:$IMAGE_TAG" -f ingestion.Dockerfile .
 docker push "$REGISTRY/apexracers-ingestion:$IMAGE_TAG"
 
 # Update the image and restore an observed pause. Use a unique numeric run/attempt suffix.
@@ -150,8 +195,8 @@ Exact federated-credential and subscription identifiers stay in
 
 ## Forwarded-header trust (`ASPNETCORE_FORWARDEDHEADERS_ENABLED`)
 
-`ASPNETCORE_FORWARDEDHEADERS_ENABLED` is a live App Service app setting on the API app (currently
-`true`) — not a Key Vault secret, so it isn't in the table above. It is what registers ASP.NET Core's
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED` must be `true` as an environment variable on the API container
+app — not a Key Vault secret, so it isn't in the table above. It is what registers ASP.NET Core's
 forwarded-headers middleware at all; the trust settings it then applies (which headers, `ForwardLimit
 = 1`, cleared `KnownNetworks`/`KnownProxies`) are owned in code by `ForwardedHeadersPolicy` (see the
 `dotnet-api` agent — never add `app.UseForwardedHeaders()` alongside this setting). With it `true`,
@@ -192,9 +237,16 @@ az monitor log-analytics query \
   --analytics-query "ContainerAppConsoleLogs_CL | order by TimeGenerated desc | limit 50"
 ```
 
-Application Insights should capture requests, dependencies, exceptions, and `ILogger`
-traces for the API app. Keep a daily data cap as a cost guardrail. Check usage against
-the cap:
+The API exports to Application Insights in process (OpenTelemetry with the Azure Monitor exporter)
+when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured; unset, it exports nothing, and no
+platform agent collects telemetry for it.
+App logs always export — including `RequestLoggingMiddleware`'s one line per request, which is the
+request log. Automatic request, outgoing-HTTP and database spans export only while an operator
+raises the matching log category to `Debug`, e.g. `Logging__LogLevel__Npgsql=Debug` (categories
+`Microsoft.AspNetCore`, `System.Net.Http`, `Npgsql`; raising `Default` never turns them on — see
+`SpanExportSources`). Those spans carry raw paths, upstream URLs and SQL text, so lower the category
+again after the investigation. Health probe requests are never exported. Keep a daily data cap as a
+cost guardrail. Check usage against the cap:
 
 ```bash
 az monitor app-insights component quotastatus show \

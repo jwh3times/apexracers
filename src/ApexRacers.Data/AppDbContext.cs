@@ -1,6 +1,7 @@
 using ApexRacers.Core;
 using ApexRacers.Core.Models;
 using ApexRacers.Core.PercentileHistory;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ApexRacers.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataScope? dataScope = null)
-    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
 {
     private readonly IRacingDataScope _dataScope = dataScope ?? new();
     public DataProvenance Provenance => _dataScope.Provenance;
@@ -51,6 +52,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
     public DbSet<EvidenceCopyDependency> EvidenceCopyDependencies => Set<EvidenceCopyDependency>();
     public DbSet<AuthorizedDriverNameCopy> AuthorizedDriverNameCopies => Set<AuthorizedDriverNameCopy>();
 
+    /// <summary>
+    /// The ASP.NET Core Data Protection key ring, which protects email-confirmation and password-reset
+    /// tokens. It lives here so that a link issued by one process lifetime of the API is still
+    /// accepted by the next one; see <c>DataProtectionRegistration</c> in the API.
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // HasDefaultSchema applies to every entity in the model, including those registered
@@ -75,6 +83,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IRacingDataSco
         modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims", "identity");
         modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins", "identity");
         modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens", "identity");
+        modelBuilder.Entity<DataProtectionKey>().ToTable("DataProtectionKeys", "identity");
         modelBuilder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims", "identity");
 
         modelBuilder.Entity<FeatureFlag>()

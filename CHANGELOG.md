@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.0] - 2026-11-16
+
+### Changed
+
+- **Breaking (operators):** the API now persists its ASP.NET Core Data Protection key ring in the database (`identity.DataProtectionKeys`, added by an additive migration), so email-confirmation and password-reset links survive restarts and redeploys. Previously every restart invalidated outstanding links. A host that reads Key Vault (`AZURE_KEY_VAULT_URL`) must now also set `DATA_PROTECTION_KEY_ID`, a versionless Key Vault key identifier whose key wraps the stored ring, and grant the API identity wrap/unwrap on it; without it, or with a value that is not an absolute `https` URL, the API refuses to start. Local Compose and CI read no Key Vault and are unaffected (#527).
+- **Breaking (operators):** deploys publish both images to the GitHub Container Registry and update the API as an Azure Container App running a single small replica (exactly one: the API migrates on start, and a public hostname's scanner traffic would keep a scale-to-zero app awake at the higher active rate), replacing App Service and the Azure container registry to cut hosting cost. The deploy workflow now reads the `API_CONTAINER_APP_NAME` secret and no longer reads `API_APP_NAME` or `REGISTRY_LOGIN_SERVER`. The packages must be public, with Actions write access, for the Container Apps to pull them (#527).
+- Production telemetry is exported in process to Application Insights. App logs always export; request, outgoing-HTTP and database spans export only while the `Microsoft.AspNetCore`, `System.Net.Http` or `Npgsql` log category is raised to `Debug` (raising `Default` turns on none of them), and health probes are never exported (#527).
+
 ## [15.2.0] - 2026-11-14
 
 ### Added
@@ -2134,7 +2142,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v15.2.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.0...HEAD
+[16.0.0]: https://github.com/jwh3times/apexracers/compare/v15.2.0...v16.0.0
 [15.2.0]: https://github.com/jwh3times/apexracers/compare/v15.1.70...v15.2.0
 [15.1.68]: https://github.com/jwh3times/apexracers/compare/v15.1.67...v15.1.68
 [15.1.67]: https://github.com/jwh3times/apexracers/compare/v15.1.66...v15.1.67

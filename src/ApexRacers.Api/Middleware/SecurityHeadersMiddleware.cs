@@ -4,7 +4,7 @@ namespace ApexRacers.Api.Middleware;
 /// Adds baseline security response headers to every response (API + SPA static files).
 /// The built SPA loads scripts, styles, fonts, and API requests from its own origin.
 /// HSTS is only meaningful over HTTPS; behind
-/// the App Service front end, Request.IsHttps reflects the client scheme once
+/// the platform's ingress front end, Request.IsHttps reflects the client scheme once
 /// the forwarded-headers middleware rewrote the scheme (see ForwardedHeadersPolicy).
 /// </summary>
 public class SecurityHeadersMiddleware(RequestDelegate next)

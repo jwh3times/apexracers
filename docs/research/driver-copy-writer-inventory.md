@@ -33,7 +33,7 @@ inventory. The evidence below retains its original #371 scope; controlled cohere
 | Private Uploaded Laps | `TelemetryUploadService.ProcessSyntheticAsync` / `PrivateUploadStore` | Current verified original User/Driver and Personal consent, captured generation and independent User-wide journal veto. Typed private sessions/laps have immutable attribution and kind-8 source markers; dormancy, fresh collection and deletion are documented in [private upload lifecycle](private-upload-lifecycle.md). Ordinary product Telemetry routes stay unavailable in every namespace. Legacy uploads never acquire proof through recorder IDs or claims. |
 | Quarantined mapped payloads and Unknown evidence | Provenance migration; maintenance/cleanup SQL | Preserve recorded provenance and original clocks. No key-prefix, sentinel, event-time or Season-ID inference can invent historical purpose or loss time. Unknown affected use remains unavailable. |
 | Cleanup records | Existing `DriverCopyCleanup`, `ExternalDataCacheCleanupService`, maintenance scripts | Durable earliest deadlines, generation partitions and source markers; physically inspect applicable stores before reporting removal. Logical withdrawal, live erasure, overdue work and backup expiry remain distinct. |
-| Operational output | Request/exception middleware, ingestion and hosted cleanup logging; framework/provider sinks | Trusted route templates and bounded diagnostic fields, without Driver names/IDs, tokens or telemetry. Local privacy checks do not certify external sink retention. |
+| Operational output | Request/exception middleware, ingestion and hosted cleanup logging; framework/provider sinks; the API's in-process Application Insights export | Trusted route templates and bounded diagnostic fields, without Driver names/IDs, tokens or telemetry. The export sends these same filtered app logs by default; automatic spans, which carry raw request paths, upstream URLs or SQL text, are an opt-in operator copy (`SpanExportSources`). Local privacy checks do not certify external sink retention. |
 
 No separate implemented backfill executable was found. The official collection interface must cover
 authorized historical/backfill requests rather than leaving a future raw persistence bypass.
@@ -145,7 +145,12 @@ enforcement bindings remain distinct from explanatory audit material. There is n
 narrative archive or temporary acquisition file in the current adapter inventory.
 
 Application logs use trusted route templates and bounded failure types. Raw paths/queries, attached
-exceptions and provider/framework payload-capable categories are excluded. External automatic
+exceptions and provider/framework payload-capable categories are excluded. The API exports those
+filtered logs to Application Insights in process; it exports no automatic spans unless an operator
+raises the `Microsoft.AspNetCore`, `System.Net.Http` or `Npgsql` log category (never `Default`)
+to `Debug`. Raising one turns on that source's spans, which carry raw request paths, upstream URLs
+(query values redacted) or SQL text respectively. That is a deliberate, wider operator copy for an
+investigation, to be lowered again afterwards; health probes are never exported. External automatic
 telemetry, access-log collection and sink retention remain operator evidence under private #28.
 
 ## Reproduction and evidence limits

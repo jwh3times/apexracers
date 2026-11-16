@@ -367,7 +367,9 @@ Retained parser/service validation cases:
   container-escape severity multiplier on any future RCE, not a standalone bug.
 - Test: from inside the API container, attempt a write outside the app's home/mount (e.g. under
   `/app` next to the published DLLs, or elsewhere in `/`) — should fail with a permission error;
-  only the Data Protection key ring path and the mounted mail drop should be writable.
+  only the `app` user's home and the mounted mail drop should be writable. Nothing needs the home
+  any more: the Data Protection key ring is stored in the database, wrapped by a Key Vault key when
+  deployed.
 - Not in scope to re-probe here: whether the `.dockerignore` entries for `.env*`/`private/` actually
   keep those paths out of the build context is a build-time property, not something reachable from a
   running container — verify it the way `docker-containers` does (a probe `COPY` build), not through
@@ -377,7 +379,8 @@ Retained parser/service validation cases:
 
 - Every `uses:` across `.github/workflows/` is pinned to a full 40-hex commit SHA with a trailing
   `# vX.Y.Z` comment; `deploy.yml`'s two deploy jobs additionally hold `id-token: write` and exchange
-  it for an Azure session that can push images and update App Service/Container Apps.
+  it for an Azure session that can update the production Container Apps, and `packages: write`,
+  which lets their `GITHUB_TOKEN` push the public GHCR images those apps pull.
 - Test: grep `.github/workflows/*.yml` for a `uses:` line without a 40-hex SHA (a version tag or
   branch name instead) — a hit reintroduces the finding this advisory closed.
 - This is a repository-configuration check against the workflow files, not something reachable from a
