@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.4] - 2026-11-16
+
+### Changed
+
+- Hosting docs: the API Container App scales between zero and one replica again. It runs a replica only while there is traffic, which cuts hosting cost. After an idle spell, the first request waits for a cold start of about 20 seconds. The deployment guidance explains what kept it awake on day one (an uptime monitor, not internet scanners) and how to monitor it without defeating scale-to-zero.
+- Bumped `Scalar.AspNetCore` from 2.21.0 to 3.0.0 (Development-only API reference page; Dependabot, released as v16.0.3). Bumped `Testcontainers.Azurite`, `Testcontainers.PostgreSql` and `Testcontainers.XunitV3` from 4.16.0 to 4.17.0 (Dependabot, released as v16.0.2). In `web/`, bumped `@testing-library/user-event` 14.6.9 → 14.6.10, `jsdom` 31.0.0 → 31.0.1, `oxlint-tsgolint` 7.0.2006 → 7.0.2007, `prettier` 3.9.10 → 3.10.1 and `vite` 8.3.7 → 8.3.8 (Dependabot, released as v16.0.1).
+
 ## [16.0.0] - 2026-11-16
 
 ### Changed
@@ -2142,7 +2149,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.0...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.4...HEAD
+[16.0.4]: https://github.com/jwh3times/apexracers/compare/v16.0.0...v16.0.4
 [16.0.0]: https://github.com/jwh3times/apexracers/compare/v15.2.0...v16.0.0
 [15.2.0]: https://github.com/jwh3times/apexracers/compare/v15.1.70...v15.2.0
 [15.1.68]: https://github.com/jwh3times/apexracers/compare/v15.1.67...v15.1.68

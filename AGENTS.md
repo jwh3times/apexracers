@@ -449,8 +449,8 @@ branch and fast-forwards it only when that branch contains no commits outside `o
 
 ### Cloud Deployment
 
-The API is deployed as a container app that serves the React SPA from `wwwroot` and runs exactly one
-replica; the ingestion worker is deployed as a separate background container app.
+The API is deployed as a container app that serves the React SPA from `wwwroot` and scales between
+zero and one replica; the ingestion worker is deployed as a separate background container app.
 `.github/workflows/deploy.yml` builds both images, pushes them to public GitHub Container Registry
 packages under the repository owner with the job's own `GITHUB_TOKEN`, and points each container app
 at the new commit-tagged image. Runtime secrets are provided through the cloud secret store and mapped

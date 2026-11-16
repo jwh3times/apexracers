@@ -19,7 +19,7 @@ maintainer-specific Azure resource identifiers.
 | Key Vault                            | Stores runtime secrets and the key that wraps the Data Protection ring.  |
 | PostgreSQL Flexible Server           | Application database (also holds the Data Protection key ring).          |
 | Container Apps Environment           | Hosts both container apps.                                               |
-| Container App (API)                  | Runs the API container and React SPA; exactly one replica (min = max = 1). |
+| Container App (API)                  | Runs the API container and React SPA; scales 0–1 replicas.               |
 | Container App (ingestion)            | Runs the ingestion worker.                                               |
 | Log Analytics / Application Insights | Container console logs; the API's in-process log (and opt-in span) export. |
 | Custom domain / certificate          | Public HTTPS endpoint.                                                   |
@@ -118,14 +118,28 @@ restarting the replica. The image listens on port 8080, which is the ingress tar
 Migrations run automatically at API startup via `db.Database.MigrateAsync()` — no separate migration
 step needed. That assumes one writer, so **max replicas must stay 1**.
 
-**Min replicas is 1, not 0, on purpose.** A public hostname draws internet-scanner requests every
-few minutes, which is less than the HTTP scaler's 300-second cooldown, so a min-0 app never actually
-scales to zero. Worse, a replica running above its minimum is billed at the *active* rate the whole
-time, while a replica held by the minimum bills at the much lower *idle* rate whenever it is idle
-(under 0.01 vCPU and 1,000 bytes/s, with no request in flight). Measured on 2026-11-16: about 30
-scanner IPs, a longest quiet gap of 185 seconds, and an API working set of 250–340 MiB, which is why
-the replica is sized at 0.25 vCPU / 0.5 GiB. Lower the minimum to 0 only behind something that
-keeps scanner traffic off the ingress.
+**Min replicas is 0: the API scales to zero, and anything that polls it defeats that.** The HTTP
+scaler removes the replica after 300 seconds without a request. Any request wakes it: an uptime
+monitor, an open browser tab polling the API, or scanners. A replica running above its minimum also
+bills at the *active* rate, so a min-0 app kept awake costs more than a min-1 app sitting idle.
+
+What happened on 2026-11-16 is worth knowing before changing this:
+- The app never reached zero, and that was blamed on scanners, so the minimum went to 1.
+- The real cause was an external uptime monitor checking the home page from several regions about
+  every 3 minutes. Scanner traffic was only a burst after the domain moved (certificate-transparency
+  discovery), then quiet.
+- Min 1 measured about $8.70/month. A replica held by its minimum bills at the much lower *idle*
+  rate only while under 0.01 vCPU, and the API was under that for only about half the minutes.
+- With the monitor paused, the minimum went back to 0. The free grant then covers about 200 awake
+  hours a month at 0.25 vCPU / 0.5 GiB.
+
+Rules that follow from it:
+- If uptime monitoring comes back, use one region at a 30-minute or longer interval, with a timeout
+  of 30 seconds or more. A cold start takes about 23 seconds from scheduling to `Application
+  started`.
+- Before raising the minimum, find what keeps the replica awake. Split the request log by client
+  address, and pass `--offset` to `az monitor app-insights query`, whose default window is one hour.
+- Peak working set measured 416 MiB, close to the 0.5 GiB limit.
 
 A single-revision deploy can
 briefly overlap the outgoing and incoming revisions, so a release whose migration needs stopped
