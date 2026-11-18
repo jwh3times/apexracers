@@ -15,6 +15,10 @@ The project guide `AGENTS.md` (already loaded into this session) covers the proj
 - File-scoped namespaces, top-level statements in Program.cs.
 - `record` types for all DTOs. Positional records for simple shapes.
 - Pattern matching and null-coalescing over verbose null checks.
+- Don't name a non-secret identifier `*Key`, `*Password`, `*Secret` or `*Token`. CodeQL's
+  `cs/cleartext-storage-of-sensitive-information` fires on the name alone (for example a constraint
+  name held in `AccountPrimaryKey` and then logged) and fails the PR as a high-severity finding. Name
+  it for what it is (`AccountRowConstraint`).
 
 ## Controllers — the .NET specifics
 
@@ -527,7 +531,11 @@ Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class
 `PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only
 translation (including `DateTimeOffset` comparisons/order), PostgreSQL transactions, or production
 constraints such as a unique index, user foreign key, or cascade. The fixture shares one pinned
-container but creates a unique database per test; `EnsureCreated` validates the current model rather
+container but creates a unique database per test. **Each `CreateOptions()` / `CreateOptionsAsync()`
+call creates a new database**, so a test that needs several `AppDbContext`s over the same data must
+call it once and build every context from that one options instance. Calling it per context gives
+each one its own empty database, and in a concurrency test that exercises nothing while staying
+green. `WithInterceptors(...)` rebuilds options over the same database. Also, `EnsureCreated` validates the current model rather
 than migration application. Each test database's connections are pooled, and the fixture clears an
 earlier test's pools when the next test first asks for options (#391). Don't rely on connection timing
 to make concurrent writes collide. Force the interleaving with a command interceptor added through

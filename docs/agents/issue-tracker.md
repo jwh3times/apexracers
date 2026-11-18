@@ -79,3 +79,36 @@ jwh3times 2
 
 - `Priority`: `P0 - Highest` / `P1 - High` / `P2 - Normal` / `P3 - Low`.
 - `board order`: the board's manual order, top first, which follows `Priority`.
+
+## Board mechanics
+
+The board is a user-level project, so every `gh project` call needs `--owner jwh3times`. Field and
+option IDs are in the private companion; look them up with
+`gh project field-list 2 --owner jwh3times --format json` rather than hardcoding them.
+
+- **Auto-add covers the public repository only, and not reliably.** New public issues usually land at
+  `Todo` by themselves; private companion issues never do. Check `item-list` before `item-add`, and
+  set any non-default `Status` or `Blocked by` by hand.
+- **`item-list` lags writes.** A fresh item can be missing for a minute after a successful `item-add`
+  or `item-edit`. Verify a new item by its id with a GraphQL `node(id:)` query instead.
+- **`item-list` returns custom fields under their display name, lowercased with spaces kept.**
+  `Blocked by` reads back as `item["blocked by"]`, while built-in fields are camelCase (`status`). A
+  wrong accessor makes every successful write look failed. Dump one whole item before trusting an
+  accessor.
+- **For bulk edits, skip `gh project item-edit`.** About 18 in a row hit GitHub's secondary (burst)
+  rate limit while the GraphQL budget was nearly full. Use one `gh api graphql` mutation per item with
+  aliased `updateProjectV2ItemFieldValue` calls, and pause about 1.5 s between items.
+- **Editing a single-select field's options replaces the whole list.** `updateProjectV2Field` keeps
+  existing values only if every surviving option is passed with its existing `id`. Without the ids,
+  the options are recreated and the field clears on every item that used them. Build the mutation
+  from a live read, snapshot every item's value first, and diff afterwards.
+- **Converting a draft item to an issue:** use `convertProjectV2DraftIssueItemToIssue` with `itemId`
+  and `repositoryId` (it rejects `projectId`). The item id and its fields survive; labels don't.
+- **Closing automation is partial.** A PR merge with a closing keyword closes the issue and moves its
+  item to Done. An issue closed by hand, or closed before the automation saw it, keeps its old status
+  indefinitely. When closing anything by hand, set its Status in the same step. At close-out, list
+  every non-Done item and check each one's issue or advisory state directly.
+- **Blocking across repositories:** `--add-blocked-by` resolves the blocker in the same repository,
+  so a private follow-up blocked by a public issue needs the REST form from **Blocking** above,
+  posted to the private repository with the public issue's database id. The edge clears itself when
+  the blocker closes, but the `blocked` label and board fields don't.

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.5] - 2026-11-17
+
+### Changed
+
+- Agent and contributor docs: two new guides, `docs/agents/verification.md` and `docs/agents/merging.md`. The first covers how to prove that a change or claim is true: a green gate must be able to go red, and a new test must fail without its fix. The second covers going from an open PR to a finished merge: the branch ruleset, watching CI by commit SHA, PRs blocked while every check is green, CodeQL findings, changelog renumbering, the release-impact precedent, Dependabot PRs and security advisories. The project guide gains a "Prove it, don't assume it" ground rule. The board guide gains a Board mechanics section, and the workspace guide gains worktree and local-run notes. The specialist agents gain lessons on production verification, CodeQL-safe naming, PostgreSQL test-fixture databases, table-rename migrations, and running the frontend build and E2E suite locally. `docs/README.md` lists the two new guides. The `web/README.md` E2E section now says what a full local run needs beyond `docker compose up -d`: a rebuilt API image, a `--ci --demo` seed, the `iracing-demo` flag and `E2E_DEMO=1`. No product behavior changes.
+
 ## [16.0.4] - 2026-11-16
 
 ### Changed
@@ -2149,7 +2155,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.4...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.5...HEAD
+[16.0.5]: https://github.com/jwh3times/apexracers/compare/v16.0.4...v16.0.5
 [16.0.4]: https://github.com/jwh3times/apexracers/compare/v16.0.0...v16.0.4
 [16.0.0]: https://github.com/jwh3times/apexracers/compare/v15.2.0...v16.0.0
 [15.2.0]: https://github.com/jwh3times/apexracers/compare/v15.1.70...v15.2.0

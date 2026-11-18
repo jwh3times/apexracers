@@ -13,3 +13,7 @@ adds.
 `.github/PULL_REQUEST_TEMPLATE.md` opens with a `Closes #` line: complete it, or change it to
 `Part of #N`. A waived PR replaces it with its `Flow waived by the user:` line, and other exempt PRs
 delete it.
+
+## After the pull request opens
+
+`/ship` stops once the PR is open. Merging and its follow-ups are in `docs/agents/merging.md`.

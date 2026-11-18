@@ -72,7 +72,10 @@ npm run test:e2e:ui   # Playwright UI mode (interactive)
 
 Config is `web/playwright.config.ts` (single Chromium project; `baseURL` `http://localhost:8080`;
 `reuseExistingServer: !process.env.CI` so Playwright attaches to the running stack locally and always
-starts a fresh server in CI). E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes
+starts a fresh server in CI). A plain `docker compose up -d` is not enough for a full local run: the
+API image must be rebuilt after backend changes, the database seeded with `--ci --demo`, the
+`iracing-demo` flag enabled and `E2E_DEMO=1` set. The `react-frontend` agent
+(`.claude/agents/react-frontend.md`, "Running E2E locally") lists the steps. E2E tests are excluded from Vitest coverage (`vite.config.ts` scopes
 Vitest to `src/**`). The suite also runs in CI via a non-blocking per-PR workflow
 (`.github/workflows/e2e.yml`) — it is not yet a required check.
 

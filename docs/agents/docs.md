@@ -81,8 +81,10 @@
   `lets-go`, `ship`, `docs-updater` and `what-next` from `jwh3times/skills`, and the
   `mattpocock/skills` snapshot. `frozen` here: fixed upstream, and what they need to know goes in
   `AGENTS.md` or `docs/agents/`. **When:** a skill is added, removed or replaced.
-- `docs/agents/*.md` — conventions and settings the installed skills read. **When:** a convention
-  or setting changes.
+- `docs/agents/*.md` — conventions and settings the installed skills read, plus two guides every
+  agent reads: `verification.md` (proving a change or claim) and `merging.md` (from open PR to
+  finished merge). **When:** a convention or setting changes; a verification or merge lesson is
+  learned that a script or test can't enforce.
 - `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
   development flow, branch naming or PR template changes.
 - `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
