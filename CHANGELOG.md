@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.6] - 2026-11-18
+
+### Changed
+
+- Agent config: the checked-in Claude Code settings now allow 21 frequent, read-only commands without a permission prompt. They are `git fetch`; project board, label and secret-name reads and `gh run watch`; Azure Container App, monitor-metric, log and account reads; the `tsc --noEmit`, `oxlint .` and `prettier --check` checks; `docker info`; and the Context7 and Microsoft Learn docs lookups. Commands that change state, push, or run arbitrary code still prompt. No product behavior changes.
+
 ## [16.0.5] - 2026-11-17
 
 ### Changed
@@ -2155,7 +2161,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.5...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.6...HEAD
+[16.0.6]: https://github.com/jwh3times/apexracers/compare/v16.0.5...v16.0.6
 [16.0.5]: https://github.com/jwh3times/apexracers/compare/v16.0.4...v16.0.5
 [16.0.4]: https://github.com/jwh3times/apexracers/compare/v16.0.0...v16.0.4
 [16.0.0]: https://github.com/jwh3times/apexracers/compare/v15.2.0...v16.0.0
