@@ -233,6 +233,22 @@ physically purged Demo and stopped old writers before deployment. Its Down refus
 recovery preserves enforcement history and proceeds forward. Follow the copy-writer inventory's
 cutover gates before any startup that auto-applies this migration.
 
+**A table rename scaffolds data loss.** Renaming an entity makes `dotnet ef migrations add` emit
+`DropTable` then `CreateTable`, which deletes every row. The only warning is one line in the output:
+"An operation was scaffolded that may result in the loss of data." Treat that line as a stop. Rows
+such as uploaded laps come from the Driver's own files and can't be fetched again.
+
+1. Rewrite the migration by hand: `RenameTable`, then `RenameIndex` for each non-PK index.
+2. PostgreSQL doesn't rename a table's constraints, so add raw `ALTER TABLE … RENAME CONSTRAINT` for
+   the PK and every FK. Renaming the PK constraint also renames its index, so don't `RenameIndex` it
+   as well.
+3. Make `Down` the exact inverse.
+4. Prove it on a throwaway `postgres:18.0-alpine` container: update to the previous migration, insert
+   a row, apply, check the row survived, roll back, check again.
+
+PostgreSQL 18's auto-named not-null constraints keep the old table name after a rename. They're
+cosmetic; leave them.
+
 ## Query patterns in services
 
 Feature services query `AppDbContext` directly via LINQ. The two service exceptions are

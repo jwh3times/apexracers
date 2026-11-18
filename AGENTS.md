@@ -223,6 +223,11 @@ no ready issue exists. `/ask-matt` maps the flow itself.
   would being wrong force a rework or ship something incorrect (a wrong percentile, a mis-mapped lap
   time, a bad EF migration, a cache keyed on the wrong shape)? If yes, it's load-bearing — ask.
 
+- **Prove it, don't assume it.** Read `docs/agents/verification.md` before calling a change verified,
+  accepting a "checked, nothing to do", or acting on an advisory or issue body. A green gate must be
+  able to go red, a new test must fail without its fix, and every red check blocks, whether or not
+  it is required.
+
 ---
 
 ## Project docs
@@ -608,7 +613,9 @@ here.
 ### Development flow
 
 [Development flow](#development-flow) above is the summary, `.agents/skills/ship/settings/dev-flow.md` the whole flow, and
-`docs/agents/dev-flow.md` what this repository adds.
+`docs/agents/dev-flow.md` what this repository adds. The flow ends at `/ship`; merging and what
+follows it (approval, blocked PRs, CI watching, changelog renumbering, Dependabot, advisories) are in
+`docs/agents/merging.md`.
 
 ---
 

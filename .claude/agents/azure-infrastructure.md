@@ -270,3 +270,32 @@ az monitor app-insights component quotastatus show \
 
 Exact resource names and one-off provisioning commands belong in
 `private/ops/azure-deployment-runbook.md`, not tracked agent docs.
+
+## Verifying production
+
+Claims about the deployed environment can usually be tested rather than reasoned about.
+
+- **The request log answers "what did production actually do".** `RequestLoggingMiddleware` writes
+  one `traces` line per request: `HTTP GET <path> responded <status> in <ms> from <ip>`. Query it with
+  `az monitor app-insights query --app <appId> --analytics-query "traces | where timestamp > ago(15m) | …"`.
+  Ingestion lags about two minutes. Pass `--offset` or `--start-time`: the default window is one
+  hour, and it silently caps a larger `ago(…)`.
+- **Don't correlate a probe by a marker in its URL.** The SPA fallback logs any unmatched path as
+  `/index.html`, so the marker never appears and telemetry looks broken. Correlate on the client
+  address, or use a path that really routes.
+- **The logs can't confirm a migration.** EF Core's migration messages sit below the production log
+  level. Confirm the running revision's image tag equals the merge SHA
+  (`az containerapp show … --query "properties.template.containers[0].image"`). Since the API runs
+  `MigrateAsync()` before serving, that proves the migration applied. Healthy probes alone don't,
+  because a failed new revision can leave the old one serving.
+- **Request-log retention is set per table.** The workspace default (30 days) isn't the governing
+  value. The `AppRequests` / `AppTraces` / `AppExceptions` / `AppDependencies` tables hold the client
+  addresses, and the public Privacy Policy promises their retention (90 days). Check with
+  `az monitor log-analytics workspace table list`, and change the policy in the same change as any
+  retention edit.
+- **A refused write can still partly apply.** Enabling point-in-time restore on the immutable journal
+  storage account was refused, but the blob soft delete it enabled as a prerequisite stayed on.
+  Snapshot the relevant properties before any write that may be refused, and read them back
+  afterwards, whether or not it succeeded.
+
+Exact resource names for these commands are in `private/ops/azure-deployment-runbook.md`.
