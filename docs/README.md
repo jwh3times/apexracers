@@ -104,7 +104,9 @@ domain docs (`CONTEXT.md` and `docs/adr/`, listed above under Public docs).
 `docs/agents/` file itself when the underlying convention (tracker, label
 strings, doc layout) changes, not `AGENTS.md`. [Development flow](agents/dev-flow.md)
 holds what this repository adds to the shared flow in `.agents/skills/ship/settings/dev-flow.md`, which
-`AGENTS.md` summarizes. `docs/agents/` also holds the settings files
+`AGENTS.md` summarizes. Two guides there apply to every agent:
+[Verification](agents/verification.md) (how to prove a change or claim) and
+[Merging](agents/merging.md) (from an open PR to a finished merge). `docs/agents/` also holds the settings files
 the shared skills (`end-session`, `handoff`, `lets-go`, `ship`, `docs-updater`,
 `what-next`) read; those skills install from `jwh3times/skills` and are never edited here —
 see **Shared skills** in `AGENTS.md`.
