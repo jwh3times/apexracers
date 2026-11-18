@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.7] - 2026-11-18
+
+### Changed
+
+- Agent config: the checked-in Claude Code settings now also allow 18 read-only Azure CLI queries without a permission prompt. They cover Application Insights component and quota reads, storage account, container and blob-service property reads, role assignment and definition lists, and PostgreSQL flexible server, web app, App Service plan, signed-in user, Log Analytics workspace, container registry, Container Apps environment, SSL certificate list, Key Vault and resource provider reads. Commands that print secret values (`az webapp config appsettings list`, `az keyvault secret show`), `az rest` and every update still prompt. No product behavior changes.
+
 ## [16.0.6] - 2026-11-18
 
 ### Changed
