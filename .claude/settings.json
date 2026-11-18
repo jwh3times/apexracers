@@ -30,7 +30,25 @@
       "mcp__context7__resolve-library-id",
       "Bash(az account show *)",
       "Bash(docker info)",
-      "Bash(gh secret list *)"
+      "Bash(gh secret list *)",
+      "Bash(az monitor app-insights component show *)",
+      "Bash(az monitor app-insights component quotastatus show *)",
+      "Bash(az storage account show *)",
+      "Bash(az role assignment list *)",
+      "Bash(az storage container-rm show *)",
+      "Bash(az postgres flexible-server show *)",
+      "Bash(az webapp show *)",
+      "Bash(az appservice plan show *)",
+      "Bash(az ad signed-in-user show *)",
+      "Bash(az monitor log-analytics workspace show *)",
+      "Bash(az role definition list *)",
+      "Bash(az acr show *)",
+      "Bash(az containerapp env show *)",
+      "Bash(az webapp config ssl list *)",
+      "Bash(az keyvault show *)",
+      "Bash(az storage container-rm list *)",
+      "Bash(az provider show *)",
+      "Bash(az storage account blob-service-properties show *)"
     ]
   },
   "hooks": {
