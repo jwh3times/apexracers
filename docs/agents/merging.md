@@ -72,6 +72,21 @@ The aggregating `CodeQL` check gives no detail. Fetch the alert:
 `*Password`, `*Secret` and `*Token`. If the value isn't a credential, rename the identifier and say so
 in the commit. Don't dismiss it: a dismissal doesn't survive the name reappearing.
 
+## A red check no branch caused
+
+- **A check that goes red on every open PR at once is usually a new third-party advisory**, such as
+  `npm audit (web)` failing on a dependency with no patched version. It still blocks
+  (`docs/agents/verification.md`), so merging past it takes an explicit maintainer waiver for each
+  PR. Record the waiver as a PR comment giving the cause, the exposure and that every other check is
+  green, and track the advisory in an issue.
+- **Before pinning or overriding the dependency, check whether the advisory was withdrawn:**
+  `gh api advisories/<GHSA-id> --jq .withdrawn_at`. A withdrawn advisory drops out of the audit, and
+  the check clears with no dependency change.
+- **Security Audit doesn't run on a push to `main`.** `.github/workflows/security-audit.yml`
+  triggers only on `pull_request`, its weekly `schedule` and `workflow_dispatch`. To show the audit
+  is green on `main` after a merge, run `gh workflow run security-audit.yml --ref main` and watch
+  that run by its head SHA.
+
 ## Changelog renumbering
 
 `Verify changelog version` requires the branch's newest `## [x.y.z]` section to equal

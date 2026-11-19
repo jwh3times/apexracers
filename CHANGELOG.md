@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes.
 
+## [16.0.8] - 2026-11-18
+
+### Changed
+
+- Agent docs: `docs/agents/merging.md` has a new section, "A red check no branch caused", with three rules. First, a check that goes red on every open PR at once, usually from a new third-party advisory, still blocks. Merging past it needs a maintainer waiver for each PR, recorded as a PR comment, and an issue tracking the advisory. Second, check whether the advisory was withdrawn before pinning or overriding the dependency. Third, Security Audit doesn't run on a push to `main`, so showing the audit is green there after a merge means starting it by hand. No product behavior changes.
+
 ## [16.0.7] - 2026-11-18
 
 ### Changed
@@ -2167,7 +2173,9 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.6...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.8...HEAD
+[16.0.8]: https://github.com/jwh3times/apexracers/compare/v16.0.7...v16.0.8
+[16.0.7]: https://github.com/jwh3times/apexracers/compare/v16.0.6...v16.0.7
 [16.0.6]: https://github.com/jwh3times/apexracers/compare/v16.0.5...v16.0.6
 [16.0.5]: https://github.com/jwh3times/apexracers/compare/v16.0.4...v16.0.5
 [16.0.4]: https://github.com/jwh3times/apexracers/compare/v16.0.0...v16.0.4
