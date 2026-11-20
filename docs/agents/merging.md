@@ -87,25 +87,24 @@ in the commit. Don't dismiss it: a dismissal doesn't survive the name reappearin
   is green on `main` after a merge, run `gh workflow run security-audit.yml --ref main` and watch
   that run by its head SHA.
 
-## Changelog renumbering
+## Changelog and release after a merge
 
-`Verify changelog version` requires the branch's newest `## [x.y.z]` section to equal
-`node scripts/next-version.mjs`. Only PRs authored by `dependabot[bot]` are exempt. That exemption is
-by author, so it still holds after a fix commit is pushed to a bot branch.
+No branch names a version (`Scheme: stamp-on-tag`, ADR 0008). A branch's entries live in its own
+`changelog.d/<branch-slug>.md` fragment, so open PRs never conflict over `CHANGELOG.md` and merge
+in any order. `Verify changelog version` checks the fragments instead of a predicted version, and
+Dependabot PRs pass it like any other: with no fragment, the release takes its entry from the PR
+title.
 
-So of two human PRs open at once, whichever merges second must renumber; merge order can't avoid it.
-Immediately before merging, `git fetch` and check `origin/main`, not only when the checks finish. If
-another PR landed, renumber:
+After each merge, `Version` (`.github/workflows/version.yml`) stamps the merge's section into
+`CHANGELOG.md`, tags the merge commit and creates its GitHub Release. The section arrives in a
+`chore(release): v<x.y.z> [skip ci]` commit pushed by the release GitHub App, the ruleset's one
+bypass actor. That commit runs no workflow, so nothing deploys it. To confirm a merge's release,
+find the `Version` run for the merge commit's SHA and check that the tag points at that commit.
 
-- the heading, to `## [<next>] - <today>`;
-- `[Unreleased]: …/compare/v<next>...HEAD`;
-- the version link, `[<next>]: …/compare/v<previous tag>...v<next>`, using the immediately preceding
-  tag even when it has no section of its own (Dependabot-minted builds never do);
-- any version in the PR title or body.
-
-Resolve the `CHANGELOG.md` conflict by keeping both sections, newest first. Use `git merge origin/main`,
-never a rebase, on a pushed branch. Run `node scripts/next-version.mjs` and
-`node scripts/check-changelog.mjs` before pushing, then wait for the full CI re-run.
+The stamp commit moves `main` again, about a minute after the merge. Because the ruleset is strict
+about up-to-date branches, every open PR is behind until it is updated past the stamp commit. Wait
+for the `Version` run to finish before `gh pr update-branch`, or the branch needs a second update
+and a second CI run. Use `git merge origin/main`, never a rebase, on a pushed branch.
 
 ## Release impact
 

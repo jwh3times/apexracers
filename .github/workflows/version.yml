@@ -1,108 +1,105 @@
 name: Version
 
-# Stamps every merge to main with a standard SemVer release.
+# Releases every merge to main with a three-part SemVer tag (`Scheme: stamp-on-tag`, ADR 0008).
 #
-# On each push to main this reads the release line from web/package.json `version`,
-# computes the next build number for that major/minor from existing three-part SemVer tags,
-# pushes an annotated tag `v<major>.<minor>.<build>`, and creates a GitHub Release.
+# On each push to main this runs `scripts/stamp-changelog.mjs`, which walks main's first-parent
+# history back to the newest `v<major>.<minor>.<build>` tag and, for each untagged merge, oldest
+# first:
+#   - builds its dated CHANGELOG.md section from the `changelog.d/` fragments that merge added, or
+#     from its PR title when it added none (a Dependabot PR, a docs-only change);
+#   - computes its version the way `scripts/next-version.mjs` does, from the web/package.json line at
+#     that merge and the tags so far (a new major/minor line starts at its `x.y.0` as written);
+#   - tags the merge commit itself, so a tag is exactly the code that merge deployed.
+# It makes one stamp commit, `chore(release): v<x.y.z>[, ...] [skip ci]`, that adds the sections
+# and their footer links and deletes the used fragments. This job pushes that commit and the tags
+# in one atomic push, then creates a GitHub Release per tag from its section.
 #
-# Why a tag/release instead of committing a bump back to main:
-#   - it works identically on protected branches (no bypass actor or bump-commit needed);
-#   - it never re-triggers CI or needs [skip ci] loops;
-#   - build numbers restart whenever the major/minor line is bumped.
+# The push uses a token from the release GitHub App, which the main ruleset lists as a bypass actor:
+# `GITHUB_TOKEN` cannot bypass a ruleset. The App's client ID is the RELEASE_APP_CLIENT_ID variable
+# and its private key the RELEASE_APP_PRIVATE_KEY secret. `[skip ci]` keeps the App's push from
+# starting this workflow again or any other push workflow, so `Build and Deploy` deploys the merge
+# commit and never the stamp commit, which only changes CHANGELOG.md and changelog.d/.
 #
-# Version source rules:
-#   - web/package.json must contain a plain x.y.z SemVer version.
-#   - x.y selects the release line.
-#   - If no vX.Y.N three-part tag exists yet, z is accepted as the first build. This
-#     intentionally allows vX.Y.0 for a major/minor bump.
-#   - Once any vX.Y.N tag exists, the next merge stamps max(N)+1.
-#   - Legacy four-part build tags such as v0.3.0.6 are ignored.
-#
-# To see which build a checkout corresponds to: git describe --tags
+# To see which release a checkout corresponds to: git describe --tags
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: write # required to push the build tag
+  contents: write # gh release create with GITHUB_TOKEN
 
-# Serialize runs so two closely-spaced merges can't compute the same build number.
+# Runs take turns and never cancel: a run waiting here starts from main's new tip and stamps every
+# merge the run before it did not.
 concurrency:
   group: version-main
   cancel-in-progress: false
 
 jobs:
-  tag-build:
-    name: Tag release
+  release:
+    name: Stamp changelog and tag
     runs-on: ubuntu-latest
     steps:
+      - name: Create release App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # full history + tags, needed to compute the next build number
+          ref: main # main's tip, not the pushed commit: a later merge may already be on it
+          fetch-depth: 0 # full history and tags, needed to find the untagged merges
+          token: ${{ steps.app-token.outputs.token }}
 
-      - name: Compute release version, push tag, and create release
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+
+      - name: Stamp the changelog and push the tags
+        id: stamp
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          bot="${APP_SLUG}[bot]"
+          bot_id=$(gh api "/users/${bot}" --jq .id)
+          git config user.name "$bot"
+          git config user.email "${bot_id}+${bot}@users.noreply.github.com"
+
+          node scripts/stamp-changelog.mjs --notes-dir "$RUNNER_TEMP/notes" > "$RUNNER_TEMP/tags.txt"
+          if [ ! -s "$RUNNER_TEMP/tags.txt" ]; then
+            echo "Every merge on main is tagged; nothing to release." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          tags=$(cut -d' ' -f1 "$RUNNER_TEMP/tags.txt")
+
+          refs=()
+          for tag in $tags; do refs+=("refs/tags/${tag}"); done
+          if ! git push --atomic origin HEAD:main "${refs[@]}" 2> "$RUNNER_TEMP/push.log"; then
+            cat "$RUNNER_TEMP/push.log" >&2
+            # Only main moving is benign: the run waiting behind this one stamps both merges.
+            if grep -Eq 'HEAD -> main \((fetch first|non-fast-forward)\)' "$RUNNER_TEMP/push.log"; then
+              echo "::notice::main moved during this run; the next run releases these merges."
+              exit 0
+            fi
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/push.log" >&2
+          echo "released=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Releases
+        if: steps.stamp.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          declared=$(jq -r .version web/package.json)
-          if ! echo "$declared" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Declared version '$declared' is not a plain x.y.z SemVer version."
-            exit 1
-          fi
-
-          major=$(echo "$declared" | cut -d. -f1)
-          minor=$(echo "$declared" | cut -d. -f2)
-          line="${major}.${minor}"
-
-          existing_for_commit=$(
-            git tag --points-at "$GITHUB_SHA" |
-              grep -E "^v${major}\.${minor}\.[0-9]+$" |
-              sort -t. -k3,3n |
-              tail -1 || true
-          )
-
-          if [ -n "$existing_for_commit" ]; then
-            tag="$existing_for_commit"
-            build=$(echo "$tag" | cut -d. -f3)
-            stamped="false"
-          else
-            # Compute the next build with the SAME script /ship uses, so the
-            # version /ship predicts and the version stamped here can never drift.
-            # (scripts/next-version.mjs reads the x.y line from the Version file in
-            # docs/agents/releases.md and returns x.y.<max build + 1>, or
-            # x.y.<declared build> if the line has no tags yet.)
-            version="$(node scripts/next-version.mjs)"
-            build="${version##*.}"
-            tag="v${version}"
-
-            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-              echo "::error::Computed tag '${tag}' already exists but does not point at ${GITHUB_SHA}."
-              exit 1
-            fi
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "Release ${tag}"
-            git push origin "refs/tags/${tag}"
-            stamped="true"
-          fi
-
-          if gh release view "$tag" >/dev/null 2>&1; then
-            release_created="false"
-          else
-            gh release create "$tag" --title "$tag" --generate-notes --latest --verify-tag
-            release_created="true"
-          fi
-
-          {
-            echo "### Release stamped: \`${tag}\`"
-            echo ""
-            echo "- Declared version: \`${declared}\`"
-            echo "- Release line: \`${line}\`"
-            echo "- Build number: \`${build}\`"
-            echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Tag created by this run: \`${stamped}\`"
-            echo "- GitHub Release created by this run: \`${release_created}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "### Released" >> "$GITHUB_STEP_SUMMARY"
+          while read -r tag sha; do
+            gh release create "$tag" \
+              --verify-tag \
+              --title "$tag" \
+              --notes-file "$RUNNER_TEMP/notes/${tag}.md"
+            echo "- \`${tag}\` on \`${sha}\`" >> "$GITHUB_STEP_SUMMARY"
+          done < "$RUNNER_TEMP/tags.txt"

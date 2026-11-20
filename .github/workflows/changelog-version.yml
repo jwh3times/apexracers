@@ -1,25 +1,15 @@
 name: Changelog Version
 
-# Verifies that the CHANGELOG's newest section names the version this PR's merge
-# will mint. It calls scripts/check-changelog.mjs, which computes that version with
-# scripts/next-version.mjs — the same script version.yml uses to stamp the release,
-# so the prediction and the eventual tag share one source of truth.
+# Verifies the branch's changelog fragments (`Scheme: stamp-on-tag`, ADR 0008). A branch writes its
+# entries to its own `changelog.d/<branch-slug>.md` and never names a version: version.yml stamps
+# each merge's section and tag after it lands. scripts/check-changelog.mjs fails a PR that adds,
+# removes or renumbers a version section, adds entries to `## [Unreleased]`, edits or deletes a
+# fragment another merge added, or adds a fragment that does not parse. A PR with no fragment
+# passes: version.yml writes its section from the PR title. So Dependabot PRs need no exemption.
 #
-# A Dependabot PR is exempt, in the step below: the next human PR rolls its changes
-# up into that PR's section. Every other PR writes a section, docs-only ones included.
-#
-# Blocking drift needs BOTH of these on main, and the "Main/Release branch rules"
-# ruleset sets both today:
-#   - "Verify changelog version" listed as a required status check, and
-#   - strict_required_status_checks_policy (Require branches to be up to date).
-# The second is load-bearing: `pull_request` does not re-fire when main moves, so a
-# green result from before someone else's merge would otherwise stay green even
-# though that merge consumed the build number this PR's section names. Requiring an
-# up-to-date branch forces a `synchronize` event, which re-runs this check against
-# the new tag set. Dropping either one silently reopens that gap.
-#
-# Note the ruleset targets branches, not tags, so version.yml's tag push is
-# unaffected by it.
+# The job keeps its name because the "Main/Release branch rules" ruleset requires
+# "Verify changelog version". It is not path-filtered: a required check that never reports holds
+# the merge forever.
 
 on:
   pull_request:
@@ -36,15 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # full history + tags, needed to compute the next build number
+          fetch-depth: 0 # full history and tags, needed for the merge base with main
 
-      - name: Verify CHANGELOG matches the next mint version
-        env:
-          # The PR author, not github.actor, which is whoever triggered this run.
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: |
-          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
-            echo "Dependabot PR: exempt. The next human PR rolls up its changes."
-            exit 0
-          fi
-          node scripts/check-changelog.mjs
+      - name: Verify the changelog fragments and that no released section changed
+        run: node scripts/check-changelog.mjs
