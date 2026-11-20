@@ -291,6 +291,12 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
   environment's own branch-allowlist configuration lives in GitHub/Azure settings, not in this repo's
   tracked files, so it isn't something a diff review can confirm — see the `azure-infrastructure`
   agent for that invariant and the `penetration-tester` agent for verifying it live.
+- `version.yml`'s direct push to `main` is intentional (ADR 0008): it mints a token from the
+  release GitHub App, the `main` ruleset's one bypass actor, and pushes only the stamp commit that
+  `scripts/stamp-changelog.mjs` makes (`CHANGELOG.md` and `changelog.d/`) with its tags. Flag any
+  other workflow or job that uses `RELEASE_APP_PRIVATE_KEY`, a `version.yml` change that pushes
+  more than that, and a stamp commit subject that loses `[skip ci]`. That token skips every required
+  check, and without `[skip ci]` the stamp commit would start `deploy.yml`.
 - Flag removal of `USER $APP_UID` (or any change that puts the final stage back on root) from
   `Dockerfile` or `ingestion.Dockerfile` — GHSA-4whp-7hv6-jvv6. Nothing in either image needs root:
   the API listens on unprivileged 8080 and the worker listens on nothing.
