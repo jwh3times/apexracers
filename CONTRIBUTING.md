@@ -248,6 +248,12 @@ ci: gate backend branch coverage at 80% and add AuthService tests
   `Closes #123` when the PR finishes it, or `Part of #123` when the PR is one
   slice of a spec that stays open. A number in the PR title alone does not link
   the issue. Confirm the quality gates pass.
+- Don't edit `CHANGELOG.md`. Every merge to `main` is released and tagged
+  automatically, and its section is written from the changelog fragment the
+  branch adds, `changelog.d/<branch-slug>.md`, in the format
+  [changelog.d/README.md](changelog.d/README.md) describes. A PR with no fragment
+  gets one entry from its title. The `Verify changelog version` check fails a PR
+  that edits a released section or another merge's fragment.
 - All status checks must be green before merge. Dependency updates are handled
   automatically by Dependabot.
 

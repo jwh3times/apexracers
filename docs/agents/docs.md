@@ -51,7 +51,11 @@
 - `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md` — the PR body's sections; the
   bug and feature forms. **When:** the development flow's linking rule changes; the triage labels
   the forms apply change.
-- `CHANGELOG.md` — public release notes, Keep a Changelog and SemVer. `ship-owned`.
+- `CHANGELOG.md` — public release notes, Keep a Changelog and SemVer, one dated section per merge,
+  stamped by `version.yml` after each merge. `frozen`: a branch edits only the policy text at the
+  top.
+- `changelog.d/*.md` — the branch's changelog fragment, one per branch (`changelog.d/README.md`).
+  `ship-owned`.
 - `CONTEXT.md`, `docs/adr/*.md` — the domain glossary and decisions, written by the
   `domain-modeling` skill. `frozen` for this skill. **When:** a term or ADR lands, keep
   `docs/README.md` listing them, and reword another document only where it uses a synonym the

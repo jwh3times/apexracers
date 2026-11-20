@@ -52,6 +52,7 @@ This directory contains public, contributor-safe project documentation.
 | [../CHANGELOG.md](../CHANGELOG.md) | Public release notes. |
 | [../CONTEXT.md](../CONTEXT.md) | Domain-language glossary — canonical terms (e.g. Series/Season, the Race Session/Split/Subsession hierarchy, User/Driver identity, Venue/Track, Race Lap/Uploaded Lap evidence, Percentile Rank/Top Share) shared across the product and its docs. |
 | [adr/0007-percentile-history-is-scoped-by-evidence-selection.md](adr/0007-percentile-history-is-scoped-by-evidence-selection.md) | Accepted selection-scoped history, canonical selection, chronology, missing-evidence and transition policies; contracts and storage cutover exist, with shared refresh implemented and controlled coherent readers documented separately. |
+| [adr/0008-stamp-changelog-on-tag.md](adr/0008-stamp-changelog-on-tag.md) | Changelog sections are stamped from per-branch `changelog.d/` fragments when `version.yml` tags each merge, instead of predicted at ship time. |
 | [adr/](adr/) | Architecture decision records — why a structural decision was made and what alternative was rejected, not just what shipped. |
 
 ## Private docs

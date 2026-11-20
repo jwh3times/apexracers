@@ -21,15 +21,15 @@ not `CLAUDE.md` — when project guidance changes.
 Docs and release metadata are prepared at **ship time** by the
 [`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
 impact, runs the [`docs-updater` skill](.agents/skills/docs-updater/SKILL.md) scoped to the branch
-diff, then rolls `[Unreleased]` into a CHANGELOG
-section dated for the version the merge will mint. Run `/ship` (or say "ship it") when a branch is
-ready for review.
+diff, then writes the branch's changelog entries to its own `changelog.d/<branch-slug>.md`
+fragment, which `version.yml` stamps into a dated section after the merge. Run `/ship` (or say
+"ship it") when a branch is ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
 it touched up to date, runs the `docs-updater` skill on the session's work, and cleans the
-regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a dated CHANGELOG
-section, or pushes source branches. It does publish required human-follow-up wiki instructions.
+regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a changelog
+fragment, or pushes source branches. It does publish required human-follow-up wiki instructions.
 Run `/ship` first if a branch is finished, then `/end-session`.
 
 Switching machines uses `/handoff` (writes the handoff document to the Handoffs folder, registers it
@@ -243,7 +243,7 @@ outer-repository Git history cannot see its changes.
 | `docs/README.md`                          | Public documentation map and ownership rules.                                                          |
 | `docs/features.md`                        | Public product capabilities and workflows.                                                             |
 | `docs/roadmap.md`                         | Public high-level status and roadmap.                                                                  |
-| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `/ship` writes the dated section each merge mints.  |
+| `CHANGELOG.md` (repo root)                | Public release notes — Keep a Changelog + SemVer; `version.yml` stamps each merge's section from its `changelog.d/` fragments. |
 | [ApexRacers project board][board]         | **Remaining, blocked, and parked work** — the single tracker, backed by public issues and private companion human-follow-up issues. Replaced `private/ROADMAP.md` on 2026-09-04. |
 | `private/archive.md`                      | Maintainer-only completed-work log — **frozen** at 2026-09-03; do not append.                          |
 | `private/PRD.md`                          | Maintainer-only full product spec.                                                                     |
@@ -260,21 +260,22 @@ when applicable; report any access blocker instead of silently omitting it.
 
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
 workflow changes; close or re-status the project-board item the work belongs to; and
-add a bullet under the `CHANGELOG.md` `[Unreleased]` section (correct
-`Added`/`Changed`/`Fixed`/`Removed`/`Security` category). Releases are automatic on merges to `main`:
-`.github/workflows/version.yml`
-creates a standard SemVer tag/GitHub Release in `<major>.<minor>.<build>` form, where
-`web/package.json` selects the major/minor release line and the build auto-increments from existing
-three-part tags. At ship time, `/ship` evaluates the cumulative release impact: a major or minor
-decision advances both `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a
-build decision leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not
-advanced to `1`. Rolling `[Unreleased]` into a versioned changelog section is a separate, deliberate
-step the [`/ship` skill](.agents/skills/ship/SKILL.md) performs when a branch is shipped (dating it for
-the version that merge will mint) — not during ordinary feature/fix work. After selecting the release
-line, `version.yml` and `/ship` compute the exact target from the same `scripts/next-version.mjs`, and a
-`Changelog Version` CI check
-(`.github/workflows/changelog-version.yml`) fails a PR whose dated section has drifted from it. (The
-`Doc map` in `docs/agents/docs.md` is the full doc-update matrix; the `docs-updater` skill applies it.)
+leave the changelog to `/ship`, which writes the branch's entries (correct
+`Added`/`Changed`/`Fixed`/`Removed`/`Security` category) to its own `changelog.d/<branch-slug>.md`
+fragment. Never edit `CHANGELOG.md` on a branch. Releases are automatic on merges to `main`
+(`Scheme: stamp-on-tag`, ADR 0008): `.github/workflows/version.yml` runs
+`scripts/stamp-changelog.mjs`, which turns each merge's fragments (or, with none, its PR title)
+into a dated section, tags the merge commit `v<major>.<minor>.<build>` and creates its GitHub
+Release. `web/package.json` selects the major/minor release line and the build auto-increments
+from existing three-part tags, computed as `scripts/next-version.mjs` does. At ship time, `/ship`
+evaluates the cumulative release impact: a major or minor decision advances both
+`web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a build decision
+leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not advanced to
+`1`. The stamp commit reaches `main` through the release GitHub App, the ruleset's one bypass
+actor, and carries `[skip ci]`, so it deploys nothing. The `Changelog Version` CI check
+(`.github/workflows/changelog-version.yml`) fails a PR that edits a released section, adds entries
+to `## [Unreleased]`, or changes another merge's fragment. (The `Doc map` in
+`docs/agents/docs.md` is the full doc-update matrix; the `docs-updater` skill applies it.)
 
 > **iRacing-data gating.** Live iRacing-backed features are gated so environments without service
 > credentials can still present a functional app. Two feature flags gate that surface:
@@ -603,8 +604,9 @@ node scripts/sync-agents.mjs
 ```
 
 `scripts/sync-agents.mjs`, `lint-agent-neutrality.mjs`, `check-docs.mjs`, `check-skills.mjs`, and
-`sync-main.mjs`, `next-version.mjs` and `check-changelog.mjs` where this repository carries them, are
-canonical in `jwh3times/skills` with their tests: fix them there, then copy them here.
+`sync-main.mjs`, `next-version.mjs`, `check-changelog.mjs` and `stamp-changelog.mjs` where this
+repository carries them, are canonical in `jwh3times/skills` with their tests: fix them there, then
+copy them here.
 `sync-agents.mjs` also writes the marked blocks in this file: change them in `jwh3times/skills`, not
 here.
 
@@ -614,7 +616,7 @@ here.
 
 [Development flow](#development-flow) above is the summary, `.agents/skills/ship/settings/dev-flow.md` the whole flow, and
 `docs/agents/dev-flow.md` what this repository adds. The flow ends at `/ship`; merging and what
-follows it (approval, blocked PRs, CI watching, changelog renumbering, Dependabot, advisories) are in
+follows it (approval, blocked PRs, CI watching, the release after a merge, Dependabot, advisories) are in
 `docs/agents/merging.md`.
 
 ---
