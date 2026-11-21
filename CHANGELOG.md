@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.11] - 2026-11-21
+
+### Changed
+
+- chore: Bump the nuget-minor-patch group with 1 update (#547)
+
 ## [16.0.10] - 2026-11-20
 
 ### Changed
@@ -2204,7 +2210,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.10...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.11...HEAD
+[16.0.11]: https://github.com/jwh3times/apexracers/compare/v16.0.10...v16.0.11
 [16.0.10]: https://github.com/jwh3times/apexracers/compare/v16.0.9...v16.0.10
 [16.0.9]: https://github.com/jwh3times/apexracers/compare/v16.0.8...v16.0.9
 [16.0.8]: https://github.com/jwh3times/apexracers/compare/v16.0.7...v16.0.8
