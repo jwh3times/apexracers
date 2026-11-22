@@ -108,8 +108,7 @@ holds what this repository adds to the shared flow in `.agents/skills/ship/setti
 `AGENTS.md` summarizes. Two guides there apply to every agent:
 [Verification](agents/verification.md) (how to prove a change or claim) and
 [Merging](agents/merging.md) (from an open PR to a finished merge). `docs/agents/` also holds the settings files
-the shared skills (`end-session`, `handoff`, `lets-go`, `ship`, `docs-updater`,
-`what-next`) read; those skills install from `jwh3times/skills` and are never edited here —
+the shared skills read; those skills install from `jwh3times/skills` and are never edited here —
 see **Shared skills** in `AGENTS.md`.
 
 Agents are authored for Claude Code, with `.codex/agents/*.toml` **generated** from
