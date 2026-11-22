@@ -15,6 +15,15 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.18] - 2026-11-22
+
+### Added
+
+- `docs/agents/dependabot.md`, the settings the `dependabot` skill reads when it reviews a
+  Dependabot pull request here: its review label, the installs CI runs, where each dependency is
+  pinned, the stack facts a verdict must not get wrong (no PR job builds a Docker image), and the
+  gates for an image bump, a PostgreSQL major, a .NET major and a build-critical npm major.
+
 ## [16.0.17] - 2026-11-22
 
 ### Changed
@@ -2246,7 +2255,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.17...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.18...HEAD
+[16.0.18]: https://github.com/jwh3times/apexracers/compare/v16.0.17...v16.0.18
 [16.0.17]: https://github.com/jwh3times/apexracers/compare/v16.0.16...v16.0.17
 [16.0.16]: https://github.com/jwh3times/apexracers/compare/v16.0.15...v16.0.16
 [16.0.15]: https://github.com/jwh3times/apexracers/compare/v16.0.14...v16.0.15
