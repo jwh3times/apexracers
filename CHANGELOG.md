@@ -15,6 +15,14 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.19] - 2026-11-22
+
+### Changed
+
+- The Doc map and `docs/README.md` point at the `shared-skills` block in `AGENTS.md` for the
+  installed `jwh3times/skills` skills instead of listing them by hand, a list that had dropped
+  `land` and `dependabot`.
+
 ## [16.0.18] - 2026-11-22
 
 ### Added
@@ -2255,7 +2263,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.18...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.19...HEAD
+[16.0.19]: https://github.com/jwh3times/apexracers/compare/v16.0.18...v16.0.19
 [16.0.18]: https://github.com/jwh3times/apexracers/compare/v16.0.17...v16.0.18
 [16.0.17]: https://github.com/jwh3times/apexracers/compare/v16.0.16...v16.0.17
 [16.0.16]: https://github.com/jwh3times/apexracers/compare/v16.0.15...v16.0.16
