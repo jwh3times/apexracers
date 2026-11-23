@@ -89,6 +89,9 @@
   agent reads: `verification.md` (proving a change or claim) and `merging.md` (from open PR to
   finished merge). **When:** a convention or setting changes; a verification or merge lesson is
   learned that a script or test can't enforce.
+- `docs/agents/guard.md` — the commands and paths `scripts/guard.mjs` stops here, on top of its
+  shared rules. **When:** a **Never run** command, a dev-stack command or a never-remove path in
+  `workspace.md` changes, or a deploy step moves.
 - `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
   development flow, branch naming or PR template changes.
 - `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
