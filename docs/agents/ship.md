@@ -4,7 +4,8 @@
 
 - `web/`: `npx prettier --check .` (the required **Format** check), fixed by `npx prettier --write .`
 - `web/`: `npm run lint`
-- `web/`: `npm run build` — `tsc -b && vite build`, which CI runs only at deploy time
+- `web/`: `npm run build` — `tsc -b && vite build`, which CI also runs on every PR in the
+  `Driver Privacy Contract` and `E2E` workflows
 - `web/`, only when `web/` changed: `npx vitest run --coverage` (the web half of the required
   **Test** check; about 15 seconds)
 - repo root: `dotnet build`
