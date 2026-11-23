@@ -15,6 +15,19 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.25] - 2026-11-23
+
+### Added
+
+- `docs/agents/guard.md` holds this repository's own rules for the shared guard hook
+  (`scripts/guard.mjs`), on top of the rules it applies everywhere. It denies
+  `docker compose down -v` (which deletes the seeded Postgres volume), `npx skills update`, a local
+  Playwright `--update-snapshots` run (directly or through the `test:e2e` npm scripts) and running
+  `scripts/deploy-ingestion.mjs` by hand. It asks before stopping the Compose stack or removing or
+  pruning Docker volumes, and protects `private/`, `.env`, `*.secrets.json`,
+  `.claude/settings.local.json` and `docker-compose.override.yml`. The docs map lists the new file.
+  No product behavior changes.
+
 ## [16.0.24] - 2026-11-23
 
 ### Changed
@@ -2300,7 +2313,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.24...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.25...HEAD
+[16.0.25]: https://github.com/jwh3times/apexracers/compare/v16.0.24...v16.0.25
 [16.0.24]: https://github.com/jwh3times/apexracers/compare/v16.0.23...v16.0.24
 [16.0.23]: https://github.com/jwh3times/apexracers/compare/v16.0.22...v16.0.23
 [16.0.22]: https://github.com/jwh3times/apexracers/compare/v16.0.21...v16.0.22
