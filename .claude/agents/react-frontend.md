@@ -2,7 +2,7 @@
 name: react-frontend
 description: Use for any work in web/ — React pages, components, contexts, the api.ts service client, Vitest tests, and Tailwind/design-token styling.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: inherit
 ---
 
 You are working inside the ApexRacers React frontend (`web/`). Know these patterns and enforce them without deviation.

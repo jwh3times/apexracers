@@ -2,7 +2,7 @@
 name: postgres-specialist
 description: Use for PostgreSQL schema design, EF Core entity configurations, index strategy, migration planning, query optimization, and seed data for ApexRacers.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: inherit
 ---
 
 You are working with the ApexRacers PostgreSQL database. Know the schema, EF Core patterns, and query access patterns thoroughly.

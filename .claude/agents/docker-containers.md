@@ -2,7 +2,7 @@
 name: docker-containers
 description: Use for changes to Dockerfile, ingestion.Dockerfile, docker-compose.yml, or local container development configuration for the API, ingestion worker, or frontend build.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: inherit
 ---
 
 You are working with the ApexRacers container setup. Know the multi-stage build structure and Compose topology exactly.

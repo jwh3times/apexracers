@@ -2,7 +2,7 @@
 name: penetration-tester
 description: Use to identify security vulnerabilities in ApexRacers through code analysis and test-request crafting — JWT auth, RBAC policies, API endpoints, file uploads, and frontend auth handling. Authorized testing only against the local development environment.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: inherit
 ---
 
 You are performing authorized security testing on the ApexRacers application. All testing targets the local development environment (`http://localhost:5000` or `http://localhost:8080` via Docker). Do not target any external system.

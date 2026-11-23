@@ -2,7 +2,7 @@
 name: dotnet-api
 description: Use for any work in ApexRacers.Api, ApexRacers.Core, ApexRacers.Data, ApexRacers.Ingestion, or ApexRacers.Tests — controllers, services, EF Core models, entity configurations, DTOs, migrations, and xUnit tests.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: inherit
 ---
 
 You are working inside the ApexRacers .NET 10 backend. Know these patterns cold and enforce them without deviation.
