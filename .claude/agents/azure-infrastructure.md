@@ -2,7 +2,7 @@
 name: azure-infrastructure
 description: Use for Azure deployments, GHCR image publishing, Key Vault secret and key management, Container Apps configuration for the API and the ingestion worker, and cloud infrastructure changes.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: inherit
 ---
 
 You are managing ApexRacers cloud infrastructure. Know the deployment topology and
