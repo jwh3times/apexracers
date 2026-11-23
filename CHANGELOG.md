@@ -15,6 +15,16 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.20] - 2026-11-22
+
+### Changed
+
+- `THIRD_PARTY_NOTICES.md` points at the `shared-skills` block in `AGENTS.md` for the skills that
+  come from `jwh3times/skills` instead of listing them by hand, a list that had dropped `land` and
+  `dependabot`. The attribution and license notices are unchanged.
+- `docs/agents/ship.md` says that CI builds the SPA on every PR too, in `Driver Privacy Contract`
+  and `E2E`, not only at deploy time.
+
 ## [16.0.19] - 2026-11-22
 
 ### Changed
@@ -2263,7 +2273,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.19...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.20...HEAD
+[16.0.20]: https://github.com/jwh3times/apexracers/compare/v16.0.19...v16.0.20
 [16.0.19]: https://github.com/jwh3times/apexracers/compare/v16.0.18...v16.0.19
 [16.0.18]: https://github.com/jwh3times/apexracers/compare/v16.0.17...v16.0.18
 [16.0.17]: https://github.com/jwh3times/apexracers/compare/v16.0.16...v16.0.17
