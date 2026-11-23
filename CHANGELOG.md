@@ -15,6 +15,14 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.26] - 2026-11-23
+
+### Changed
+
+- Every Claude Code agent definition in `.claude/agents/` now sets `model: inherit`, so a subagent
+  runs on the model of the session that launched it instead of a pinned Sonnet or Opus. The Codex
+  mirrors are unchanged, because the generator drops `model:`. No product behavior changes.
+
 ## [16.0.25] - 2026-11-23
 
 ### Added
@@ -2313,7 +2321,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.25...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.26...HEAD
+[16.0.26]: https://github.com/jwh3times/apexracers/compare/v16.0.25...v16.0.26
 [16.0.25]: https://github.com/jwh3times/apexracers/compare/v16.0.24...v16.0.25
 [16.0.24]: https://github.com/jwh3times/apexracers/compare/v16.0.23...v16.0.24
 [16.0.23]: https://github.com/jwh3times/apexracers/compare/v16.0.22...v16.0.23
