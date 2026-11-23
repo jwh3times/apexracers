@@ -15,6 +15,15 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.22] - 2026-11-23
+
+### Changed
+
+- The `postgres-specialist` agent definition no longer names the production PostgreSQL Flexible
+  Server or its Azure region. It says production runs on Azure Database for PostgreSQL Flexible
+  Server and points to the private companion's deployment runbook for the name and region. The
+  Codex mirror is regenerated to match.
+
 ## [16.0.21] - 2026-11-22
 
 ### Changed
@@ -2279,7 +2288,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.21...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.22...HEAD
+[16.0.22]: https://github.com/jwh3times/apexracers/compare/v16.0.21...v16.0.22
 [16.0.21]: https://github.com/jwh3times/apexracers/compare/v16.0.20...v16.0.21
 [16.0.20]: https://github.com/jwh3times/apexracers/compare/v16.0.19...v16.0.20
 [16.0.19]: https://github.com/jwh3times/apexracers/compare/v16.0.18...v16.0.19
