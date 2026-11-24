@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.29] - 2026-11-23
+
+### Changed
+
+- docs(agents): add the test-proof settings and the Due board field (#572)
+
 ## [16.0.28] - 2026-11-23
 
 ### Changed
@@ -2333,7 +2339,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.28...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.29...HEAD
+[16.0.29]: https://github.com/jwh3times/apexracers/compare/v16.0.28...v16.0.29
 [16.0.28]: https://github.com/jwh3times/apexracers/compare/v16.0.27...v16.0.28
 [16.0.27]: https://github.com/jwh3times/apexracers/compare/v16.0.26...v16.0.27
 [16.0.26]: https://github.com/jwh3times/apexracers/compare/v16.0.25...v16.0.26
