@@ -28,10 +28,10 @@ is in [`merging.md`](merging.md#dependabot-prs).
   `agent-config-sync.yml`, `changelog-version.yml` and `version.yml`.
   `backend-shared-experiment.yml` runs only on a prototype branch or by hand.
 - `.github/dependabot.yml` updates `nuget`, `github-actions`, `docker` and `docker-compose` at `/`,
-  and `npm` at `/web`. Minor and patch bumps are grouped per ecosystem. Majors open one PR each,
-  except the peer-locked families (`react`; `vite`, `vitest`, `@vitejs/plugin-react` and
-  `@vitest/*`; `@testing-library/*`; `oxlint`, `oxlint-tsgolint` and `typescript`), which travel
-  together.
+  and `npm` at `/web`. Minor and patch bumps are grouped per ecosystem. Majors the ignore rules do
+  not hold (`Where to look`) open one PR each, except the peer-locked families (`react`; `vite`,
+  `vitest`, `@vitejs/plugin-react` and `@vitest/*`; `@testing-library/*`; `oxlint`,
+  `oxlint-tsgolint` and `typescript`), which travel together.
 
 ## Label
 
@@ -62,8 +62,9 @@ Under Node 26 (the workflows' `setup-node`; no file pins it) and the SDK `global
   `Dockerfile` and `ingestion.Dockerfile`.
 - The Node 26 pins: `node-version` in the workflows, `node:26-alpine` in `Dockerfile`, `engines` in
   `web/package.json`.
-- The ignore rules in `.github/dependabot.yml`: .NET-versioned majors are held until the .NET 11
-  migration (#512).
+- The ignore rules in `.github/dependabot.yml`: .NET-versioned majors, and `Npgsql.OpenTelemetry`
+  majors with them, are held until the .NET 11 migration (#512); `postgres` majors in
+  `docker-compose.yml` are held until the production database move (#533) picks the next major.
 - The SPA's tool configs: `web/vite.config.ts` (with the Vitest coverage thresholds),
   `web/tsconfig*.json`, `web/postcss.config.cjs`, `web/.prettierrc`,
   `web/playwright.config.ts` and `web/playwright.privacy.config.ts`.

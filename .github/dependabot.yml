@@ -25,6 +25,9 @@ updates:
     # .NET 11 hold: these families are versioned in lockstep with .NET, so their
     # next major IS the .NET 11 migration (#512, blocked by #511). The migration
     # branch removes this block. Minor/patch updates within 10.x still arrive.
+    # Npgsql.OpenTelemetry brings the Npgsql driver, whose next major breaks the
+    # 10.x Npgsql EF Core provider (MissingMethodException, #563), so the two
+    # majors move together in the migration.
     ignore:
       - dependency-name: "Microsoft.AspNetCore.*"
         update-types: ["version-update:semver-major"]
@@ -33,6 +36,8 @@ updates:
       - dependency-name: "Microsoft.Extensions.*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql.OpenTelemetry"
         update-types: ["version-update:semver-major"]
     groups:
       nuget-minor-patch:
@@ -174,6 +179,13 @@ updates:
       - "docker-compose"
     commit-message:
       prefix: "chore"
+    # PostgreSQL major hold: local Postgres stays on production's major. A new
+    # major refuses the existing data volume, and the test and e2e images pin
+    # 18 too; the next major is chosen with the production database move
+    # (#533), which moves every pin together (docs/agents/dependabot.md).
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
     groups:
       compose-minor-and-patch:
         patterns:
