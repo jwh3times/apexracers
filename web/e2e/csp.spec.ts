@@ -195,9 +195,9 @@ test('development Scalar renders the OpenAPI document under its scoped CSP', asy
   expect(policy).not.toContain('unsafe-eval');
   await expect(page.getByRole('heading', { name: 'ApexRacers API', exact: true })).toBeVisible();
   await settle(page);
-  // Scalar's bundled Zod probes Function('') in try/catch, then uses its non-eval
-  // fallback. Keep that probe blocked; allow no resource-loading violations.
-  expect(violations).toEqual(['script-src: eval']);
+  // Scalar.AspNetCore 3.2.0's bundle no longer probes Function(''), so the scoped
+  // policy (still without 'unsafe-eval', asserted above) raises no violations.
+  expect(violations).toEqual([]);
   const spec = await page.request.get('/openapi/v1.json');
   expect(spec.ok()).toBe(true);
   const document = (await spec.json()) as { info: { title: string } };
