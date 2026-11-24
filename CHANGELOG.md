@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.34] - 2026-11-24
+
+### Changed
+
+- chore(deps): Bump the `npm-minor-patch` group across 1 directory with 5 updates (#575)
+
 ## [16.0.33] - 2026-11-24
 
 ### Changed
@@ -2363,7 +2369,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.33...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.34...HEAD
+[16.0.34]: https://github.com/jwh3times/apexracers/compare/v16.0.33...v16.0.34
 [16.0.33]: https://github.com/jwh3times/apexracers/compare/v16.0.32...v16.0.33
 [16.0.32]: https://github.com/jwh3times/apexracers/compare/v16.0.31...v16.0.32
 [16.0.31]: https://github.com/jwh3times/apexracers/compare/v16.0.30...v16.0.31
