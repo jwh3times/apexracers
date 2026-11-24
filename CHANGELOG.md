@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.32] - 2026-11-24
+
+### Changed
+
+- chore: Bump `actions/create-github-app-token` from `3.3.0` to `3.4.0` in the actions-minor-and-patch group across 1 directory (#558)
+
 ## [16.0.31] - 2026-11-24
 
 ### Changed
@@ -2351,7 +2357,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.31...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.32...HEAD
+[16.0.32]: https://github.com/jwh3times/apexracers/compare/v16.0.31...v16.0.32
 [16.0.31]: https://github.com/jwh3times/apexracers/compare/v16.0.30...v16.0.31
 [16.0.30]: https://github.com/jwh3times/apexracers/compare/v16.0.29...v16.0.30
 [16.0.29]: https://github.com/jwh3times/apexracers/compare/v16.0.28...v16.0.29
