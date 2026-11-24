@@ -1,6 +1,6 @@
 # Merging
 
-What happens between an open PR and a finished merge: the steps `/ship` doesn't cover. Each rule
+What happens between an open PR and a finished merge: the steps `/open-pr` doesn't cover. Each rule
 here was learned from a merge that stalled, went red, or looked done when it wasn't.
 
 ## Approval
@@ -108,7 +108,7 @@ and a second CI run. Use `git merge origin/main`, never a rebase, on a pushed br
 
 ## Release impact
 
-`/ship`'s rubric calls "an incompatible change to a public API" major. This repository's bar, read off
+`/open-pr`'s rubric calls "an incompatible change to a public API" major. This repository's bar, read off
 its own changelog, is narrower: **major means an existing client or operator must now do something
 differently**, not that a consumer could notice a difference.
 

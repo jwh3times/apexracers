@@ -3,7 +3,7 @@
 Required human actions left by completed agent work follow the procedure in the installed skills'
 `human-follow-up` settings definition (for example
 `.agents/skills/end-session/settings/human-follow-up.md`). The agent that completes the work owns
-the follow-up; docs-updater, ship and end-session verify it.
+the follow-up; docs-updater, open-pr and end-session verify it.
 
 ## Follow-up board
 

@@ -19,18 +19,18 @@ not `CLAUDE.md` — when project guidance changes.
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 
 Docs and release metadata are prepared at **ship time** by the
-[`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
+[`/open-pr` skill](.agents/skills/open-pr/SKILL.md): before opening a PR it evaluates the cumulative SemVer
 impact, runs the [`docs-updater` skill](.agents/skills/docs-updater/SKILL.md) scoped to the branch
 diff, then writes the branch's changelog entries to its own `changelog.d/<branch-slug>.md`
-fragment, which `version.yml` stamps into a dated section after the merge. Run `/ship` (or say
+fragment, which `version.yml` stamps into a dated section after the merge. Run `/open-pr` (or say
 "ship it") when a branch is ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
 it touched up to date, runs the `docs-updater` skill on the session's work, and cleans the
-regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a changelog
+regenerable build/test leftovers out of the working tree. It is deliberately **not** `/open-pr` — it never opens a PR, writes a changelog
 fragment, or pushes source branches. It does publish required human-follow-up wiki instructions.
-Run `/ship` first if a branch is finished, then `/end-session`.
+Run `/open-pr` first if a branch is finished, then `/end-session`.
 
 Switching machines uses `/handoff` (writes the handoff document to the Handoffs folder, registers it
 in `handoff_map.json` through `.agents/skills/handoff/handoff-map.mjs`, then runs `/end-session`) and
@@ -269,14 +269,14 @@ when applicable; report any access blocker instead of silently omitting it.
 
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
 workflow changes; close or re-status the project-board item the work belongs to; and
-leave the changelog to `/ship`, which writes the branch's entries (correct
+leave the changelog to `/open-pr`, which writes the branch's entries (correct
 `Added`/`Changed`/`Fixed`/`Removed`/`Security` category) to its own `changelog.d/<branch-slug>.md`
 fragment. Never edit `CHANGELOG.md` on a branch. Releases are automatic on merges to `main`
 (`Scheme: stamp-on-tag`, ADR 0008): `.github/workflows/version.yml` runs
 `scripts/stamp-changelog.mjs`, which turns each merge's fragments (or, with none, its PR title)
 into a dated section, tags the merge commit `v<major>.<minor>.<build>` and creates its GitHub
 Release. `web/package.json` selects the major/minor release line and the build auto-increments
-from existing three-part tags, computed as `scripts/next-version.mjs` does. At ship time, `/ship`
+from existing three-part tags, computed as `scripts/next-version.mjs` does. At ship time, `/open-pr`
 evaluates the cumulative release impact: a major or minor decision advances both
 `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a build decision
 leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not advanced to
@@ -625,8 +625,8 @@ rules forbid; this repository's own additions go in `docs/agents/guard.md`.
 
 ### Development flow
 
-[Development flow](#development-flow) above is the summary, `.agents/skills/ship/settings/dev-flow.md` the whole flow, and
-`docs/agents/dev-flow.md` what this repository adds. The flow ends at `/ship`; merging and what
+[Development flow](#development-flow) above is the summary, `.agents/skills/open-pr/settings/dev-flow.md` the whole flow, and
+`docs/agents/dev-flow.md` what this repository adds. The flow ends at `/open-pr`; merging and what
 follows it (approval, blocked PRs, CI watching, the release after a merge, Dependabot, advisories) are in
 `docs/agents/merging.md`.
 
