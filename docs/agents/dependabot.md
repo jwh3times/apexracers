@@ -28,10 +28,10 @@ is in [`merging.md`](merging.md#dependabot-prs).
   `agent-config-sync.yml`, `changelog-version.yml` and `version.yml`.
   `backend-shared-experiment.yml` runs only on a prototype branch or by hand.
 - `.github/dependabot.yml` updates `nuget`, `github-actions`, `docker` and `docker-compose` at `/`,
-  and `npm` at `/web`. Minor and patch bumps are grouped per ecosystem. Majors open one PR each,
-  except the peer-locked families (`react`; `vite`, `vitest`, `@vitejs/plugin-react` and
-  `@vitest/*`; `@testing-library/*`; `oxlint`, `oxlint-tsgolint` and `typescript`), which travel
-  together.
+  and `npm` at `/web`. Minor and patch bumps are grouped per ecosystem. Majors the ignore rules do
+  not hold (`Where to look`) open one PR each, except the peer-locked families (`react`; `vite`,
+  `vitest`, `@vitejs/plugin-react` and `@vitest/*`; `@testing-library/*`; `oxlint`,
+  `oxlint-tsgolint` and `typescript`), which travel together.
 
 ## Label
 
