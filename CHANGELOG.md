@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.35] - 2026-11-24
+
+### Changed
+
+- chore: Bump `Azure.Storage.Blobs` and 3 others (#562)
+
 ## [16.0.34] - 2026-11-24
 
 ### Changed
@@ -2369,7 +2375,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.34...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.35...HEAD
+[16.0.35]: https://github.com/jwh3times/apexracers/compare/v16.0.34...v16.0.35
 [16.0.34]: https://github.com/jwh3times/apexracers/compare/v16.0.33...v16.0.34
 [16.0.33]: https://github.com/jwh3times/apexracers/compare/v16.0.32...v16.0.33
 [16.0.32]: https://github.com/jwh3times/apexracers/compare/v16.0.31...v16.0.32
