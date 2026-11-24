@@ -19,18 +19,18 @@ not `CLAUDE.md` — when project guidance changes.
 | Security testing (JWT/auth flows, data isolation, CORS, admin)     | `penetration-tester`   |
 
 Docs and release metadata are prepared at **ship time** by the
-[`/ship` skill](.agents/skills/ship/SKILL.md): before opening a PR it evaluates the cumulative SemVer
+[`/open-pr` skill](.agents/skills/open-pr/SKILL.md): before opening a PR it evaluates the cumulative SemVer
 impact, runs the [`docs-updater` skill](.agents/skills/docs-updater/SKILL.md) scoped to the branch
 diff, then writes the branch's changelog entries to its own `changelog.d/<branch-slug>.md`
-fragment, which `version.yml` stamps into a dated section after the merge. Run `/ship` (or say
+fragment, which `version.yml` stamps into a dated section after the merge. Run `/open-pr` (or say
 "ship it") when a branch is ready for review.
 
 A work session is closed out by the [`/end-session` skill](.agents/skills/end-session/SKILL.md):
 it captures what the session learned into memory, brings the GitHub issues and project board items
 it touched up to date, runs the `docs-updater` skill on the session's work, and cleans the
-regenerable build/test leftovers out of the working tree. It is deliberately **not** `/ship` — it never opens a PR, writes a changelog
+regenerable build/test leftovers out of the working tree. It is deliberately **not** `/open-pr` — it never opens a PR, writes a changelog
 fragment, or pushes source branches. It does publish required human-follow-up wiki instructions.
-Run `/ship` first if a branch is finished, then `/end-session`.
+Run `/open-pr` first if a branch is finished, then `/end-session`.
 
 Switching machines uses `/handoff` (writes the handoff document to the Handoffs folder, registers it
 in `handoff_map.json` through `.agents/skills/handoff/handoff-map.mjs`, then runs `/end-session`) and
@@ -163,7 +163,7 @@ codex mcp add playwright -- npx -y @playwright/mcp@0.0.85 --isolated
 <!-- shared:development-flow -->
 
 The flow skills are this repository's binding process for changing code. Read
-`.agents/skills/ship/settings/dev-flow.md` (the routing, exemptions and issue linking) and
+`.agents/skills/open-pr/settings/dev-flow.md` (the routing, exemptions and issue linking) and
 `docs/agents/dev-flow.md` (what this repository adds) before the first edit of a change, and whenever
 no ready issue exists. `/ask-matt` maps the flow itself.
 
@@ -181,14 +181,15 @@ no ready issue exists. `/ask-matt` maps the flow itself.
   prep, and an explicit user waiver recorded in the PR body as `Flow waived by the user: <reason>`.
 - **Linking.** Branches are `<type>/<issue#>-<slug>`; the PR body opens with `Closes #N` or
   `Part of #N`.
-- **The flow ends at `/ship`.** `/implement` stops at a commit; `/ship` refreshes the docs, writes the
-  changelog and the PR body, and opens the PR. When the user says to merge it, `/land` merges it
+- **The flow ends at `/open-pr`.** `/implement` stops at a commit; `/open-pr` refreshes the docs,
+  writes the changelog and the PR body, and opens the PR (Claude Code's built-in `/ship` is a
+  different command, outside this flow). When the user says to merge it, `/land` merges it
   and confirms its release. `/dependabot` reviews the open Dependabot PRs and hands the ones the
   user names to `/land`; nothing merges a Dependabot PR on its own. `/ask-matt` also routes to
   `/pr`, `/retro` and `/implement-spec`, which are not installed here.
 - **Tests are proven, reds are read.** Before `/implement` commits a change that adds or changes
   tests, and in `/code-review`, run `/test-prover`: in a scratch worktree it reverts the fix and
-  breaks its guards, and every new test must go red. `/ship` runs it too. `/land` and
+  breaks its guards, and every new test must go red. `/open-pr` runs it too. `/land` and
   `/dependabot` read a red check with `/ci-triage`, which never re-runs anything.
   `/records-audit` checks the board, the trackers, the follow-up wiki and the changelog against
   each other; run it weekly, and `/what-next` says when it is due.
@@ -196,7 +197,7 @@ no ready issue exists. `/ask-matt` maps the flow itself.
   out with `/end-session`, and `/lets-go` resumes it. It does not write the portable file `/ask-matt`
   describes, so a `/prototype` detour stays in the session or uses a branch.
 - **A wizard is not the record.** A step only a human can take follows the `## Procedure` in
-  `.agents/skills/ship/settings/human-follow-up.md`, whose instructions stand without the script.
+  `.agents/skills/open-pr/settings/human-follow-up.md`, whose instructions stand without the script.
 - **Research goes where it is safe to keep.** `/research` findings that would expose private material
   go to the private companion, where there is one, never to an ignored folder with no repository
   behind it. Details of an unpublished vulnerability are a draft advisory, never a research file.
@@ -268,14 +269,14 @@ when applicable; report any access blocker instead of silently omitting it.
 
 **After completing a feature/fix:** update public docs when product capabilities, setup, or contribution
 workflow changes; close or re-status the project-board item the work belongs to; and
-leave the changelog to `/ship`, which writes the branch's entries (correct
+leave the changelog to `/open-pr`, which writes the branch's entries (correct
 `Added`/`Changed`/`Fixed`/`Removed`/`Security` category) to its own `changelog.d/<branch-slug>.md`
 fragment. Never edit `CHANGELOG.md` on a branch. Releases are automatic on merges to `main`
 (`Scheme: stamp-on-tag`, ADR 0008): `.github/workflows/version.yml` runs
 `scripts/stamp-changelog.mjs`, which turns each merge's fragments (or, with none, its PR title)
 into a dated section, tags the merge commit `v<major>.<minor>.<build>` and creates its GitHub
 Release. `web/package.json` selects the major/minor release line and the build auto-increments
-from existing three-part tags, computed as `scripts/next-version.mjs` does. At ship time, `/ship`
+from existing three-part tags, computed as `scripts/next-version.mjs` does. At ship time, `/open-pr`
 evaluates the cumulative release impact: a major or minor decision advances both
 `web/package.json` and `web/package-lock.json` to the new `x.y.0` line, while a build decision
 leaves them unchanged. If no `vX.Y.0` tag exists yet, build `0` is valid and is not advanced to
@@ -586,7 +587,7 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/ag
 
 <!-- shared:shared-skills -->
 
-`end-session`, `handoff`, `lets-go`, `ship`, `land`, `dependabot`, `docs-updater`, `what-next`,
+`end-session`, `handoff`, `lets-go`, `open-pr`, `land`, `dependabot`, `docs-updater`, `what-next`,
 `test-prover`, `ci-triage` and `records-audit` install from `jwh3times/skills`, and are never
 edited here: reinstalling overwrites a local edit.
 A fix goes upstream, and what they need to know about this repository goes in the settings files
@@ -602,7 +603,7 @@ Re-running the install is the update; never run `npx skills update`, which leave
 linked to its source instead of copied:
 
 ```bash
-npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s ship -s land -s dependabot -s docs-updater -s what-next -s test-prover -s ci-triage -s records-audit -a codex --copy -y
+npx skills add jwh3times/skills -s end-session -s handoff -s lets-go -s open-pr -s land -s dependabot -s docs-updater -s what-next -s test-prover -s ci-triage -s records-audit -a codex --copy -y
 npx skills add mattpocock/skills#d1478fcb140db0b93c0c8df17bcfd311844749d0 \
   -s ask-matt -s code-review -s codebase-design -s diagnosing-bugs -s domain-modeling -s grill-me \
   -s grill-with-docs -s grilling -s implement -s improve-codebase-architecture -s prototype \
@@ -624,8 +625,8 @@ rules forbid; this repository's own additions go in `docs/agents/guard.md`.
 
 ### Development flow
 
-[Development flow](#development-flow) above is the summary, `.agents/skills/ship/settings/dev-flow.md` the whole flow, and
-`docs/agents/dev-flow.md` what this repository adds. The flow ends at `/ship`; merging and what
+[Development flow](#development-flow) above is the summary, `.agents/skills/open-pr/settings/dev-flow.md` the whole flow, and
+`docs/agents/dev-flow.md` what this repository adds. The flow ends at `/open-pr`; merging and what
 follows it (approval, blocked PRs, CI watching, the release after a merge, Dependabot, advisories) are in
 `docs/agents/merging.md`.
 

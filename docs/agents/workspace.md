@@ -38,7 +38,7 @@ deliberate: ask first.
 
 - **Use `origin/main` as the base, after `git fetch origin`.** In a linked worktree, local `main` is
   held by another checkout and is often behind. `git merge-base main HEAD` then returns an old base
-  and silently widens the branch diff to already-merged work, which `/ship` reads for the release
+  and silently widens the branch diff to already-merged work, which `/open-pr` reads for the release
   decision. Tell any subagent computing a diff to do the same.
 - **A persisted working directory retargets later commands.** After a `cd` into another worktree or
   into `private/`, later `git` and `gh` calls act on that checkout. An unexpectedly empty `gh` result

@@ -1,6 +1,6 @@
 # Development flow
 
-The flow itself is `.agents/skills/ship/settings/dev-flow.md`, and `AGENTS.md` summarizes it. This file holds what this repository
+The flow itself is `.agents/skills/open-pr/settings/dev-flow.md`, and `AGENTS.md` summarizes it. This file holds what this repository
 adds.
 
 ## Branch types
@@ -16,4 +16,4 @@ delete it.
 
 ## After the pull request opens
 
-`/ship` stops once the PR is open. Merging and its follow-ups are in `docs/agents/merging.md`.
+`/open-pr` stops once the PR is open. Merging and its follow-ups are in `docs/agents/merging.md`.
