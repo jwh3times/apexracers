@@ -74,6 +74,8 @@ jwh3times 2
 - `Blocked by`: the blocker outside the project, set with `Blocked`. The standing
   iRacing-credentials blocker has its own value; a new blocker worth tracking gets its own issue. A
   blocker that is an issue is a native `blocked_by` edge (see **Blocking**), never a value here.
+- `Due` (date): set only when the action has a real deadline (an expiry, a renewal, an offer's end,
+  a date someone else set), never an aspirational one; empty otherwise.
 
 ## Priority order
 
