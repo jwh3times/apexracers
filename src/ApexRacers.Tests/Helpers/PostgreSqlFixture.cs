@@ -11,6 +11,7 @@ using Xunit.Sdk;
 namespace ApexRacers.Tests.Helpers;
 
 [CollectionDefinition(Name)]
+[DropFinishedPostgreSqlDatabases]
 public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 {
     public const string Name = "PostgreSQL integration";
@@ -19,8 +20,9 @@ public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 /// <summary>
 /// Shares one pinned PostgreSQL container across the provider-specific test collection while
 /// creating a fresh database for every test. The database-per-test boundary preserves isolation
-/// even when a test fails before disposing its context; the container removes all databases when
-/// the collection completes. <c>EnsureCreated</c> deliberately builds the current EF model: these
+/// even when a test fails before disposing its context; <see cref="FinishedTestDatabases"/> drops a
+/// finished test's databases before the next test starts, which keeps the container small enough to
+/// remove quickly when the collection completes (issue #568). <c>EnsureCreated</c> deliberately builds the current EF model: these
 /// tests validate Npgsql translation, PostgreSQL transactions, and relational constraints, while
 /// migration application remains the startup/deployment path's responsibility.
 /// </summary>
@@ -31,16 +33,21 @@ public sealed class PostgreSqlFixture(IMessageSink messageSink)
     private readonly HashSet<string> ownedPools = [];
     private string? poolOwner;
 
+    internal FinishedTestDatabases Databases { get; private set; } = null!;
+
     protected override async ValueTask InitializeAsync()
     {
         FixtureCostProbe.TestcontainersSessionResource();
         await FixtureCostProbe.MeasureAsync("container.initialize", async () => await base.InitializeAsync());
+        Databases = new FinishedTestDatabases(Container.GetConnectionString());
+        FinishedTestDatabases.Current = Databases;
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR")))
             FixtureCostProbe.ContainerResource(Container.Id, Container.GetMappedPublicPort(5432), "ready");
     }
 
     protected override async ValueTask DisposeAsyncCore()
     {
+        FinishedTestDatabases.Current = null;
         AdoptPoolOwner(null);
         var probeEnabled = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APEXRACERS_COST_PROBE_DIR"));
         var containerId = probeEnabled ? Container.Id : "";

@@ -531,7 +531,12 @@ Use `DbContextFactory.Create()` for the ordinary fast service test. Move a class
 `PostgreSqlCollection` and inject `PostgreSqlFixture` when the behavior depends on Npgsql-only
 translation (including `DateTimeOffset` comparisons/order), PostgreSQL transactions, or production
 constraints such as a unique index, user foreign key, or cascade. The fixture shares one pinned
-container but creates a unique database per test. **Each `CreateOptions()` / `CreateOptionsAsync()`
+container but creates a unique database per test. After each test in the collection,
+`[DropFinishedPostgreSqlDatabases]` on `PostgreSqlCollection` records every database on the
+container, including the ones topology and restore helpers create outside the fixture, and
+`FinishedTestDatabases` drops them `WITH (FORCE)` before the next test starts (#568). A test's
+databases last only until the next test starts, and the hook stays scoped to that collection: run beside a PostgreSQL
+test, it would drop that test's live database. **Each `CreateOptions()` / `CreateOptionsAsync()`
 call creates a new database**, so a test that needs several `AppDbContext`s over the same data must
 call it once and build every context from that one options instance. Calling it per context gives
 each one its own empty database, and in a concurrency test that exercises nothing while staying
