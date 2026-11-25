@@ -43,6 +43,14 @@ here was learned from a merge that stalled, went red, or looked done when it was
   - **"Install Chromium" fails at about 11 minutes:** the runner couldn't reach the Ubuntu mirrors.
     Re-run.
   - **A test step fails at about 28 minutes:** a real case failed. Investigate before any re-run.
+- **Every PostgreSQL test fails at once with `Test Collection Cleanup Failure (PostgreSQL
+  integration)`**, a `TaskCanceledException` from `RemoveContainerAsync`, while the TRX shows every
+  test passed and the run ends exactly 100 s after its last test. Removing the shared test container
+  outlasted Docker.DotNet's 100 s request timeout (issue #568, seen in both `Build and Deploy` and
+  Driver Privacy Contract). Since that fix, `FinishedTestDatabases` drops each finished test's
+  databases and the removal takes seconds. On a branch that has the fix, this red means databases
+  are accumulating again, so investigate before any re-run. On a branch cut before it, re-run the
+  failed `Test` job, which also runs the skipped deploys.
 
 ## When a PR is BLOCKED with every check green
 
