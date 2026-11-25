@@ -51,6 +51,11 @@
 - `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md` — the PR body's sections; the
   bug and feature forms. **When:** the development flow's linking rule changes; the triage labels
   the forms apply change.
+- `.github/dependabot.yml` — what Dependabot updates, how it groups minor, patch and peer-locked
+  major bumps, and the majors it holds, each `ignore` rule with its reason in the comment beside it.
+  **When:** a major hold is added or lifted, or a peer-locked family changes (keep the `Where to
+  look` and `Stack` sections of `docs/agents/dependabot.md` matching); an ecosystem or manifest
+  directory is added or removed.
 - `CHANGELOG.md` — public release notes, Keep a Changelog and SemVer, one dated section per merge,
   stamped by `version.yml` after each merge. `frozen`: a branch edits only the policy text at the
   top.

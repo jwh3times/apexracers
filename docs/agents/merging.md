@@ -106,6 +106,14 @@ about up-to-date branches, every open PR is behind until it is updated past the 
 for the `Version` run to finish before `gh pr update-branch`, or the branch needs a second update
 and a second CI run. Use `git merge origin/main`, never a rebase, on a pushed branch.
 
+## Deploys
+
+- `deploy.yml`
+
+Each merge commit's push to `main` starts `deploy.yml`, which deploys the API and the ingestion
+worker. The stamp commit carries `[skip ci]`, so it starts no second deploy. `land` watches the run
+and never re-runs it; a failed deploy is reported for the maintainer to decide.
+
 ## Release impact
 
 `/open-pr`'s rubric calls "an incompatible change to a public API" major. This repository's bar, read off
