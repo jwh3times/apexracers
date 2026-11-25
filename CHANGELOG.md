@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.40] - 2026-11-25
+
+### Fixed
+
+- Backend tests: a test run no longer fails every PostgreSQL test at once when removing the shared test container takes too long (#568). Each test in the collection creates its own database, and a full run used to leave about 660 of them (about 9 GB) in the container. Removing it at the end took 4–55 seconds on CI, once 89, and twice outlasted Docker's 100-second request limit. The collection fixture then reported a cleanup failure, xUnit failed all 666 tests although every one had passed, and the deploys were skipped. A finished test's databases are now dropped before the next test starts, so the container holds about one database and comes down in seconds. The merging guide describes the failure's signature for CI triage.
+
 ## [16.0.39] - 2026-11-25
 
 ### Changed
@@ -2408,7 +2414,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.39...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.40...HEAD
+[16.0.40]: https://github.com/jwh3times/apexracers/compare/v16.0.39...v16.0.40
 [16.0.39]: https://github.com/jwh3times/apexracers/compare/v16.0.38...v16.0.39
 [16.0.38]: https://github.com/jwh3times/apexracers/compare/v16.0.37...v16.0.38
 [16.0.37]: https://github.com/jwh3times/apexracers/compare/v16.0.36...v16.0.37
