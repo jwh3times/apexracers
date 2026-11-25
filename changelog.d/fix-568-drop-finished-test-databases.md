@@ -1,0 +1,3 @@
+### Fixed
+
+- Backend tests: a test run no longer fails every PostgreSQL test at once when removing the shared test container takes too long (#568). Each test in the collection creates its own database, and a full run used to leave about 660 of them (about 9 GB) in the container. Removing it at the end took 4–55 seconds on CI, once 89, and twice outlasted Docker's 100-second request limit. The collection fixture then reported a cleanup failure, xUnit failed all 666 tests although every one had passed, and the deploys were skipped. A finished test's databases are now dropped before the next test starts, so the container holds about one database and comes down in seconds. The merging guide describes the failure's signature for CI triage.

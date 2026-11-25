@@ -555,8 +555,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
   deliberately permits minimal partial fixtures. SQLite does **not** validate production foreign keys,
   schemas, max-length enforcement, or migration fidelity. Tests that depend on Npgsql translation,
   PostgreSQL transactions, or production relational constraints join `PostgreSqlCollection` and use
-  `PostgreSqlFixture`: one shared pinned `postgres:18.0-alpine` container, a unique database per test,
-  and `EnsureCreated` against the current EF model. That mandatory collection covers the production
+  `PostgreSqlFixture`: one shared pinned `postgres:18.0-alpine` container, a unique database per test
+  (dropped before the collection's next test starts, #568), and `EnsureCreated` against the current
+  EF model. That mandatory collection covers the production
   `DateTimeOffset` queries — including Uploaded Lap Race Week scoping (`RecordedAt >= start && RecordedAt
   < end`), which SQLite fails to translate at runtime rather than at compile time — and refresh-token/auth
   persistence invariants, so a running Docker engine is
