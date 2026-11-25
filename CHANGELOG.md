@@ -15,6 +15,15 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.37] - 2026-11-24
+
+### Changed
+
+- Landing a pull request now waits for the production deploy that its merge starts (`deploy.yml`)
+  and reports its outcome, alongside the release tag. The agent docs map also lists
+  `.github/dependabot.yml`, so its update groups and held majors stay in step with
+  `docs/agents/dependabot.md`. No product behavior changes.
+
 ## [16.0.36] - 2026-11-24
 
 ### Changed
@@ -2387,7 +2396,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.36...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.37...HEAD
+[16.0.37]: https://github.com/jwh3times/apexracers/compare/v16.0.36...v16.0.37
 [16.0.36]: https://github.com/jwh3times/apexracers/compare/v16.0.35...v16.0.36
 [16.0.35]: https://github.com/jwh3times/apexracers/compare/v16.0.34...v16.0.35
 [16.0.34]: https://github.com/jwh3times/apexracers/compare/v16.0.33...v16.0.34
