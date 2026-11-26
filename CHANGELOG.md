@@ -15,6 +15,15 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.42] - 2026-11-25
+
+### Changed
+
+- Contributor docs: three gaps left by the move to changelog fragments are closed (#545).
+  - The merging guide no longer says the `[skip ci]` release commit runs no workflow. No workflow in `.github/workflows/` runs on it, so nothing deploys it, but GitHub's CodeQL default setup still scans it.
+  - The penetration-tester agent's CI/CD supply-chain checks now cover the release GitHub App, the one credential that can push to `main` past the ruleset, with a grep test for misuse.
+  - The doc map now says to update the code-reviewer and penetration-tester agents when a workflow gains a privileged credential or a ruleset bypass, and `CONTRIBUTING.md` when the changelog scheme changes.
+
 ## [16.0.41] - 2026-11-25
 
 ### Changed
@@ -2420,7 +2429,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.41...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.42...HEAD
+[16.0.42]: https://github.com/jwh3times/apexracers/compare/v16.0.41...v16.0.42
 [16.0.41]: https://github.com/jwh3times/apexracers/compare/v16.0.40...v16.0.41
 [16.0.40]: https://github.com/jwh3times/apexracers/compare/v16.0.39...v16.0.40
 [16.0.39]: https://github.com/jwh3times/apexracers/compare/v16.0.38...v16.0.39
