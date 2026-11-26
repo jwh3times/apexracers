@@ -106,8 +106,10 @@ title.
 After each merge, `Version` (`.github/workflows/version.yml`) stamps the merge's section into
 `CHANGELOG.md`, tags the merge commit and creates its GitHub Release. The section arrives in a
 `chore(release): v<x.y.z> [skip ci]` commit pushed by the release GitHub App, the ruleset's one
-bypass actor. That commit runs no workflow, so nothing deploys it. To confirm a merge's release,
-find the `Version` run for the merge commit's SHA and check that the tag points at that commit.
+bypass actor. `[skip ci]` keeps every workflow in `.github/workflows/` from running on it, so
+nothing deploys it. GitHub's CodeQL default setup still scans it, which is harmless. To confirm a
+merge's release, find the `Version` run for the merge commit's SHA and check that the tag points
+at that commit.
 
 The stamp commit moves `main` again, about a minute after the merge. Because the ruleset is strict
 about up-to-date branches, every open PR is behind until it is updated past the stamp commit. Wait

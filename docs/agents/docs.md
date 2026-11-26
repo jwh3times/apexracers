@@ -77,10 +77,12 @@
   schema table and critical indexes).
 - `.claude/agents/penetration-tester.md` — the attack surface and known security controls.
   **When:** an endpoint is added (its attack-surface section); the auth mechanism changes (the Auth
-  surface section: JWT configuration and new endpoint test cases).
+  surface section: JWT configuration and new endpoint test cases); a workflow gains a privileged
+  credential or ruleset bypass (the CI/CD supply-chain section).
 - `.claude/agents/code-reviewer.md` — what to flag, and what is intentionally correct. **When:** a
   new intentional exception to the auth or pattern rules (an endpoint that legitimately lacks
-  `[Authorize]`).
+  `[Authorize]`); a workflow gains a privileged credential or ruleset bypass (also update
+  `penetration-tester.md`'s CI/CD supply-chain section).
 - `.claude/agents/azure-infrastructure.md` — public-safe deployment patterns and runtime
   configuration invariants. **When:** a deployment pattern change is confirmed, never from a local
   change alone.
@@ -98,7 +100,7 @@
   shared rules. **When:** a **Never run** command, a dev-stack command or a never-remove path in
   `workspace.md` changes, or a deploy step moves.
 - `CONTRIBUTING.md` — how outside contributors branch, link issues and open PRs. **When:** the
-  development flow, branch naming or PR template changes.
+  development flow, branch naming, PR template or changelog scheme changes.
 - `docs/design/*.md`, `docs/research/*.md` — design and research records mixing dated findings with
   current-state claims. **When:** a file, procedure or contract they cite is renamed or changes;
   update the current-state claims and leave dated findings as written.

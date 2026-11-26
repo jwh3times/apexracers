@@ -375,7 +375,7 @@ Retained parser/service validation cases:
   running container — verify it the way `docker-containers` does (a probe `COPY` build), not through
   request-based testing.
 
-**CI/CD supply chain (GHSA-j6j2-8f7p-qv9r)**
+**CI/CD supply chain (GHSA-j6j2-8f7p-qv9r, ADR 0008)**
 
 - Every `uses:` across `.github/workflows/` is pinned to a full 40-hex commit SHA with a trailing
   `# vX.Y.Z` comment; `deploy.yml`'s two deploy jobs additionally hold `id-token: write` and exchange
@@ -406,6 +406,15 @@ Retained parser/service validation cases:
   would match no branch and block deploys rather than admit extra ones. A finding here is a
   repository/cloud-configuration gap, not an app-level vulnerability; see the `azure-infrastructure`
   agent for why both the environment declaration and its branch allowlist are required together.
+- `version.yml` holds the other privileged credential: the release GitHub App, whose private key is
+  the `RELEASE_APP_PRIVATE_KEY` secret and whose client ID is the `RELEASE_APP_CLIENT_ID` variable.
+  It mints a `contents: write` token for the App, which the `main` ruleset lists as its one bypass
+  actor, so a push with that token skips every required check. By design (ADR 0008 and the
+  workflow's header) its one push is the `chore(release)` stamp commit with its tags.
+- Test: grep `.github/workflows/*.yml` for `RELEASE_APP_PRIVATE_KEY`. A hit in any workflow other
+  than `version.yml` is a finding, and so is any push from `version.yml` beyond the stamp commit and
+  its tags: its `checkout` step keeps the App token as the git credential, so a later `git push`
+  uses it without naming it. Either would let unreviewed content reach `main` past the ruleset.
 
 **Forwarded-header trust (GHSA-fq5w-frqr-6px2)**
 
