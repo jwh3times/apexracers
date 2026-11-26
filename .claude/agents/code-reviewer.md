@@ -284,7 +284,8 @@ You are reviewing code changes against the established ApexRacers patterns. Be s
 - Flag `HandleCallbackAsync` being implemented without CSRF state validation — the TODO comment documents the required nonce check.
 - Flag any `uses:` in `.github/workflows/` that references a tag or branch instead of a full 40-hex
   commit SHA with a trailing `# vX.Y.Z` comment — GHSA-j6j2-8f7p-qv9r. A tag is mutable; the deploy
-  jobs run actions with `id-token: write` against production. Dependabot keeps the pins current, so
+  jobs run actions with `id-token: write` against production, and `version.yml` runs actions
+  beside the release GitHub App's ruleset-bypass token. Dependabot keeps the pins current, so
   there is no reason to reintroduce a tag, and nothing fails if someone does.
 - Flag removal of `environment: production` from either `deploy.yml` deploy job, or a new job that
   requests `id-token: write` without declaring that environment — GHSA-j6j2-8f7p-qv9r. The Azure
