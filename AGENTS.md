@@ -548,8 +548,9 @@ Both stacks enforce **85%** coverage; changes aren't done until it passes. The `
 - **Workflow supply chain:** every `uses:` step across `.github/workflows/` (including
   `irongut/CodeCoverageSummary` above) is pinned to a full commit SHA with a trailing `# vX.Y.Z`
   comment rather than a mutable tag — GHSA-j6j2-8f7p-qv9r; the deploy jobs hold `id-token: write`
-  against production. `.github/dependabot.yml`'s `github-actions` ecosystem reads that trailing
-  comment to keep pins current; see the `code-reviewer` agent for the review rule.
+  against production, and `version.yml`'s job holds the release GitHub App's ruleset-bypass token.
+  `.github/dependabot.yml`'s `github-actions` ecosystem reads that trailing comment to keep pins
+  current; see the `code-reviewer` agent for the review rule.
 - **Test DB providers:** `Helpers/DbContextFactory.Create()` gives the fast tests a fresh **in-memory
   SQLite** database. It validates relational SQL translation and column constraints; `Foreign Keys=False`
   deliberately permits minimal partial fixtures. SQLite does **not** validate production foreign keys,
