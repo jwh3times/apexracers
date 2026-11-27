@@ -12,7 +12,7 @@ export function useDriverResource<T>(
   options: ResourceOptions<T> = {}
 ): Resource<T> {
   // The dependency list is this hook's public selection/authorization interface.
-  // oxlint-disable-next-line react/exhaustive-deps
+  // oxlint-disable-next-line react/exhaustive-deps, react/use-memo
   const request = useMemo(() => createDriverResource<T>(), [...dependencies, options.enabled]);
   const resource = useSyncExternalStore(
     request.subscribe,
