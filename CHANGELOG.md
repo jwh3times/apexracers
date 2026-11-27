@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.45] - 2026-11-27
+
+### Changed
+
+- chore(deps-dev): Bump `oxlint` from `1.94.0` to `1.95.0` in `/web` in the npm-minor-patch group (#585)
+
 ## [16.0.44] - 2026-11-27
 
 ### Changed
@@ -2441,7 +2447,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.44...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.45...HEAD
+[16.0.45]: https://github.com/jwh3times/apexracers/compare/v16.0.44...v16.0.45
 [16.0.44]: https://github.com/jwh3times/apexracers/compare/v16.0.43...v16.0.44
 [16.0.43]: https://github.com/jwh3times/apexracers/compare/v16.0.42...v16.0.43
 [16.0.42]: https://github.com/jwh3times/apexracers/compare/v16.0.41...v16.0.42
