@@ -15,6 +15,12 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.48] - 2026-11-28
+
+### Changed
+
+- Take the latest shared skills and scripts from `jwh3times/skills` (#587)
+
 ## [16.0.47] - 2026-11-28
 
 ### Changed
@@ -2464,7 +2470,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.47...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.48...HEAD
+[16.0.48]: https://github.com/jwh3times/apexracers/compare/v16.0.47...v16.0.48
 [16.0.47]: https://github.com/jwh3times/apexracers/compare/v16.0.46...v16.0.47
 [16.0.46]: https://github.com/jwh3times/apexracers/compare/v16.0.45...v16.0.46
 [16.0.45]: https://github.com/jwh3times/apexracers/compare/v16.0.44...v16.0.45
