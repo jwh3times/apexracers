@@ -15,6 +15,17 @@ section, so some older tags have none.
 
 No unreleased changes.
 
+## [16.0.47] - 2026-11-28
+
+### Changed
+
+- The forwarded-header trust documentation now records how a request that wakes the API from zero
+  replicas is attributed. The platform delivers it through an internal hop, so it is logged and
+  rate-limited as that hop rather than as its client. A forged `X-Forwarded-For` is still ignored on
+  that path, and the HTTPS scheme still survives it. The deployment guidance now requires the
+  forged-address check to include a request sent while the app is at zero replicas. No behavior
+  changes.
+
 ## [16.0.46] - 2026-11-27
 
 ### Changed
@@ -2453,7 +2464,8 @@ Initial release — the version currently deployed to production
   policy.
 - Licensed under the GNU Affero General Public License v3.0.
 
-[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.46...HEAD
+[Unreleased]: https://github.com/jwh3times/apexracers/compare/v16.0.47...HEAD
+[16.0.47]: https://github.com/jwh3times/apexracers/compare/v16.0.46...v16.0.47
 [16.0.46]: https://github.com/jwh3times/apexracers/compare/v16.0.45...v16.0.46
 [16.0.45]: https://github.com/jwh3times/apexracers/compare/v16.0.44...v16.0.45
 [16.0.44]: https://github.com/jwh3times/apexracers/compare/v16.0.43...v16.0.44
