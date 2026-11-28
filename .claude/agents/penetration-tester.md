@@ -425,8 +425,11 @@ Retained parser/service validation cases:
   `X-Forwarded-For: 203.0.113.77`) against a deployed instance and confirm the logged client address
   is the real one, not the forged value — `RequestLoggingMiddleware`'s line in the Application
   Insights `traces` table reads `HTTP GET <path> responded <status> in <ms> from <ip>`; the forged
-  value must appear nowhere in it. Locally (no reverse proxy, setting unset), confirm the same forged
-  header is ignored and the real peer is used.
+  value must appear nowhere in it. Send it once while the app is at zero replicas and once warm: the
+  request that wakes the app is logged with an internal platform hop's address instead of the real
+  one, the accepted exception `ForwardedHeadersPolicy` describes, and is a finding only if the forged
+  value appears. Locally (no reverse proxy, setting unset), confirm the same forged header is ignored
+  and the real peer is used.
 - Test: send `X-Forwarded-For: <forged>, <realish>` (two entries) — only the rightmost entry may be
   believed (`ForwardLimit = 1`); confirm the forged left-hand entry never becomes the effective
   client address.

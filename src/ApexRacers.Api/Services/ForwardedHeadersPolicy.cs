@@ -48,11 +48,24 @@ public static class ForwardedHeadersPolicy
     /// The trust decision itself.
     ///
     /// <para><c>ForwardLimit = 1</c> is the load-bearing setting, and is set explicitly even though
-    /// it is also the framework default: it means only the <em>rightmost</em> entry is read. The
-    /// platform front end appends the true client address last, so entries a caller invents to the
-    /// left of it are never consulted — verified against production by sending a forged
+    /// it is also the framework default: it means only the <em>rightmost</em> entry is read. On the
+    /// warm path the platform front end appends the true client address last, so entries a caller
+    /// invents to the left of it are never consulted — verified against production by sending a forged
     /// <c>X-Forwarded-For</c> and confirming the logged address was the real one. Widening this is
     /// what would let a caller pick its own rate-limit partition.</para>
+    ///
+    /// <para><b>One accepted exception: a request held through scale from zero.</b> When the API is
+    /// at zero replicas, the request that wakes it reaches the app through an internal platform hop,
+    /// and the client address the app resolves is that hop's (in the RFC 6598 range,
+    /// <c>100.64.0.0/10</c>), whether the hop drops the header or appends itself. Such a request is
+    /// logged and rate-limited as the hop. The scheme is unaffected: a cold response still carries the
+    /// HSTS header, which only a request seen as HTTPS gets. A forged entry is still ignored on that
+    /// path, so it is not a spoofing hole, only lost attribution. Each wake holds only the few requests
+    /// that arrive during the start, so the hop's partitions stay far below every per-minute limit.
+    /// That was verified against production by sending the same forged <c>X-Forwarded-For</c> to the
+    /// app while it was at zero replicas and again while it was warm, and by checking the HSTS header
+    /// on a cold response. Recovering the client on that path would mean trusting the hop's range and
+    /// widening <c>ForwardLimit</c>, which reopens the spoofing question this class settles.</para>
     ///
     /// <para><c>KnownProxies</c> and <c>KnownNetworks</c> are cleared because the platform front
     /// end's address is neither fixed nor documented; the defaults trust only loopback, which would

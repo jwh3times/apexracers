@@ -214,7 +214,11 @@ app — not a Key Vault secret, so it isn't in the table above. It is what regis
 forwarded-headers middleware at all; the trust settings it then applies (which headers, `ForwardLimit
 = 1`, cleared `KnownNetworks`/`KnownProxies`) are owned in code by `ForwardedHeadersPolicy` (see the
 `dotnet-api` agent — never add `app.UseForwardedHeaders()` alongside this setting). With it `true`,
-per-IP rate limiting and HSTS's HTTPS check see the real client behind the platform front end.
+per-IP rate limiting and HSTS's HTTPS check see the real client behind the platform front end. The
+one accepted exception is the client address (not the scheme) of a request that wakes the API from
+zero replicas; `ForwardedHeadersPolicy` owns what it is and why it is accepted. That request takes a
+separate route to the app, so a forged-address probe of this setting must include a request sent
+while the app is at zero replicas as well as a warm one.
 
 Removing or unsetting it is **safe but degrading, never spoofable**: forwarded headers stop being
 processed, `Connection.RemoteIpAddress` reverts to the front end's own address for every request, so
