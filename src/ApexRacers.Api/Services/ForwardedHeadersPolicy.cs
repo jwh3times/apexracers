@@ -64,9 +64,8 @@ public static class ForwardedHeadersPolicy
     /// that arrive during the start, so the hop's partitions stay far below every per-minute limit.
     /// That was verified against production by sending the same forged <c>X-Forwarded-For</c> to the
     /// app while it was at zero replicas and again while it was warm, and by checking the HSTS header
-    /// on a cold response. Recovering the client on that path would mean
-    /// trusting the hop's range and widening <c>ForwardLimit</c>, which reopens the spoofing question
-    /// this class settles.</para>
+    /// on a cold response. Recovering the client on that path would mean trusting the hop's range and
+    /// widening <c>ForwardLimit</c>, which reopens the spoofing question this class settles.</para>
     ///
     /// <para><c>KnownProxies</c> and <c>KnownNetworks</c> are cleared because the platform front
     /// end's address is neither fixed nor documented; the defaults trust only loopback, which would
